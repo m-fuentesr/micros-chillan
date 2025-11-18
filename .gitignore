@@ -1,0 +1,22 @@
+# ---- Frontend Angular ----
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/.idea/
+
+# ---- Backend FastAPI ----
+backend/.venv/
+backend/__pycache__/
+backend/*.pyc
+
+# ---- Env files ----
+*.env
+*.env.local
+*.env.*
+.env
+.env.*
+
+# ---- OS / Editor Junk ----
+.DS_Store
+Thumbs.db
+.vscode/
