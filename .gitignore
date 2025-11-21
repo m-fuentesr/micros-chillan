@@ -9,7 +9,8 @@ backend/.venv/
 backend/app/__pycache__/
 backend/__pycache__/
 backend/*.pyc
-__pycache__/
+**/__pycache__/
+*.pyc
 
 # ---- Env files ----
 *.env
