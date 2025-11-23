@@ -1,0 +1,128 @@
+Eres un experto en TypeScript, Angular y desarrollo de aplicaciones web escalables. Escribes código funcional, mantenible, performante y accesible siguiendo las mejores prácticas de Angular y TypeScript.
+
+## Mejores Prácticas de TypeScript
+- Usa verificación estricta de tipos
+- Prefiere la inferencia de tipos cuando el tipo es obvio
+- Evita el tipo `any`; usa `unknown` cuando el tipo es incierto
+
+## Mejores Prácticas de Angular
+- Siempre usa componentes standalone en lugar de NgModules
+- NO debes establecer `standalone: true` dentro de los decoradores de Angular. Es el valor predeterminado en Angular v20+.
+- Usa signals para la gestión de estado
+- Implementa carga diferida (lazy loading) para rutas de características
+- NO uses los decoradores `@HostBinding` y `@HostListener`. Coloca los host bindings dentro del objeto `host` del decorador `@Component` o `@Directive` en su lugar
+- Usa `NgOptimizedImage` para todas las imágenes estáticas.
+  - `NgOptimizedImage` no funciona para imágenes base64 inline.
+
+## Requisitos de Accesibilidad
+- DEBE pasar todas las verificaciones AXE.
+- DEBE seguir todos los mínimos WCAG AA, incluyendo gestión de foco, contraste de color y atributos ARIA.
+
+### Componentes
+- Mantén los componentes pequeños y enfocados en una sola responsabilidad
+- Usa las funciones `input()` y `output()` en lugar de decoradores
+- Usa `computed()` para estado derivado
+- Establece `changeDetection: ChangeDetectionStrategy.OnPush` en el decorador `@Component`
+- Prefiere plantillas inline para componentes pequeños
+- Prefiere formularios reactivos en lugar de formularios basados en plantillas
+- NO uses `ngClass`, usa bindings de `class` en su lugar
+- NO uses `ngStyle`, usa bindings de `style` en su lugar
+- Cuando uses plantillas/estilos externos, usa rutas relativas al archivo TS del componente.
+
+## Gestión de Estado
+- Usa signals para el estado local del componente
+- Usa `computed()` para estado derivado
+- Mantén las transformaciones de estado puras y predecibles
+- NO uses `mutate` en signals, usa `update` o `set` en su lugar
+
+## Plantillas
+- Mantén las plantillas simples y evita lógica compleja
+- Usa control de flujo nativo (`@if`, `@for`, `@switch`) en lugar de `*ngIf`, `*ngFor`, `*ngSwitch`
+- Usa el async pipe para manejar observables
+- No asumas que los globales como (`new Date()`) están disponibles.
+- No escribas funciones flecha en plantillas (no están soportadas).
+- No escribas expresiones regulares en plantillas (no están soportadas).
+
+## Servicios
+- Diseña servicios alrededor de una sola responsabilidad
+- Usa la opción `providedIn: 'root'` para servicios singleton
+- Usa la función `inject()` en lugar de inyección por constructor
+
+## Convenciones del Proyecto
+- Este proyecto usa Angular 20.3.0
+- El proyecto usa Tailwind CSS y DaisyUI para estilos
+- Los componentes están organizados en carpetas `pages` y `shared`
+- Usa rutas relativas para imports cuando sea posible
+- Respeta la estructura de carpetas existente del proyecto
+
+# Fuentes de Verdad y Documentación (PRIORIDAD MÁXIMA)
+
+## 1. UI y Componentes (DaisyUI)
+
+**Fuente Oficial:** https://daisyui.com/docs
+
+**Regla de Oro:** ANTES de escribir cualquier línea de CSS personalizado o usar una larga cadena de utilidades de Tailwind, DEBES verificar si existe un componente en daisyUI.
+
+- **Proceso de Pensamiento Obligatorio:**
+
+  1. "¿Qué estoy intentando construir?" (Ej: Un botón, un modal, un card).
+
+  2. "¿Existe esto en daisyUI?" -> Consulta la documentación interna o conocimiento del framework.
+
+  3. **SI EXISTE:** Usa las clases de daisyUI (ej: `btn btn-primary`, `card`, `modal`). NO REINVENTES LA RUEDA con `div` y clases de Tailwind crudas.
+
+  4. **SOLO SI NO EXISTE:** Usa utilidades de Tailwind CSS estándar.
+
+## 2. Gráficos y Visualización (Chart.js)
+
+**Fuente Oficial:** https://www.chartjs.org/docs/latest
+
+**Regla de Oro:** Aunque usamos el wrapper de Angular (`ng2-charts`), la configuración del objeto `options` y `data` debe seguir estrictamente la documentación de la última versión de Chart.js.
+
+- **Configuración:**
+
+  - No inventes propiedades que no existan en la API v4 de Chart.js.
+
+  - Estructura los datasets y las opciones de escalas (`scales`) basándote en los ejemplos oficiales de la documentación.
+
+## 3. Estrategia de Layout y Responsividad
+
+1. **Unidades:**
+
+   - Spacing/Fuentes: Usa SIEMPRE clases de Tailwind basadas en `rem` (ej: `p-4`, `text-xl`).
+
+   - Layout Principal: Usa `h-dvh` para el contenedor raíz de la app (evita `vh` simple).
+
+   - Grillas: Usa `grid` y `gap` en lugar de márgenes manuales. Prefiere `grid-cols-1 md:grid-cols-X`.
+
+2. **Scroll:** Evita el scroll en el `body`. El scroll debe estar contenido dentro del área `main` (`overflow-y-auto`).
+
+3. **Tablas y Gráficos:**
+
+   - Siempre envuelve tablas grandes en un contenedor con `overflow-x-auto`.
+
+   - Los gráficos deben tener un contenedor padre con `relative` y altura definida (ej: `h-64 w-full`).
+
+4. **Container Queries:** Si un componente es reutilizable (como una tarjeta), usa `@container` en lugar de `@media` para sus estilos internos.
+
+## 4. Reglas de Tipografía y Desbordamiento
+
+1. **Seguridad de Texto (Truncate):**
+
+   - NUNCA asumas que el texto cabe. Si el contenido es dinámico (nombres, títulos, descripciones), añade SIEMPRE `truncate` (1 línea) o `line-clamp-X` (multilínea).
+
+   - Si truncas información crítica, envuélvela en un `<div class="tooltip" [data-tip]="valor">` de daisyUI.
+
+2. **Tamaño Adaptativo (Container Queries):**
+
+   - Para tarjetas o widgets en el dashboard, NO uses tamaños de fuente estáticos grandes (ej. evitar `text-2xl` fijo).
+
+   - Usa Container Queries para escalar la fuente según el espacio disponible en la tarjeta:
+
+     `class="text-sm @xs:text-base @lg:text-xl"`
+
+   - Usa `text-[clamp(min,val,max)]` solo para números grandes (KPIs) que deben impactar pero no desbordar.
+
+3. **Break Word:**
+
+   - Si el texto no se puede truncar (ej. un código o ID largo), usa `break-all` o `break-words` para forzar el salto de línea y evitar el scroll horizontal indeseado.

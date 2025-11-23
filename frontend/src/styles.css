@@ -1,0 +1,323 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+/* Configuración del tema: Solo modo claro con tema corporate */
+html {
+  color-scheme: light;
+}
+
+/* Deshabilitar modo oscuro - forzar tema corporate */
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: light;
+  }
+}
+
+/* ============================================
+   SISTEMA DE ANIMACIONES - MOTION UI
+   ============================================ */
+
+:root {
+  /* Timing Functions (Cubic Bezier) */
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  
+  /* Durations */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+  --duration-medium: 300ms;
+  --duration-slow: 400ms;
+  --duration-slower: 500ms;
+  --duration-slowest: 800ms;
+}
+
+/* ============================================
+   KEYFRAMES - ANIMACIONES REUTILIZABLES
+   ============================================ */
+
+/* Slide Down */
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Slide Up */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Slide In Right */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translate3d(20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Slide In Left */
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translate3d(-20px, 0, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+/* Scale Up */
+@keyframes scaleUp {
+  from {
+    opacity: 0;
+    transform: scale3d(0.95, 0.95, 1);
+  }
+  to {
+    opacity: 1;
+    transform: scale3d(1, 1, 1);
+  }
+}
+
+.animate-scale-up {
+  animation: scaleUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Bounce Subtle */
+@keyframes bounceSubtle {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+
+/* Shake */
+@keyframes shake {
+  0%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translate3d(-4px, 0, 0);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
+
+/* Pulse Border - Solo para alertas críticas, parpadeo lento y suave */
+@keyframes pulseBorder {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Fade In */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   CLASES DE ANIMACIÓN UTILITARIAS
+   ============================================ */
+
+/* Entrada de página */
+.animate-page-enter {
+  animation: fadeIn var(--duration-medium) var(--ease-in-out);
+}
+
+.animate-fade-in {
+  animation: fadeIn var(--duration-slow) var(--ease-in-out);
+}
+
+/* Entrada de header */
+.animate-header-enter {
+  animation: slideDown var(--duration-medium) var(--ease-out-quart);
+}
+
+/* Entrada de cards (escalonada) */
+.animate-card-enter {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-fill-mode: both;
+}
+
+.animate-card-enter-delay-1 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 50ms;
+  animation-fill-mode: both;
+}
+
+.animate-card-enter-delay-2 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 100ms;
+  animation-fill-mode: both;
+}
+
+.animate-card-enter-delay-3 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 150ms;
+  animation-fill-mode: both;
+}
+
+/* Entrada de lista (escalonada) */
+.animate-list-item-enter {
+  animation: slideInRight var(--duration-medium) var(--ease-out-quart);
+}
+
+.animate-list-item-enter-delay {
+  animation: slideInRight var(--duration-medium) var(--ease-out-quart);
+  animation-delay: 50ms;
+  animation-fill-mode: both;
+}
+
+/* Entrada de tabla */
+.animate-table-enter {
+  animation: fadeIn var(--duration-slow) var(--ease-in-out);
+}
+
+.animate-table-row-enter {
+  animation: slideInLeft var(--duration-normal) var(--ease-in-out);
+  animation-fill-mode: both;
+}
+
+/* Slide Up para cards móviles */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-slide-up {
+  animation: slideUp var(--duration-medium) var(--ease-out-quart);
+}
+
+/* Hover states optimizados */
+.hover-lift {
+  transition: transform var(--duration-fast) var(--ease-in-out),
+              box-shadow var(--duration-fast) var(--ease-in-out);
+}
+
+.hover-lift:hover {
+  transform: translate3d(0, -2px, 0) scale3d(1.02, 1.02, 1);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.hover-scale {
+  transition: transform 400ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-scale:hover {
+  transform: scale3d(1.05, 1.05, 1);
+}
+
+.hover-scale:active {
+  transform: scale3d(0.98, 0.98, 1);
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hover-slide {
+  transition: transform var(--duration-normal) var(--ease-in-out);
+}
+
+.hover-slide:hover {
+  transform: translate3d(4px, 0, 0);
+}
+
+/* Bounce sutil */
+.animate-bounce-subtle {
+  animation: bounceSubtle 600ms var(--ease-bounce);
+}
+
+/* Shake para alertas críticas */
+.animate-shake {
+  animation: shake 400ms var(--ease-bounce);
+}
+
+/* Pulse border para alertas críticas - Parpadeo lento y suave */
+.animate-pulse-border {
+  position: relative;
+}
+
+.animate-pulse-border::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background-color: hsl(var(--er));
+  animation: pulseBorder 3s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 10;
+  border-radius: 0.25rem 0 0 0.25rem;
+}
+
+/* ============================================
+   ACCESIBILIDAD - REDUCED MOTION
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  .animate-page-enter,
+  .animate-header-enter,
+  .animate-card-enter,
+  .animate-card-enter-delay-1,
+  .animate-card-enter-delay-2,
+  .animate-card-enter-delay-3,
+  .animate-list-item-enter,
+  .animate-list-item-enter-delay,
+  .animate-table-enter,
+  .animate-table-row-enter,
+  .animate-bounce-subtle,
+  .animate-shake,
+  .animate-pulse-border {
+    animation: none !important;
+  }
+  
+  .hover-lift:hover,
+  .hover-scale:hover,
+  .hover-slide:hover {
+    transform: none !important;
+  }
+}
