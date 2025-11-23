@@ -6,8 +6,11 @@ frontend/.idea/
 
 # ---- Backend FastAPI ----
 backend/.venv/
+backend/app/__pycache__/
 backend/__pycache__/
 backend/*.pyc
+**/__pycache__/
+*.pyc
 
 # ---- Env files ----
 *.env
