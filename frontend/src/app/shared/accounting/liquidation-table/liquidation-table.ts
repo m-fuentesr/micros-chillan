@@ -14,10 +14,10 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
             <thead>
               <tr>
                 <th>Chofer</th>
-                <th>Total Ganado (RF-022)</th>
-                <th>Mínimo Garantizado (RF-023)</th>
-                <th>Monto a Completar (RF-024)</th>
-                <th>Pago Final (RF-025)</th>
+                <th class="text-right">Total Ganado (RF-022)</th>
+                <th class="text-right">Mínimo Garantizado (RF-023)</th>
+                <th class="text-right">Monto a Completar (RF-024)</th>
+                <th class="text-right">Pago Final (RF-025)</th>
                 <th>Acciones</th>
               </tr>
             </thead>
@@ -25,21 +25,21 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
               @for (chofer of liquidation().choferes; track chofer.chofer_id) {
                 <tr>
                   <td class="font-semibold truncate tooltip" [attr.data-tip]="chofer.chofer_nombre">{{ chofer.chofer_nombre }}</td>
-                  <td>
+                  <td class="text-right">
                     <div class="font-bold">{{ formatCurrency(chofer.total_ganado) }}</div>
                     <div class="text-xs text-base-content/70">Suma de reportes diarios del mes</div>
                   </td>
-                  <td class="font-semibold">{{ formatCurrency(chofer.minimo_garantizado) }}</td>
-                  <td>
+                  <td class="text-right font-semibold">{{ formatCurrency(chofer.minimo_garantizado) }}</td>
+                  <td class="text-right">
                     <input
                       type="number"
-                      class="input input-bordered input-sm w-32"
+                      class="input input-bordered input-sm w-32 bg-white focus:bg-white"
                       [value]="chofer.monto_a_completar"
                       [disabled]="chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado'"
                       (input)="onMissingAmountChange(chofer.chofer_id, $event)"
                       min="0">
                   </td>
-                  <td>
+                  <td class="text-right">
                     <div class="font-bold">{{ formatCurrency(chofer.pago_final) }}</div>
                     <div class="text-xs text-base-content/70">
                       @if (chofer.total_ganado >= chofer.minimo_garantizado) {

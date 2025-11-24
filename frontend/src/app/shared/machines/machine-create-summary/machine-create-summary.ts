@@ -62,20 +62,20 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70 mb-2">Documentación</span>
               <div class="flex flex-col gap-1.5 mt-1">
                 <div class="flex items-center gap-2 text-xs">
-                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion.revision_tecnica === '✓'" [class.text-base-content/40]="summary().documentacion.revision_tecnica === '—'">
-                    {{ summary().documentacion.revision_tecnica }}
+                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion?.revision_tecnica === '✓'" [class.text-base-content/40]="summary().documentacion?.revision_tecnica === '—'">
+                    {{ summary().documentacion?.revision_tecnica || '—' }}
                   </span>
                   <span class="text-base-content/70">Revisión Técnica</span>
                 </div>
                 <div class="flex items-center gap-2 text-xs">
-                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion.permiso_circulacion === '✓'" [class.text-base-content/40]="summary().documentacion.permiso_circulacion === '—'">
-                    {{ summary().documentacion.permiso_circulacion }}
+                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion?.permiso_circulacion === '✓'" [class.text-base-content/40]="summary().documentacion?.permiso_circulacion === '—'">
+                    {{ summary().documentacion?.permiso_circulacion || '—' }}
                   </span>
                   <span class="text-base-content/70">Permiso Circulación</span>
                 </div>
                 <div class="flex items-center gap-2 text-xs">
-                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion.seguro_obligatorio === '✓'" [class.text-base-content/40]="summary().documentacion.seguro_obligatorio === '—'">
-                    {{ summary().documentacion.seguro_obligatorio }}
+                  <span class="w-4 h-4 flex items-center justify-center font-mono" [class.text-success]="summary().documentacion?.seguro_obligatorio === '✓'" [class.text-base-content/40]="summary().documentacion?.seguro_obligatorio === '—'">
+                    {{ summary().documentacion?.seguro_obligatorio || '—' }}
                   </span>
                   <span class="text-base-content/70">Seguro Obligatorio</span>
                 </div>

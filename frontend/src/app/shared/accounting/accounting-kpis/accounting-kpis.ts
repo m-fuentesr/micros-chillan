@@ -5,49 +5,96 @@ import { AccountingSummary } from '../../models/accounting.models';
   selector: 'app-accounting-kpis',
   imports: [],
   template: `
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="text-sm text-base-content/70 mb-1">Total Recaudado (Bruto)</div>
-          <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold">{{ formatCurrency(summary().totales.total_recaudado) }}</div>
-          <div class="text-xs text-base-content/70 mt-1">
-            {{ summary().es_mes_actual ? 'Acumulado hasta hoy' : 'Total del período' }}
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+      <!-- Hero Card: Ganancia Líquida (Ocupa 5/12 del ancho) -->
+      <div class="lg:col-span-5 card bg-base-100 shadow-xl border-l-8 border-success h-full">
+        <div class="card-body flex flex-col justify-center gap-1">
+          <h3 class="text-sm uppercase tracking-widest text-base-content/60 font-semibold">
+            Ganancia Líquida (Neta)
+          </h3>
+          
+          <div class="flex items-baseline gap-2 mt-2">
+            <span class="text-5xl xl:text-6xl font-black text-success tracking-tight">
+              {{ formatCurrency(summary().totales.ganancia_liquida) }}
+            </span>
+          </div>
+
+          <div class="mt-4 flex items-center gap-2 text-sm text-base-content/70 bg-base-200 w-fit px-3 py-1 rounded-full">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="size-4 text-success">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+            </svg>
+            <span>Rentabilidad acumulada ({{ summary().es_mes_actual ? 'En curso' : 'Final' }})</span>
           </div>
         </div>
       </div>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="text-sm text-base-content/70 mb-1">Costo Diésel (Total)</div>
-          <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold">{{ formatCurrency(summary().totales.total_costo_diesel) }}</div>
-          <div class="text-xs text-base-content/70 mt-1">
-            {{ summary().es_mes_actual ? 'Acumulado hasta hoy' : 'Total del período' }}
+
+      <!-- Grid de 4 KPIs secundarios (Ocupa 7/12 del ancho) -->
+      <div class="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <!-- KPI: Total Recaudado (Ingreso - Azul) -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-bold text-base-content/50 uppercase mb-1">Total Recaudado</p>
+                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.total_recaudado) }}</p>
+              </div>
+              <div class="p-2 bg-primary/10 rounded-lg text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="text-sm text-base-content/70 mb-1">Pago Choferes (Total)</div>
-          <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold">{{ formatCurrency(summary().totales.total_pago_choferes) }}</div>
-          <div class="text-xs text-base-content/70 mt-1">
-            {{ summary().es_mes_actual ? 'Acumulado hasta hoy' : 'Total del período' }}
+
+        <!-- KPI: Pago Choferes (Egreso - Warning) -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-bold text-base-content/50 uppercase mb-1">Pago Choferes</p>
+                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.total_pago_choferes) }}</p>
+              </div>
+              <div class="p-2 bg-warning/10 rounded-lg text-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="text-sm text-base-content/70 mb-1">Gastos en Repuestos (Mes)</div>
-          <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold">{{ formatCurrency(summary().totales.gastos_repuestos) }}</div>
-          <div class="text-xs text-base-content/70 mt-1">
-            {{ summary().es_mes_actual ? 'Acumulado hasta hoy' : 'Total del período' }}
+
+        <!-- KPI: Costo Diésel (Egreso - Error/Rojo) -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-bold text-base-content/50 uppercase mb-1">Costo Diésel</p>
+                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.total_costo_diesel) }}</p>
+              </div>
+              <div class="p-2 bg-error/10 rounded-lg text-error">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <div class="text-sm text-base-content/70 mb-1">Ganancia Líquida (Neta)</div>
-          <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold text-success">{{ formatCurrency(summary().totales.ganancia_liquida) }}</div>
-          <div class="text-xs text-base-content/70 mt-1">
-            {{ summary().es_mes_actual ? 'Acumulado hasta hoy' : 'Total del período' }}
+
+        <!-- KPI: Gastos Repuestos (Egreso - Neutro) -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body p-5">
+            <div class="flex justify-between items-start">
+              <div>
+                <p class="text-xs font-bold text-base-content/50 uppercase mb-1">Repuestos</p>
+                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.gastos_repuestos) }}</p>
+              </div>
+              <div class="p-2 bg-base-300 rounded-lg text-base-content">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
       </div>

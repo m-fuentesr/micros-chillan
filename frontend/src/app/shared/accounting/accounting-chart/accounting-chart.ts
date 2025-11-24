@@ -7,15 +7,21 @@ import { DailyProfitabilityData } from '../../models/accounting.models';
   selector: 'app-accounting-chart',
   imports: [BaseChartDirective],
   template: `
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h3 class="text-xl font-bold mb-2">Evolución de Rentabilidad (Diaria)</h3>
-        <p class="text-sm text-base-content/70 mb-4">
-          Muestra la acumulación de ingresos, egresos y ganancia neta día a día (MTD).
-        </p>
-        <div class="w-full" style="height: 400px; position: relative; min-height: 400px;">
+    <div class="card bg-base-100 shadow-sm border border-base-200 w-full">
+      <div class="card-body p-6">
+        <div class="flex justify-between items-start mb-6">
+          <div>
+            <h3 class="text-lg font-bold">Evolución de Rentabilidad</h3>
+            <p class="text-sm text-base-content/70">
+              Comportamiento diario de ingresos vs egresos (MTD).
+            </p>
+          </div>
+        </div>
+        
+        <div class="w-full relative h-[400px]">
           @if (chartData().labels && chartData().labels!.length > 0) {
             <canvas baseChart
+              class="w-full h-full"
               [data]="chartData()"
               [options]="chartOptions"
               [type]="chartType">

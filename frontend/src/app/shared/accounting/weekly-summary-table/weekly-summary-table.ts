@@ -1,156 +1,179 @@
 import { Component, ChangeDetectionStrategy, input, signal, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { WeeklySummary } from '../../models/accounting.models';
 
 @Component({
   selector: 'app-weekly-summary-table',
-  imports: [],
+  standalone: true,
+  imports: [CommonModule],
   template: `
-    <div class="card bg-base-100 shadow-xl">
-      <div class="card-body">
-        <h2 class="text-2xl font-bold mb-4">Resumen Semanal Detallado</h2>
-        <p class="text-sm text-base-content/70 mb-6">
-          Vista consolidada de ingresos, egresos y ganancias por semana con desglose detallado por chofer.
-        </p>
-
-        <!-- KPIs Mensuales -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <div class="card bg-base-200">
-            <div class="card-body">
-              <div class="text-sm text-base-content/70 mb-1">Total Recaudado (Mes)</div>
-              <div class="text-2xl font-bold">{{ formatCurrency(monthTotals().totalRecaudado) }}</div>
-              <div class="text-xs text-base-content/70 mt-1">{{ summaries().length }} semanas completas</div>
+    <div class="card bg-base-100 shadow-xl border border-base-200">
+      <div class="card-body p-4 sm:p-6">
+        <!-- Header -->
+        <div class="mb-6 flex flex-col gap-4">
+          <div class="flex justify-between items-start">
+            <div>
+              <h2 class="text-lg sm:text-xl font-bold">Desempeño Semanal</h2>
+              <p class="text-xs sm:text-sm text-base-content/60">Rentabilidad operativa.</p>
             </div>
-          </div>
-          <div class="card bg-base-200">
-            <div class="card-body">
-              <div class="text-sm text-base-content/70 mb-1">Total Pagado a Choferes</div>
-              <div class="text-2xl font-bold">{{ formatCurrency(monthTotals().totalPagoChoferes) }}</div>
-              <div class="text-xs text-base-content/70 mt-1">30% de ganancia bruta</div>
-            </div>
-          </div>
-          <div class="card bg-base-200 border-2 border-success">
-            <div class="card-body">
-              <div class="text-sm text-base-content/70 mb-1">Ganancia Neta (Mes)</div>
-              <div class="text-3xl font-bold text-success">{{ formatCurrency(monthTotals().gananciaNeta) }}</div>
-              <div class="text-xs text-base-content/70 mt-1">Después de todos los gastos</div>
-            </div>
-          </div>
-          <div class="card bg-base-200">
-            <div class="card-body">
-              <div class="text-sm text-base-content/70 mb-1">Promedio por Semana</div>
-              <div class="text-2xl font-bold">{{ formatCurrency(monthTotals().promedioSemanal) }}</div>
-              <div class="text-xs text-base-content/70 mt-1">Ganancia promedio semanal</div>
+            <div class="bg-success/10 px-3 py-1.5 rounded-lg border border-success/20 text-right">
+              <div class="text-[10px] text-success/80 uppercase font-bold tracking-wider">Total Mes</div>
+              <div class="font-bold text-success text-base sm:text-lg tabular-nums tracking-tight">
+                {{ getTotalGanancia() | currency:'CLP':'symbol-narrow':'1.0-0' }}
+              </div>
             </div>
           </div>
         </div>
 
-          <!-- Tabla de Resumen por Semana -->
-        <div class="overflow-x-auto">
-          <table class="table table-zebra">
-            <thead>
+        <!-- KPIs: Grid 2x2 en móvil, 4 columnas en desktop -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <!-- KPI: Total Recaudado -->
+          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-primary/30 transition-colors">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Recaudado</span>
+              <div class="p-1.5 bg-primary/10 rounded text-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <span class="text-lg sm:text-2xl font-bold tabular-nums tracking-tight">{{ totalRecaudado() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+
+          <!-- KPI: Pago Choferes -->
+          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-warning/30 transition-colors">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Pago Choferes</span>
+              <div class="p-1.5 bg-warning/10 rounded text-warning">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                </svg>
+              </div>
+            </div>
+            <span class="text-lg sm:text-2xl font-bold tabular-nums tracking-tight">{{ totalPagos() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+
+          <!-- KPI: Gastos Operacionales -->
+          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-error/30 transition-colors">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Gastos Op.</span>
+              <div class="p-1.5 bg-error/10 rounded text-error">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <span class="text-lg sm:text-2xl font-bold tabular-nums tracking-tight">{{ totalGastos() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+
+          <!-- KPI: Promedio Semanal -->
+          <div class="p-3 sm:p-4 rounded-xl border border-success/30 bg-success/5 flex flex-col justify-between">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-xs font-bold text-success/80 uppercase tracking-wider">Promedio Semanal</span>
+              <div class="p-1.5 bg-success text-white rounded shadow-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 11.586 15.293 7.293A1 1 0 0115.586 7H12z" clip-rule="evenodd" />
+                </svg>
+              </div>
+            </div>
+            <span class="text-lg sm:text-2xl font-bold tabular-nums tracking-tight text-success">{{ promedioSemanal() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+          </div>
+        </div>
+
+        <!-- Vista Desktop: Tabla (md y arriba) -->
+        <div class="hidden md:block overflow-hidden rounded-xl border border-base-200">
+          <table class="table w-full">
+            <thead class="bg-base-100 border-b border-base-200">
               <tr>
-                <th>Semana</th>
-                <th>Rango de Fechas</th>
-                <th class="text-right">Total Recaudado</th>
-                <th class="text-right">Gasto Diésel</th>
-                <th class="text-right">Mantenimiento</th>
-                <th class="text-right">Total Egresos</th>
-                <th class="text-right">Ganancia Neta</th>
-                <th class="text-center">Ver Desglose</th>
+                <th class="pl-6 w-48 text-base-content/70 text-xs font-bold uppercase tracking-wider">Semana</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Recaudado</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Combustible</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Mant.</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Egresos</th>
+                <th class="text-right pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider">Ganancia Neta</th>
+                <th class="w-10"></th>
               </tr>
             </thead>
             <tbody>
               @for (summary of summaries(); track summary.semana) {
-                <tr class="cursor-pointer hover:bg-base-200" (click)="toggleWeek(summary.semana)">
-                  <td>
-                    <span class="font-semibold">Semana {{ summary.semana }}</span>
-                    @if (expandedWeek() === summary.semana) {
-                      <span class="text-primary">▼</span>
-                    } @else {
-                      <span class="text-primary">▶</span>
-                    }
+                <tr 
+                  class="group cursor-pointer hover:bg-base-50 transition-colors border-b border-base-100 last:border-none"
+                  [class.bg-base-50]="expandedWeek() === summary.semana"
+                  (click)="toggleWeek(summary.semana)">
+                  
+                  <td class="pl-6 py-4">
+                    <div class="flex flex-col">
+                      <span class="font-bold text-base-content group-hover:text-primary transition-colors">Semana {{ summary.semana }}</span>
+                      <span class="text-xs text-base-content/50 font-medium">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</span>
+                    </div>
                   </td>
-                  <td>{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</td>
-                  <td class="text-right font-mono">{{ formatCurrency(summary.total_recaudado) }}</td>
-                  <td class="text-right font-mono">{{ formatCurrency(summary.gasto_diesel || 0) }}</td>
-                  <td class="text-right font-mono">{{ formatCurrency(summary.gasto_mantenimiento || 0) }}</td>
-                  <td class="text-right font-mono">{{ formatCurrency(summary.total_egresos) }}</td>
-                  <td class="text-right font-mono font-bold text-success">
-                    {{ formatCurrency(summary.ganancia_neta) }}
-                  </td>
-                  <td class="text-center">
-                    <button class="btn btn-secondary btn-sm" (click)="toggleWeek(summary.semana); $event.stopPropagation()">
-                      Ver Detalle
-                    </button>
+                  
+                  <td class="text-right tabular-nums font-medium text-sm">{{ summary.total_recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.total_egresos | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums font-bold text-success pr-12 text-sm">{{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="pr-6 text-right">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
+                      [class.rotate-180]="expandedWeek() === summary.semana" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
                   </td>
                 </tr>
-                @if (expandedWeek() === summary.semana) {
-                  <tr class="bg-base-200">
-                    <td colspan="8" class="p-6">
-                      <div class="space-y-4">
-                        <div class="flex justify-between items-start">
-                          <div>
-                            <h4 class="text-lg font-bold">Desglose por Chofer - Semana {{ summary.semana }}</h4>
-                            <p class="text-sm text-base-content/70">
-                              Detalle de cuánto ganó cada chofer y la ganancia generada
-                            </p>
-                          </div>
-                          <button class="btn btn-secondary btn-sm" (click)="toggleWeek(summary.semana)">
-                            ✕ Cerrar
-                          </button>
-                        </div>
-                        
-                        <div class="overflow-x-auto">
-                          <table class="table table-zebra">
-                            <thead>
-                              <tr>
-                                <th>Chofer</th>
-                                <th class="text-center">Días Trabajados</th>
-                                <th class="text-right">Total Recaudado</th>
-                                <th class="text-right">Gasto Diésel</th>
-                                <th class="text-right">Mantenimiento</th>
-                                <th class="text-right">Pago Chofer</th>
-                                <th class="text-right bg-success/10">Ganancia Neta</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (chofer of summary.choferes; track chofer.chofer_id) {
-                                <tr>
-                                  <td><strong>{{ chofer.chofer_nombre }}</strong></td>
-                                  <td class="text-center">{{ chofer.dias_trabajados }} días</td>
-                                  <td class="text-right font-mono">{{ formatCurrency(chofer.recaudado) }}</td>
-                                  <td class="text-right font-mono">{{ formatCurrency(chofer.diesel || 0) }}</td>
-                                  <td class="text-right font-mono">{{ formatCurrency(chofer.mantenimiento || 0) }}</td>
-                                  <td class="text-right font-mono font-bold text-primary">{{ formatCurrency(chofer.pago_chofer) }}</td>
-                                  <td class="text-right font-mono font-bold text-success bg-success/10">
-                                    {{ formatCurrency(chofer.ganancia_neta) }}
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-base-300 rounded-lg">
-                          <div>
-                            <div class="text-xs uppercase tracking-wide text-base-content/70 mb-1">Total Recaudado</div>
-                            <div class="text-xl font-bold">{{ formatCurrency(summary.total_recaudado) }}</div>
-                          </div>
-                          <div>
-                            <div class="text-xs uppercase tracking-wide text-base-content/70 mb-1">Total Gasto Diésel</div>
-                            <div class="text-xl font-bold">{{ formatCurrency(getWeekTotals(summary.semana).totalDiesel) }}</div>
-                          </div>
-                          <div>
-                            <div class="text-xs uppercase tracking-wide text-base-content/70 mb-1">Total Mantenimiento</div>
-                            <div class="text-xl font-bold">{{ formatCurrency(getWeekTotals(summary.semana).totalMantenimiento) }}</div>
-                          </div>
-                          <div>
-                            <div class="text-xs uppercase tracking-wide text-base-content/70 mb-1">Total Pagado a Choferes</div>
-                            <div class="text-xl font-bold">{{ formatCurrency(getWeekDriverTotal(summary.semana).totalPagoChoferes) }}</div>
-                          </div>
-                          <div>
-                            <div class="text-xs uppercase tracking-wide text-base-content/70 mb-1">Ganancia Neta</div>
-                            <div class="text-2xl font-bold text-success">{{ formatCurrency(summary.ganancia_neta) }}</div>
+                @if (expandedWeek() === summary.semana) {
+                  <tr>
+                    <td colspan="7" class="p-0 border-b border-base-200">
+                      <div class="bg-base-200/30 flex shadow-inner animate-in fade-in slide-in-from-top-1">
+                        <div class="w-1 bg-primary self-stretch shrink-0"></div>
+                        <div class="p-6 w-full">
+                          <div class="bg-base-100 rounded-lg shadow-sm border border-base-200 overflow-hidden">
+                            <table class="table table-sm w-full">
+                              <thead class="bg-base-100 border-b border-base-200">
+                                <tr>
+                                  <th class="pl-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Chofer</th>
+                                  <th class="text-center py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Días</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Recaudado</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Combustible</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Mantenimiento</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Pago Chofer</th>
+                                  <th class="text-right pr-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Contribución</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                @for (chofer of summary.choferes; track chofer.chofer_id) {
+                                  <tr class="hover:bg-base-50 border-b border-base-100 last:border-none">
+                                    <td class="font-bold pl-4 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
+                                    <td class="text-center"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
+                                    <td class="text-right tabular-nums text-xs font-medium">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                                    <td class="text-right">
+                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
+                                        -{{ chofer.diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                                      </div>
+                                    </td>
+                                    <td class="text-right">
+                                      @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
+                                        <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
+                                          -{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                                        </div>
+                                      } @else {
+                                        <span class="text-base-content/30 text-xs">—</span>
+                                      }
+                                    </td>
+                                    <td class="text-right">
+                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs tabular-nums tracking-tight font-bold">
+                                        -{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                                      </div>
+                                    </td>
+                                    <td class="text-right pr-4">
+                                      <span class="tabular-nums tracking-tight font-bold text-success text-sm">
+                                        {{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                }
+                              </tbody>
+                            </table>
                           </div>
                         </div>
                       </div>
@@ -161,10 +184,104 @@ import { WeeklySummary } from '../../models/accounting.models';
             </tbody>
           </table>
         </div>
+
+        <!-- Vista Móvil: Cards (sm y abajo) -->
+        <div class="md:hidden space-y-3">
+          @for (summary of summaries(); track summary.semana) {
+            <div 
+              class="border border-base-200 rounded-xl overflow-hidden transition-all duration-200"
+              [class.shadow-md]="expandedWeek() === summary.semana"
+              [class.border-primary]="expandedWeek() === summary.semana"
+              (click)="toggleWeek(summary.semana)">
+              
+              <div class="bg-base-100 p-4 flex justify-between items-center">
+                <div class="flex gap-3 items-center">
+                  <div class="bg-base-200 rounded-lg p-2 text-center min-w-[3rem]">
+                    <div class="text-[10px] font-bold text-base-content/50 uppercase">SEM</div>
+                    <div class="font-black text-lg leading-none">{{ summary.semana }}</div>
+                  </div>
+                  <div>
+                    <div class="text-xs text-base-content/50 font-medium">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</div>
+                    <div class="font-bold text-success text-lg tabular-nums tracking-tight">
+                      {{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="btn btn-circle btn-ghost btn-xs">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
+                    [class.rotate-180]="expandedWeek() === summary.semana" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="px-4 pb-4 grid grid-cols-2 gap-2 text-xs">
+                <div class="bg-base-50 p-2 rounded border border-base-100">
+                  <div class="text-base-content/50 mb-0.5">Ingresos</div>
+                  <div class="font-bold tabular-nums tracking-tight">{{ summary.total_recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                </div>
+                <div class="bg-base-50 p-2 rounded border border-base-100">
+                  <div class="text-base-content/50 mb-0.5">Egresos</div>
+                  <div class="font-bold text-base-content/70 tabular-nums tracking-tight">{{ summary.total_egresos | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                </div>
+              </div>
+
+              @if (expandedWeek() === summary.semana) {
+                <div class="bg-base-200/30 border-t border-base-200 p-3 space-y-3 animate-in fade-in">
+                  <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/50 px-1">Desglose por Chofer</div>
+                  
+                  @for (chofer of summary.choferes; track chofer.chofer_id) {
+                    <div class="bg-base-100 rounded-lg p-3 shadow-sm border border-base-200">
+                      <div class="flex justify-between items-start mb-2">
+                        <span class="font-bold text-sm text-base-content">{{ chofer.chofer_nombre }}</span>
+                        <span class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</span>
+                      </div>
+                      
+                      <div class="grid grid-cols-2 gap-y-1.5 gap-x-4 text-xs">
+                        <div class="flex justify-between">
+                          <span class="text-base-content/50">Recaudado:</span>
+                          <span class="font-medium tabular-nums tracking-tight">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                        </div>
+                        <div class="flex justify-between text-success font-bold">
+                          <span>Neto:</span>
+                          <span class="tabular-nums tracking-tight">{{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                        </div>
+                        <div class="flex justify-between text-error/70">
+                          <span>Diésel:</span>
+                          <span class="tabular-nums tracking-tight">-{{ chofer.diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                        </div>
+                        <div class="flex justify-between text-warning/80">
+                          <span>Pago:</span>
+                          <span class="tabular-nums tracking-tight">-{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                        </div>
+                        @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
+                          <div class="flex justify-between text-error/70 col-span-2">
+                            <span>Mantenimiento:</span>
+                            <span class="tabular-nums tracking-tight">-{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                          </div>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    /* Animación manual si Tailwind animate no está configurado */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in {
+      animation: fadeInDown 0.3s ease-out forwards;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class WeeklySummaryTable {
@@ -172,44 +289,29 @@ export class WeeklySummaryTable {
 
   expandedWeek = signal<number | null>(null);
 
-  monthTotals = computed(() => {
-    const summaries = this.summaries();
-    let totalRecaudado = 0;
-    let totalPagoChoferes = 0;
-    let gananciaNeta = 0;
+  // Cálculos rápidos para los KPIs superiores
+  totalRecaudado = computed(() => 
+    this.summaries().reduce((acc, s) => acc + s.total_recaudado, 0)
+  );
 
-    summaries.forEach(summary => {
-      totalRecaudado += summary.total_recaudado;
-      gananciaNeta += summary.ganancia_neta;
-      summary.choferes.forEach(chofer => {
-        totalPagoChoferes += chofer.pago_chofer;
-      });
-    });
+  totalPagos = computed(() => 
+    this.summaries().reduce((acc, s) => {
+      const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
+      return acc + pagoChoferes;
+    }, 0)
+  );
 
-    return {
-      totalRecaudado,
-      totalPagoChoferes,
-      gananciaNeta,
-      promedioSemanal: summaries.length > 0 ? gananciaNeta / summaries.length : 0
-    };
-  });
+  totalGastos = computed(() => 
+    this.summaries().reduce((acc, s) => acc + s.gasto_diesel + (s.gasto_mantenimiento || 0), 0)
+  );
 
-  getWeekDriverTotal(weekNumber: number): { totalPagoChoferes: number } {
-    const summary = this.summaries().find(s => s.semana === weekNumber);
-    if (!summary) return { totalPagoChoferes: 0 };
-    
-    const totalPagoChoferes = summary.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
-    return { totalPagoChoferes };
-  }
+  getTotalGanancia = computed(() => 
+    this.summaries().reduce((acc, s) => acc + s.ganancia_neta, 0)
+  );
 
-  getWeekTotals(weekNumber: number): { totalDiesel: number; totalMantenimiento: number } {
-    const summary = this.summaries().find(s => s.semana === weekNumber);
-    if (!summary) return { totalDiesel: 0, totalMantenimiento: 0 };
-    
-    const totalDiesel = summary.choferes.reduce((sum, c) => sum + (c.diesel || 0), 0);
-    const totalMantenimiento = summary.choferes.reduce((sum, c) => sum + (c.mantenimiento || 0), 0);
-    return { totalDiesel, totalMantenimiento };
-  }
+  promedioSemanal = computed(() => 
+    this.summaries().length > 0 ? this.getTotalGanancia() / this.summaries().length : 0
+  );
 
   toggleWeek(weekNumber: number): void {
     if (this.expandedWeek() === weekNumber) {
@@ -217,15 +319,6 @@ export class WeeklySummaryTable {
     } else {
       this.expandedWeek.set(weekNumber);
     }
-  }
-
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat('es-CL', {
-      style: 'currency',
-      currency: 'CLP',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value).replace('CLP', '$');
   }
 
   formatDateRange(start: string, end: string): string {
@@ -242,4 +335,3 @@ export class WeeklySummaryTable {
     }
   }
 }
-
