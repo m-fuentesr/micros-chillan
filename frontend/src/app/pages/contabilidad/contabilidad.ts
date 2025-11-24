@@ -24,11 +24,11 @@ import { switchMap } from 'rxjs/operators';
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6">
-        <!-- Segmented Control (Tabs) - Se acomodan al espacio disponible -->
-        <div class="w-full lg:w-auto">
-          <div class="flex flex-wrap bg-base-200/50 p-1 rounded-xl gap-1 lg:flex-nowrap">
+        <!-- Segmented Control (Tabs) - Edge-to-edge en móvil -->
+        <div class="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-hide">
+          <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 min-w-full lg:min-w-0">
             <button
-              class="btn btn-sm h-9 flex-1 lg:flex-initial px-2 sm:px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'summary'"
               [class.shadow-sm]="activeTab() === 'summary'"
               [class.text-primary]="activeTab() === 'summary'"
@@ -36,15 +36,15 @@ import { switchMap } from 'rxjs/operators';
               [class.hover:bg-base-200]="activeTab() !== 'summary'"
               [class.bg-transparent]="activeTab() !== 'summary'"
               (click)="setActiveTab('summary')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
               </svg>
-              <span class="text-xs sm:text-sm truncate">Resumen</span>
+              <span class="text-xs lg:text-sm">Resumen</span>
             </button>
 
             <button
-              class="btn btn-sm h-9 flex-1 lg:flex-initial px-2 sm:px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'weekly'"
               [class.shadow-sm]="activeTab() === 'weekly'"
               [class.text-primary]="activeTab() === 'weekly'"
@@ -52,14 +52,14 @@ import { switchMap } from 'rxjs/operators';
               [class.hover:bg-base-200]="activeTab() !== 'weekly'"
               [class.bg-transparent]="activeTab() !== 'weekly'"
               (click)="setActiveTab('weekly')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
               </svg>
-              <span class="text-xs sm:text-sm truncate">Semanal</span>
+              <span class="text-xs lg:text-sm">Semanal</span>
             </button>
 
             <button
-              class="btn btn-sm h-9 flex-1 lg:flex-initial px-2 sm:px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'payroll'"
               [class.shadow-sm]="activeTab() === 'payroll'"
               [class.text-primary]="activeTab() === 'payroll'"
@@ -67,14 +67,14 @@ import { switchMap } from 'rxjs/operators';
               [class.hover:bg-base-200]="activeTab() !== 'payroll'"
               [class.bg-transparent]="activeTab() !== 'payroll'"
               (click)="setActiveTab('payroll')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
               </svg>
-              <span class="text-xs sm:text-sm truncate">Liquidación</span>
+              <span class="text-xs lg:text-sm">Liquidación</span>
             </button>
 
             <button
-              class="btn btn-sm h-9 flex-1 lg:flex-initial px-2 sm:px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-1.5 sm:gap-2 whitespace-nowrap min-w-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'history'"
               [class.shadow-sm]="activeTab() === 'history'"
               [class.text-primary]="activeTab() === 'history'"
@@ -82,10 +82,10 @@ import { switchMap } from 'rxjs/operators';
               [class.hover:bg-base-200]="activeTab() !== 'history'"
               [class.bg-transparent]="activeTab() !== 'history'"
               (click)="setActiveTab('history')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
               </svg>
-              <span class="text-xs sm:text-sm truncate">Historial Liquidaciones</span>
+              <span class="text-xs lg:text-sm">Historial Liquidaciones</span>
             </button>
           </div>
         </div>
@@ -169,7 +169,6 @@ import { switchMap } from 'rxjs/operators';
                 [liquidation]="liquidation()!"
                 (confirmPayment)="onConfirmPayment($event)"
                 (missingAmountChange)="onMissingAmountChange($event)"
-                (saveDraft)="onSaveDraft()"
                 (closePeriod)="onClosePeriod()" />
             }
           }
@@ -373,11 +372,6 @@ export class Contabilidad implements OnInit {
       
       this.liquidationData.set({ ...liquidation });
     }
-  }
-
-  onSaveDraft(): void {
-    // Guardar borrador (en producción se enviaría al backend)
-    alert('Borrador de liquidaciones guardado. (simulado)');
   }
 
   onClosePeriod(): void {

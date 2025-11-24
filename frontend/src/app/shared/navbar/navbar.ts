@@ -5,10 +5,36 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   selector: 'app-navbar',
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <div 
-      class="sidebar-container fixed left-0 top-0 h-dvh bg-base-300 flex flex-col z-40 overflow-y-auto overflow-x-hidden"
+    <!-- Top Bar Móvil (solo visible en < lg) -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-base-300 border-b border-base-content/10 z-30 flex items-center justify-between px-4 shadow-sm">
+      <button class="btn btn-square btn-ghost" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+        </svg>
+      </button>
+
+      <span class="font-bold text-lg text-base-content">Nombre de la App</span>
+
+      <div class="w-10 h-10 rounded-full bg-base-200 flex items-center justify-center text-xs font-bold">
+        AD
+      </div>
+    </div>
+
+    <!-- Backdrop Móvil (solo visible cuando el menú está abierto) -->
+    @if (isMobileMenuOpen()) {
+      <div 
+        class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity animate-in fade-in"
+        (click)="closeMobileMenu()">
+      </div>
+    }
+
+    <!-- Sidebar -->
+    <aside 
+      class="sidebar-container fixed top-0 bottom-0 left-0 w-64 bg-base-300 flex flex-col z-50 border-r border-base-content/10 transition-transform duration-300 ease-in-out h-dvh overflow-y-auto overflow-x-hidden lg:translate-x-0"
       [class.w-64]="!isCollapsed()"
-      [class.w-16]="isCollapsed()">
+      [class.w-16]="isCollapsed()"
+      [class.-translate-x-full]="!isMobileMenuOpen()"
+      [class.translate-x-0]="isMobileMenuOpen()">
       
       <!-- Título superior con botón de colapsar -->
       <div class="sidebar-header p-4 border-b border-base-content/10 flex-shrink-0 flex items-center gap-2 overflow-x-hidden"
@@ -17,20 +43,31 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         @if (!isCollapsed()) {
           <h2 class="sidebar-title text-xl font-bold text-base-content truncate flex-1 min-w-0">Nombre de la App</h2>
         }
-        <button 
-          (click)="toggleCollapse()"
-          class="sidebar-toggle btn btn-ghost btn-sm btn-square flex-shrink-0"
-          type="button"
-          [attr.aria-label]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'">
-          <svg 
-            xmlns="http://www.w3.org/2000/svg" 
-            class="h-5 w-5"
-            fill="none" 
-            viewBox="0 0 24 24" 
-            stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <button 
+            (click)="toggleCollapse()"
+            class="sidebar-toggle btn btn-ghost btn-sm btn-square hidden lg:flex"
+            type="button"
+            [attr.aria-label]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'">
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              class="h-5 w-5"
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+          <button 
+            (click)="closeMobileMenu()"
+            class="btn btn-square btn-sm btn-ghost lg:hidden"
+            type="button"
+            aria-label="Cerrar menú">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <!-- Menú de navegación -->
@@ -42,7 +79,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="active" 
             [routerLinkActiveOptions]="{exact: false}"
             class="nav-item"
-            [attr.data-tip]="isCollapsed() ? 'Dashboard' : null">
+            [attr.data-tip]="isCollapsed() ? 'Dashboard' : null"
+            (click)="closeMobileMenu()">
             <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
@@ -60,7 +98,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="active" 
             [routerLinkActiveOptions]="{exact: false}"
             class="nav-item"
-            [attr.data-tip]="isCollapsed() ? 'Máquinas' : null">
+            [attr.data-tip]="isCollapsed() ? 'Máquinas' : null"
+            (click)="closeMobileMenu()">
             <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
             </svg>
@@ -73,7 +112,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="active" 
             [routerLinkActiveOptions]="{exact: false}"
             class="nav-item"
-            [attr.data-tip]="isCollapsed() ? 'Choferes' : null">
+            [attr.data-tip]="isCollapsed() ? 'Choferes' : null"
+            (click)="closeMobileMenu()">
             <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
             </svg>
@@ -91,7 +131,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="active" 
             [routerLinkActiveOptions]="{exact: false}"
             class="nav-item"
-            [attr.data-tip]="isCollapsed() ? 'Contabilidad' : null">
+            [attr.data-tip]="isCollapsed() ? 'Contabilidad' : null"
+            (click)="closeMobileMenu()">
             <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
@@ -104,7 +145,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
             routerLinkActive="active" 
             [routerLinkActiveOptions]="{exact: false}"
             class="nav-item"
-            [attr.data-tip]="isCollapsed() ? 'Reportes' : null">
+            [attr.data-tip]="isCollapsed() ? 'Reportes' : null"
+            (click)="closeMobileMenu()">
             <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
@@ -121,7 +163,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="nav-item"
-          [attr.data-tip]="isCollapsed() ? 'Configuración' : null">
+          [attr.data-tip]="isCollapsed() ? 'Configuración' : null"
+          (click)="closeMobileMenu()">
           <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -135,7 +178,8 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="nav-item"
-          [attr.data-tip]="isCollapsed() ? 'Centro de Ayuda' : null">
+          [attr.data-tip]="isCollapsed() ? 'Centro de Ayuda' : null"
+          (click)="closeMobileMenu()">
           <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
@@ -145,14 +189,15 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         <!-- Cerrar Sesión -->
         <a 
           class="nav-item text-error"
-          [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null">
+          [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null"
+          (click)="closeMobileMenu()">
           <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           <span class="nav-text">Cerrar Sesión</span>
         </a>
       </div>
-    </div>
+    </aside>
   `,
   styles: [
     `    /* ============================================
@@ -162,8 +207,16 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
     
     /* Contenedor principal - Animación suave y pausada */
     :host ::ng-deep .sidebar-container {
-      transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1);
-      will-change: width;
+      transition: width 500ms cubic-bezier(0.4, 0, 0.2, 1),
+                  transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: width, transform;
+    }
+    
+    /* En desktop (lg+), el sidebar siempre está visible */
+    @media (min-width: 1024px) {
+      :host ::ng-deep .sidebar-container {
+        transform: translateX(0) !important;
+      }
     }
     
     /* Soporte para usuarios con preferencia de movimiento reducido */
@@ -466,6 +519,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 export class Navbar {
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
+  isMobileMenuOpen = signal(false);
 
   toggleCollapse(): void {
     this.isCollapsed.update(v => {
@@ -473,5 +527,13 @@ export class Navbar {
       this.collapsedChange.emit(newValue);
       return newValue;
     });
+  }
+
+  toggleMobileMenu(): void {
+    this.isMobileMenuOpen.update(v => !v);
+  }
+
+  closeMobileMenu(): void {
+    this.isMobileMenuOpen.set(false);
   }
 }

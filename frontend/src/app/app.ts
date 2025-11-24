@@ -15,10 +15,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
       <div class="h-dvh">
         <app-navbar (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
         <main 
-          class="bg-base-100 p-6 h-dvh overflow-y-auto main-content-transition"
-          [class.ml-64]="!sidebarCollapsed()"
-          [class.ml-16]="sidebarCollapsed()">
-          <router-outlet></router-outlet>
+          class="bg-base-100 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0"
+          [class.lg:ml-64]="!sidebarCollapsed()"
+          [class.lg:ml-16]="sidebarCollapsed()">
+          <div class="p-4 sm:p-6">
+            <router-outlet></router-outlet>
+          </div>
         </main>
       </div>
     } @else if (showWorkerNavbar()) {
