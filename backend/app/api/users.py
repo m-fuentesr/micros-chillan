@@ -3,8 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.db.supabase_client import supabase
 from app.utils.auth import get_current_user, require_admin
 
-router = APIRouter(prefix="/users", tags=["Users"])
-
+router = APIRouter(prefix="/api/users", tags=["Users"])
 
 @router.get("/")
 async def listar_usuarios(
