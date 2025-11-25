@@ -2,8 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.utils.auth import get_current_user
 
-router = APIRouter(prefix="/auth", tags=["Auth"])
-
+router = APIRouter(prefix="/api/auth", tags=["Auth"])
 
 @router.get("/me")
 async def get_me(current_user=Depends(get_current_user)):
