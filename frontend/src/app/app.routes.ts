@@ -17,6 +17,7 @@ import { Reportar } from './pages/trabajador/reportar/reportar';
 import { MiHistorial } from './pages/trabajador/mi-historial/mi-historial';
 import { Perfil } from './pages/trabajador/perfil/perfil';
 import { ReporteExito } from './pages/trabajador/reporte-exito/reporte-exito';
+import { RecuperarClave } from './pages/recuperar-clave/recuperar-clave';
 
 export const routes: Routes = [
   { path: 'login', component: Login }, // Ruta: /login
@@ -27,6 +28,7 @@ export const routes: Routes = [
   { path: 'trabajador/reporte-exito', component: ReporteExito }, // Página de éxito del reporte
   { path: 'trabajador/mi-historial', component: MiHistorial }, // Página de mi historial
   { path: 'trabajador/perfil', component: Perfil }, // Página de perfil
+  { path: 'recuperar-clave', component: RecuperarClave }, // Recuperar contraseña
   { path: 'about', component: About }, // Ruta: /about
   { path: 'maquinas', component: Maquinas }, // Ruta: /maquinas
   { path: 'maquinas/nueva', component: MachineCreate }, // Ruta: /maquinas/nueva

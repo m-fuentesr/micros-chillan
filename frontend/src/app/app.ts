@@ -1,16 +1,15 @@
-import { Component, ViewEncapsulation, signal, inject, effect, ChangeDetectionStrategy } from '@angular/core';
-import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
+import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
 import { Navbar } from './shared/navbar/navbar';
 import { NavbarTrabajador } from './shared/navbar-trabajador/navbar-trabajador';
-import { filter } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { AuthService } from './shared/services/auth.service';
 
 @Component({
   selector: 'app-root',
   imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule],
   template: `
-    @if (showAdminSidebar()) {
+    @if (isAdmin()) {
       <!-- Layout con Sidebar (Administrador) -->
       <div class="h-dvh">
         <app-navbar (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
@@ -23,7 +22,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
           </div>
         </main>
       </div>
-    } @else if (showWorkerNavbar()) {
+    } @else if (isWorker()) {
       <!-- Layout con Navbar Móvil (Trabajador) -->
       <div class="flex flex-col min-h-screen bg-base-200">
         <main class="flex-1 bg-base-200 p-4 pb-24">
@@ -45,52 +44,11 @@ import { toSignal } from '@angular/core/rxjs-interop';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class App {
-  private router = inject(Router);
-  
-  showAdminSidebar = signal(false);
-  showWorkerNavbar = signal(false);
+  private auth = inject(AuthService);
+
   sidebarCollapsed = signal(false);
-
-  // Convertir eventos del router a signal
-  private navigationEnd = toSignal(
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd)
-    ),
-    { initialValue: null }
-  );
-
-  constructor() {
-    // Verificar la ruta inicial
-    this.updateLayout(this.router.url);
-
-    // Efecto para actualizar el layout cuando cambia la navegación
-    effect(() => {
-      const event = this.navigationEnd();
-      if (event) {
-        this.updateLayout(event.url);
-      }
-    });
-  }
-
-  private updateLayout(url: string) {
-    // Si es login, no mostrar ningún navbar/sidebar
-    if (url === '/login' || url.startsWith('/login')) {
-      this.showAdminSidebar.set(false);
-      this.showWorkerNavbar.set(false);
-      return;
-    }
-
-    // Si es trabajador, mostrar navbar de trabajador
-    if (url === '/trabajador' || url.startsWith('/trabajador')) {
-      this.showAdminSidebar.set(false);
-      this.showWorkerNavbar.set(true);
-      return;
-    }
-
-    // Para todas las demás rutas (dashboard, máquinas, etc.), mostrar sidebar de admin
-    this.showAdminSidebar.set(true);
-    this.showWorkerNavbar.set(false);
-  }
+  isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
+  isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
 
   onSidebarCollapseChange(collapsed: boolean): void {
     this.sidebarCollapsed.set(collapsed);

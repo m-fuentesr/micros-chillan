@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, output, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
@@ -190,7 +191,7 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         <a 
           class="nav-item text-error"
           [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null"
-          (click)="closeMobileMenu()">
+          (click)="onLogout($event)">
           <svg xmlns="http://www.w3.org/2000/svg" class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
@@ -520,6 +521,7 @@ export class Navbar {
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);
+  private readonly auth = inject(AuthService);
 
   toggleCollapse(): void {
     this.isCollapsed.update(v => {
@@ -535,5 +537,11 @@ export class Navbar {
 
   closeMobileMenu(): void {
     this.isMobileMenuOpen.set(false);
+  }
+
+  onLogout(event: Event): void {
+    event.preventDefault();
+    this.auth.logout();
+    this.closeMobileMenu();
   }
 }

@@ -1,10 +1,12 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../shared/services/auth.service';
 
 @Component({
   selector: 'app-perfil',
-  imports: [],
+  imports: [RouterLink],
   template: `
-    <main class="mobile-content pb-20">
+    <main class="mobile-content pb-24">
       <div class="mb-6">
         <h1 class="text-2xl font-bold mb-4">Mi Perfil</h1>
         
@@ -74,11 +76,28 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
           </div>
         </div>
       </div>
+
+      <!-- Acciones -->
+      <div class="mt-8 space-y-3">
+        <a
+          routerLink="/trabajador/mi-historial"
+          class="btn btn-outline btn-block border-base-300 text-base-content hover:bg-base-200"
+        >
+          Ver historial de reportes
+        </a>
+        <button class="btn btn-error btn-block shadow-lg shadow-error/20" (click)="onLogout()">
+          Cerrar Sesión
+        </button>
+      </div>
     </main>
   `,
   styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Perfil {
+  private readonly auth = inject(AuthService);
 
+  onLogout(): void {
+    this.auth.logout();
+  }
 }

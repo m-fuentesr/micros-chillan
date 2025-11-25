@@ -5,27 +5,44 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   selector: 'app-navbar-trabajador',
   imports: [RouterLink, RouterLinkActive],
   template: `
-    <nav class="mobile-nav-bar bg-primary text-primary-content fixed bottom-0 left-0 right-0 z-50 shadow-lg">
-      <div class="flex justify-around items-center h-16">
-        <a routerLink="/trabajador/reportar" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    <nav class="fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-200 shadow-lg shadow-base-300/40" style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.35rem);">
+      <div class="flex justify-around items-end h-20 px-3">
+        <a
+          routerLink="/trabajador"
+          routerLinkActive="text-primary font-bold"
+          [routerLinkActiveOptions]="{ exact: true }"
+          class="flex flex-col items-center justify-center w-full h-full text-base-content/60 transition-colors active:scale-95"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mb-1">
+            <path d="M11.47 3.84a.75.75 0 0 1 1.06 0l8.69 8.69a.75.75 0 1 0 1.06-1.06l-8.689-8.69a2.25 2.25 0 0 0-3.182 0l-8.69 8.69a.75.75 0 0 0 1.061 1.06l8.69-8.69Z" />
+            <path d="M12 5.432 2.15 15.28a.75.75 0 0 1-.53.22h1.5a2.25 2.25 0 0 1 2.25 2.25v6a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25v-6a.75.75 0 0 1 1.5 0v6a2.25 2.25 0 0 0 2.25 2.25h3a2.25 2.25 0 0 0 2.25-2.25v-6a2.25 2.25 0 0 1 2.25-2.25h1.5a.75.75 0 0 1-.53-.22L12 5.432Z" />
           </svg>
-          <span class="text-xs font-medium">Reportar</span>
+          <span class="text-[10px]">Inicio</span>
         </a>
-        
-        <a routerLink="/trabajador/mi-historial" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-          </svg>
-          <span class="text-xs font-medium">Mi Historial</span>
+
+        <a
+          routerLink="/trabajador/reportar"
+          routerLinkActive="text-primary"
+          class="flex flex-col items-center justify-center w-full h-full -mt-6"
+        >
+          <div class="w-14 h-14 bg-primary text-primary-content rounded-full shadow-xl border-4 border-base-100 flex items-center justify-center transition-transform active:scale-95">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
+              <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+            </svg>
+          </div>
+          <span class="text-[10px] font-semibold mt-1 text-primary">Nuevo</span>
         </a>
-        
-        <a routerLink="/trabajador/perfil" routerLinkActive="active" [routerLinkActiveOptions]="{exact: false}" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+
+        <a
+          routerLink="/trabajador/perfil"
+          routerLinkActive="text-primary font-bold"
+          [routerLinkActiveOptions]="{ exact: false }"
+          class="flex flex-col items-center justify-center w-full h-full text-base-content/60 transition-colors active:scale-95"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 mb-1">
+            <path fill-rule="evenodd" d="M7.5 6a4.5 4.5 0 1 1 9 0 4.5 4.5 0 0 1-9 0ZM3.751 20.105a8.25 8.25 0 0 1 16.498 0 .75.75 0 0 1-.437.695A18.683 18.683 0 0 1 12 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 0 1-.437-.695Z" clip-rule="evenodd" />
           </svg>
-          <span class="text-xs font-medium">Perfil</span>
+          <span class="text-[10px]">Perfil</span>
         </a>
       </div>
     </nav>
@@ -33,6 +50,4 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
   styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class NavbarTrabajador {
-
-}
+export class NavbarTrabajador {}
