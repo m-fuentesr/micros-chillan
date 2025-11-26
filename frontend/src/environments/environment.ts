@@ -1,0 +1,6 @@
+export const environment = {
+  production: true,
+  apiBaseUrl: 'https://tu-backend-produccion.com',
+  supabaseUrl: 'https://whakzffihcapzrlqjdgp.supabase.co',
+  supabaseAnonKey: 'sb_publishable_wx0hxbnkkUgw_BETDIQX-Q_7LUIAFKA',
+};
