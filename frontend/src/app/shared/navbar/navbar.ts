@@ -92,6 +92,24 @@ import { AuthService } from '../services/auth.service';
           }
         </a>
 
+        <!-- Bitácora de Operaciones -->
+        <a 
+          routerLink="/bitacora-operaciones" 
+          routerLinkActive="active" 
+          [routerLinkActiveOptions]="{exact: false}"
+          class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
+          [attr.data-tip]="isCollapsed() ? 'Bitácora de Operaciones' : null"
+          (click)="closeMobileMenu()">
+          <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform group-hover:scale-110 duration-200">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          @if (!isCollapsed()) {
+            <span class="font-medium text-sm">Bitácora de Operaciones</span>
+          }
+        </a>
+
         <!-- Separador: Gestión de Flota -->
         <div class="nav-separator" [class.collapsed]="isCollapsed()">
           @if (!isCollapsed()) {
@@ -545,26 +563,31 @@ import { AuthService } from '../services/auth.service';
     }
     
     /* Estado activo Premium - Fondo verde suave + Barra lateral verde + Texto verde */
-    :host ::ng-deep nav a.active {
+    :host ::ng-deep nav a.active,
+    :host ::ng-deep .sidebar-footer a.active {
       background-color: hsl(var(--p) / 0.1) !important;
       color: hsl(var(--p)) !important;
     }
     
     /* Barra vertical izquierda para ítem activo */
-    :host ::ng-deep nav a.active .nav-indicator {
+    :host ::ng-deep nav a.active .nav-indicator,
+    :host ::ng-deep .sidebar-footer a.active .nav-indicator {
       opacity: 1;
     }
     
-    :host ::ng-deep nav a.active svg {
+    :host ::ng-deep nav a.active svg,
+    :host ::ng-deep .sidebar-footer a.active svg {
       color: hsl(var(--p)) !important;
     }
     
-    :host ::ng-deep nav a.active span {
+    :host ::ng-deep nav a.active span,
+    :host ::ng-deep .sidebar-footer a.active span {
       color: hsl(var(--p)) !important;
       font-weight: 700;
     }
     
-    :host ::ng-deep nav a.active:hover {
+    :host ::ng-deep nav a.active:hover,
+    :host ::ng-deep .sidebar-footer a.active:hover {
       background-color: hsl(var(--p) / 0.15) !important;
     }
     

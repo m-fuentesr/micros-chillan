@@ -34,7 +34,7 @@ import { catchError, of } from 'rxjs';
           <!-- KPI Total -->
           <div class="mb-4">
             <div class="text-sm text-base-content/70 mb-1">{{ kpiLabel() }}</div>
-            <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold transition-all duration-300" 
+            <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold tabular-nums transition-all duration-300" 
                  [class.animate-scale-up]="kpiValueChanged()"
                  [style.animation-fill-mode]="'both'">
               {{ kpiValue() }}
@@ -44,16 +44,26 @@ import { catchError, of } from 'rxjs';
 
         <!-- Controles -->
         <div class="flex flex-wrap items-center gap-4 mb-4 flex-shrink-0">
-          <div class="join">
+          <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1">
             <button 
-              class="btn join-item hover-scale"
-              [class.btn-active]="currentMetric() === 'Ganancia Neta'"
+              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-medium"
+              [class.bg-white]="currentMetric() === 'Ganancia Neta'"
+              [class.shadow-sm]="currentMetric() === 'Ganancia Neta'"
+              [class.text-primary]="currentMetric() === 'Ganancia Neta'"
+              [class.text-base-content/60]="currentMetric() !== 'Ganancia Neta'"
+              [class.hover:bg-base-200]="currentMetric() !== 'Ganancia Neta'"
+              [class.bg-transparent]="currentMetric() !== 'Ganancia Neta'"
               (click)="setMetric('Ganancia Neta')">
               Ganancia Neta
             </button>
             <button 
-              class="btn join-item hover-scale"
-              [class.btn-active]="currentMetric() === 'Ingreso Total'"
+              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-medium"
+              [class.bg-white]="currentMetric() === 'Ingreso Total'"
+              [class.shadow-sm]="currentMetric() === 'Ingreso Total'"
+              [class.text-primary]="currentMetric() === 'Ingreso Total'"
+              [class.text-base-content/60]="currentMetric() !== 'Ingreso Total'"
+              [class.hover:bg-base-200]="currentMetric() !== 'Ingreso Total'"
+              [class.bg-transparent]="currentMetric() !== 'Ingreso Total'"
               (click)="setMetric('Ingreso Total')">
               Ingreso Total
             </button>

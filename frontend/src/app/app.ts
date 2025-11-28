@@ -53,7 +53,7 @@ export class App {
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
   adminMainClasses = computed(() => {
-    const base = 'bg-base-100 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0';
+    const base = 'bg-base-200 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0';
     return `${base} ${this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72'}`;
   });
 

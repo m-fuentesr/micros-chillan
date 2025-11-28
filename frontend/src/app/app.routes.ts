@@ -18,11 +18,15 @@ import { MiHistorial } from './pages/trabajador/mi-historial/mi-historial';
 import { Perfil } from './pages/trabajador/perfil/perfil';
 import { ReporteExito } from './pages/trabajador/reporte-exito/reporte-exito';
 import { RecuperarClave } from './pages/recuperar-clave/recuperar-clave';
+import { BitacoraOperaciones } from './pages/bitacora-operaciones/bitacora-operaciones';
+import { RegistroDiarioDetail } from './pages/registro-diario-detail/registro-diario-detail';
 
 export const routes: Routes = [
   { path: 'login', component: Login }, // Ruta: /login
   { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
   { path: 'dashboard', component: Home }, // Dashboard de administrador
+  { path: 'bitacora-operaciones', component: BitacoraOperaciones }, // Ruta: /bitacora-operaciones
+  { path: 'registro-diario/:id', component: RegistroDiarioDetail }, // Ruta: /registro-diario/:id
   { path: 'trabajador', component: Trabajador }, // Página principal de trabajador
   { path: 'trabajador/reportar', component: Reportar }, // Página de reportar
   { path: 'trabajador/reporte-exito', component: ReporteExito }, // Página de éxito del reporte
