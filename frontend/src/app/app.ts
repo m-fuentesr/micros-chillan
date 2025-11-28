@@ -1,9 +1,11 @@
 import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Navbar } from './shared/navbar/navbar';
 import { NavbarTrabajador } from './shared/navbar-trabajador/navbar-trabajador';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './shared/services/auth.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { filter } from 'rxjs';
 
 @Component({
   selector: 'app-root',
@@ -14,9 +16,7 @@ import { AuthService } from './shared/services/auth.service';
       <div class="h-dvh">
         <app-navbar (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
         <main 
-          class="bg-base-100 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0"
-          [class.lg:ml-64]="!sidebarCollapsed()"
-          [class.lg:ml-16]="sidebarCollapsed()">
+          [attr.class]="adminMainClasses()">
           <div class="p-4 sm:p-6">
             <router-outlet></router-outlet>
           </div>
@@ -28,7 +28,9 @@ import { AuthService } from './shared/services/auth.service';
         <main class="flex-1 bg-base-200 p-4 pb-24">
           <router-outlet></router-outlet>
         </main>
-        <app-navbar-trabajador></app-navbar-trabajador>
+        @if (!hideWorkerNav()) {
+          <app-navbar-trabajador></app-navbar-trabajador>
+        }
       </div>
     } @else {
       <!-- Sin navbar/sidebar (Login) -->
@@ -45,10 +47,28 @@ import { AuthService } from './shared/services/auth.service';
 })
 export class App {
   private auth = inject(AuthService);
+  private router = inject(Router);
 
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
+  adminMainClasses = computed(() => {
+    const base = 'bg-base-100 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0';
+    return `${base} ${this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72'}`;
+  });
+
+  private navigationEnd = toSignal(
+    this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)),
+    { initialValue: null }
+  );
+
+  hideWorkerNav = computed(() => {
+    if (!this.isWorker()) {
+      return false;
+    }
+    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
+    return url.startsWith('/trabajador/reportar');
+  });
 
   onSidebarCollapseChange(collapsed: boolean): void {
     this.sidebarCollapsed.set(collapsed);

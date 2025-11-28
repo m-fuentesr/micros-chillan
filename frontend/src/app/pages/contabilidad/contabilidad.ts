@@ -15,15 +15,15 @@ import { switchMap } from 'rxjs/operators';
   selector: 'app-contabilidad',
   imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal],
   template: `
-    <div class="space-y-6">
+    <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div>
+      <div class="animate-header-enter">
         <h1 class="text-4xl font-bold mb-2 tracking-tight text-base-content">Contabilidad</h1>
         <p class="text-base-content/60 font-medium">Gestión financiera y nómina de conductores.</p>
       </div>
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6 animate-card-enter">
         <!-- Segmented Control (Tabs) - Edge-to-edge en móvil -->
         <div class="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-hide">
           <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 min-w-full lg:min-w-0">
@@ -137,11 +137,11 @@ import { switchMap } from 'rxjs/operators';
       </div>
 
       <!-- Contenido de Tabs -->
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card bg-base-100 shadow-xl animate-card-enter-delay-1">
         <div class="card-body">
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
-            <div class="space-y-8">
+            <div class="space-y-8 animate-tab-panel">
               <!-- KPIs: Contenedor independiente -->
               @if (summary()) {
                 <app-accounting-kpis [summary]="summary()!" />
@@ -158,25 +158,31 @@ import { switchMap } from 'rxjs/operators';
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
             @if (weeklySummaries().length > 0) {
-              <app-weekly-summary-table [summaries]="weeklySummaries()" />
+              <div class="animate-tab-panel">
+                <app-weekly-summary-table [summaries]="weeklySummaries()" />
+              </div>
             }
           }
 
           <!-- Tab: Liquidación de Choferes -->
           @if (activeTab() === 'payroll') {
             @if (liquidation()) {
-              <app-liquidation-table
-                [liquidation]="liquidation()!"
-                (confirmPayment)="onConfirmPayment($event)"
-                (missingAmountChange)="onMissingAmountChange($event)"
-                (closePeriod)="onClosePeriod()" />
+              <div class="animate-tab-panel">
+                <app-liquidation-table
+                  [liquidation]="liquidation()!"
+                  (confirmPayment)="onConfirmPayment($event)"
+                  (missingAmountChange)="onMissingAmountChange($event)"
+                  (closePeriod)="onClosePeriod()" />
+              </div>
             }
           }
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
             @if (liquidationHistory().length > 0) {
-              <app-liquidation-history [liquidations]="liquidationHistory()" />
+              <div class="animate-tab-panel">
+                <app-liquidation-history [liquidations]="liquidationHistory()" />
+              </div>
             }
           }
         </div>

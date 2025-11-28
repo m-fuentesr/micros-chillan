@@ -145,6 +145,18 @@ html {
   }
 }
 
+/* Tab Enter (fade + slide) */
+@keyframes tabEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 /* ============================================
    CLASES DE ANIMACIÓN UTILITARIAS
    ============================================ */
@@ -161,6 +173,12 @@ html {
 /* Entrada de header */
 .animate-header-enter {
   animation: slideDown var(--duration-medium) var(--ease-out-quart);
+}
+
+/* Entrada de paneles de pestañas */
+.animate-tab-panel {
+  animation: tabEnter var(--duration-normal) var(--ease-in-out);
+  animation-fill-mode: both;
 }
 
 /* Entrada de cards (escalonada) */
@@ -305,6 +323,7 @@ html {
   .animate-card-enter-delay-1,
   .animate-card-enter-delay-2,
   .animate-card-enter-delay-3,
+  .animate-tab-panel,
   .animate-list-item-enter,
   .animate-list-item-enter-delay,
   .animate-table-enter,
