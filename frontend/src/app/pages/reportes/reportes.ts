@@ -4,6 +4,7 @@ import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ReportsService } from '../../shared/services/reports.service';
+import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 
 interface MachineProfit {
   rank: number;
@@ -26,7 +27,7 @@ interface DriverProfit {
 
 @Component({
   selector: 'app-reportes',
-  imports: [BaseChartDirective, CommonModule],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
@@ -125,12 +126,21 @@ interface DriverProfit {
               </div>
 
               <!-- Gráfico -->
-              <div class="relative h-64 lg:h-80 w-full">
-                <canvas baseChart
-                  [data]="profitChartData()"
-                  [options]="profitChartOptions"
-                  [type]="barChartType">
-                </canvas>
+              <div class="relative h-64 lg:h-80 w-full" appLazyChart #profitChart="lazyChart">
+                @if (profitChart.isVisible()) {
+                  <canvas baseChart
+                    [data]="profitChartData()"
+                    [options]="profitChartOptions"
+                    [type]="barChartType">
+                  </canvas>
+                } @else {
+                  <div class="flex items-center justify-center h-full text-base-content/40">
+                    <div class="text-center">
+                      <div class="loading loading-spinner loading-md mb-2"></div>
+                      <p class="text-sm">Cargando gráfico...</p>
+                    </div>
+                  </div>
+                }
               </div>
 
               <!-- Tabla Financiera Desktop -->
@@ -250,12 +260,21 @@ interface DriverProfit {
               </div>
 
               <!-- Gráfico -->
-              <div class="relative h-64 lg:h-80 w-full">
-                <canvas baseChart
-                  [data]="revenueChartData()"
-                  [options]="revenueChartOptions"
-                  [type]="barChartType">
-                </canvas>
+              <div class="relative h-64 lg:h-80 w-full" appLazyChart #revenueChart="lazyChart">
+                @if (revenueChart.isVisible()) {
+                  <canvas baseChart
+                    [data]="revenueChartData()"
+                    [options]="revenueChartOptions"
+                    [type]="barChartType">
+                  </canvas>
+                } @else {
+                  <div class="flex items-center justify-center h-full text-base-content/40">
+                    <div class="text-center">
+                      <div class="loading loading-spinner loading-md mb-2"></div>
+                      <p class="text-sm">Cargando gráfico...</p>
+                    </div>
+                  </div>
+                }
               </div>
 
               <!-- Tabla de Ingresos Desktop -->
@@ -339,12 +358,21 @@ interface DriverProfit {
               </div>
 
               <!-- Gráfico -->
-              <div class="relative h-64 lg:h-80 w-full">
-                <canvas baseChart
-                  [data]="driverChartData()"
-                  [options]="driverChartOptions"
-                  [type]="barChartType">
-                </canvas>
+              <div class="relative h-64 lg:h-80 w-full" appLazyChart #driverChart="lazyChart">
+                @if (driverChart.isVisible()) {
+                  <canvas baseChart
+                    [data]="driverChartData()"
+                    [options]="driverChartOptions"
+                    [type]="barChartType">
+                  </canvas>
+                } @else {
+                  <div class="flex items-center justify-center h-full text-base-content/40">
+                    <div class="text-center">
+                      <div class="loading loading-spinner loading-md mb-2"></div>
+                      <p class="text-sm">Cargando gráfico...</p>
+                    </div>
+                  </div>
+                }
               </div>
 
               <!-- Tabla de Choferes Desktop -->

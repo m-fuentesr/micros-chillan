@@ -1,10 +1,10 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
-import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus } from '../../shared/models/daily-record.models';
+import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -370,7 +370,7 @@ interface DailyRecordView {
 
           <!-- Paginación -->
           <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
-            <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ filteredRecords().length }} registros</span>
+              <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalRecords() }} registros</span>
             <div class="join">
               <button (click)="goToPreviousPage()" [disabled]="currentPage() === 1" class="join-item btn btn-sm px-3" [class.btn-disabled]="currentPage() === 1">«</button>
               @for (page of pages(); track page) {
@@ -600,21 +600,25 @@ export class BitacoraOperaciones implements OnInit {
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
 
-  // Cargar datos del servicio
-  private recordsResponse = toSignal(
-    this.dailyRecordService.getDailyRecords({
-      estado: 'all',
-      pagina: 1,
-      por_pagina: 100
-    }),
-    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
-  );
+  // Cargar datos del servicio con paginación real
+  private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
+    datos: [],
+    total: 0,
+    pagina: 1,
+    por_pagina: 20,
+    total_paginas: 0
+  });
 
   // Mapear a formato de vista
   records = computed(() => {
     const response = this.recordsResponse();
-    return response?.datos.map(r => this.mapToView(r)) || [];
+    return response.datos.map(r => this.mapToView(r));
   });
+  
+  // Paginación desde el backend
+  totalRecords = computed(() => this.recordsResponse().total);
+  totalPages = computed(() => this.recordsResponse().total_paginas);
+  currentPageSize = computed(() => this.recordsResponse().por_pagina);
 
   // KPIs del servicio
   private kpisResponse = toSignal(
@@ -630,8 +634,28 @@ export class BitacoraOperaciones implements OnInit {
   statusFilter = signal('all');
   dateFilter = signal('');
   currentPage = signal(1);
-  itemsPerPage = 10;
+  itemsPerPage = 20; // Paginación real del backend
   showNewRecordModal = signal(false);
+  
+  // Cargar datos cuando cambian los filtros o la página
+  private loadRecords(): void {
+    const filters: DailyRecordFilters = {
+      estado: this.statusFilter() === 'all' ? undefined : this.statusFilter() as DailyRecordStatus,
+      fecha: this.dateFilter() || undefined,
+      busqueda: this.searchQuery() || undefined,
+      pagina: this.currentPage(),
+      por_pagina: this.itemsPerPage
+    };
+    
+    this.dailyRecordService.getDailyRecords(filters).subscribe({
+      next: (response) => {
+        this.recordsResponse.set(response);
+      },
+      error: (error) => {
+        console.error('Error al cargar registros:', error);
+      }
+    });
+  }
 
   newRecordForm = this.fb.group({
     noWorkDay: [false],
@@ -647,6 +671,18 @@ export class BitacoraOperaciones implements OnInit {
   });
 
   constructor() {
+    // Cargar datos iniciales
+    this.loadRecords();
+    
+    // Recargar cuando cambian los filtros o la página
+    effect(() => {
+      this.searchQuery();
+      this.statusFilter();
+      this.dateFilter();
+      this.currentPage();
+      this.loadRecords();
+    });
+    
     // Actualizar validación cuando cambia "Día No Trabajado"
     this.newRecordForm.get('noWorkDay')?.valueChanges.subscribe(noWorkDay => {
       const incomeControl = this.newRecordForm.get('income');
@@ -693,35 +729,8 @@ export class BitacoraOperaciones implements OnInit {
     };
   }
 
-  filteredRecords = computed(() => {
-    let filtered = [...this.records()];
-    
-    const query = this.searchQuery().toLowerCase();
-    if (query) {
-      filtered = filtered.filter(r => 
-        r.machine.toLowerCase().includes(query) ||
-        r.driver.toLowerCase().includes(query) ||
-        r.id.toLowerCase().includes(query)
-      );
-    }
-    
-    if (this.statusFilter() !== 'all') {
-      filtered = filtered.filter(r => r.status === this.statusFilter());
-    }
-    
-    return filtered;
-  });
-
-  paginatedRecords = computed(() => {
-    const filtered = this.filteredRecords();
-    const start = (this.currentPage() - 1) * this.itemsPerPage;
-    const end = start + this.itemsPerPage;
-    return filtered.slice(start, end);
-  });
-
-  totalPages = computed(() => 
-    Math.ceil(this.filteredRecords().length / this.itemsPerPage)
-  );
+  // Los registros ya vienen paginados del backend
+  paginatedRecords = computed(() => this.records());
 
   pages = computed(() => {
     const total = this.totalPages();
@@ -735,13 +744,18 @@ export class BitacoraOperaciones implements OnInit {
     return pages;
   });
 
-  startRecord = computed(() => 
-    (this.currentPage() - 1) * this.itemsPerPage + 1
-  );
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    return (page - 1) * pageSize + 1;
+  });
 
-  endRecord = computed(() => 
-    Math.min(this.currentPage() * this.itemsPerPage, this.filteredRecords().length)
-  );
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    const total = this.totalRecords();
+    return Math.min(page * pageSize, total);
+  });
 
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
@@ -776,13 +790,7 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   ngOnInit(): void {
-    // Los datos se cargan automáticamente mediante toSignal
-    // Si necesitas recargar, puedes llamar a loadRecords()
-  }
-
-  loadRecords(): void {
-    // Recargar datos (útil después de crear/actualizar)
-    // Por ahora, toSignal maneja la carga automática
+    // Los datos se cargan automáticamente mediante loadRecords() en constructor
   }
 
   onSubmitNewRecord(): void {
@@ -805,10 +813,9 @@ export class BitacoraOperaciones implements OnInit {
 
       this.dailyRecordService.createDailyRecord(createDto).subscribe({
         next: (newRecord) => {
-          // Recargar datos
-          // TODO: Actualizar la lista localmente o recargar desde el servicio
+          // Recargar datos después de crear
+          this.loadRecords();
           this.closeNewRecordModal();
-          // Por ahora, el toSignal se actualizará en el próximo cambio de detección
         },
         error: (error) => {
           console.error('Error al crear registro:', error);
@@ -824,7 +831,8 @@ export class BitacoraOperaciones implements OnInit {
     if (record?.status === 'incident') {
       this.dailyRecordService.resolveIncident(id).subscribe({
         next: () => {
-          // Recargar datos o actualizar localmente
+          // Recargar datos después de resolver
+          this.loadRecords();
           this.router.navigate(['/registro-diario', id]);
         },
         error: (error) => {

@@ -7,10 +7,11 @@ import { DashboardService } from '../../services/dashboard.service';
 import { FinancialData, FinancialMetric } from '../../models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
+import { LazyChartDirective } from '../../directives/lazy-chart.directive';
 
 @Component({
   selector: 'app-financial-summary',
-  imports: [BaseChartDirective, RouterLink, CommonModule],
+  imports: [BaseChartDirective, RouterLink, CommonModule, LazyChartDirective],
   template: `
     <div class="card bg-base-100 shadow-xl animate-card-enter flex flex-col" [class.h-[424px]]="showChartOnly()">
       @if (!showChartOnly()) {
@@ -80,12 +81,21 @@ import { catchError, of } from 'rxjs';
         </div>
 
         <!-- Gráfico -->
-        <div class="relative h-[280px] w-full flex-shrink-0">
-          <canvas baseChart
-            [data]="chartData()"
-            [options]="chartOptions"
-            [type]="chartType">
-          </canvas>
+        <div class="relative h-[280px] w-full flex-shrink-0" appLazyChart #lazyChart="lazyChart">
+          @if (lazyChart.isVisible()) {
+            <canvas baseChart
+              [data]="chartData()"
+              [options]="chartOptions"
+              [type]="chartType">
+            </canvas>
+          } @else {
+            <div class="flex items-center justify-center h-full text-base-content/40">
+              <div class="text-center">
+                <div class="loading loading-spinner loading-md mb-2"></div>
+                <p class="text-sm">Cargando gráfico...</p>
+              </div>
+            </div>
+          }
         </div>
         <p class="text-xs text-base-content/70 mt-2 flex-shrink-0">
           Eje Y: Valores monetarios exactos. Hover sobre cada barra para ver detalles completos (RF-030).

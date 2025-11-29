@@ -29,6 +29,10 @@ export class DailyRecordService {
   getDailyRecords(filters?: DailyRecordFilters): Observable<DailyRecordsResponse> {
     let params = new HttpParams();
     
+    // Paginación por defecto: 20 registros por página
+    const pagina = filters?.pagina || 1;
+    const porPagina = filters?.por_pagina || 20;
+    
     if (filters) {
       if (filters.fecha) params = params.set('fecha', filters.fecha);
       if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
@@ -40,9 +44,11 @@ export class DailyRecordService {
       if (filters.dia_no_trabajado !== undefined) params = params.set('dia_no_trabajado', filters.dia_no_trabajado.toString());
       if (filters.busqueda) params = params.set('busqueda', filters.busqueda);
       if (filters.orden) params = params.set('orden', filters.orden);
-      if (filters.pagina) params = params.set('pagina', filters.pagina.toString());
-      if (filters.por_pagina) params = params.set('por_pagina', filters.por_pagina.toString());
     }
+    
+    // Siempre incluir paginación
+    params = params.set('pagina', pagina.toString());
+    params = params.set('por_pagina', porPagina.toString());
 
     return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/daily-records`, { params })
       .pipe(
@@ -233,7 +239,7 @@ export class DailyRecordService {
     }
 
     const pagina = filters?.pagina || 1;
-    const porPagina = filters?.por_pagina || 10;
+    const porPagina = filters?.por_pagina || 20;
     const start = (pagina - 1) * porPagina;
     const end = start + porPagina;
 

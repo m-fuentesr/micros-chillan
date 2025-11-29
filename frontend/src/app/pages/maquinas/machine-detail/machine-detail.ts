@@ -81,7 +81,7 @@ import { map } from 'rxjs/operators';
           }
         }
 
-        @if (activeTab() === 'records') {
+        @if (activeTab() === 'records' && loadedTabs().has('records')) {
           <app-machine-daily-records
             [records]="dailyRecords()"
             [choferes]="choferes()"
@@ -90,12 +90,12 @@ import { map } from 'rxjs/operators';
             (viewDetail)="onViewRecordDetail($event)" />
         }
 
-        @if (activeTab() === 'assignments') {
+        @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
           <app-machine-assignment-history
             [assignments]="assignments()" />
         }
 
-        @if (activeTab() === 'maintenance') {
+        @if (activeTab() === 'maintenance' && loadedTabs().has('maintenance')) {
           @if (machineId()) {
             <app-machine-maintenance
               [machineId]="machineId()!"
@@ -168,33 +168,44 @@ export class MachineDetail implements OnInit {
 
   // Asignaciones (mock por ahora)
   assignments = signal<MachineAssignment[]>([]);
+  
+  // Rastrear qué tabs han sido cargados
+  loadedTabs = signal<Set<string>>(new Set(['general'])); // 'general' siempre se carga
 
   ngOnInit(): void {
-    // Efecto para cargar datos cuando la máquina cambia
+    // Efecto para validar máquina
     effect(() => {
-      const machine = this.machine();
       const machineId = this.machineId();
       
       if (!machineId) {
         this.router.navigate(['/maquinas']);
         return;
       }
-
-      if (machine) {
-        // Cargar registros diarios de la máquina
-        this.loadDailyRecords();
-        
-        // Cargar historial de asignaciones
-        this.loadAssignments();
-        
-        // Cargar registros de mantenimiento
-        this.loadMaintenanceRecords();
-      }
     });
   }
 
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {
     this.activeTab.set(tab);
+    
+    // Cargar datos solo si el tab no ha sido cargado antes
+    const loaded = this.loadedTabs();
+    if (!loaded.has(tab)) {
+      loaded.add(tab);
+      this.loadedTabs.set(new Set(loaded));
+      
+      // Cargar datos según el tab
+      switch (tab) {
+        case 'records':
+          this.loadDailyRecords();
+          break;
+        case 'assignments':
+          this.loadAssignments();
+          break;
+        case 'maintenance':
+          this.loadMaintenanceRecords();
+          break;
+      }
+    }
   }
 
   onEditDocs(): void {

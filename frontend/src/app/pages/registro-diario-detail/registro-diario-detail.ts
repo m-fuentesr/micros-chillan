@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, effect } 
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
 
@@ -36,7 +37,7 @@ interface DailyRecordDetailView extends DailyRecord {
 
 @Component({
   selector: 'app-registro-diario-detail',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage],
   template: `
     <div class="bg-base-200 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6">
       <!-- Sticky Header -->
@@ -322,10 +323,21 @@ interface DailyRecordDetailView extends DailyRecord {
                     
                     @if (hasComprobante() && !isEditMode()) {
                       <div class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-zoom-in shadow-inner">
-                        <img 
-                          [src]="record()?.receipt?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante'" 
-                          alt="Comprobante diésel" 
-                          class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+                        @if (canUseNgOptimizedImage()) {
+                          <img 
+                            [ngSrc]="getReceiptImageUrl()" 
+                            alt="Comprobante diésel" 
+                            width="400"
+                            height="300"
+                            loading="lazy"
+                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+                        } @else {
+                          <img 
+                            [src]="record()?.receipt?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante'" 
+                            alt="Comprobante diésel" 
+                            loading="lazy"
+                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+                        }
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
@@ -351,10 +363,21 @@ interface DailyRecordDetailView extends DailyRecord {
                           (change)="onReceiptSelected($event)"
                           [disabled]="!isEditMode()" />
                         @if (receiptPreview() || (hasComprobante() && record()?.receipt?.imageUrl)) {
-                          <img 
-                            [src]="receiptPreview() || record()?.receipt?.imageUrl || ''" 
-                            alt="Preview comprobante" 
-                            class="object-cover w-full h-full" />
+                          @if (canUseNgOptimizedImagePreview()) {
+                            <img 
+                              [ngSrc]="getPreviewImageUrl()" 
+                              alt="Preview comprobante" 
+                              width="400"
+                              height="300"
+                              loading="lazy"
+                              class="object-cover w-full h-full" />
+                          } @else {
+                            <img 
+                              [src]="getPreviewImageUrl()" 
+                              alt="Preview comprobante" 
+                              loading="lazy"
+                              class="object-cover w-full h-full" />
+                          }
                           @if (isEditMode()) {
                             <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
@@ -734,5 +757,29 @@ export class RegistroDiarioDetail {
 
   goBack(): void {
     this.router.navigate(['/bitacora-operaciones']);
+  }
+  
+  // Helper para verificar si se puede usar NgOptimizedImage
+  canUseNgOptimizedImage(): boolean {
+    const imageUrl = this.record()?.receipt?.imageUrl;
+    return !!imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('data:');
+  }
+  
+  // Helper para obtener la URL de la imagen de forma segura
+  getReceiptImageUrl(): string {
+    return this.record()?.receipt?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante';
+  }
+  
+  // Helper para verificar si se puede usar NgOptimizedImage en preview
+  canUseNgOptimizedImagePreview(): boolean {
+    const preview = this.receiptPreview();
+    const recordUrl = this.record()?.receipt?.imageUrl;
+    const url = preview || recordUrl;
+    return !!url && typeof url === 'string' && !url.startsWith('data:');
+  }
+  
+  // Helper para obtener la URL del preview de forma segura
+  getPreviewImageUrl(): string {
+    return this.receiptPreview() || this.record()?.receipt?.imageUrl || '';
   }
 }

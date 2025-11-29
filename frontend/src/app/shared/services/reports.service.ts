@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 
 /**
  * Filtros para reporte de rentabilidad
@@ -105,12 +105,30 @@ export interface MachineRanking {
 export class ReportsService {
   private http = inject(HttpClient);
   private apiUrl = '/api'; // Ajustar según configuración
+  
+  // Caché simple en memoria
+  private profitabilityCache: Map<string, { data: ProfitabilityReport; timestamp: number }> = new Map();
+  private driverRankingCache: Map<string, { data: DriverRanking[]; timestamp: number }> = new Map();
+  private machineRankingCache: Map<string, { data: MachineRanking[]; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+  
+  private getCacheKey(filters: any): string {
+    return JSON.stringify(filters);
+  }
 
   /**
    * Obtener reporte de rentabilidad
    * Endpoint: GET /api/reports/profitability
    */
   getProfitabilityReport(filters: ProfitabilityFilters): Observable<ProfitabilityReport> {
+    const cacheKey = this.getCacheKey(filters);
+    
+    // Verificar caché
+    const cached = this.profitabilityCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     let params = new HttpParams();
     
     if (filters.desde) params = params.set('desde', filters.desde);
@@ -121,7 +139,15 @@ export class ReportsService {
 
     return this.http.get<ProfitabilityReport>(`${this.apiUrl}/reports/profitability`, { params })
       .pipe(
-        catchError(() => of(this.getMockProfitabilityReport(filters)))
+        map(report => {
+          this.profitabilityCache.set(cacheKey, { data: report, timestamp: Date.now() });
+          return report;
+        }),
+        catchError(() => {
+          const mock = this.getMockProfitabilityReport(filters);
+          this.profitabilityCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+          return of(mock);
+        })
       );
   }
 
@@ -130,6 +156,14 @@ export class ReportsService {
    * Endpoint: GET /api/reports/driver-ranking
    */
   getDriverRanking(filters: RankingFilters): Observable<DriverRanking[]> {
+    const cacheKey = this.getCacheKey(filters);
+    
+    // Verificar caché
+    const cached = this.driverRankingCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     let params = new HttpParams();
     
     if (filters.desde) params = params.set('desde', filters.desde);
@@ -140,7 +174,15 @@ export class ReportsService {
 
     return this.http.get<DriverRanking[]>(`${this.apiUrl}/reports/driver-ranking`, { params })
       .pipe(
-        catchError(() => of(this.getMockDriverRanking(filters)))
+        map(ranking => {
+          this.driverRankingCache.set(cacheKey, { data: ranking, timestamp: Date.now() });
+          return ranking;
+        }),
+        catchError(() => {
+          const mock = this.getMockDriverRanking(filters);
+          this.driverRankingCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+          return of(mock);
+        })
       );
   }
 
@@ -149,6 +191,14 @@ export class ReportsService {
    * Endpoint: GET /api/reports/machine-ranking
    */
   getMachineRanking(filters: RankingFilters): Observable<MachineRanking[]> {
+    const cacheKey = this.getCacheKey(filters);
+    
+    // Verificar caché
+    const cached = this.machineRankingCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     let params = new HttpParams();
     
     if (filters.desde) params = params.set('desde', filters.desde);
@@ -159,8 +209,25 @@ export class ReportsService {
 
     return this.http.get<MachineRanking[]>(`${this.apiUrl}/reports/machine-ranking`, { params })
       .pipe(
-        catchError(() => of(this.getMockMachineRanking(filters)))
+        map(ranking => {
+          this.machineRankingCache.set(cacheKey, { data: ranking, timestamp: Date.now() });
+          return ranking;
+        }),
+        catchError(() => {
+          const mock = this.getMockMachineRanking(filters);
+          this.machineRankingCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+          return of(mock);
+        })
       );
+  }
+  
+  /**
+   * Invalidar caché (útil cuando se actualizan datos)
+   */
+  clearCache(): void {
+    this.profitabilityCache.clear();
+    this.driverRankingCache.clear();
+    this.machineRankingCache.clear();
   }
 
   /**
