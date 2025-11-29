@@ -1,5 +1,11 @@
-import { Component, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import { AuthService } from '../../../shared/services/auth.service';
+import { DriverService } from '../../../shared/services/driver.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
+import type { DailyRecord } from '../../../shared/models/daily-record.models';
 
 interface HistoryItem {
   date: string;
@@ -294,76 +300,71 @@ interface WeekGroup {
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class MiHistorial {
-  selectedPeriod = signal<'week' | 'month' | 'previous'>('week');
+export class MiHistorial implements OnInit {
+  private dailyRecordService = inject(DailyRecordService);
+  private authService = inject(AuthService);
+  private driverService = inject(DriverService);
 
-  // Datos de ejemplo - en producción vendrían de un servicio
-  private allData: HistoryItem[] = [
-    {
-      date: '2025-11-18',
-      revenue: 475000,
-      dieselLiters: 42,
-      dieselCost: 29400,
-      status: 'processed',
-      machine: 'Máquina 05',
-      observations: 'Incidente menor en ruta'
-    },
-    {
-      date: '2025-11-17',
-      revenue: 450000,
-      dieselLiters: 0,
-      dieselCost: 0,
-      status: 'processed',
-      machine: 'Máquina 05'
-    },
-    {
-      date: '2025-11-16',
-      revenue: 450000,
-      dieselLiters: 38,
-      dieselCost: 26600,
-      status: 'pending',
-      machine: 'Máquina 05'
-    },
-    {
-      date: '2025-11-15',
-      revenue: 500000,
-      dieselLiters: 45,
-      dieselCost: 31500,
-      status: 'processed',
-      machine: 'Máquina 05'
-    },
-    {
-      date: '2025-11-14',
-      revenue: 420000,
-      dieselLiters: 40,
-      dieselCost: 28000,
-      status: 'processed',
-      machine: 'Máquina 05'
-    },
-    {
-      date: '2025-11-13',
-      revenue: 480000,
-      dieselLiters: 43,
-      dieselCost: 30100,
-      status: 'processed',
-      machine: 'Máquina 05'
-    },
-    {
-      date: '2025-11-12',
-      revenue: 460000,
-      dieselLiters: 41,
-      dieselCost: 28700,
-      status: 'processed',
-      machine: 'Máquina 05'
+  selectedPeriod = signal<'week' | 'month' | 'previous'>('week');
+  isLoading = signal(true);
+
+  // Obtener registros del trabajador actual
+  private dailyRecordsResponse = toSignal(
+    this.dailyRecordService.getDailyRecords().pipe(
+      catchError(() => of({ datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 }))
+    ),
+    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
+  );
+
+  // Mapear DailyRecord a HistoryItem
+  private allData = computed((): HistoryItem[] => {
+    const response = this.dailyRecordsResponse();
+    const records = response.datos || [];
+    const currentUser = this.authService.currentUser();
+    
+    if (!currentUser) {
+      return [];
     }
-  ];
+
+    // Filtrar registros del chofer actual (por ahora usar chofer_id = 1 como mock)
+    // TODO: Obtener chofer_id real desde el backend basado en currentUser.id
+    const choferId = 1; // Mock
+    
+    return records
+      .filter((record) => record.chofer_id === choferId)
+      .map((record) => this.mapToHistoryItem(record));
+  });
+
+  private mapToHistoryItem(record: DailyRecord): HistoryItem {
+    // Mapear estado: 'PENDIENTE_TRABAJADOR' o 'INCIDENTE_REPORTADO' -> 'pending', 'COMPLETO' -> 'processed'
+    const status: 'pending' | 'processed' = 
+      (record.estado === 'PENDIENTE_TRABAJADOR' || record.estado === 'INCIDENTE_REPORTADO') 
+        ? 'pending' 
+        : 'processed';
+
+    return {
+      date: record.fecha,
+      revenue: record.recaudado || 0,
+      dieselLiters: record.litros_diesel || 0,
+      dieselCost: record.costo_diesel || 0,
+      status,
+      observations: record.observaciones || undefined,
+      machine: record.maquina_identificador || `Máquina ${record.maquina_id}`
+    };
+  }
+
+  ngOnInit(): void {
+    // Los datos se cargan automáticamente a través de toSignal
+    this.isLoading.set(false);
+  }
 
   filteredData = computed(() => {
+    const data = this.allData();
     const period = this.selectedPeriod();
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    return this.allData.filter(item => {
+    return data.filter((item: HistoryItem) => {
       const itemDate = new Date(item.date);
       
       if (period === 'week') {
@@ -387,7 +388,7 @@ export class MiHistorial {
     const groups: WeekGroup[] = [];
     const weekMap = new Map<string, HistoryItem[]>();
 
-    data.forEach(item => {
+    data.forEach((item: HistoryItem) => {
       const date = new Date(item.date);
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - date.getDay());
@@ -415,21 +416,25 @@ export class MiHistorial {
   });
 
   totalRevenue = computed(() => {
-    return this.filteredData().reduce((sum, item) => sum + item.revenue, 0);
+    return this.filteredData().reduce((sum: number, item: HistoryItem) => sum + item.revenue, 0);
   });
 
   weekCount = computed(() => this.filteredData().length);
-  monthCount = computed(() => this.allData.filter(item => {
-    const itemDate = new Date(item.date);
+  monthCount = computed(() => {
+    const data = this.allData();
     const today = new Date();
-    return itemDate.getMonth() === today.getMonth() && 
-           itemDate.getFullYear() === today.getFullYear();
-  }).length);
+    return data.filter((item: HistoryItem) => {
+      const itemDate = new Date(item.date);
+      return itemDate.getMonth() === today.getMonth() && 
+             itemDate.getFullYear() === today.getFullYear();
+    }).length;
+  });
   previousCount = computed(() => {
+    const data = this.allData();
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(lastMonth.getMonth() - 1);
-    return this.allData.filter(item => {
+    return data.filter((item: HistoryItem) => {
       const itemDate = new Date(item.date);
       return itemDate.getMonth() === lastMonth.getMonth() && 
              itemDate.getFullYear() === lastMonth.getFullYear();

@@ -87,7 +87,7 @@ import { AccountingSummary } from '../../models/accounting.models';
             <div class="flex justify-between items-start">
               <div>
                 <p class="text-xs font-bold text-base-content/50 uppercase mb-1">Repuestos</p>
-                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.gastos_repuestos) }}</p>
+                <p class="text-2xl font-bold text-base-content">{{ formatCurrency(summary().totales.total_gastos_mantenimiento) }}</p>
               </div>
               <div class="p-2 bg-base-300 rounded-lg text-base-content">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

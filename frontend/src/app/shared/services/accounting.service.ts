@@ -28,7 +28,7 @@ export class AccountingService {
             total_recaudado: 15123456,
             total_costo_diesel: 4158024,
             total_pago_choferes: 2200000,
-            gastos_repuestos: 655000,
+            total_gastos_mantenimiento: 655000,
             ganancia_liquida: 8110432
           },
           es_mes_actual: isCurrentMonth

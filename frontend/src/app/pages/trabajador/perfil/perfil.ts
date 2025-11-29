@@ -1,7 +1,12 @@
-import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../shared/services/auth.service';
+import { DriverService } from '../../../shared/services/driver.service';
+import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
+import type { DailyRecord } from '../../../shared/models/daily-record.models';
 
 @Component({
   selector: 'app-perfil',
@@ -12,20 +17,22 @@ import { AuthService } from '../../../shared/services/auth.service';
         <div class="flex flex-col items-center text-white">
           <div class="avatar online mb-3">
             <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-              JP
+              {{ initials() }}
             </div>
           </div>
           
-          <h1 class="text-2xl font-bold">Juan Pérez</h1>
+          <h1 class="text-2xl font-bold">{{ workerName() }}</h1>
           <div class="text-blue-100 text-sm flex flex-col items-center gap-1 mt-1">
             <span class="opacity-90">Chofer Profesional</span>
             
-            <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full mt-1 backdrop-blur-md border border-white/10">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.223.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clip-rule="evenodd" />
-              </svg>
-              <span class="font-mono text-xs tracking-wide">+56 9 1234 5678</span>
-            </div>
+            @if (phoneNumber()) {
+              <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full mt-1 backdrop-blur-md border border-white/10">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                  <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.223.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clip-rule="evenodd" />
+                </svg>
+                <span class="font-mono text-xs tracking-wide">{{ phoneNumber() }}</span>
+              </div>
+            }
           </div>
         </div>
       </header>
@@ -34,12 +41,12 @@ import { AuthService } from '../../../shared/services/auth.service';
         <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
           <div class="flex-1 text-center px-2">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Días Trab.</p>
-            <p class="text-2xl font-black text-slate-800 tabular-nums">16</p>
+            <p class="text-2xl font-black text-slate-800 tabular-nums">{{ daysWorked() }}</p>
           </div>
 
           <div class="flex-1 text-center px-2">
             <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Recaudado</p>
-            <p class="text-2xl font-black text-emerald-600 tracking-tight tabular-nums">$7.2M</p>
+            <p class="text-2xl font-black text-emerald-600 tracking-tight tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
           </div>
         </div>
       </div>
@@ -64,18 +71,24 @@ import { AuthService } from '../../../shared/services/auth.service';
         <div>
           <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2">Información</h3>
           <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
-            <div class="flex justify-between border-b border-slate-50 pb-3">
-              <span class="text-sm text-slate-400">RUT</span>
-              <span class="text-sm font-semibold text-slate-700 font-mono">12.345.678-9</span>
-            </div>
-            <div class="flex justify-between border-b border-slate-50 pb-3">
-              <span class="text-sm text-slate-400">Máquina</span>
-              <span class="text-sm font-semibold text-slate-700">Mercedes-Benz 05</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-slate-400">Email</span>
-              <span class="text-sm font-semibold text-slate-700 truncate">juan@empresa.com</span>
-            </div>
+            @if (rut()) {
+              <div class="flex justify-between border-b border-slate-50 pb-3">
+                <span class="text-sm text-slate-400">RUT</span>
+                <span class="text-sm font-semibold text-slate-700 font-mono">{{ rut() }}</span>
+              </div>
+            }
+            @if (assignedMachine()) {
+              <div class="flex justify-between border-b border-slate-50 pb-3">
+                <span class="text-sm text-slate-400">Máquina</span>
+                <span class="text-sm font-semibold text-slate-700">{{ assignedMachine() }}</span>
+              </div>
+            }
+            @if (email()) {
+              <div class="flex justify-between">
+                <span class="text-sm text-slate-400">Email</span>
+                <span class="text-sm font-semibold text-slate-700 truncate">{{ email() }}</span>
+              </div>
+            }
           </div>
         </div>
 
@@ -94,6 +107,131 @@ import { AuthService } from '../../../shared/services/auth.service';
 })
 export class Perfil {
   private readonly auth = inject(AuthService);
+  private driverService = inject(DriverService);
+  private dailyRecordService = inject(DailyRecordService);
+
+  // Obtener usuario actual
+  currentUser = this.auth.currentUser;
+
+  // Obtener datos del chofer
+  driverData = toSignal(
+    this.driverService.getDrivers().pipe(
+      catchError(() => of([]))
+    ),
+    { initialValue: [] }
+  );
+
+  // Obtener registros del trabajador
+  private dailyRecordsResponse = toSignal(
+    this.dailyRecordService.getDailyRecords().pipe(
+      catchError(() => of({ datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 }))
+    ),
+    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
+  );
+
+  // Computed: Obtener chofer actual
+  currentDriver = computed(() => {
+    const drivers = this.driverData();
+    // TODO: Obtener chofer_id real desde backend basado en currentUser.id
+    return drivers.find(d => d.id === 1) || null;
+  });
+
+  // Computed: Iniciales del nombre
+  initials = computed(() => {
+    const driver = this.currentDriver();
+    if (driver?.nombre_completo) {
+      const parts = driver.nombre_completo.split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return driver.nombre_completo.substring(0, 2).toUpperCase();
+    }
+    const user = this.currentUser();
+    if (user?.displayName) {
+      const parts = user.displayName.split(' ');
+      if (parts.length >= 2) {
+        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+      }
+      return user.displayName.substring(0, 2).toUpperCase();
+    }
+    return 'TP';
+  });
+
+  // Computed: Nombre del trabajador
+  workerName = computed(() => {
+    const driver = this.currentDriver();
+    if (driver?.nombre_completo) {
+      return driver.nombre_completo;
+    }
+    const user = this.currentUser();
+    return user?.displayName || 'Trabajador';
+  });
+
+  // Computed: RUT
+  rut = computed(() => {
+    const driver = this.currentDriver();
+    return driver?.rut || null;
+  });
+
+  // Computed: Teléfono
+  phoneNumber = computed(() => {
+    const driver = this.currentDriver();
+    return driver?.telefono || null;
+  });
+
+  // Computed: Email
+  email = computed(() => {
+    const user = this.currentUser();
+    return user?.email || null;
+  });
+
+  // Computed: Máquina asignada
+  assignedMachine = computed(() => {
+    const driver = this.currentDriver();
+    return driver?.maquina_actual || null;
+  });
+
+  // Computed: Días trabajados (este mes)
+  daysWorked = computed(() => {
+    const response = this.dailyRecordsResponse();
+    const records = response.datos || [];
+    const choferId = 1; // TODO: Obtener chofer_id real desde backend
+    
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const monthRecords = records.filter((r: DailyRecord) => {
+      if (r.chofer_id !== choferId) return false;
+      const recordDate = new Date(r.fecha);
+      return recordDate.getMonth() === currentMonth && 
+             recordDate.getFullYear() === currentYear &&
+             !r.dia_no_trabajado;
+    });
+
+    return monthRecords.length;
+  });
+
+  // Computed: Recaudado total (este mes)
+  totalRevenue = computed(() => {
+    const response = this.dailyRecordsResponse();
+    const records = response.datos || [];
+    const choferId = 1; // TODO: Obtener chofer_id real desde backend
+    
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    const monthRecords = records.filter((r: DailyRecord) => {
+      if (r.chofer_id !== choferId) return false;
+      const recordDate = new Date(r.fecha);
+      return recordDate.getMonth() === currentMonth && 
+             recordDate.getFullYear() === currentYear &&
+             !r.dia_no_trabajado;
+    });
+
+    return monthRecords.reduce((sum: number, r: DailyRecord) => sum + (r.recaudado || 0), 0);
+  });
 
   onLogout(): void {
     this.auth.logout();

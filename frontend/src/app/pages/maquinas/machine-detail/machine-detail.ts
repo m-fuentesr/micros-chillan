@@ -2,6 +2,8 @@ import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, e
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MachineService } from '../../../shared/services/machine.service';
 import { DriverService } from '../../../shared/services/driver.service';
+import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import type { DailyRecord } from '../../../shared/models/daily-record.models';
 import { MachineGeneralInfo } from '../../../shared/machines/machine-general-info/machine-general-info';
 import { MachineDailyRecords } from '../../../shared/machines/machine-daily-records/machine-daily-records';
 import { MachineAssignmentHistory } from '../../../shared/machines/machine-assignment-history/machine-assignment-history';
@@ -116,6 +118,7 @@ export class MachineDetail implements OnInit {
   private router = inject(Router);
   private machineService = inject(MachineService);
   private driverService = inject(DriverService);
+  private dailyRecordService = inject(DailyRecordService);
 
   activeTab = signal<'general' | 'records' | 'assignments' | 'maintenance'>('general');
   recordFilters = signal<MachineDailyRecordFilters>({});
@@ -232,41 +235,48 @@ export class MachineDetail implements OnInit {
   }
 
   private loadDailyRecords(): void {
-    // Mock data - en producción vendría del servicio
     const machine = this.machine();
     if (!machine) return;
 
-    this.dailyRecords.set([
-      {
-        id: 1,
-        fecha: '2025-11-16',
-        chofer: 'Juan Pérez',
-        chofer_id: 1,
-        recaudado: 150000,
-        diesel: 35000,
-        observaciones: 'Algunas observaciones',
-        estado: 'COMPLETO'
+    const filters = this.recordFilters();
+    
+    // Obtener registros de la máquina
+    this.dailyRecordService.getDailyRecords({
+      maquina_id: machine.id,
+      chofer_id: filters.chofer_id || undefined,
+      desde: filters.desde || undefined,
+      hasta: filters.hasta || undefined
+    }).subscribe({
+      next: (response) => {
+        const records = response.datos || [];
+        
+        // Mapear DailyRecord a MachineDailyRecord
+        const machineRecords: MachineDailyRecord[] = records.map((record: DailyRecord) => ({
+          id: parseInt(record.id),
+          fecha: record.fecha,
+          chofer: record.chofer_nombre || '',
+          chofer_id: record.chofer_id,
+          recaudado: record.recaudado || 0,
+          diesel: record.costo_diesel || 0,
+          observaciones: record.observaciones || null,
+          estado: record.estado
+        }));
+
+        // Ordenar según filtro
+        if (filters.orden === 'mas_antiguo') {
+          machineRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+        } else {
+          // Por defecto: más reciente primero
+          machineRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+        }
+
+        this.dailyRecords.set(machineRecords);
       },
-      {
-        id: 2,
-        fecha: '2025-11-15',
-        chofer: 'Juan Pérez',
-        chofer_id: 1,
-        recaudado: 145000,
-        diesel: 32000,
-        estado: 'COMPLETO'
-      },
-      {
-        id: 3,
-        fecha: '2025-11-14',
-        chofer: 'Laura Diaz',
-        chofer_id: 2,
-        recaudado: 0,
-        diesel: 0,
-        observaciones: 'Día no trabajado',
-        estado: 'NO_TRABAJADO'
+      error: (error) => {
+        console.error('Error al cargar registros diarios:', error);
+        this.dailyRecords.set([]);
       }
-    ]);
+    });
   }
 
   private loadAssignments(): void {

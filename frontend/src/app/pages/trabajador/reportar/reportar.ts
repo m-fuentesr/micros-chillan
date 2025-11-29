@@ -1,7 +1,13 @@
-import { Component, inject, ChangeDetectionStrategy, signal } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import { AuthService } from '../../../shared/services/auth.service';
+import { DriverService } from '../../../shared/services/driver.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
+import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
 
 @Component({
   selector: 'app-reportar',
@@ -39,7 +45,10 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
               <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Máquina asignada</label>
               <div class="relative">
                 <select class="appearance-none bg-transparent font-bold text-slate-800 text-lg w-full focus:outline-none" formControlName="machine">
-                  <option *ngFor="let machine of machines" [value]="machine">{{ machine === '05' ? 'Máquina 05 (Tuya)' : 'Máquina ' + machine }}</option>
+                  <option [value]="null" disabled>Selecciona una máquina</option>
+                  @for (machine of machines(); track machine.id) {
+                    <option [value]="machine.id">{{ machine.identificador }}</option>
+                  }
                 </select>
                 <div class="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
@@ -158,9 +167,14 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
           <button
             class="btn btn-primary btn-block h-14 rounded-xl shadow-lg shadow-blue-600/20 text-lg font-bold tracking-wide disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
             type="submit"
-            [disabled]="reportForm.invalid"
+            [disabled]="reportForm.invalid || isSubmitting()"
           >
-            Enviar reporte
+            @if (isSubmitting()) {
+              <span class="loading loading-spinner loading-sm"></span>
+              Enviando...
+            } @else {
+              Enviar reporte
+            }
           </button>
         </div>
       </form>
@@ -168,22 +182,59 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Reportar {
+export class Reportar implements OnInit {
   private fb = inject(FormBuilder);
+  private router = inject(Router);
+  private dailyRecordService = inject(DailyRecordService);
+  private authService = inject(AuthService);
+  private driverService = inject(DriverService);
 
-  machines = ['05', '02', '07'];
   evidenceName = signal('');
+  evidenceFile = signal<File | null>(null);
+  isSubmitting = signal(false);
+
+  // Obtener máquinas asignadas al trabajador actual
+  currentUser = this.authService.currentUser;
+  
+  // Obtener chofer asociado al usuario actual
+  driverData = toSignal(
+    this.driverService.getDrivers().pipe(
+      catchError(() => of([]))
+    ),
+    { initialValue: [] }
+  );
+
+  // Máquinas asignadas (mock por ahora, debería venir del backend)
+  machines = signal<Array<{ id: number; identificador: string }>>([]);
 
   reportForm = this.fb.group({
-    machine: ['05', Validators.required],
-    amount: [null, Validators.required],
-    fuelLiters: [null],
-    fuelCost: [null],
+    machine: [null as number | null, Validators.required],
+    amount: [null as number | null, Validators.required],
+    fuelLiters: [null as number | null],
+    fuelCost: [null as number | null],
     notes: [''],
     incident: [false],
   });
 
-  private router = inject(Router);
+  ngOnInit(): void {
+    // Obtener máquinas asignadas al trabajador
+    // Por ahora, usar mock. En producción, esto vendría del backend
+    const userId = this.currentUser()?.id;
+    if (userId) {
+      // TODO: Obtener máquinas asignadas desde el backend
+      // Por ahora, usar datos mock
+      this.machines.set([
+        { id: 5, identificador: 'Máquina 05' },
+        { id: 2, identificador: 'Máquina 02' },
+        { id: 7, identificador: 'Máquina 07' }
+      ]);
+      
+      // Establecer máquina por defecto si hay alguna
+      if (this.machines().length > 0) {
+        this.reportForm.patchValue({ machine: this.machines()[0].id });
+      }
+    }
+  }
 
   enviarReporte() {
     if (this.reportForm.invalid) {
@@ -191,12 +242,70 @@ export class Reportar {
       return;
     }
 
-    this.router.navigate(['/trabajador/reporte-exito']);
+    this.isSubmitting.set(true);
+
+    const formValue = this.reportForm.value;
+    const currentUser = this.currentUser();
+    
+    if (!currentUser) {
+      console.error('Usuario no autenticado');
+      this.isSubmitting.set(false);
+      return;
+    }
+
+    // Obtener chofer_id del usuario actual
+    // Por ahora, usar mock. En producción, esto vendría del backend
+    const choferId = 1; // TODO: Obtener desde el backend basado en currentUser.id
+
+    // Obtener fecha actual
+    const today = new Date();
+    const fecha = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Preparar DTO
+    const machineId = typeof formValue.machine === 'number' ? formValue.machine : parseInt(String(formValue.machine || '0'));
+    const amount = formValue.amount ? (typeof formValue.amount === 'number' ? formValue.amount : parseFloat(String(formValue.amount))) : undefined;
+    const fuelCost = formValue.fuelCost ? (typeof formValue.fuelCost === 'number' ? formValue.fuelCost : parseFloat(String(formValue.fuelCost))) : undefined;
+    const fuelLiters = formValue.fuelLiters ? (typeof formValue.fuelLiters === 'number' ? formValue.fuelLiters : parseFloat(String(formValue.fuelLiters))) : undefined;
+
+    const dto: CreateDailyRecordDto = {
+      fecha,
+      maquina_id: machineId,
+      chofer_id: choferId,
+      recaudado: amount,
+      costo_diesel: fuelCost,
+      litros_diesel: fuelLiters,
+      dia_no_trabajado: false,
+      es_emergencia: formValue.incident || false,
+      observaciones: formValue.notes || null,
+      comprobante_diesel: this.evidenceFile() && fuelCost ? {
+        monto: fuelCost,
+        imagen: this.evidenceFile()!
+      } : undefined
+    };
+
+    this.dailyRecordService.createDailyRecord(dto).subscribe({
+      next: () => {
+        this.isSubmitting.set(false);
+        this.router.navigate(['/trabajador/reporte-exito']);
+      },
+      error: (error) => {
+        console.error('Error al enviar reporte:', error);
+        this.isSubmitting.set(false);
+        // TODO: Mostrar mensaje de error al usuario
+        alert('Error al enviar el reporte. Por favor, intenta nuevamente.');
+      }
+    });
   }
 
   onEvidenceSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    this.evidenceName.set(file?.name ?? '');
+    if (file) {
+      this.evidenceName.set(file.name);
+      this.evidenceFile.set(file);
+    } else {
+      this.evidenceName.set('');
+      this.evidenceFile.set(null);
+    }
   }
 }

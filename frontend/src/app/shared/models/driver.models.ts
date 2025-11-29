@@ -37,12 +37,21 @@ export interface DriverLicenseStatus {
   texto: string;
 }
 
+// DriverDailyRecord es compatible con DailyRecord del modelo unificado
+// Ver: src/app/shared/models/daily-record.models.ts
+
+import type { DailyRecordStatus } from './daily-record.models';
+
+/**
+ * Registro diario visto desde el contexto de un chofer
+ * Compatible con DailyRecord unificado
+ */
 export interface DriverDailyRecord {
   id: number;
   fecha: string;
-  estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado';
+  estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado'; // Mapeo de DailyRecordStatus
   recaudado: number;
-  diesel: number;
+  diesel: number; // Alias de costo_diesel para compatibilidad
   observaciones?: string | null;
 }
 

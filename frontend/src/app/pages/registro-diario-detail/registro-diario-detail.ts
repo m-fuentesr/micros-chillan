@@ -2,39 +2,36 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, effect } 
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DailyRecordService } from '../../shared/services/daily-record.service';
+import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
 
-interface DailyRecord {
-  id: string;
-  date: string;
-  machine: string;
-  driver: string;
-  status: 'complete' | 'pending' | 'incident';
-  income: number;
-  dieselExpense: number;
-  dieselLiters?: number;
-  noWorkDay: boolean;
-  noWorkDayReason?: string;
-  isEmergency?: boolean;
-  observations: string;
+/**
+ * Vista extendida de DailyRecord para uso en el detalle
+ * Incluye campos formateados para display y compatibilidad con el template actual
+ */
+interface DailyRecordDetailView extends DailyRecord {
+  // Campos de display (mapeados desde el modelo unificado)
+  date: string; // fecha formateada
+  machine: string; // maquina_identificador
+  driver: string; // chofer_nombre
+  income: number; // recaudado
+  dieselExpense: number; // costo_diesel
+  dieselLiters?: number; // litros_diesel (alias para compatibilidad con formulario)
+  noWorkDay: boolean; // dia_no_trabajado
+  noWorkDayReason?: string; // motivo_inactividad
+  isEmergency?: boolean; // es_emergencia
+  observations: string; // observaciones
   paymentBreakdown: {
     base: number;
     percentage: number;
     amount: number;
-  };
+  }; // desglose_pago
   receipt?: {
     amount: number;
     uploadedAt?: string;
     imageUrl?: string;
-  };
-  history?: HistoryItem[];
-}
-
-interface HistoryItem {
-  id: string;
-  user: string;
-  action: string;
-  timestamp: string;
-  changes?: string;
+  }; // comprobante_diesel
+  history?: DailyRecordHistoryItem[]; // historial
 }
 
 @Component({
@@ -427,10 +424,10 @@ interface HistoryItem {
                               <div class="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20" [class.bg-base-300]="!last"></div>
                             </div>
                             <div class="timeline-end timeline-box bg-transparent border-none shadow-none p-0 pl-3 mb-4">
-                              <div class="text-xs font-bold text-base-content">{{ item.user }}</div>
-                              <div class="text-[10px] text-base-content/50">{{ item.action }} • {{ formatTimeAgo(item.timestamp) }}</div>
-                              @if (item.changes) {
-                                <div class="text-[10px] text-base-content/40 mt-1">{{ item.changes }}</div>
+                              <div class="text-xs font-bold text-base-content">{{ item.usuario }}</div>
+                              <div class="text-[10px] text-base-content/50">{{ item.accion }} • {{ formatTimeAgo(item.timestamp) }}</div>
+                              @if (item.cambios) {
+                                <div class="text-[10px] text-base-content/40 mt-1">{{ item.cambios }}</div>
                               }
                             </div>
                             @if (!last) {
@@ -464,8 +461,9 @@ export class RegistroDiarioDetail {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private dailyRecordService = inject(DailyRecordService);
 
-  record = signal<DailyRecord | null>(null);
+  record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
   isEditMode = signal(false);
 
@@ -483,8 +481,15 @@ export class RegistroDiarioDetail {
   receiptPreview = signal<string | null>(null);
 
   // Computed signals
-  isIncidente = computed(() => this.record()?.status === 'incident');
-  isCompleto = computed(() => this.record()?.status === 'complete');
+  // Mapeo de estados: 'INCIDENTE_REPORTADO' -> 'incident', 'COMPLETO' -> 'complete'
+  isIncidente = computed(() => {
+    const estado = this.record()?.estado;
+    return estado === 'INCIDENTE_REPORTADO';
+  });
+  isCompleto = computed(() => {
+    const estado = this.record()?.estado;
+    return estado === 'COMPLETO';
+  });
   hasComprobante = computed(() => !!this.record()?.receipt);
   historyItems = computed(() => this.record()?.history ?? []);
 
@@ -519,64 +524,75 @@ export class RegistroDiarioDetail {
   private loadRecord(id: string): void {
     this.isLoading.set(true);
     
-    // Mock data - en producción vendría del servicio
-    setTimeout(() => {
-      const mockRecord: DailyRecord = {
-        id: id,
-        date: '28 Nov 2025',
-        machine: 'Máquina 05',
-        driver: 'Juan Pérez',
-        status: 'complete',
-        income: 450000,
-        dieselExpense: 80000,
-        dieselLiters: 120,
-        noWorkDay: false,
-        observations: 'Registro completo del día. Todo en orden.',
-        paymentBreakdown: {
-          base: 450000,
-          percentage: 30,
-          amount: 135000
-        },
-        receipt: {
-          amount: 80000,
-          uploadedAt: '28 Nov, 14:30',
-          imageUrl: 'https://via.placeholder.com/400x300?text=Comprobante'
-        },
-        isEmergency: false,
-        history: [
-          {
-            id: '1',
-            user: 'Admin',
-            action: 'Modificado por Admin',
-            timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-            changes: 'Ajuste Monto'
-          },
-          {
-            id: '2',
-            user: 'Juan Pérez',
-            action: 'Creado por Juan Pérez',
-            timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-          }
-        ]
-      };
-      
-      this.record.set(mockRecord);
-      this.recordForm.patchValue({
-        noWorkDay: mockRecord.noWorkDay,
-        noWorkDayReason: mockRecord.noWorkDayReason || '',
-        isEmergency: mockRecord.isEmergency || false,
-        income: mockRecord.income,
-        dieselExpense: mockRecord.dieselExpense,
-        dieselLiters: mockRecord.dieselLiters || 0,
-        observations: mockRecord.observations
-      });
-      
-      if (mockRecord.receipt?.imageUrl) {
-        this.receiptPreview.set(mockRecord.receipt.imageUrl);
+    this.dailyRecordService.getDailyRecordById(id).subscribe({
+      next: (unifiedRecord) => {
+        const viewRecord = this.mapToDetailView(unifiedRecord);
+        this.record.set(viewRecord);
+        this.recordForm.patchValue({
+          noWorkDay: viewRecord.noWorkDay,
+          noWorkDayReason: viewRecord.noWorkDayReason || '',
+          isEmergency: viewRecord.isEmergency || false,
+          income: viewRecord.income,
+          dieselExpense: viewRecord.dieselExpense,
+          dieselLiters: viewRecord.dieselLiters || 0,
+          observations: viewRecord.observations || ''
+        });
+        
+        if (viewRecord.receipt?.imageUrl) {
+          this.receiptPreview.set(viewRecord.receipt.imageUrl);
+        }
+        
+        this.isLoading.set(false);
+      },
+      error: (error) => {
+        console.error('Error al cargar registro:', error);
+        this.isLoading.set(false);
+        // TODO: Mostrar mensaje de error al usuario
       }
-      
-      this.isLoading.set(false);
-    }, 500);
+    });
+  }
+
+  /**
+   * Mapear desde el modelo unificado a la vista de detalle
+   */
+  private mapToDetailView(record: DailyRecord): DailyRecordDetailView {
+    // Formatear fecha
+    const date = new Date(record.fecha);
+    const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Mapear comprobante
+    const receipt = record.comprobante_diesel ? {
+      amount: record.comprobante_diesel.monto,
+      uploadedAt: record.comprobante_diesel.subido_en 
+        ? new Date(record.comprobante_diesel.subido_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : undefined,
+      imageUrl: record.comprobante_diesel.imagen_url
+    } : undefined;
+
+    return {
+      ...record,
+      date: formattedDate,
+      machine: record.maquina_identificador || `Máquina ${record.maquina_id}`,
+      driver: record.chofer_nombre || '',
+      income: record.recaudado,
+      dieselExpense: record.costo_diesel,
+      noWorkDay: record.dia_no_trabajado,
+      noWorkDayReason: record.motivo_inactividad || undefined,
+      isEmergency: record.es_emergencia,
+      observations: record.observaciones || '',
+      dieselLiters: record.litros_diesel,
+      paymentBreakdown: record.desglose_pago ? {
+        base: record.desglose_pago.base,
+        percentage: record.desglose_pago.porcentaje,
+        amount: record.desglose_pago.monto
+      } : {
+        base: record.recaudado,
+        percentage: 30, // Por defecto, debería venir del chofer
+        amount: record.recaudado * 0.3
+      },
+      receipt,
+      history: record.historial
+    };
   }
 
   enableEditMode(): void {
@@ -603,68 +619,57 @@ export class RegistroDiarioDetail {
   saveRecord(): void {
     if (this.recordForm.valid && this.record()) {
       const formValue = this.recordForm.value;
+      const recordId = this.record()!.id;
       
-      // Actualizar el registro
-      const updatedRecord: DailyRecord = {
-        ...this.record()!,
-        noWorkDay: formValue.noWorkDay || false,
-        noWorkDayReason: formValue.noWorkDayReason || undefined,
-        isEmergency: formValue.isEmergency || false,
-        income: formValue.income || 0,
-        dieselExpense: formValue.dieselExpense || 0,
-        dieselLiters: formValue.dieselLiters || undefined,
-        observations: formValue.observations || ''
+      // Mapear formulario a DTO de actualización
+      const updateDto: any = {
+        recaudado: formValue.noWorkDay ? undefined : formValue.income,
+        costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+        litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+        dia_no_trabajado: formValue.noWorkDay || false,
+        motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+        es_emergencia: formValue.isEmergency || false,
+        observaciones: formValue.observations || null
       };
       
       // Actualizar comprobante si se subió una nueva imagen
       if (this.receiptFile()) {
-        // En producción, aquí subirías el archivo al servidor
-        const imageUrl = this.receiptPreview();
-        updatedRecord.receipt = {
-          ...updatedRecord.receipt,
-          amount: updatedRecord.dieselExpense,
-          imageUrl: imageUrl || undefined,
-          uploadedAt: new Date().toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        updateDto.comprobante_diesel = {
+          monto: formValue.dieselExpense || 0,
+          imagen: this.receiptFile()!
         };
       }
       
-      // Recalcular desglose de pago si no es día no trabajado
-      if (!updatedRecord.noWorkDay) {
-        updatedRecord.paymentBreakdown = {
-          base: updatedRecord.income,
-          percentage: 30,
-          amount: Math.round(updatedRecord.income * 0.3)
-        };
-      }
-      
-      // Agregar entrada al historial
-      if (!updatedRecord.history) {
-        updatedRecord.history = [];
-      }
-      updatedRecord.history.unshift({
-        id: Date.now().toString(),
-        user: 'Admin',
-        action: 'Modificado por Admin',
-        timestamp: new Date().toISOString(),
-        changes: 'Actualización de datos'
+      this.dailyRecordService.updateDailyRecord(recordId, updateDto).subscribe({
+        next: (updatedRecord) => {
+          const viewRecord = this.mapToDetailView(updatedRecord);
+          this.record.set(viewRecord);
+          this.isEditMode.set(false);
+          this.receiptFile.set(null);
+          // TODO: Mostrar mensaje de éxito
+        },
+        error: (error) => {
+          console.error('Error al guardar registro:', error);
+          // TODO: Mostrar mensaje de error al usuario
+        }
       });
-      
-      this.record.set(updatedRecord);
-      this.isEditMode.set(false);
-      
-      // Aquí harías la petición al backend
-      console.log('Guardando registro:', updatedRecord);
     }
   }
 
   markIncidentResolved(): void {
     if (this.record()) {
-      const updatedRecord: DailyRecord = {
-        ...this.record()!,
-        status: 'complete'
-      };
-      this.record.set(updatedRecord);
-      console.log('Incidente marcado como resuelto');
+      const recordId = this.record()!.id;
+      this.dailyRecordService.resolveIncident(recordId).subscribe({
+        next: (resolvedRecord) => {
+          const viewRecord = this.mapToDetailView(resolvedRecord);
+          this.record.set(viewRecord);
+          // TODO: Mostrar mensaje de éxito
+        },
+        error: (error) => {
+          console.error('Error al resolver incidente:', error);
+          // TODO: Mostrar mensaje de error al usuario
+        }
+      });
     }
   }
 

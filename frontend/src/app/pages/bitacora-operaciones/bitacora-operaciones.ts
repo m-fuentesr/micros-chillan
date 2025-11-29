@@ -1,17 +1,24 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { DailyRecordService } from '../../shared/services/daily-record.service';
+import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus } from '../../shared/models/daily-record.models';
 
-interface DailyRecord {
+/**
+ * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
+ * Compatible con el template actual. Se mapeará desde el modelo unificado cuando se integre el servicio.
+ */
+interface DailyRecordView {
   id: string;
-  date: string;
-  machine: string;
-  driver: string;
-  status: 'complete' | 'pending' | 'incident';
-  income: number;
-  dieselExpense: number;
-  hasIncident: boolean;
+  date: string; // Formateado para display
+  machine: string; // maquina_identificador o derivado
+  driver: string; // chofer_nombre
+  status: 'complete' | 'pending' | 'incident'; // Mapeo de DailyRecordStatus
+  income: number; // recaudado
+  dieselExpense: number; // costo_diesel
+  hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
 }
 
 @Component({
@@ -588,15 +595,36 @@ interface DailyRecord {
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BitacoraOperaciones {
+export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
+  private dailyRecordService = inject(DailyRecordService);
 
-  records = signal<DailyRecord[]>([
-    { id: '1', date: '28 nov 2025', machine: 'Máquina 05', driver: 'Juan Pérez', status: 'complete', income: 120000, dieselExpense: 45000, hasIncident: false },
-    { id: '2', date: '28 nov 2025', machine: 'Máquina 04', driver: 'Luis Martínez', status: 'incident', income: 85000, dieselExpense: 0, hasIncident: true },
-    { id: '3', date: '28 nov 2025', machine: 'Máquina 02', driver: 'Ana Gómez', status: 'pending', income: 95000, dieselExpense: 0, hasIncident: false },
-  ]);
+  // Cargar datos del servicio
+  private recordsResponse = toSignal(
+    this.dailyRecordService.getDailyRecords({
+      estado: 'all',
+      pagina: 1,
+      por_pagina: 100
+    }),
+    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
+  );
+
+  // Mapear a formato de vista
+  records = computed(() => {
+    const response = this.recordsResponse();
+    return response?.datos.map(r => this.mapToView(r)) || [];
+  });
+
+  // KPIs del servicio
+  private kpisResponse = toSignal(
+    this.dailyRecordService.getDailyRecordsKPIs(),
+    { initialValue: null }
+  );
+
+  totalRevenue = computed(() => this.kpisResponse()?.recaudacion_periodo || 0);
+  missingRecords = computed(() => this.kpisResponse()?.registros_faltantes || 0);
+  recordsWithIncidents = computed(() => this.kpisResponse()?.registros_con_incidentes || 0);
 
   searchQuery = signal('');
   statusFilter = signal('all');
@@ -637,17 +665,33 @@ export class BitacoraOperaciones {
     });
   }
 
-  totalRevenue = computed(() => 
-    this.records().reduce((sum, r) => sum + r.income, 0)
-  );
+  // Helper para mapear desde el modelo unificado a la vista
+  private mapToView(record: UnifiedDailyRecord): DailyRecordView {
+    // Formatear fecha
+    const date = new Date(record.fecha);
+    const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    
+    // Mapear estado
+    let status: 'complete' | 'pending' | 'incident';
+    if (record.estado === 'COMPLETO') {
+      status = 'complete';
+    } else if (record.estado === 'INCIDENTE_REPORTADO') {
+      status = 'incident';
+    } else {
+      status = 'pending';
+    }
 
-  missingRecords = computed(() => 
-    this.records().filter(r => r.status === 'pending').length
-  );
-
-  recordsWithIncidents = computed(() => 
-    this.records().filter(r => r.status === 'incident').length
-  );
+    return {
+      id: record.id,
+      date: formattedDate,
+      machine: record.maquina_identificador || `Máquina ${record.maquina_id}`,
+      driver: record.chofer_nombre || '',
+      status,
+      income: record.recaudado,
+      dieselExpense: record.costo_diesel,
+      hasIncident: record.es_emergencia || record.estado === 'INCIDENTE_REPORTADO'
+    };
+  }
 
   filteredRecords = computed(() => {
     let filtered = [...this.records()];
@@ -731,16 +775,83 @@ export class BitacoraOperaciones {
     });
   }
 
+  ngOnInit(): void {
+    // Los datos se cargan automáticamente mediante toSignal
+    // Si necesitas recargar, puedes llamar a loadRecords()
+  }
+
+  loadRecords(): void {
+    // Recargar datos (útil después de crear/actualizar)
+    // Por ahora, toSignal maneja la carga automática
+  }
+
   onSubmitNewRecord(): void {
     if (this.newRecordForm.valid) {
       const formValue = this.newRecordForm.value;
-      console.log('Nuevo registro:', formValue);
-      this.closeNewRecordModal();
+      
+      // Mapear formulario a DTO
+      const createDto = {
+        fecha: formValue.date || '',
+        maquina_id: this.extractMachineId(formValue.machine || ''),
+        chofer_id: this.extractDriverId(formValue.driver || ''),
+        recaudado: formValue.noWorkDay ? undefined : (formValue.income ?? undefined),
+        costo_diesel: formValue.noWorkDay ? undefined : (formValue.dieselExpense ?? undefined),
+        litros_diesel: formValue.noWorkDay ? undefined : (formValue.dieselLiters ?? undefined),
+        dia_no_trabajado: formValue.noWorkDay || false,
+        motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+        es_emergencia: formValue.hasIncident || false,
+        observaciones: formValue.observations || null
+      };
+
+      this.dailyRecordService.createDailyRecord(createDto).subscribe({
+        next: (newRecord) => {
+          // Recargar datos
+          // TODO: Actualizar la lista localmente o recargar desde el servicio
+          this.closeNewRecordModal();
+          // Por ahora, el toSignal se actualizará en el próximo cambio de detección
+        },
+        error: (error) => {
+          console.error('Error al crear registro:', error);
+          // TODO: Mostrar mensaje de error al usuario
+        }
+      });
     }
   }
 
   resolveRecord(id: string): void {
-    this.router.navigate(['/registro-diario', id]);
+    // Si es un incidente, resolverlo primero
+    const record = this.records().find(r => r.id === id);
+    if (record?.status === 'incident') {
+      this.dailyRecordService.resolveIncident(id).subscribe({
+        next: () => {
+          // Recargar datos o actualizar localmente
+          this.router.navigate(['/registro-diario', id]);
+        },
+        error: (error) => {
+          console.error('Error al resolver incidente:', error);
+          // Navegar de todas formas
+          this.router.navigate(['/registro-diario', id]);
+        }
+      });
+    } else {
+      this.router.navigate(['/registro-diario', id]);
+    }
+  }
+
+  // Helpers temporales para extraer IDs (en producción vendrían del backend)
+  private extractMachineId(machineName: string): number {
+    const match = machineName.match(/\d+/);
+    return match ? parseInt(match[0], 10) : 1;
+  }
+
+  private extractDriverId(driverName: string): number {
+    // Mapeo temporal - en producción esto vendría de un select con IDs
+    const driverMap: Record<string, number> = {
+      'Juan Pérez': 1,
+      'Luis Martínez': 2,
+      'Ana Gómez': 3
+    };
+    return driverMap[driverName] || 1;
   }
 
   getInitials(name: string): string {

@@ -1,7 +1,9 @@
-import { Component, ChangeDetectionStrategy, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ReportsService } from '../../shared/services/reports.service';
 
 interface MachineProfit {
   rank: number;
@@ -476,11 +478,51 @@ interface DriverProfit {
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Reportes {
+  private reportsService = inject(ReportsService);
+  
   selectedPeriod = signal<string>('Noviembre 2025');
   activeTab = signal<string>('profit');
 
-  // Datos de máquinas con ganancias (ordenados por ganancia neta descendente)
-  private rawMachinesData: MachineProfit[] = [
+  // Cargar datos del servicio
+  private machineRankingResponse = toSignal(
+    this.reportsService.getMachineRanking({
+      orden_por: 'ganancia',
+      orden: 'desc'
+    }),
+    { initialValue: [] }
+  );
+
+  private driverRankingResponse = toSignal(
+    this.reportsService.getDriverRanking({
+      orden_por: 'ganancia',
+      orden: 'desc'
+    }),
+    { initialValue: [] }
+  );
+
+  private profitabilityResponse = toSignal(
+    this.reportsService.getProfitabilityReport({
+      agrupado_por: 'mes'
+    }),
+    { initialValue: null }
+  );
+
+  // Mapear datos de máquinas desde el servicio
+  private rawMachinesData = computed((): MachineProfit[] => {
+    const ranking = this.machineRankingResponse();
+    return ranking.map((item, index) => ({
+      rank: index + 1,
+      machine: item.maquina_identificador,
+      income: item.total_recaudado,
+      dieselCost: 0, // TODO: Calcular desde datos de registros diarios
+      driverPayment: 0, // TODO: Calcular desde datos de registros diarios
+      maintenance: null, // TODO: Obtener desde servicio de mantenimiento
+      netProfit: item.total_ganancia
+    }));
+  });
+
+  // Datos hardcodeados de respaldo (temporal)
+  private fallbackMachinesData: MachineProfit[] = [
     {
       rank: 1,
       machine: 'Máquina 02',
@@ -529,14 +571,13 @@ export class Reportes {
   ];
 
   machinesData = computed(() => {
-    return this.rawMachinesData.map((item, index) => ({
-      ...item,
-      rank: index + 1
-    }));
+    const data = this.rawMachinesData();
+    return data.length > 0 ? data : this.fallbackMachinesData;
   });
 
   totalProfit = computed(() => {
-    return this.rawMachinesData.reduce((sum, m) => sum + m.netProfit, 0);
+    const data = this.rawMachinesData();
+    return data.reduce((sum: number, m: MachineProfit) => sum + m.netProfit, 0);
   });
 
   // Datos para Ranking de Ingresos (Bruto)
@@ -558,7 +599,7 @@ export class Reportes {
   });
 
   totalIncome = computed(() => {
-    return this.rawRevenueData.reduce((sum, m) => sum + m.income, 0);
+    return this.rawRevenueData.reduce((sum: number, m) => sum + m.income, 0);
   });
 
   revenueChartData = computed<ChartData<'bar'>>(() => {
@@ -648,8 +689,21 @@ export class Reportes {
     }
   };
 
-  // Datos para Rentabilidad por Chofer
-  private rawDriversData: DriverProfit[] = [
+  // Mapear datos de choferes desde el servicio
+  private rawDriversData = computed((): DriverProfit[] => {
+    const ranking = this.driverRankingResponse();
+    return ranking.map((item, index) => ({
+      rank: index + 1,
+      driver: item.chofer_nombre,
+      income: item.total_recaudado,
+      dieselCost: 0, // TODO: Calcular desde datos de registros diarios
+      payment: 0, // TODO: Calcular desde datos de registros diarios
+      netProfit: item.total_ganancia
+    }));
+  });
+
+  // Datos hardcodeados de respaldo (temporal)
+  private fallbackDriversData: DriverProfit[] = [
     {
       rank: 1,
       driver: 'Juan Pérez',
@@ -693,7 +747,9 @@ export class Reportes {
   ];
 
   driversData = computed(() => {
-    return this.rawDriversData
+    const data = this.rawDriversData();
+    const sorted = data.length > 0 ? data : this.fallbackDriversData;
+    return sorted
       .sort((a, b) => b.netProfit - a.netProfit)
       .map((item, index) => ({
         ...item,
@@ -702,7 +758,8 @@ export class Reportes {
   });
 
   totalDriverProfit = computed(() => {
-    return this.rawDriversData.reduce((sum, d) => sum + d.netProfit, 0);
+    const data = this.rawDriversData();
+    return data.reduce((sum: number, d: DriverProfit) => sum + d.netProfit, 0);
   });
 
   driverChartData = computed<ChartData<'bar'>>(() => {
