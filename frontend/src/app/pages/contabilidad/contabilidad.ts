@@ -10,10 +10,12 @@ import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton, LoadingSpinner],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
@@ -142,22 +144,32 @@ import { switchMap } from 'rxjs/operators';
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
             <div class="space-y-8 animate-tab-panel">
-              <!-- KPIs: Contenedor independiente -->
-              @if (summary()) {
-                <app-accounting-kpis [summary]="summary()!" />
-              }
+              @if (isLoading().summary && !summary()) {
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  @for (i of [1,2,3,4]; track i) {
+                    <app-loading-skeleton type="kpi" />
+                  }
+                </div>
+              } @else {
+                <!-- KPIs: Contenedor independiente -->
+                @if (summary()) {
+                  <app-accounting-kpis [summary]="summary()!" />
+                }
 
-              <!-- Separador Visual y Gráfico: Contexto independiente -->
-              @if (dailyData().length > 0) {
-                <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
-                <app-accounting-chart [dailyData]="dailyData()" />
+                <!-- Separador Visual y Gráfico: Contexto independiente -->
+                @if (dailyData().length > 0) {
+                  <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
+                  <app-accounting-chart [dailyData]="dailyData()" />
+                }
               }
             </div>
           }
 
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
-            @if (weeklySummaries().length > 0) {
+            @if (isLoading().weekly && weeklySummaries().length === 0) {
+              <app-loading-skeleton type="table" [count]="5" />
+            } @else if (weeklySummaries().length > 0) {
               <div class="animate-tab-panel">
                 <app-weekly-summary-table [summaries]="weeklySummaries()" />
               </div>
@@ -166,7 +178,9 @@ import { switchMap } from 'rxjs/operators';
 
           <!-- Tab: Liquidación de Choferes -->
           @if (activeTab() === 'payroll') {
-            @if (liquidation()) {
+            @if (isLoading().payroll && !liquidation()) {
+              <app-loading-skeleton type="table" [count]="8" />
+            } @else if (liquidation()) {
               <div class="animate-tab-panel">
                 <app-liquidation-table
                   [liquidation]="liquidation()!"
@@ -179,7 +193,9 @@ import { switchMap } from 'rxjs/operators';
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (liquidationHistory().length > 0) {
+            @if (isLoading().history && liquidationHistory().length === 0) {
+              <app-loading-skeleton type="table" [count]="5" />
+            } @else if (liquidationHistory().length > 0) {
               <div class="animate-tab-panel">
                 <app-liquidation-history [liquidations]="liquidationHistory()" />
               </div>
@@ -215,6 +231,12 @@ export class Contabilidad implements OnInit {
   
   selectedMonth = signal(11); // Noviembre por defecto
   selectedYear = signal(2025);
+  isLoading = signal({
+    summary: true,
+    weekly: true,
+    payroll: true,
+    history: true
+  } as { summary: boolean; weekly: boolean; payroll: boolean; history: boolean });
 
   // Datos
   summaryData = signal<AccountingSummary | null>(null);
@@ -284,12 +306,14 @@ export class Contabilidad implements OnInit {
   }
 
   loadSummary(): void {
+    this.isLoading.update(state => ({ ...state, summary: true }));
     this.accountingService.getSummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of(null)))
       .subscribe(summary => {
         if (summary) {
           this.summaryData.set(summary);
         }
+        this.isLoading.update(state => ({ ...state, summary: false }));
       });
   }
 
@@ -302,28 +326,34 @@ export class Contabilidad implements OnInit {
   }
 
   loadWeeklySummaries(): void {
+    this.isLoading.update(state => ({ ...state, weekly: true }));
     this.accountingService.getWeeklySummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of([])))
       .subscribe(summaries => {
         this.weeklySummaries.set(summaries);
+        this.isLoading.update(state => ({ ...state, weekly: false }));
       });
   }
 
   loadLiquidation(): void {
+    this.isLoading.update(state => ({ ...state, payroll: true }));
     this.accountingService.getLiquidation(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of(null)))
       .subscribe(liquidation => {
         if (liquidation) {
           this.liquidationData.set(liquidation);
         }
+        this.isLoading.update(state => ({ ...state, payroll: false }));
       });
   }
 
   loadLiquidationHistory(): void {
+    this.isLoading.update(state => ({ ...state, history: true }));
     this.accountingService.getLiquidationHistory()
       .pipe(catchError(() => of([])))
       .subscribe(history => {
         this.liquidationHistoryData.set(history);
+        this.isLoading.update(state => ({ ...state, history: false }));
       });
   }
 

@@ -1,10 +1,14 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect, DestroyRef, untracked } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
+import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -23,9 +27,12 @@ interface DailyRecordView {
 
 @Component({
   selector: 'app-bitacora-operaciones',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink],
+  standalone: true,
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6 animate-page-enter relative">
+        <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
+        
         <!-- Header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div class="animate-header-enter">
@@ -44,43 +51,49 @@ interface DailyRecordView {
 
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div class="card bg-base-100 shadow-sm border border-base-200 relative overflow-hidden hover-lift animate-card-enter group">
-            <div class="card-body p-5 relative z-10">
-              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Recaudación (Periodo)</span>
-              <span class="text-2xl font-black text-base-content tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol':'1.0-0' }}</span>
+          @if (isLoading()) {
+            @for (i of [1,2,3]; track i) {
+              <app-loading-skeleton type="kpi" />
+            }
+          } @else {
+            <div class="card bg-base-100 shadow-sm border border-base-200 relative overflow-hidden hover-lift animate-card-enter group">
+              <div class="card-body p-5 relative z-10">
+                <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Recaudación (Periodo)</span>
+                <span class="text-2xl font-black text-base-content tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol':'1.0-0' }}</span>
+              </div>
+              <div class="absolute -right-4 -bottom-4 text-base-content/5 group-hover:text-base-content/10 transition-colors duration-300 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
+                  <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
+                  <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 14.625v-9.75zM8.25 9.75a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zM18.75 9a.75.75 0 00-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 00.75-.75V9.75a.75.75 0 00-.75-.75h-.008zM4.5 9.75A.75.75 0 015.25 9h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V9.75z" clip-rule="evenodd" />
+                  <path d="M2.25 18a.75.75 0 000 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 00-.75-.75H2.25z" />
+                </svg>
+              </div>
             </div>
-            <div class="absolute -right-4 -bottom-4 text-base-content/5 group-hover:text-base-content/10 transition-colors duration-300 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
-                <path d="M12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" />
-                <path fill-rule="evenodd" d="M1.5 4.875C1.5 3.839 2.34 3 3.375 3h17.25c1.035 0 1.875.84 1.875 1.875v9.75c0 1.036-.84 1.875-1.875 1.875H3.375A1.875 1.875 0 011.5 14.625v-9.75zM8.25 9.75a3.75 3.75 0 117.5 0 3.75 3.75 0 01-7.5 0zM18.75 9a.75.75 0 00-.75.75v.008c0 .414.336.75.75.75h.008a.75.75 0 00.75-.75V9.75a.75.75 0 00-.75-.75h-.008zM4.5 9.75A.75.75 0 015.25 9h.008a.75.75 0 01.75.75v.008a.75.75 0 01-.75.75H5.25a.75.75 0 01-.75-.75V9.75z" clip-rule="evenodd" />
-                <path d="M2.25 18a.75.75 0 000 1.5c5.4 0 10.63.722 15.6 2.075 1.19.324 2.4-.558 2.4-1.82V18.75a.75.75 0 00-.75-.75H2.25z" />
-              </svg>
-            </div>
-          </div>
 
-          <div class="card bg-base-100 shadow-sm border border-error/20 relative overflow-hidden hover-lift animate-card-enter-delay-1 group">
-            <div class="card-body p-5 relative z-10">
-              <span class="text-xs font-bold text-error uppercase tracking-wider">Registros Faltantes</span>
-              <span class="text-2xl font-black text-error tabular-nums">{{ missingRecords() }}</span>
+            <div class="card bg-base-100 shadow-sm border border-error/20 relative overflow-hidden hover-lift animate-card-enter-delay-1 group">
+              <div class="card-body p-5 relative z-10">
+                <span class="text-xs font-bold text-error uppercase tracking-wider">Registros Faltantes</span>
+                <span class="text-2xl font-black text-error tabular-nums">{{ missingRecords() }}</span>
+              </div>
+              <div class="absolute -right-4 -bottom-4 text-error/10 group-hover:text-error/20 transition-colors duration-300 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
+                  <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
-            <div class="absolute -right-4 -bottom-4 text-error/10 group-hover:text-error/20 transition-colors duration-300 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
-                <path fill-rule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
-              </svg>
-            </div>
-          </div>
 
-          <div class="card bg-base-100 shadow-sm border border-warning/20 relative overflow-hidden hover-lift animate-card-enter-delay-2 group">
-            <div class="card-body p-5 relative z-10">
-              <span class="text-xs font-bold text-warning uppercase tracking-wider">Con Incidentes</span>
-              <span class="text-2xl font-black text-warning tabular-nums">{{ recordsWithIncidents() }}</span>
+            <div class="card bg-base-100 shadow-sm border border-warning/20 relative overflow-hidden hover-lift animate-card-enter-delay-2 group">
+              <div class="card-body p-5 relative z-10">
+                <span class="text-xs font-bold text-warning uppercase tracking-wider">Con Incidentes</span>
+                <span class="text-2xl font-black text-warning tabular-nums">{{ recordsWithIncidents() }}</span>
+              </div>
+              <div class="absolute -right-4 -bottom-4 text-warning/10 group-hover:text-warning/20 transition-colors duration-300 pointer-events-none">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
+                  <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
+                </svg>
+              </div>
             </div>
-            <div class="absolute -right-4 -bottom-4 text-warning/10 group-hover:text-warning/20 transition-colors duration-300 pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-24 h-24">
-                <path fill-rule="evenodd" d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zM12 8.25a.75.75 0 01.75.75v3.75a.75.75 0 01-1.5 0V9a.75.75 0 01.75-.75zm0 8.25a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd" />
-              </svg>
-            </div>
-          </div>
+          }
         </div>
 
         <!-- Filtros y Búsqueda -->
@@ -131,7 +144,14 @@ interface DailyRecordView {
 
           <!-- Tabla Desktop -->
           <div class="hidden xl:block">
-            <table class="table w-full">
+            @if (isLoadingPage()) {
+              <div class="flex justify-center items-center py-12">
+                <app-loading-spinner size="md" text="Cargando registros..." />
+              </div>
+            } @else if (isLoading() && paginatedRecords().length === 0) {
+              <app-loading-skeleton type="table" [count]="10" />
+            } @else {
+              <table class="table w-full">
               <thead class="bg-base-200/50 text-xs uppercase text-base-content/60">
                 <tr>
                   <th class="pl-4 xl:pl-6">Fecha</th>
@@ -210,11 +230,21 @@ interface DailyRecordView {
                 }
               </tbody>
             </table>
+            }
           </div>
 
           <!-- Cards Mobile/Tablet -->
           <div class="xl:hidden space-y-4 p-4">
-            @for (record of paginatedRecords(); track record.id) {
+            @if (isLoadingPage()) {
+              <div class="flex justify-center items-center py-12">
+                <app-loading-spinner size="md" text="Cargando registros..." />
+              </div>
+            } @else if (isLoading() && paginatedRecords().length === 0) {
+              @for (i of [1,2,3,4,5]; track i) {
+                <app-loading-skeleton type="card" />
+              }
+            } @else {
+              @for (record of paginatedRecords(); track record.id) {
               <div 
                 class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                 [class.border-l-4]="record.status === 'incident' || record.status === 'pending'"
@@ -365,6 +395,7 @@ interface DailyRecordView {
                   </div>
                 </div>
               </div>
+              }
             }
           </div>
 
@@ -372,11 +403,23 @@ interface DailyRecordView {
           <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
               <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalRecords() }} registros</span>
             <div class="join">
-              <button (click)="goToPreviousPage()" [disabled]="currentPage() === 1" class="join-item btn btn-sm px-3" [class.btn-disabled]="currentPage() === 1">«</button>
+              <button (click)="goToPreviousPage()" [disabled]="currentPage() === 1 || isLoadingPage()" class="join-item btn btn-sm px-3" [class.btn-disabled]="currentPage() === 1 || isLoadingPage()">
+                @if (isLoadingPage()) {
+                  <app-loading-spinner size="xs" />
+                } @else {
+                  «
+                }
+              </button>
               @for (page of pages(); track page) {
-                <button (click)="goToPage(page)" [class.btn-active]="page === currentPage()" class="join-item btn btn-sm px-4">{{ page }}</button>
+                <button (click)="goToPage(page)" [disabled]="isLoadingPage()" [class.btn-active]="page === currentPage()" class="join-item btn btn-sm px-4">{{ page }}</button>
               }
-              <button (click)="goToNextPage()" [disabled]="currentPage() === totalPages()" class="join-item btn btn-sm px-3" [class.btn-disabled]="currentPage() === totalPages()">»</button>
+              <button (click)="goToNextPage()" [disabled]="currentPage() === totalPages() || isLoadingPage()" class="join-item btn btn-sm px-3" [class.btn-disabled]="currentPage() === totalPages() || isLoadingPage()">
+                @if (isLoadingPage()) {
+                  <app-loading-spinner size="xs" />
+                } @else {
+                  »
+                }
+              </button>
             </div>
           </div>
         </div>
@@ -599,6 +642,7 @@ export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private destroyRef = inject(DestroyRef);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -636,9 +680,19 @@ export class BitacoraOperaciones implements OnInit {
   currentPage = signal(1);
   itemsPerPage = 20; // Paginación real del backend
   showNewRecordModal = signal(false);
+  isLoading = signal(true);
+  isLoadingPage = signal(false);
+  private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
   
   // Cargar datos cuando cambian los filtros o la página
   private loadRecords(): void {
+    // Evitar múltiples peticiones simultáneas
+    if (this.isLoadingRecords) {
+      return;
+    }
+    
+    this.isLoadingRecords = true;
+    
     const filters: DailyRecordFilters = {
       estado: this.statusFilter() === 'all' ? undefined : this.statusFilter() as DailyRecordStatus,
       fecha: this.dateFilter() || undefined,
@@ -647,14 +701,33 @@ export class BitacoraOperaciones implements OnInit {
       por_pagina: this.itemsPerPage
     };
     
-    this.dailyRecordService.getDailyRecords(filters).subscribe({
-      next: (response) => {
-        this.recordsResponse.set(response);
-      },
-      error: (error) => {
-        console.error('Error al cargar registros:', error);
-      }
-    });
+    // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
+    if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
+      this.isLoading.set(true);
+    } else {
+      this.isLoadingPage.set(true);
+    }
+    
+    this.dailyRecordService.getDailyRecords(filters)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (response) => {
+          untracked(() => {
+            this.recordsResponse.set(response);
+            this.isLoading.set(false);
+            this.isLoadingPage.set(false);
+            this.isLoadingRecords = false;
+          });
+        },
+        error: (error) => {
+          console.error('Error al cargar registros:', error);
+          untracked(() => {
+            this.isLoading.set(false);
+            this.isLoadingPage.set(false);
+            this.isLoadingRecords = false;
+          });
+        }
+      });
   }
 
   newRecordForm = this.fb.group({
@@ -671,16 +744,19 @@ export class BitacoraOperaciones implements OnInit {
   });
 
   constructor() {
-    // Cargar datos iniciales
-    this.loadRecords();
-    
     // Recargar cuando cambian los filtros o la página
+    // El effect se ejecutará automáticamente al inicializar, así que no necesitamos llamar loadRecords() directamente
     effect(() => {
-      this.searchQuery();
-      this.statusFilter();
-      this.dateFilter();
-      this.currentPage();
-      this.loadRecords();
+      // Leer los signals para que el effect reaccione a sus cambios
+      const query = this.searchQuery();
+      const status = this.statusFilter();
+      const date = this.dateFilter();
+      const page = this.currentPage();
+      
+      // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
+      untracked(() => {
+        this.loadRecords();
+      });
     });
     
     // Actualizar validación cuando cambia "Día No Trabajado"
@@ -811,17 +887,19 @@ export class BitacoraOperaciones implements OnInit {
         observaciones: formValue.observations || null
       };
 
-      this.dailyRecordService.createDailyRecord(createDto).subscribe({
-        next: (newRecord) => {
-          // Recargar datos después de crear
-          this.loadRecords();
-          this.closeNewRecordModal();
-        },
-        error: (error) => {
-          console.error('Error al crear registro:', error);
-          // TODO: Mostrar mensaje de error al usuario
-        }
-      });
+      this.dailyRecordService.createDailyRecord(createDto)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: (newRecord) => {
+            // Recargar datos después de crear
+            this.loadRecords();
+            this.closeNewRecordModal();
+          },
+          error: (error) => {
+            console.error('Error al crear registro:', error);
+            // TODO: Mostrar mensaje de error al usuario
+          }
+        });
     }
   }
 
@@ -829,18 +907,20 @@ export class BitacoraOperaciones implements OnInit {
     // Si es un incidente, resolverlo primero
     const record = this.records().find(r => r.id === id);
     if (record?.status === 'incident') {
-      this.dailyRecordService.resolveIncident(id).subscribe({
-        next: () => {
-          // Recargar datos después de resolver
-          this.loadRecords();
-          this.router.navigate(['/registro-diario', id]);
-        },
-        error: (error) => {
-          console.error('Error al resolver incidente:', error);
-          // Navegar de todas formas
-          this.router.navigate(['/registro-diario', id]);
-        }
-      });
+      this.dailyRecordService.resolveIncident(id)
+        .pipe(takeUntilDestroyed(this.destroyRef))
+        .subscribe({
+          next: () => {
+            // Recargar datos después de resolver
+            this.loadRecords();
+            this.router.navigate(['/registro-diario', id]);
+          },
+          error: (error) => {
+            console.error('Error al resolver incidente:', error);
+            // Navegar de todas formas
+            this.router.navigate(['/registro-diario', id]);
+          }
+        });
     } else {
       this.router.navigate(['/registro-diario', id]);
     }

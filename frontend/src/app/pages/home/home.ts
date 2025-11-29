@@ -7,10 +7,11 @@ import { DashboardService } from '../../shared/services/dashboard.service';
 import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared/models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-home',
-  imports: [AlertList, FinancialSummary, DailyRecordsTable],
+  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
@@ -23,8 +24,13 @@ import { catchError, of } from 'rxjs';
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Card 1: Ganancia Neta Total -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter group overflow-hidden relative">
+        @if (isLoading()) {
+          @for (i of [1,2,3,4]; track i) {
+            <app-loading-skeleton type="kpi" />
+          }
+        } @else {
+          <!-- Card 1: Ganancia Neta Total -->
+          <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-success/10 group-hover:text-success/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -99,6 +105,7 @@ import { catchError, of } from 'rxjs';
             </div>
           </div>
         </div>
+        }
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
@@ -120,10 +127,14 @@ import { catchError, of } from 'rxjs';
 
       <!-- Zona de Detalle: Tabla Full Width -->
       <div class="animate-page-enter" style="animation-delay: 300ms; animation-fill-mode: both;">
-        <app-daily-records-table
-          [records]="dailyRecords()"
-          [showOnlyPending]="showOnlyPending()"
-          (toggleFilter)="togglePendingFilter()" />
+        @if (isLoading()) {
+          <app-loading-skeleton type="table" [count]="5" />
+        } @else {
+          <app-daily-records-table
+            [records]="dailyRecords()"
+            [showOnlyPending]="showOnlyPending()"
+            (toggleFilter)="togglePendingFilter()" />
+        }
       </div>
     </div>
   `,
@@ -136,6 +147,7 @@ export class Home implements OnInit {
 
   showOnlyPending = signal(false);
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
+  isLoading = signal(true);
   
   // Cargar alertas
   alertsData = toSignal(
@@ -161,10 +173,17 @@ export class Home implements OnInit {
     this.dashboardService.getDailyRecords().pipe(
       catchError(() => of<DailyRecord[]>(this.getMockDailyRecords()))
     ),
-    { initialValue: this.getMockDailyRecords() }
+    { initialValue: [] }
   );
 
-  dailyRecords = computed(() => this.dailyRecordsData() ?? []);
+  dailyRecords = computed(() => {
+    const records = this.dailyRecordsData() ?? [];
+    // Si tenemos datos, desactivar loading
+    if (records.length > 0 && this.isLoading()) {
+      setTimeout(() => this.isLoading.set(false), 100);
+    }
+    return records;
+  });
 
   // Datos financieros (mismos que usa financial-summary)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({
@@ -210,6 +229,12 @@ export class Home implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente con toSignal
+    // Desactivar loading después de un tiempo razonable
+    setTimeout(() => {
+      if (this.dailyRecords().length > 0 || this.alerts().length > 0) {
+        this.isLoading.set(false);
+      }
+    }, 500);
   }
 
   onMetricChange(metric: FinancialMetric): void {
