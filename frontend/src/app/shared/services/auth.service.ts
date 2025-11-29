@@ -36,6 +36,34 @@ export class AuthService {
 
   constructor() {
     this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    this.supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth event:', event, session);
+
+      switch (event) {
+        case 'TOKEN_REFRESHED':
+        case 'SIGNED_IN':
+          if (session?.access_token) {
+            this.persistToken(session.access_token);
+            await this.syncDomainUser();
+          }
+          break;
+
+        case 'SIGNED_OUT':
+          this.clearSession();
+          await this.router.navigate(['/login']);
+          break;
+
+        case 'USER_UPDATED':
+          await this.syncDomainUser();
+          break;
+
+        default:
+          break;
+      }
+    });
+
+    this.tryRestoreSession();
   }
 
   async loginWithCredentials(email: string, password: string): Promise<void> {
@@ -51,40 +79,51 @@ export class AuthService {
     const accessToken = data.session.access_token;
     this.persistToken(accessToken);
 
-    let me: MeResponse;
+    await this.syncDomainUser();
 
+    const user = this.currentUser();
+    if (user) {
+      await this.router.navigate(
+        user.role === 'admin' ? ['/dashboard'] : ['/trabajador']
+      );
+    }
+  }
+
+  private async syncDomainUser(): Promise<void> {
     try {
-      me = await firstValueFrom(
+      const me = await firstValueFrom(
         this.http.get<MeResponse>(`${API_BASE_URL}/api/auth/me`)
       );
-    } catch (e) {
-      // Limpia sesión — token puede ser inválido o backend desconectado
+
+      const role: UserRole = me.rol_id === 1 ? 'admin' : 'worker';
+
+      const user: AuthUser = {
+        id: me.id,
+        supabaseUid: me.supabase_uid,
+        email: me.correo,
+        displayName: me.correo,
+        role,
+        estado: me.estado,
+        choferId: me.chofer_id,
+      };
+
+      this.persistUser(user);
+    } catch {
       this.clearSession();
       throw new Error('No se pudo validar la sesión con el servidor.');
     }
-
-    const role: UserRole = me.rol_id === 1 ? 'admin' : 'worker';
-
-    const user: AuthUser = {
-      id: me.id,
-      supabaseUid: me.supabase_uid,
-      email: me.correo,
-      displayName: me.correo,
-      role,
-      estado: me.estado,
-      choferId: me.chofer_id,
-    };
-
-    this.persistUser(user);
-
-    // Navegación según rol
-    await this.router.navigate(role === 'admin' ? ['/dashboard'] : ['/trabajador']);
   }
 
+  private async tryRestoreSession(): Promise<void> {
+    const { data } = await this.supabase.auth.getSession();
 
+    if (data.session?.access_token) {
+      this.persistToken(data.session.access_token);
+      await this.syncDomainUser();
+    }
+  }
   /**
    * Accesos directos de DEV: usan cuentas reales de Supabase.
-   * Configura estos correos/contraseñas en tu proyecto Supabase.
    */
   async loginAsAdminMock(): Promise<void> {
     return this.loginWithCredentials('maj.fuentes@duocuc.cl', 'password');
@@ -109,7 +148,6 @@ export class AuthService {
     return !!this.token && !!this._currentUser();
   }
 
-  // Persistencia
   private persistUser(user: AuthUser | null): void {
     this._currentUser.set(user);
     if (typeof window === 'undefined') {

@@ -19,26 +19,33 @@ import { Perfil } from './pages/trabajador/perfil/perfil';
 import { ReporteExito } from './pages/trabajador/reporte-exito/reporte-exito';
 import { RecuperarClave } from './pages/recuperar-clave/recuperar-clave';
 
+import { authGuard } from './shared/guards/auth.guard';
+import { adminGuard } from './shared/guards/admin.guard';
+import { workerGuard } from './shared/guards/worker.guard';
+
 export const routes: Routes = [
   { path: 'login', component: Login }, // Ruta: /login
-  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
-  { path: 'dashboard', component: Home }, // Dashboard de administrador
-  { path: 'trabajador', component: Trabajador }, // Página principal de trabajador
-  { path: 'trabajador/reportar', component: Reportar }, // Página de reportar
-  { path: 'trabajador/reporte-exito', component: ReporteExito }, // Página de éxito del reporte
-  { path: 'trabajador/mi-historial', component: MiHistorial }, // Página de mi historial
-  { path: 'trabajador/perfil', component: Perfil }, // Página de perfil
   { path: 'recuperar-clave', component: RecuperarClave }, // Recuperar contraseña
-  { path: 'about', component: About }, // Ruta: /about
-  { path: 'maquinas', component: Maquinas }, // Ruta: /maquinas
-  { path: 'maquinas/nueva', component: MachineCreate }, // Ruta: /maquinas/nueva
-  { path: 'maquinas/:id', component: MachineDetail }, // Ruta: /maquinas/:id
-  { path: 'choferes', component: DriversList }, // Ruta: /choferes
-  { path: 'choferes/nuevo', component: DriverCreate }, // Ruta: /choferes/nuevo
-  { path: 'choferes/:id', component: DriverDetail }, // Ruta: /choferes/:id
-  { path: 'contabilidad', component: Contabilidad }, // Ruta: /contabilidad
-  { path: 'reportes', component: Reportes }, // Ruta: /reportes
-  { path: 'configuracion', component: Configuracion }, // Ruta: /configuracion
-  { path: 'centro-ayuda', component: CentroAyuda }, // Ruta: /centro-ayuda
+  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
+
+  { path: 'dashboard', component: Home, canActivate: [authGuard, adminGuard] }, // Dashboard de administrador
+  { path: 'about', component: About, canActivate: [authGuard, adminGuard] }, // Ruta: /about
+  { path: 'maquinas', component: Maquinas, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas
+  { path: 'maquinas/nueva', component: MachineCreate, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas/nueva
+  { path: 'maquinas/:id', component: MachineDetail, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas/:id
+  { path: 'choferes', component: DriversList, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes
+  { path: 'choferes/nuevo', component: DriverCreate, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes/nuevo
+  { path: 'choferes/:id', component: DriverDetail, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes/:id
+  { path: 'contabilidad', component: Contabilidad, canActivate: [authGuard, adminGuard] }, // Ruta: /contabilidad
+  { path: 'reportes', component: Reportes, canActivate: [authGuard, adminGuard] }, // Ruta: /reportes
+  { path: 'configuracion', component: Configuracion, canActivate: [authGuard, adminGuard] }, // Ruta: /configuracion
+  { path: 'centro-ayuda', component: CentroAyuda, canActivate: [authGuard, adminGuard] }, // Ruta: /centro-ayuda
+
+  { path: 'trabajador', component: Trabajador, canActivate: [authGuard, workerGuard] }, // Página principal de trabajador
+  { path: 'trabajador/reportar', component: Reportar, canActivate: [authGuard, workerGuard] }, // Página de reportar
+  { path: 'trabajador/reporte-exito', component: ReporteExito, canActivate: [authGuard, workerGuard] }, // Página de éxito del reporte
+  { path: 'trabajador/mi-historial', component: MiHistorial, canActivate: [authGuard, workerGuard] }, // Página de mi historial
+  { path: 'trabajador/perfil', component: Perfil, canActivate: [authGuard, workerGuard] }, // Página de perfil
+
   { path: '**', redirectTo: '/login' } // Ruta para 404, redirige a login
 ];
