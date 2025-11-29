@@ -17,4 +17,5 @@ async def list_drivers(current_user=Depends(get_current_user)):
     """
     Lista todos los choferes.
     """
-    return await driver_service.list_drivers(current_user)
+    items = await driver_service.list_drivers(current_user)
+    return {"items": items}
