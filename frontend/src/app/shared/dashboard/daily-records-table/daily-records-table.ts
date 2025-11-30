@@ -1,5 +1,5 @@
-import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
 import { DailyRecord } from '../../models/dashboard.models';
 
 @Component({
@@ -41,16 +41,17 @@ import { DailyRecord } from '../../models/dashboard.models';
       <div class="card-body p-6">
         <!-- Vista de Cards (cuando la tabla se rompe) -->
         <div class="block xl:hidden space-y-4">
-          @for (record of filteredRecords(); track record.machineId + record.date; let i = $index) {
+          @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
+              class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
               [class.bg-warning/5]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.bg-error/5]="record.status === 'INCIDENTE_REPORTADO'"
               [style.animation-delay.ms]="i * 50"
-              [style.animation-fill-mode]="'both'">
+              [style.animation-fill-mode]="'both'"
+              (click)="onRecordClick(record, $event)">
               <div class="card-body p-5">
                 <!-- Header: Avatares y Estado -->
                 <div class="flex items-start gap-4 mb-4">
@@ -173,17 +174,10 @@ import { DailyRecord } from '../../models/dashboard.models';
                 </div>
                 
                 <!-- Botón de Acción -->
-                <div class="mt-2">
+                <div class="mt-2" (click)="$event.stopPropagation()">
                   @if (record.status === 'INCIDENTE_REPORTADO') {
                     <a 
-                      [routerLink]="['/registro-diario']"
-                      [queryParams]="{
-                        maquina: record.machineId,
-                        chofer: record.driver,
-                        fecha: record.date,
-                        estado: record.status.toLowerCase(),
-                        mode: 'edit'
-                      }"
+                      [routerLink]="['/registro-diario', record.id]"
                       class="btn btn-xs h-9 w-full rounded-lg border-0 bg-error/10 text-error hover:bg-error hover:text-white transition-all duration-200 gap-1.5 shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
@@ -192,14 +186,7 @@ import { DailyRecord } from '../../models/dashboard.models';
                     </a>
                   } @else if (record.status === 'PENDIENTE_TRABAJADOR') {
                     <a 
-                      [routerLink]="['/registro-diario']"
-                      [queryParams]="{
-                        maquina: record.machineId,
-                        chofer: record.driver,
-                        fecha: record.date,
-                        estado: record.status.toLowerCase(),
-                        mode: 'edit'
-                      }"
+                      [routerLink]="['/registro-diario', record.id]"
                       class="btn btn-xs h-9 w-full rounded-lg border-0 bg-warning/15 text-warning-content hover:bg-warning hover:text-warning-content transition-all duration-200 gap-1.5 shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
@@ -209,14 +196,7 @@ import { DailyRecord } from '../../models/dashboard.models';
                     </a>
                   } @else {
                     <a 
-                      [routerLink]="['/registro-diario']"
-                      [queryParams]="{
-                        maquina: record.machineId,
-                        chofer: record.driver,
-                        fecha: record.date,
-                        estado: record.status.toLowerCase(),
-                        mode: 'view'
-                      }"
+                      [routerLink]="['/registro-diario', record.id]"
                       class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -249,14 +229,15 @@ import { DailyRecord } from '../../models/dashboard.models';
               </tr>
             </thead>
             <tbody class="text-sm">
-              @for (record of filteredRecords(); track record.machineId + record.date; let i = $index) {
+              @for (record of filteredRecords(); track record.id; let i = $index) {
                 <tr 
                   [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
                   [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
                   [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
-                  class="hover:bg-base-50/50 transition-colors group border-b border-base-100 last:border-0 animate-table-row-enter"
+                  class="hover:bg-base-50/50 transition-colors group border-b border-base-100 last:border-0 animate-table-row-enter cursor-pointer"
                   [style.animation-delay.ms]="i * 30"
-                  [style.animation-fill-mode]="'both'">
+                  [style.animation-fill-mode]="'both'"
+                  (click)="onRecordClick(record, $event)">
                   <td class="pl-4 xl:pl-6 font-medium min-w-0">
                     <div class="flex items-center gap-2 xl:gap-3">
                       <div class="avatar placeholder shrink-0">
@@ -360,17 +341,10 @@ import { DailyRecord } from '../../models/dashboard.models';
                       <span class="text-base-content/50">N/A</span>
                     }
                   </td>
-                  <td class="pr-4 xl:pr-6 text-right">
+                  <td class="pr-4 xl:pr-6 text-right" (click)="$event.stopPropagation()">
                     @if (record.status === 'INCIDENTE_REPORTADO') {
                       <a 
-                        [routerLink]="['/registro-diario']"
-                        [queryParams]="{
-                          maquina: record.machineId,
-                          chofer: record.driver,
-                          fecha: record.date,
-                          estado: record.status.toLowerCase(),
-                          mode: 'edit'
-                        }"
+                        [routerLink]="['/registro-diario', record.id]"
                         class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg border-0 bg-error/10 text-error hover:bg-error hover:text-white transition-all duration-200 gap-1 xl:gap-1.5 shadow-sm"
                         [attr.aria-label]="'Resolver incidente de ' + record.driver">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
@@ -380,14 +354,7 @@ import { DailyRecord } from '../../models/dashboard.models';
                       </a>
                     } @else if (record.status === 'PENDIENTE_TRABAJADOR') {
                       <a 
-                        [routerLink]="['/registro-diario']"
-                        [queryParams]="{
-                          maquina: record.machineId,
-                          chofer: record.driver,
-                          fecha: record.date,
-                          estado: record.status.toLowerCase(),
-                          mode: 'edit'
-                        }"
+                        [routerLink]="['/registro-diario', record.id]"
                         class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg border-0 bg-warning/15 text-warning-content hover:bg-warning hover:text-warning-content transition-all duration-200 gap-1 xl:gap-1.5 shadow-sm"
                         [attr.aria-label]="'Completar registro pendiente de ' + record.driver">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
@@ -398,14 +365,7 @@ import { DailyRecord } from '../../models/dashboard.models';
                       </a>
                     } @else {
                       <a 
-                        [routerLink]="['/registro-diario']"
-                        [queryParams]="{
-                          maquina: record.machineId,
-                          chofer: record.driver,
-                          fecha: record.date,
-                          estado: record.status.toLowerCase(),
-                          mode: 'view'
-                        }"
+                        [routerLink]="['/registro-diario', record.id]"
                         class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
                         [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
@@ -438,6 +398,8 @@ import { DailyRecord } from '../../models/dashboard.models';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DailyRecordsTable {
+  private router = inject(Router);
+  
   records = input.required<DailyRecord[]>();
   showOnlyPending = input(false);
   toggleFilter = output<void>();
@@ -463,6 +425,15 @@ export class DailyRecordsTable {
 
   onToggleFilter(): void {
     this.toggleFilter.emit();
+  }
+
+  onRecordClick(record: DailyRecord, event: Event): void {
+    // Prevenir navegación si se hizo clic en un botón o enlace
+    const target = event.target as HTMLElement;
+    if (target.closest('a, button')) {
+      return;
+    }
+    this.router.navigate(['/registro-diario', record.id]);
   }
 
   formatCurrency(value: number): string {

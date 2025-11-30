@@ -36,6 +36,7 @@ import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus } from './dai
  * Compatible con el modelo unificado
  */
 export interface DailyRecord {
+  id: string; // ID del registro para navegación
   machineId: string; // Alias de maquina_identificador o derivado de maquina_id
   driver: string; // Alias de chofer_nombre
   date: string; // Alias de fecha

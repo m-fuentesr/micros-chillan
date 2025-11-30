@@ -11,11 +11,10 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
-import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton, LoadingSpinner],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->

@@ -260,6 +260,7 @@ export class Home implements OnInit {
 
     return [
       {
+        id: 'mock-1',
         machineId: '02',
         driver: 'Ana Gómez',
         date: yesterday,
@@ -267,6 +268,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-2',
         machineId: '04',
         driver: 'Luis Martínez',
         date: today,
@@ -274,6 +276,7 @@ export class Home implements OnInit {
         recaudacion: 85000
       },
       {
+        id: 'mock-3',
         machineId: '01',
         driver: 'Carlos Rodríguez',
         date: today,
@@ -281,6 +284,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-4',
         machineId: '05',
         driver: 'Juan Pérez',
         date: yesterday,
@@ -288,6 +292,7 @@ export class Home implements OnInit {
         motivo: 'Descanso Semanal'
       },
       {
+        id: 'mock-5',
         machineId: '03',
         driver: 'María López',
         date: today,
@@ -295,6 +300,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-6',
         machineId: '07',
         driver: 'Pedro Gómez',
         date: today,
@@ -302,6 +308,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-7',
         machineId: '08',
         driver: 'Juan Pérez',
         date: today,
@@ -309,6 +316,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-8',
         machineId: '09',
         driver: 'Juan Pérez',
         date: today,

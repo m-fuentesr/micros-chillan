@@ -157,6 +157,7 @@ export class DashboardService {
    */
   private mapToDashboardDailyRecord(record: UnifiedDailyRecord): DailyRecord {
     return {
+      id: record.id,
       machineId: record.maquina_identificador || `Máquina ${record.maquina_id}`,
       driver: record.chofer_nombre || '',
       date: record.fecha,
@@ -191,6 +192,7 @@ export class DashboardService {
   private getMockDailyRecords(): DailyRecord[] {
     return [
       {
+        id: 'mock-1',
         machineId: 'Máquina 05',
         driver: 'Juan Pérez',
         date: '2025-11-28',
@@ -198,6 +200,7 @@ export class DashboardService {
         recaudacion: 120000
       },
       {
+        id: 'mock-2',
         machineId: 'Máquina 04',
         driver: 'Luis Martínez',
         date: '2025-11-28',
@@ -205,6 +208,7 @@ export class DashboardService {
         recaudacion: 85000
       },
       {
+        id: 'mock-3',
         machineId: 'Máquina 02',
         driver: 'Ana Gómez',
         date: '2025-11-28',
