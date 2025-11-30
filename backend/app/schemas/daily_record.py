@@ -6,8 +6,8 @@ class DailyRecordCreate(BaseModel):
     maquina_id: int
     fecha: date
     monto_recaudado: int
-    litros_diesel: float
-    costo_total_diesel: int
-    imagen_url: Optional[str] = None
+    litros_diesel: Optional[float] = None
+    costo_total_diesel: Optional[int] = None
+    imagen_url: str
     observaciones: Optional[str] = None
     incidente_critico: bool = False  # El checkbox (True/False)

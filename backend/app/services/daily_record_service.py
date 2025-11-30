@@ -1,17 +1,23 @@
 ﻿from fastapi import HTTPException
 from app.db.supabase_client import supabase
+from app.schemas.daily_record import DailyRecordCreate
 
-async def create_daily_record(payload, current_user: dict):
+async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
     """
-    Crea el reporte diario, calcula pagos y define el estado (Incidente vs Completo).
+    Crea el registro diario.
+    1. Obtiene el porcentaje del chofer desde la tabla 'choferes'.
+    2. Calcula el monto del chofer.
+    3. Guarda todo cumpliendo con los campos obligatorios de la BD.
     """
+    
     # 1. Obtener ID del chofer
     chofer_id = current_user.get("chofer_id")
     if not chofer_id:
-        raise HTTPException(status_code=400, detail="Usuario no es un chofer válido.")
+        raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
 
-    # 2. Obtener el Porcentaje de Pago actual del Chofer
-    # Necesitamos esto para calcular cuánto gana él.
+    # ---------------------------------------------------------------
+    # PASO CLAVE: BUSCAR EL PORCENTAJE (Para solucionar el error null)
+    # ---------------------------------------------------------------
     resp_chofer = (
         supabase.table("choferes")
         .select("porcentaje_pago")
@@ -21,47 +27,48 @@ async def create_daily_record(payload, current_user: dict):
     )
     
     if not resp_chofer.data:
-        raise HTTPException(status_code=404, detail="Chofer no encontrado.")
-        
-    porcentaje = resp_chofer.data.get("porcentaje_pago", 0)
+        raise HTTPException(status_code=404, detail="Datos del chofer no encontrados.")
 
-    # 3. Lógica de Negocio: Cálculos Financieros
-    # Pago Chofer = Recaudado * %
-    monto_chofer = int(payload.monto_recaudado * (porcentaje / 100))
-    
-    # Ganancia Neta Empresa = Recaudado - Diesel - Pago Chofer
-    ganancia_neta = payload.monto_recaudado - payload.costo_total_diesel - monto_chofer
+    # Obtenemos el valor. Si es None, usamos 0.0 para evitar errores matemáticos
+    porcentaje_del_chofer = resp_chofer.data.get("porcentaje_pago") or 0.0
 
-    # 4. Lógica de Negocio: Estado según Incidente
-    estado_final = "incidente_reportado" if payload.incidente_critico else "completo"
+    # ---------------------------------------------------------------
+    # CÁLCULOS OBLIGATORIOS (Según tu BD)
+    # ---------------------------------------------------------------
+    # Calculamos cuánto dinero representa ese porcentaje
+    # Ejemplo: Recaudó 100.000 * 16.5% = 16.500
+    monto_pago_chofer = int(payload.monto_recaudado * (porcentaje_del_chofer / 100))
 
-    # 5. Preparar objeto para insertar en BD
+    # Definir estado según el checkbox
+    estado_calculado = "incidente_reportado" if payload.incidente_critico else "completo"
+
+    # ---------------------------------------------------------------
+    # ARMAR EL OBJETO FINAL
+    # ---------------------------------------------------------------
     nuevo_registro = {
         "chofer_id": chofer_id,
         "maquina_id": payload.maquina_id,
         "fecha": payload.fecha.isoformat(),
-        
-        # Datos ingresados
         "monto_recaudado": payload.monto_recaudado,
         "litros_diesel": payload.litros_diesel,
         "costo_total_diesel": payload.costo_total_diesel,
         "imagen_url": payload.imagen_url,
         "observaciones": payload.observaciones,
-        "incidente_critico": payload.incidente_critico,
+        "estado": estado_calculado,
+
+        # AQUÍ SOLUCIONAMOS EL ERROR:
+        # La BD pedía 'porcentaje_aplicado', aquí se lo damos:
+        "porcentaje_aplicado": porcentaje_del_chofer,
         
-        # Datos calculados (Automáticos)
-        "monto_porcentaje_chofer": monto_chofer,
-        "ganancia_neta": ganancia_neta,
-        "porcentaje_aplicado": porcentaje, # Guardamos qué % se usó ese día (histórico)
-        
-        "estado": estado_final,
-        "created_at": "now()"
+        # También enviamos el monto calculado, que suele ser obligatorio junto al %
+        "monto_porcentaje_chofer": monto_pago_chofer, 
+ 
     }
 
-    # 6. Insertar en Supabase
+    # Insertar
     res = supabase.table("registros_diarios").insert(nuevo_registro).execute()
 
     if getattr(res, "error", None):
-        raise HTTPException(status_code=400, detail=f"Error creando registro: {res.error}")
+        raise HTTPException(status_code=400, detail=f"Error de BD: {res.error.message}")
 
     return res.data[0]
