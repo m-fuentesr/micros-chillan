@@ -1,6 +1,11 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { Router } from '@angular/router';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import {
+  createClient,
+  SupabaseClient,
+  AuthChangeEvent,
+  Session
+} from '@supabase/supabase-js';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthUser, UserRole } from '../models/auth.models';
@@ -37,7 +42,8 @@ export class AuthService {
   constructor() {
     this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    this.supabase.auth.onAuthStateChange(async (event, session) => {
+    this.supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
       console.log('Auth event:', event, session);
 
       switch (event) {

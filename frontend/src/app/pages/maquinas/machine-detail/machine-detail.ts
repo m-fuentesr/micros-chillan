@@ -147,8 +147,7 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
 
       <!-- Contenido de Tabs -->
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        @if (activeTab() === 'general') {
-          @if (machine()) {
+        @if (activeTab() === 'general' && machine()) {
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <!-- Columna Izquierda (2/3) -->
               <div class="lg:col-span-2 space-y-6">
@@ -160,37 +159,41 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                   
                   <div class="card-body p-6">
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 content-start">
-                        <!-- Marca -->
-                        <div>
-                          <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Marca</span>
-                          <div class="font-semibold text-base-content truncate tooltip" [attr.data-tip]="machine()!.marca">{{ machine()!.marca || '--' }}</div>
+                      <!-- Marca -->
+                      <div>
+                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Marca</span>
+                        <div class="font-semibold text-base-content truncate tooltip" [attr.data-tip]="machine()!.marca">
+                          {{ machine()!.marca || '--' }}
                         </div>
-                        
-                        <!-- Año -->
-                        <div>
-                          <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Año</span>
-                          <div class="font-semibold text-base-content">{{ machine()!['año'] || '--' }}</div>
+                      </div>
+                      
+                      <!-- Año -->
+                      <div>
+                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Año</span>
+                        <div class="font-semibold text-base-content">
+                          {{ machine()!['año'] || '--' }}
                         </div>
-
-                        <!-- Patente (Estilo Placa) -->
-                        <div>
-                          <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Patente</span>
-                          <div class="font-mono font-bold text-lg text-base-content tracking-wide bg-base-200/50 px-2 py-0.5 rounded inline-block border border-base-300 break-all">
-                            {{ machine()!.patente || '--' }}
-                          </div>
+                      </div>
+                      
+                      <!-- Patente (Estilo Placa) -->
+                      <div>
+                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Patente</span>
+                        <div
+                          class="font-mono font-bold text-lg text-base-content tracking-wide bg-base-200/50 px-2 py-0.5 rounded inline-block border border-base-300 break-all">
+                          {{ machine()!.patente || '--' }}
                         </div>
-
-                        <!-- Estado Operativo -->
-                        <div>
-                          <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Estado Operativo</span>
-                          <span 
-                            class="badge text-xs"
-                            [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
-                            [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
-                            [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
-                            {{ machine()!.estado_operativo }}
-                          </span>
-                        </div>
+                      </div>
+                      
+                      <!-- Estado Operativo -->
+                      <div>
+                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Estado Operativo</span>
+                        <span
+                          class="badge text-xs"
+                          [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
+                          [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
+                          [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
+                          {{ machine()!.estado_operativo }}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -390,7 +393,6 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                 </div>
               </div>
             </div>
-          }
         }
 
         @if (activeTab() === 'records' && loadedTabs().has('records')) {
@@ -399,12 +401,14 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
             [choferes]="choferes()"
             [filters]="recordFilters()"
             (filterChange)="onRecordFilterChange($event)"
-            (viewDetail)="onViewRecordDetail($event)" />
+            (viewDetail)="onViewRecordDetail($event)">
+          </app-machine-daily-records>
         }
 
         @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
           <app-machine-assignment-history
-            [assignments]="assignments()" />
+            [assignments]="assignments()">
+          </app-machine-assignment-history>
         }
 
         @if (activeTab() === 'maintenance' && loadedTabs().has('maintenance')) {
@@ -416,7 +420,8 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
               [filters]="maintenanceFilters()"
               (recordAdded)="onMaintenanceRecordAdded($event)"
               (recordDeleted)="onMaintenanceRecordDeleted($event)"
-              (filterChange)="onMaintenanceFilterChange($event)" />
+              (filterChange)="onMaintenanceFilterChange($event)">
+            </app-machine-maintenance>
           }
         }
       </div>

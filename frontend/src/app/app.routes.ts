@@ -26,14 +26,18 @@ export const routes: Routes = [
   },
   {
     path: 'about',
-    canActivate: [authGuard],
     loadComponent: () =>
       import('./pages/about/about').then(m => m.About),
     canActivate: [authGuard, adminGuard]
   },
   {
+    path: 'bitacora-operaciones',
+    loadComponent: () =>
+      import('./pages/bitacora-operaciones/bitacora-operaciones').then(m => m.BitacoraOperaciones),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
     path: 'maquinas',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/maquinas/maquinas').then(m => m.Maquinas),
@@ -41,7 +45,6 @@ export const routes: Routes = [
   },
   {
     path: 'maquinas/nueva',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/maquinas/machine-create/machine-create').then(m => m.MachineCreate),
@@ -49,7 +52,6 @@ export const routes: Routes = [
   },
   {
     path: 'maquinas/:id',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/maquinas/machine-detail/machine-detail').then(m => m.MachineDetail),
@@ -57,7 +59,6 @@ export const routes: Routes = [
   },
   {
     path: 'choferes',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/choferes/drivers-list/drivers-list').then(m => m.DriversList),
@@ -65,7 +66,6 @@ export const routes: Routes = [
   },
   {
     path: 'choferes/nuevo',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/choferes/driver-create/driver-create').then(m => m.DriverCreate),
@@ -73,7 +73,6 @@ export const routes: Routes = [
   },
   {
     path: 'choferes/:id',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/choferes/driver-detail/driver-detail').then(m => m.DriverDetail),
@@ -81,7 +80,6 @@ export const routes: Routes = [
   },
   {
     path: 'contabilidad',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/contabilidad/contabilidad').then(m => m.Contabilidad),
@@ -89,7 +87,6 @@ export const routes: Routes = [
   },
   {
     path: 'reportes',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/reportes/reportes').then(m => m.Reportes),
@@ -97,7 +94,6 @@ export const routes: Routes = [
   },
   {
     path: 'configuracion',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/configuracion/configuracion').then(m => m.Configuracion),
@@ -105,7 +101,6 @@ export const routes: Routes = [
   },
   {
     path: 'centro-ayuda',
-    canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
       import('./pages/centro-ayuda/centro-ayuda').then(m => m.CentroAyuda),
