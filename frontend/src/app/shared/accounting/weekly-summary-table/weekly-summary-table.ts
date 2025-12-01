@@ -96,9 +96,10 @@ import { WeeklySummary } from '../../models/accounting.models';
             </thead>
             <tbody>
               @for (summary of summaries(); track summary.semana) {
+                <!-- Fila principal resumen semana -->
                 <tr 
                   class="group cursor-pointer hover:bg-base-50 transition-colors border-b border-base-100 last:border-none"
-                  [class.bg-base-50]="expandedWeek() === summary.semana"
+                  [class.bg-base-50]="expandedWeeks().has(summary.semana)"
                   (click)="toggleWeek(summary.semana)">
                   
                   <td class="pl-6 py-4">
@@ -115,16 +116,17 @@ import { WeeklySummary } from '../../models/accounting.models';
                   <td class="text-right tabular-nums font-bold text-success pr-12 text-sm">{{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="pr-6 text-right">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                      [class.rotate-180]="expandedWeek() === summary.semana" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                   </td>
                 </tr>
 
-                @if (expandedWeek() === summary.semana) {
-                  <tr>
-                    <td colspan="7" class="p-0 border-b border-base-200">
-                      <div class="bg-base-200/30 flex shadow-inner animate-in fade-in slide-in-from-top-1">
+                <!-- Fila detalle semana (siempre presente, con animación de altura) -->
+                <tr>
+                  <td colspan="7" class="p-0 border-b border-base-200">
+                    <div class="collapse-anim" [class.collapse-expanded]="expandedWeeks().has(summary.semana)">
+                      <div class="bg-base-200/30 flex shadow-inner motion-panel" [attr.id]="'week-detail-' + summary.semana">
                         <div class="w-1 bg-primary self-stretch shrink-0"></div>
                         <div class="p-6 w-full">
                           <div class="bg-base-100 rounded-lg shadow-sm border border-base-200 overflow-hidden">
@@ -177,9 +179,9 @@ import { WeeklySummary } from '../../models/accounting.models';
                           </div>
                         </div>
                       </div>
-                    </td>
-                  </tr>
-                }
+                    </div>
+                  </td>
+                </tr>
               }
             </tbody>
           </table>
@@ -188,10 +190,10 @@ import { WeeklySummary } from '../../models/accounting.models';
         <!-- Vista Móvil: Cards (sm y abajo) -->
         <div class="md:hidden space-y-3">
           @for (summary of summaries(); track summary.semana) {
-            <div 
+              <div 
               class="border border-base-200 rounded-xl overflow-hidden transition-all duration-200"
-              [class.shadow-md]="expandedWeek() === summary.semana"
-              [class.border-primary]="expandedWeek() === summary.semana"
+              [class.shadow-md]="expandedWeeks().has(summary.semana)"
+              [class.border-primary]="expandedWeeks().has(summary.semana)"
               (click)="toggleWeek(summary.semana)">
               
               <div class="bg-base-100 p-4 flex justify-between items-center">
@@ -210,7 +212,7 @@ import { WeeklySummary } from '../../models/accounting.models';
                 
                 <div class="btn btn-circle btn-ghost btn-xs">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                    [class.rotate-180]="expandedWeek() === summary.semana" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
@@ -227,8 +229,9 @@ import { WeeklySummary } from '../../models/accounting.models';
                 </div>
               </div>
 
-              @if (expandedWeek() === summary.semana) {
-                <div class="bg-base-200/30 border-t border-base-200 p-3 space-y-3 animate-in fade-in">
+              <div class="collapse-anim-mobile bg-base-200/30 border-t border-base-200 p-3 space-y-3 motion-panel"
+                   [class.collapse-expanded]="expandedWeeks().has(summary.semana)"
+                   [attr.id]="'week-detail-' + summary.semana">
                   <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/50 px-1">Desglose por Chofer</div>
                   
                   @for (chofer of summary.choferes; track chofer.chofer_id) {
@@ -265,7 +268,6 @@ import { WeeklySummary } from '../../models/accounting.models';
                     </div>
                   }
                 </div>
-              }
             </div>
           }
         </div>
@@ -273,13 +275,42 @@ import { WeeklySummary } from '../../models/accounting.models';
     </div>
   `,
   styles: [`
-    /* Animación manual si Tailwind animate no está configurado */
-    @keyframes fadeInDown {
-      from { opacity: 0; transform: translateY(-10px); }
-      to { opacity: 1; transform: translateY(0); }
+    /* Micro-animación optimizada para paneles de detalle (solo opacity + transform) */
+    @keyframes motionFadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
-    .animate-in {
-      animation: fadeInDown 0.3s ease-out forwards;
+
+    .motion-panel {
+      animation: motionFadeInUp 320ms cubic-bezier(0.22, 0.8, 0.35, 1) both;
+      will-change: transform, opacity;
+      transform-origin: top;
+    }
+
+    /* Animación del crecimiento/colapso del contenedor padre (altura) */
+    .collapse-anim,
+    .collapse-anim-mobile {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 800ms cubic-bezier(0.22, 0.8, 0.35, 1);
+    }
+
+    .collapse-anim.collapse-expanded,
+    .collapse-anim-mobile.collapse-expanded {
+      max-height: 600px; /* valor suficientemente grande para cubrir el contenido */
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .motion-panel {
+        animation: none;
+        transform: none;
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -287,7 +318,10 @@ import { WeeklySummary } from '../../models/accounting.models';
 export class WeeklySummaryTable {
   summaries = input.required<WeeklySummary[]>();
 
-  expandedWeek = signal<number | null>(null);
+  /**
+   * Semanas actualmente expandidas (permite múltiples abiertas para comparación).
+   */
+  expandedWeeks = signal<Set<number>>(new Set());
 
   // Cálculos rápidos para los KPIs superiores
   totalRecaudado = computed(() => 
@@ -314,10 +348,27 @@ export class WeeklySummaryTable {
   );
 
   toggleWeek(weekNumber: number): void {
-    if (this.expandedWeek() === weekNumber) {
-      this.expandedWeek.set(null);
+    const current = this.expandedWeeks();
+    const isExpanded = current.has(weekNumber);
+
+    const next = new Set(current);
+    if (isExpanded) {
+      next.delete(weekNumber);
     } else {
-      this.expandedWeek.set(weekNumber);
+      next.add(weekNumber);
+    }
+
+    this.expandedWeeks.set(next);
+
+    // Desplazar suavemente el panel de detalle a la vista una vez que Angular haya
+    // pintado el contenido expandido. Usamos scrollIntoView con behavior smooth.
+    if (!isExpanded) {
+      queueMicrotask(() => {
+        const detail = document.getElementById(`week-detail-${weekNumber}`);
+        if (detail) {
+          detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+      });
     }
   }
 

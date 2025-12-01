@@ -13,11 +13,33 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
         
         <!-- Header con Resumen Activo -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <div>
+          <!-- Título y descripción -->
+          <div class="flex-1">
             <h2 class="text-xl font-bold">Procesar Liquidación</h2>
             <p class="text-sm text-base-content/60">Ajusta los montos garantizados y confirma los pagos.</p>
           </div>
 
+          <!-- Selector de período (Mes actual / Mes anterior) -->
+          <div class="w-full md:w-auto">
+            <div class="bg-white p-1.5 rounded-xl border border-base-200 shadow-sm w-full md:w-auto">
+              <div class="relative w-full">
+                <select 
+                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
+                  [value]="payrollPeriod()" 
+                  (change)="onPayrollPeriodChange($event)">
+                  <option value="current">Mes actual</option>
+                  <option value="previous">Mes anterior</option>
+                </select>
+                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Resumen Total Nómina -->
           <div class="bg-primary/5 border border-primary/20 px-4 py-2 rounded-xl flex items-center gap-4">
             <div class="flex flex-col">
               <span class="text-[10px] uppercase font-bold tracking-widest text-primary/70">Total Nómina</span>
@@ -215,10 +237,12 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
 })
 export class LiquidationTable {
   liquidation = input.required<LiquidationPeriod>();
+  payrollPeriod = input<'current' | 'previous'>('current');
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();
   closePeriod = output<void>();
+  payrollPeriodChange = output<'current' | 'previous'>();
 
   // Computed: Total de Nómina
   calculateTotalPayroll = computed(() => {
@@ -239,6 +263,11 @@ export class LiquidationTable {
     const input = event.target as HTMLInputElement;
     const monto = Math.max(0, Number(input.value) || 0);
     this.missingAmountChange.emit({ choferId, monto });
+  }
+
+  onPayrollPeriodChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.payrollPeriodChange.emit(select.value as 'current' | 'previous');
   }
 
   onConfirmPayment(chofer: LiquidationDriver): void {

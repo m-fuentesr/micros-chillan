@@ -138,8 +138,8 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Contenido de Tabs -->
-      <div class="card bg-base-100 shadow-xl animate-card-enter-delay-1">
-        <div class="card-body">
+      <div class="card bg-base-100 shadow-xl animate-card-enter-delay-1 min-h-[520px] lg:min-h-[560px] flex flex-col">
+        <div class="card-body flex-1 overflow-hidden">
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
             <div class="space-y-8 animate-tab-panel">
@@ -169,7 +169,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             @if (isLoading().weekly && weeklySummaries().length === 0) {
               <app-loading-skeleton type="table" [count]="5" />
             } @else if (weeklySummaries().length > 0) {
-              <div class="animate-tab-panel">
+              <div class="animate-tab-panel tab-panel-scroll">
                 <app-weekly-summary-table [summaries]="weeklySummaries()" />
               </div>
             }
@@ -180,9 +180,11 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             @if (isLoading().payroll && !liquidation()) {
               <app-loading-skeleton type="table" [count]="8" />
             } @else if (liquidation()) {
-              <div class="animate-tab-panel">
+              <div class="animate-tab-panel tab-panel-scroll">
                 <app-liquidation-table
                   [liquidation]="liquidation()!"
+                  [payrollPeriod]="payrollPeriod()"
+                  (payrollPeriodChange)="onPayrollPeriodChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (closePeriod)="onClosePeriod()" />
@@ -195,7 +197,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             @if (isLoading().history && liquidationHistory().length === 0) {
               <app-loading-skeleton type="table" [count]="5" />
             } @else if (liquidationHistory().length > 0) {
-              <div class="animate-tab-panel">
+              <div class="animate-tab-panel tab-panel-scroll">
                 <app-liquidation-history [liquidations]="liquidationHistory()" />
               </div>
             }
@@ -219,6 +221,13 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
     }
     .scrollbar-hide::-webkit-scrollbar {
       display: none;  /* Chrome, Safari y Opera */
+    }
+
+    /* Paneles de tabs con scroll interno para evitar saltos bruscos en el layout general */
+    .tab-panel-scroll {
+      max-height: 100%;
+      overflow-y: auto;
+      padding-right: 0.25rem;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -248,6 +257,23 @@ export class Contabilidad implements OnInit {
   paymentModalOpen = signal(false);
   selectedDriver = signal<LiquidationDriver | null>(null);
   pendingPaymentChoferId = signal<number | null>(null);
+
+  // Selector propio solo para la pestaña de Liquidación (payroll)
+  payrollPeriod = signal<'current' | 'previous'>('current');
+
+  payrollDate = computed(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    if (this.payrollPeriod() === 'current') {
+      return { mes: currentMonth, anio: currentYear };
+    }
+
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    return { mes: prevMonth, anio: prevYear };
+  });
 
   months = computed(() => {
     const monthNames = [
@@ -336,7 +362,8 @@ export class Contabilidad implements OnInit {
 
   loadLiquidation(): void {
     this.isLoading.update(state => ({ ...state, payroll: true }));
-    this.accountingService.getLiquidation(this.selectedMonth(), this.selectedYear())
+    const { mes, anio } = this.payrollDate();
+    this.accountingService.getLiquidation(mes, anio)
       .pipe(catchError(() => of(null)))
       .subscribe(liquidation => {
         if (liquidation) {
@@ -372,7 +399,8 @@ export class Contabilidad implements OnInit {
     const choferId = this.pendingPaymentChoferId();
     if (!choferId) return;
 
-    this.accountingService.confirmPayment(choferId, this.selectedMonth(), this.selectedYear(), data)
+    const { mes, anio } = this.payrollDate();
+    this.accountingService.confirmPayment(choferId, mes, anio, data)
       .pipe(catchError(() => of(void 0)))
       .subscribe(() => {
         // Recargar liquidación
@@ -410,12 +438,18 @@ export class Contabilidad implements OnInit {
   }
 
   onClosePeriod(): void {
-    this.accountingService.closePeriod(this.selectedMonth(), this.selectedYear())
+    const { mes, anio } = this.payrollDate();
+    this.accountingService.closePeriod(mes, anio)
       .pipe(catchError(() => of(void 0)))
       .subscribe(() => {
         // Recargar liquidación
         this.loadLiquidation();
         alert('Período cerrado y finalizado exitosamente.');
       });
+  }
+
+  onPayrollPeriodChange(period: 'current' | 'previous'): void {
+    this.payrollPeriod.set(period);
+    this.loadLiquidation(); // recargar liquidación con el nuevo período
   }
 }

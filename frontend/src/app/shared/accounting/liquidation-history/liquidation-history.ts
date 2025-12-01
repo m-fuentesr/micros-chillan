@@ -31,7 +31,7 @@ import { ClosedLiquidation } from '../../models/accounting.models';
               @for (liquidation of liquidations(); track liquidation.id) {
                 <tr 
                   class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none cursor-pointer"
-                  [class.bg-base-50]="expandedId() === liquidation.id"
+                  [class.bg-base-50]="expandedIds().has(liquidation.id)"
                   (click)="toggleDetail(liquidation.id)">
                   
                   <td class="pl-6 py-4">
@@ -62,21 +62,21 @@ import { ClosedLiquidation } from '../../models/accounting.models';
                   </td>
                   <td class="pr-6 text-left font-mono tabular-nums">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                        [class.rotate-180]="expandedId() === liquidation.id" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        [class.rotate-180]="expandedIds().has(liquidation.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                     </svg>
                   </td>
                 </tr>
-
-                @if (expandedId() === liquidation.id) {
-                  <tr>
-                    <td colspan="5" class="p-0 border-b border-base-200">
-                      <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 animate-in fade-in slide-in-from-top-1">
+                <tr>
+                  <td colspan="5" class="p-0 border-b border-base-200">
+                    <div class="collapse-anim" [class.collapse-expanded]="expandedIds().has(liquidation.id)">
+                      <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 motion-panel"
+                           [attr.id]="'history-detail-' + liquidation.id">
                         <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: false }"></ng-container>
                       </div>
-                    </td>
-                  </tr>
-                }
+                    </div>
+                  </td>
+                </tr>
               }
             </tbody>
           </table>
@@ -86,8 +86,8 @@ import { ClosedLiquidation } from '../../models/accounting.models';
         <div class="lg:hidden space-y-4">
           @for (liquidation of liquidations(); track liquidation.id) {
             <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
-                 [class.ring-2]="expandedId() === liquidation.id"
-                 [class.ring-base-200]="expandedId() === liquidation.id">
+                 [class.ring-2]="expandedIds().has(liquidation.id)"
+                 [class.ring-base-200]="expandedIds().has(liquidation.id)">
               
               <div class="p-4 flex justify-between items-center cursor-pointer" 
                    (click)="toggleDetail(liquidation.id)">
@@ -109,17 +109,17 @@ import { ClosedLiquidation } from '../../models/accounting.models';
                 <div class="flex items-center gap-2 shrink-0">
                   <div class="font-black text-base tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                      [class.rotate-180]="expandedId() === liquidation.id" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      [class.rotate-180]="expandedIds().has(liquidation.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
                 </div>
               </div>
 
-              @if (expandedId() === liquidation.id) {
-                <div class="bg-base-200/30 border-t border-base-200 p-3 animate-in fade-in">
-                  <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
-                </div>
-              }
+              <div class="collapse-anim-mobile bg-base-200/30 border-t border-base-200 p-3 motion-panel"
+                   [class.collapse-expanded]="expandedIds().has(liquidation.id)"
+                   [attr.id]="'history-detail-' + liquidation.id">
+                <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
+              </div>
             </div>
           }
         </div>
@@ -220,14 +220,71 @@ import { ClosedLiquidation } from '../../models/accounting.models';
       </div>
     </ng-template>
   `,
+  styles: [`
+    /* Micro-animación optimizada para paneles de detalle de historial */
+    @keyframes motionFadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .motion-panel {
+      animation: motionFadeInUp 260ms cubic-bezier(0.25, 1, 0.5, 1) both;
+      will-change: transform, opacity;
+      transform-origin: top;
+    }
+
+    /* Animación de crecimiento/colapso de contenedor (altura) */
+    .collapse-anim,
+    .collapse-anim-mobile {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 800ms cubic-bezier(0.22, 0.8, 0.35, 1);
+    }
+
+    .collapse-anim.collapse-expanded,
+    .collapse-anim-mobile.collapse-expanded {
+      max-height: 800px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .motion-panel {
+        animation: none;
+        transform: none;
+      }
+      .collapse-anim,
+      .collapse-anim-mobile {
+        transition: none;
+        max-height: none;
+      }
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LiquidationHistory {
   liquidations = input.required<ClosedLiquidation[]>();
-  expandedId = signal<number | null>(null);
+  /**
+   * Permite múltiples períodos abiertos en paralelo para comparar cierres.
+   */
+  expandedIds = signal<Set<number>>(new Set());
 
   toggleDetail(id: number): void {
-    this.expandedId.set(this.expandedId() === id ? null : id);
+    const current = this.expandedIds();
+    const isExpanded = current.has(id);
+
+    const next = new Set(current);
+    if (isExpanded) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+
+    this.expandedIds.set(next);
   }
 
   getInitials(name: string): string {

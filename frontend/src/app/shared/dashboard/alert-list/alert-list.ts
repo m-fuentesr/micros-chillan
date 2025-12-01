@@ -8,15 +8,17 @@ import { Alert } from '../../models/dashboard.models';
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200 flex flex-col overflow-hidden animate-scale-up h-[424px]">
       <!-- Header con Controles -->
-      <div class="card-header border-b border-base-200 bg-base-100 z-20">
-        <div class="p-4 flex items-center justify-between gap-2 min-w-0">
+      <div class="card-header border-b border-base-200 bg-base-100 z-20 relative">
+        <!-- Línea izquierda del header, alineada con las alertas -->
+        <div class="absolute left-4 top-0 bottom-0 w-1 bg-primary"></div>
+        <div class="py-4 pr-4 pl-8 flex items-center justify-between gap-2 min-w-0">
           <!-- Título y Badge -->
           <div class="flex items-center gap-2 min-w-0 flex-1">
-            <h2 class="font-bold text-xl sm:text-2xl flex items-center gap-2 min-w-0 truncate border-l-4 border-l-primary pl-2">
+            <h2 class="font-bold text-xl sm:text-2xl flex items-center gap-2 min-w-0 truncate">
+              <span class="truncate">Centro de Alertas</span>
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 text-warning flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span class="truncate">Centro de Alertas</span>
             </h2>
             @if (activeAlerts().length > 0) {
               <span class="badge badge-error badge-sm text-white font-mono flex-shrink-0" [class.animate-pulse]="hasCriticalAlerts()">
@@ -54,7 +56,7 @@ import { Alert } from '../../models/dashboard.models';
           @for (alert of displayedAlerts(); track alert.id; let i = $index) {
             <div
               role="alert"
-              class="group relative p-4 border-b border-base-200 hover:bg-white transition-all duration-200"
+              class="group relative py-4 pr-4 pl-8 border-b border-base-200 hover:bg-white transition-all duration-200"
               [class.animate-list-item-enter]="i === 0"
               [class.animate-list-item-enter-delay]="i > 0"
               [style.animation-delay.ms]="i > 0 ? i * 50 : 0"
@@ -62,7 +64,7 @@ import { Alert } from '../../models/dashboard.models';
               
               <!-- Borde izquierdo siempre visible -->
               <div
-                class="absolute left-0 top-0 bottom-0 w-1 transition-opacity duration-200"
+                class="absolute left-4 top-0 bottom-0 w-1 transition-opacity duration-200"
                 [class.opacity-70]="true"
                 [class.group-hover:opacity-100]="true"
                 [class.bg-error]="alert.severity === 'critical'"
