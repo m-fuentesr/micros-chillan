@@ -1,37 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
-
-// Interfaces mock para asegurar que el componente sea interpretable en este entorno
-// Se asumen las mismas estructuras que en el archivo original, más las utilidades.
-interface LicenseStatus {
-  estado: 'ok' | 'warning' | 'error';
-  dias_restantes: number;
-}
-interface Driver {
-  id: string;
-  rut: string;
-  nombre_completo: string;
-  correo: string;
-  telefono: string;
-  estado: 'activo' | 'inactivo';
-  fecha_venc_licencia: string; // YYYY-MM-DD
-  maquina_actual?: {
-    identificador: string;
-  };
-}
-
-// Mock de la función utilitaria
-const calculateLicenseStatus = (dateString: string, days: number): LicenseStatus => {
-  // Implementación simplificada para que el código compile
-  const now = new Date();
-  const vencimiento = new Date(dateString);
-  const diffTime = vencimiento.getTime() - now.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-  if (diffDays < 0) return { estado: 'error', dias_restantes: diffDays };
-  if (diffDays <= days) return { estado: 'warning', dias_restantes: diffDays };
-  return { estado: 'ok', dias_restantes: diffDays };
-};
+import { Driver } from '../../models/driver.models';
+import { calculateLicenseStatus } from '../../utils/license.utils';
 
 @Component({
   selector: 'app-driver-card',

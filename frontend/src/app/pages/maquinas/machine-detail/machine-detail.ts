@@ -20,411 +20,482 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
   selector: 'app-machine-detail',
   imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink],
   template: `
-    <div class="min-h-screen bg-base-200 pb-12 animate-page-enter">
-      <!-- Breadcrumbs -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <div class="text-sm breadcrumbs text-base-content/60">
-          <ul>
-            <li><a routerLink="/dashboard">Inicio</a></li>
-            <li><a routerLink="/maquinas">Máquinas</a></li>
-            <li class="font-medium text-base-content">Máquina {{ machine()?.numero || '--' }}</li>
-          </ul>
+    <div class="space-y-6 animate-page-enter">
+      <!-- Header principal -->
+      <div class="flex justify-between items-start flex-wrap gap-4 animate-header-enter">
+        <div>
+          <h1 class="text-4xl font-bold mb-2 border-l-4 border-l-primary pl-4">
+            Detalle de Máquina
+          </h1>
+          <p class="text-base-content/70">
+            Información general, registros diarios, historial de asignaciones y mantenimiento de la máquina.
+          </p>
         </div>
+        <button
+          type="button"
+          class="btn btn-circle btn-ghost"
+          aria-label="Volver a la lista de máquinas"
+          (click)="onBack()">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          </svg>
+        </button>
       </div>
 
-      <!-- Hero Card Unificada -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div class="card bg-base-100 shadow-sm border border-base-200 overflow-visible">
-          <div class="card-body p-0">
-            <!-- Header de la Hero Card -->
-            <div class="p-6 lg:p-8 flex flex-col lg:flex-row gap-6 justify-between items-start">
-              <!-- Información Principal -->
-              <div class="flex items-start gap-5">
-                <!-- Icono de Máquina -->
-                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0 shadow-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                  </svg>
-                </div>
-
-                <!-- Título y Metadatos -->
-                <div class="space-y-1">
-                  <div class="flex items-center gap-3">
-                    <h1 class="text-2xl font-bold text-base-content">Máquina {{ machine()?.numero || '--' }}</h1>
-                    @if (machine()) {
-                      <span 
-                        class="badge gap-1 text-white font-medium shadow-sm"
-                        [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
-                        [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
-                        [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
-                        <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
-                        {{ machine()!.estado_operativo }}
-                      </span>
-                    }
-                  </div>
-
-                  <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-base-content/70">
-                    <span class="flex items-center gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 opacity-70">
-                        <path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 0 0 3 3.5v13A1.5 1.5 0 0 0 4.5 18h11a1.5 1.5 0 0 0 1.5-1.5V7.621a1.5 1.5 0 0 0-.44-1.06l-4.12-4.122A1.5 1.5 0 0 0 11.378 2H4.5Zm4.75 6.75a.75.75 0 0 1 1.5 0v2.546l.943-1.048a.75.75 0 1 1 1.114 1.004l-2.25 2.5a.75.75 0 0 1-1.114 0l-2.25-2.5a.75.75 0 1 1 1.114-1.004l.943 1.048V8.75Z" clip-rule="evenodd" />
-                      </svg>
-                      {{ machine()?.marca || '--' }}
+      @if (machine()) {
+        <!-- Tarjeta principal con info de máquina y acciones -->
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body flex flex-col gap-4">
+            <div class="flex flex-col lg:flex-row gap-4 justify-between items-start">
+              <div class="flex items-start gap-4">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-9 h-9">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
+                </svg>
+              </div>
+              <div class="space-y-1">
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="text-2xl font-bold text-base-content">
+                      Máquina {{ machine()!.numero || '--' }}
+                    </h2>
+                    <span 
+                      class="badge gap-1 text-white font-medium shadow-sm"
+                      [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
+                      [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
+                      [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
+                      <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                      {{ machine()!.estado_operativo }}
                     </span>
+                </div>
+                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70">
+                    <span>{{ machine()!.marca || '--' }}</span>
+                  <span class="w-1 h-1 bg-base-content/30 rounded-full"></span>
+                    <span class="font-mono font-semibold">{{ machine()!.patente || '--' }}</span>
+                    @if (machine()!['año']) {
                     <span class="w-1 h-1 bg-base-content/30 rounded-full"></span>
-                    <span class="font-mono font-semibold">{{ machine()?.patente || '--' }}</span>
-                    @if (machine()?.['año']) {
-                      <span class="w-1 h-1 bg-base-content/30 rounded-full"></span>
-                      <span>{{ machine()!['año'] }}</span>
-                    }
-                  </div>
+                    <span>{{ machine()!['año'] }}</span>
+                  }
                 </div>
               </div>
+            </div>
 
-              <!-- Botones de Acción -->
               <div class="flex gap-2 w-full lg:w-auto">
-                <button 
-                  class="btn btn-outline btn-error btn-sm flex-1 lg:flex-none gap-2 hover:text-white"
-                  (click)="onDelete()">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                    <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                  </svg>
-                  Eliminar
-                </button>
-          <a 
-            [routerLink]="['/maquinas', machine()?.id, 'editar']"
-                  class="btn btn-primary btn-sm flex-1 lg:flex-none gap-2 shadow-lg shadow-primary/20">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                    <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                  </svg>
-                  Editar Máquina
-                </a>
-        </div>
-      </div>
+                @if (!isEditingGeneral()) {
+                  <button 
+                    class="btn btn-outline btn-error btn-sm flex-1 lg:flex-none gap-2 hover:text-white"
+                    (click)="onDelete()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
+                    </svg>
+                    Eliminar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm flex-1 lg:flex-none gap-2 shadow-lg shadow-primary/20"
+                    (click)="toggleEditGeneral()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                    </svg>
+                    Editar Máquina
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm flex-1 lg:flex-none gap-2"
+                    (click)="toggleEditGeneral()">
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm flex-1 lg:flex-none gap-2 shadow-lg shadow-primary/20"
+                    (click)="onSaveGeneral()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v5.5a.75.75 0 0 0 1.5 0v-5.5ZM10.75 15.25a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0v-1.5ZM3.5 10a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 3.5 10ZM16.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1-.75-.75ZM2.22 7.22a.75.75 0 0 1 1.06 0l1.25 1.25a.75.75 0 0 1-1.06 1.06L2.22 8.28a.75.75 0 0 1 0-1.06ZM18.47 7.22a.75.75 0 0 1 0 1.06l-1.25 1.25a.75.75 0 1 1-1.06-1.06l1.25-1.25a.75.75 0 0 1 1.06 0ZM2.22 12.78a.75.75 0 0 1 0-1.06l1.25-1.25a.75.75 0 0 1 1.06 1.06L3.28 13.84a.75.75 0 0 1-1.06 0ZM18.47 12.78a.75.75 0 0 1-1.06 0l-1.25-1.25a.75.75 0 0 1 1.06-1.06l1.25 1.25a.75.75 0 0 1 0 1.06Z" />
+                    </svg>
+                    Guardar Cambios
+                  </button>
+                }
+              </div>
+            </div>
 
-            <!-- Tabs Integrados -->
-            <div class="px-6 border-t border-base-200">
+            <!-- Tabs -->
+            <div class="border-t border-base-200 pt-3">
               <div class="tabs -mb-[1px]">
-        <button
-                  class="tab tab-bordered px-6 h-12 font-medium"
-          [class.tab-active]="activeTab() === 'general'"
-                  [class.border-primary]="activeTab() === 'general'"
-                  [class.text-primary]="activeTab() === 'general'"
-                  [class.text-base-content/60]="activeTab() !== 'general'"
-                  [class.hover:text-base-content]="activeTab() !== 'general'"
-          (click)="setActiveTab('general')">
+                <button
+                  class="tab tab-bordered px-6 h-10 font-medium"
+                  [class.tab-active]="activeTab() === 'general'"
+                  [class.btn-disabled]="isEditingGeneral() && activeTab() !== 'general'"
+                  [attr.disabled]="isEditingGeneral() && activeTab() !== 'general' ? '' : null"
+                  (click)="setActiveTab('general')">
                   General
-        </button>
-        <button
-                  class="tab tab-bordered px-6 h-12 font-medium text-base-content/60 hover:text-base-content"
-          [class.tab-active]="activeTab() === 'records'"
-                  [class.border-primary]="activeTab() === 'records'"
-                  [class.text-primary]="activeTab() === 'records'"
-          (click)="setActiveTab('records')">
-          Registros Diarios
-        </button>
-        <button
-                  class="tab tab-bordered px-6 h-12 font-medium text-base-content/60 hover:text-base-content"
-          [class.tab-active]="activeTab() === 'assignments'"
-                  [class.border-primary]="activeTab() === 'assignments'"
-                  [class.text-primary]="activeTab() === 'assignments'"
-          (click)="setActiveTab('assignments')">
+                </button>
+                <button
+                  class="tab tab-bordered px-6 h-10 font-medium"
+                  [class.tab-active]="activeTab() === 'records'"
+                  [class.btn-disabled]="isEditingGeneral()"
+                  [attr.disabled]="isEditingGeneral() ? '' : null"
+                  (click)="setActiveTab('records')">
+                  Registros Diarios
+                </button>
+                <button
+                  class="tab tab-bordered px-6 h-10 font-medium"
+                  [class.tab-active]="activeTab() === 'assignments'"
+                  [class.btn-disabled]="isEditingGeneral()"
+                  [attr.disabled]="isEditingGeneral() ? '' : null"
+                  (click)="setActiveTab('assignments')">
                   Historial
-        </button>
-        <button
-                  class="tab tab-bordered px-6 h-12 font-medium text-base-content/60 hover:text-base-content"
-          [class.tab-active]="activeTab() === 'maintenance'"
-                  [class.border-primary]="activeTab() === 'maintenance'"
-                  [class.text-primary]="activeTab() === 'maintenance'"
-          (click)="setActiveTab('maintenance')">
+                </button>
+                <button
+                  class="tab tab-bordered px-6 h-10 font-medium"
+                  [class.tab-active]="activeTab() === 'maintenance'"
+                  [class.btn-disabled]="isEditingGeneral()"
+                  [attr.disabled]="isEditingGeneral() ? '' : null"
+                  (click)="setActiveTab('maintenance')">
                   Mantenimiento
-        </button>
+                </button>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <!-- Contenido de Tabs -->
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        @if (activeTab() === 'general' && machine()) {
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <!-- Columna Izquierda (2/3) -->
-              <div class="lg:col-span-2 space-y-6">
-                <!-- Tarjeta de Ficha Técnica -->
-                <div class="card bg-base-100 shadow-sm border border-base-200">
-                  <div class="card-header p-6 border-b border-base-200 flex justify-between items-center">
-                    <h2 class="card-title text-lg">Ficha Técnica</h2>
-                  </div>
-                  
-                  <div class="card-body p-6">
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-y-6 gap-x-4 content-start">
-                      <!-- Marca -->
-                      <div>
-                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Marca</span>
-                        <div class="font-semibold text-base-content truncate tooltip" [attr.data-tip]="machine()!.marca">
-                          {{ machine()!.marca || '--' }}
-                        </div>
-                      </div>
-                      
-                      <!-- Año -->
-                      <div>
-                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Año</span>
-                        <div class="font-semibold text-base-content">
-                          {{ machine()!['año'] || '--' }}
-                        </div>
-                      </div>
-                      
-                      <!-- Patente (Estilo Placa) -->
-                      <div>
-                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Patente</span>
-                        <div
-                          class="font-mono font-bold text-lg text-base-content tracking-wide bg-base-200/50 px-2 py-0.5 rounded inline-block border border-base-300 break-all">
-                          {{ machine()!.patente || '--' }}
-                        </div>
-                      </div>
-                      
-                      <!-- Estado Operativo -->
-                      <div>
-                        <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">Estado Operativo</span>
-                        <span
-                          class="badge text-xs"
-                          [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
-                          [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
-                          [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
-                          {{ machine()!.estado_operativo }}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        <!-- Contenido pestaña General -->
+        @if (activeTab() === 'general') {
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-in-up">
 
-                <!-- Tarjeta de Conductor Responsable -->
-                <div class="card bg-base-100 shadow-sm border border-base-200">
-                  <div class="card-body p-6">
-                    <h3 class="text-sm font-bold text-base-content/40 uppercase tracking-widest mb-4">Conductor Responsable</h3>
-                    @if (machine()!.chofer_actual) {
-                      <div class="flex items-center gap-4 p-4 bg-base-200/50 rounded-xl border border-base-200">
-                        <div class="avatar">
-                          <div class="w-14 rounded-full ring ring-primary ring-offset-base-100 ring-offset-2">
-                            <div class="bg-neutral text-neutral-content w-full h-full flex items-center justify-center font-bold text-xl">
-                              {{ getInitials(machine()!.chofer_actual!.nombre_completo) }}
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <h4 class="text-lg font-bold text-base-content truncate">{{ machine()!.chofer_actual!.nombre_completo }}</h4>
-                          <p class="text-sm text-base-content/60">Asignado actualmente</p>
-                        </div>
-                      </div>
-                    } @else {
-                      <div class="flex items-center gap-4 p-4 bg-base-200/50 rounded-xl border border-base-200">
-                        <div class="avatar">
-                          <div class="w-14 rounded-full ring ring-base-300 ring-offset-base-100 ring-offset-2">
-                            <div class="bg-base-300 text-base-content/50 w-full h-full flex items-center justify-center">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                        <div class="flex-1">
-                          <h4 class="text-lg font-bold text-base-content/50">Sin asignar</h4>
-                          <p class="text-sm text-base-content/40">No hay conductor asignado</p>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
+            <!-- Documentación -->
+            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-2 xl:col-span-1 order-2 xl:order-3 h-full">
+              <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
+                <h3 class="font-bold text-lg flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 2c-1.716 0-3.408.106-5.07.31C3.806 2.45 3 3.414 3 4.517V17.25a.75.75 0 0 0 1.075.676L10 15.082l5.925 2.844A.75.75 0 0 0 17 17.25V4.517c0-1.103-.806-2.068-1.93-2.207A41.403 41.403 0 0 0 10 2Z" clip-rule="evenodd" />
+                  </svg>
+                  Documentación
+                </h3>
+                <a
+                  [routerLink]="['/maquinas', machine()?.id, 'editar']"
+                  [queryParams]="{ section: 'docs' }" 
+                  class="btn btn-xs btn-ghost text-base-content/50 hover:text-primary">
+                  Editar
+                </a>
               </div>
 
-              <!-- Columna Derecha (1/3) - Documentación -->
-              <div class="lg:col-span-1">
-                <div class="card bg-base-100 shadow-sm border border-base-200 h-full">
-                  <div class="card-header p-6 border-b border-base-200 flex justify-between items-center">
-                    <div>
-                      <h3 class="font-bold text-lg">Documentación</h3>
-                      <p class="text-xs text-base-content/60 mt-1">
-                        Control de fechas de Revisión Técnica, Permiso de Circulación y Seguro (RF-031).
+              <div class="p-4 space-y-3">
+                <!-- Revisión técnica -->
+                <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
+                  <div
+                    class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
+                    [ngClass]="{
+                      'bg-error/5 text-error border-error/20': docStatus().revision_tecnica?.estado === 'error',
+                      'bg-warning/5 text-warning border-warning/20': docStatus().revision_tecnica?.estado === 'warning',
+                      'bg-success/5 text-success border-success/20': docStatus().revision_tecnica?.estado === 'ok'
+                    }">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                      </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start">
+                      <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
+                        Revisión Técnica
                       </p>
+                      @if (!isEditingGeneral() && docStatus().revision_tecnica?.estado === 'error') {
+                        <span class="badge badge-xs badge-error badge-outline">Vencida</span>
+                      }
+                    </div>
+                    @if (isEditingGeneral()) {
+                      <input
+                        type="date"
+                        class="input input-sm w-full mt-1"
+                        [value]="editRevisionTecnica()"
+                        (input)="editRevisionTecnica.set($any($event.target).value)">
+                    } @else {
+                      <p class="font-semibold text-base-content">
+                        {{ formatDocumentDate(docStatus().revision_tecnica?.fecha ?? null) }}
+                      </p>
+                    }
+                  </div>
+                </div>
+
+                <!-- Permiso de circulación -->
+                <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
+                  <div
+                    class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
+                    [ngClass]="{
+                      'bg-error/5 text-error border-error/20': docStatus().permiso_circulacion?.estado === 'error',
+                      'bg-warning/5 text-warning border-warning/20': docStatus().permiso_circulacion?.estado === 'warning',
+                      'bg-success/5 text-success border-success/20': docStatus().permiso_circulacion?.estado === 'ok'
+                    }">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start">
+                      <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
+                        Permiso Circulación
+                      </p>
+                      @if (!isEditingGeneral() && docStatus().permiso_circulacion?.estado === 'error') {
+                        <span class="badge badge-xs badge-error badge-outline">Vencido</span>
+                      }
+                    </div>
+                    @if (isEditingGeneral()) {
+                      <input
+                        type="date"
+                        class="input input-sm w-full mt-1"
+                        [value]="editPermisoCirculacion()"
+                        (input)="editPermisoCirculacion.set($any($event.target).value)">
+                    } @else {
+                      <p class="font-semibold text-base-content">
+                        {{ formatDocumentDate(docStatus().permiso_circulacion?.fecha ?? null) }}
+                      </p>
+                    }
+                  </div>
+                </div>
+
+                <!-- Seguro obligatorio -->
+                <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
+                  <div
+                    class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
+                    [ngClass]="{
+                      'bg-error/5 text-error border-error/20': docStatus().seguro_obligatorio?.estado === 'error',
+                      'bg-warning/5 text-warning border-warning/20': docStatus().seguro_obligatorio?.estado === 'warning',
+                      'bg-success/5 text-success border-success/20': docStatus().seguro_obligatorio?.estado === 'ok'
+                    }">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                      </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-start">
+                      <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
+                        Seguro SOAP
+                      </p>
+                      @if (!isEditingGeneral() && docStatus().seguro_obligatorio?.estado === 'ok') {
+                        <span class="badge badge-xs badge-success badge-outline">Vigente</span>
+                      }
+                    </div>
+                    @if (isEditingGeneral()) {
+                      <input
+                        type="date"
+                        class="input input-sm w-full mt-1"
+                        [value]="editSeguroObligatorio()"
+                        (input)="editSeguroObligatorio.set($any($event.target).value)">
+                    } @else {
+                      <p class="font-semibold text-base-content">
+                        {{ formatDocumentDate(docStatus().seguro_obligatorio?.fecha ?? null) }}
+                      </p>
+                    }
+                  </div>
+                </div>
+            </div>
+                </div>
+                
+            <!-- Ficha técnica -->
+            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-1 h-full order-1">
+                <div class="card-body p-6">
+                <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                  </svg>
+                  Ficha Técnica
+                </h3>
+
+                <div class="grid grid-cols-1 gap-4">
+                  <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                      Marca / Modelo
+                    </span>
+                    @if (isEditingGeneral()) {
+                      <input
+                        type="text"
+                        class="input input-sm w-full mt-1 font-bold"
+                        [value]="editMarca()"
+                        (input)="editMarca.set($any($event.target).value)"
+                        placeholder="Marca / Modelo">
+                    } @else {
+                      <div class="font-bold text-lg text-base-content">
+                        {{ machine()?.marca || '--' }}
+                      </div>
+                    }
+                  </div>
+                    
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Año
+                      </span>
+                      @if (isEditingGeneral()) {
+                        <input
+                          type="number"
+                          class="input input-sm w-full mt-1 font-bold"
+                          [value]="editAnio() ?? ''"
+                          (input)="editAnio.set($any($event.target).value ? Number($any($event.target).value) : null)"
+                          placeholder="Año"
+                          min="1900"
+                          max="2100">
+                      } @else {
+                        <div class="font-bold text-base-content">
+                          {{ machine()!['año'] || '--' }}
+                        </div>
+                      }
+                    </div>
+                    <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Patente
+                      </span>
+                      @if (isEditingGeneral()) {
+                        <input
+                          type="text"
+                          class="input input-sm w-full mt-1 font-mono font-bold"
+                          [value]="editPatente()"
+                          (input)="editPatente.set($any($event.target).value)"
+                          placeholder="Patente">
+                      } @else {
+                        <div class="font-mono font-bold text-base-content">
+                          {{ machine()?.patente || '--' }}
+                        </div>
+                      }
                     </div>
                   </div>
-                  <div class="card-body p-0">
-                    <!-- Revisión Técnica -->
-                    @if (docStatus().revision_tecnica) {
-                      <div class="p-4 border-b border-base-200 flex gap-4 items-start group hover:bg-base-50 transition-colors relative overflow-hidden"
-                           [class.border-b-base-200]="docStatus().permiso_circulacion || docStatus().seguro_obligatorio">
-                        <div 
-                          class="absolute left-0 top-0 bottom-0 w-1"
-                          [class.bg-error]="docStatus().revision_tecnica!.estado === 'error'"
-                          [class.bg-warning]="docStatus().revision_tecnica!.estado === 'warning'"
-                          [class.bg-success]="docStatus().revision_tecnica!.estado === 'ok'">
-                        </div>
-                        <div 
-                          class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                          [class.bg-error/10]="docStatus().revision_tecnica!.estado === 'error'"
-                          [class.text-error]="docStatus().revision_tecnica!.estado === 'error'"
-                          [class.bg-warning/10]="docStatus().revision_tecnica!.estado === 'warning'"
-                          [class.text-warning]="docStatus().revision_tecnica!.estado === 'warning'"
-                          [class.bg-success/10]="docStatus().revision_tecnica!.estado === 'ok'"
-                          [class.text-success]="docStatus().revision_tecnica!.estado === 'ok'">
-                          @if (docStatus().revision_tecnica!.estado === 'error') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else if (docStatus().revision_tecnica!.estado === 'warning') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
-                            </svg>
-                          }
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <h4 class="font-bold text-sm text-base-content truncate">Revisión Técnica</h4>
-                          @if (docStatus().revision_tecnica!.estado === 'error') {
-                            <p class="text-xs text-error font-medium">{{ formatDocumentDate(docStatus().revision_tecnica!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ getDaysAgo(docStatus().revision_tecnica!.fecha) }}</p>
-                          } @else if (docStatus().revision_tecnica!.estado === 'warning') {
-                            <p class="text-xs text-warning font-medium">{{ formatDocumentDate(docStatus().revision_tecnica!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ docStatus().revision_tecnica!.dias_restantes }} días restantes</p>
-                          } @else {
-                            <p class="text-xs text-success font-medium">{{ formatDocumentDate(docStatus().revision_tecnica!.fecha) }}</p>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Permiso de Circulación -->
-                    @if (docStatus().permiso_circulacion) {
-                      <div class="p-4 border-b border-base-200 flex gap-4 items-start group hover:bg-base-50 transition-colors relative overflow-hidden"
-                           [class.border-b-base-200]="docStatus().seguro_obligatorio">
-                        <div 
-                          class="absolute left-0 top-0 bottom-0 w-1"
-                          [class.bg-error]="docStatus().permiso_circulacion!.estado === 'error'"
-                          [class.bg-warning]="docStatus().permiso_circulacion!.estado === 'warning'"
-                          [class.bg-success]="docStatus().permiso_circulacion!.estado === 'ok'">
-                        </div>
-                        <div 
-                          class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                          [class.bg-error/10]="docStatus().permiso_circulacion!.estado === 'error'"
-                          [class.text-error]="docStatus().permiso_circulacion!.estado === 'error'"
-                          [class.bg-warning/10]="docStatus().permiso_circulacion!.estado === 'warning'"
-                          [class.text-warning]="docStatus().permiso_circulacion!.estado === 'warning'"
-                          [class.bg-success/10]="docStatus().permiso_circulacion!.estado === 'ok'"
-                          [class.text-success]="docStatus().permiso_circulacion!.estado === 'ok'">
-                          @if (docStatus().permiso_circulacion!.estado === 'error') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.28 7.22a.75.75 0 0 0-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 1 0 1.06 1.06L10 11.06l1.72 1.72a.75.75 0 1 0 1.06-1.06L11.06 10l1.72-1.72a.75.75 0 0 0-1.06-1.06L10 8.94 8.28 7.22Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else if (docStatus().permiso_circulacion!.estado === 'warning') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
-                            </svg>
-                          }
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <h4 class="font-bold text-sm text-base-content truncate">Permiso Circulación</h4>
-                          @if (docStatus().permiso_circulacion!.estado === 'error') {
-                            <p class="text-xs text-error font-medium">{{ formatDocumentDate(docStatus().permiso_circulacion!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ getDaysAgo(docStatus().permiso_circulacion!.fecha) }}</p>
-                          } @else if (docStatus().permiso_circulacion!.estado === 'warning') {
-                            <p class="text-xs text-warning font-medium">{{ formatDocumentDate(docStatus().permiso_circulacion!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ docStatus().permiso_circulacion!.dias_restantes }} días restantes</p>
-                          } @else {
-                            <p class="text-xs text-success font-medium">{{ formatDocumentDate(docStatus().permiso_circulacion!.fecha) }}</p>
-                          }
-                        </div>
-                      </div>
-                    }
-
-                    <!-- Seguro Obligatorio -->
-                    @if (docStatus().seguro_obligatorio) {
-                      <div class="p-4 flex gap-4 items-start group hover:bg-base-50 transition-colors relative overflow-hidden">
-                        <div 
-                          class="absolute left-0 top-0 bottom-0 w-1"
-                          [class.bg-error]="docStatus().seguro_obligatorio!.estado === 'error'"
-                          [class.bg-warning]="docStatus().seguro_obligatorio!.estado === 'warning'"
-                          [class.bg-success]="docStatus().seguro_obligatorio!.estado === 'ok'">
-                        </div>
-                        <div 
-                          class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
-                          [class.bg-error/10]="docStatus().seguro_obligatorio!.estado === 'error'"
-                          [class.text-error]="docStatus().seguro_obligatorio!.estado === 'error'"
-                          [class.bg-warning/10]="docStatus().seguro_obligatorio!.estado === 'warning'"
-                          [class.text-warning]="docStatus().seguro_obligatorio!.estado === 'warning'"
-                          [class.bg-success/10]="docStatus().seguro_obligatorio!.estado === 'ok'"
-                          [class.text-success]="docStatus().seguro_obligatorio!.estado === 'ok'">
-                          @if (docStatus().seguro_obligatorio!.estado === 'error') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else if (docStatus().seguro_obligatorio!.estado === 'warning') {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                            </svg>
-                          } @else {
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
-                            </svg>
-                          }
-                        </div>
-                        <div class="flex-1 min-w-0">
-                          <h4 class="font-bold text-sm text-base-content truncate">Seguro SOAP</h4>
-                          @if (docStatus().seguro_obligatorio!.estado === 'error') {
-                            <p class="text-xs text-error font-medium">{{ formatDocumentDate(docStatus().seguro_obligatorio!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ getDaysAgo(docStatus().seguro_obligatorio!.fecha) }}</p>
-                          } @else if (docStatus().seguro_obligatorio!.estado === 'warning') {
-                            <p class="text-xs text-warning font-medium">{{ formatDocumentDate(docStatus().seguro_obligatorio!.fecha) }}</p>
-                            <p class="text-[10px] text-base-content/50 mt-0.5">{{ docStatus().seguro_obligatorio!.dias_restantes }} días restantes</p>
-                          } @else {
-                            <p class="text-xs text-success font-medium">Vigente hasta {{ formatDocumentDate(docStatus().seguro_obligatorio!.fecha) }}</p>
-                          }
-                        </div>
-                      </div>
+                    
+                  <div class="bg-base-200/50 p-4 rounded-xl border border-base-200 flex justify-between items-center">
+                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest">
+                      Estado
+                    </span>
+                    @if (isEditingGeneral()) {
+                      <select
+                        class="select select-sm"
+                        [value]="editEstadoOperativo()"
+                        (change)="editEstadoOperativo.set($any($event.target).value)">
+                        <option value="Operativa">Operativa</option>
+                        <option value="En Taller">En Taller</option>
+                        <option value="Inactiva">Inactiva</option>
+                      </select>
+                    } @else {
+                      <span
+                        class="badge font-bold border-0 py-3"
+                        [class.bg-success/20]="machine()?.estado_operativo === 'Operativa'"
+                        [class.text-success]="machine()?.estado_operativo === 'Operativa'"
+                        [class.bg-warning/20]="machine()?.estado_operativo === 'En Taller'"
+                        [class.text-warning]="machine()?.estado_operativo === 'En Taller'">
+                        {{ machine()?.estado_operativo }}
+                      </span>
                     }
                   </div>
                 </div>
               </div>
             </div>
-        }
 
-        @if (activeTab() === 'records' && loadedTabs().has('records')) {
-          <app-machine-daily-records
-            [records]="dailyRecords()"
-            [choferes]="choferes()"
-            [filters]="recordFilters()"
-            (filterChange)="onRecordFilterChange($event)"
-            (viewDetail)="onViewRecordDetail($event)">
-          </app-machine-daily-records>
-        }
+            <!-- Conductor responsable -->
+            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-1 h-full order-3 xl:order-2 overflow-hidden">
+              <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
 
-        @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
-          <app-machine-assignment-history
-            [assignments]="assignments()">
-          </app-machine-assignment-history>
-        }
+              <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
+                @if (machine()!.chofer_actual) {
+                  <div class="avatar mb-4">
+                    <div class="w-24 rounded-full ring ring-base-100 ring-offset-base-100 ring-offset-2 shadow-xl bg-neutral text-neutral-content flex items-center justify-center text-3xl font-bold">
+                            {{ getInitials(machine()!.chofer_actual!.nombre_completo) }}
+                          </div>
+                        </div>
 
-        @if (activeTab() === 'maintenance' && loadedTabs().has('maintenance')) {
-          @if (machineId()) {
-            <app-machine-maintenance
-              [machineId]="machineId()!"
-              [records]="maintenanceRecords()"
-              [availableItems]="maintenanceItems()"
-              [filters]="maintenanceFilters()"
-              (recordAdded)="onMaintenanceRecordAdded($event)"
-              (recordDeleted)="onMaintenanceRecordDeleted($event)"
-              (filterChange)="onMaintenanceFilterChange($event)">
-            </app-machine-maintenance>
-          }
+                  <h4 class="text-xl font-bold text-base-content">
+                    {{ machine()!.chofer_actual!.nombre_completo }}
+                  </h4>
+                  <p class="text-sm font-medium text-primary mb-1">
+                    Conductor Responsable
+                  </p>
+                  <p class="text-xs text-base-content/50 mb-6">
+                    Asignado el 01 Oct 2025
+                  </p>
+
+                  @if (isEditingGeneral()) {
+                    <div class="w-full mt-2 text-left">
+                      <label class="label py-1">
+                        <span class="label-text text-xs font-semibold text-base-content/60">
+                          Cambiar conductor responsable
+                        </span>
+                      </label>
+                      <select
+                        class="select select-sm w-full max-w-xs"
+                        [value]="editChoferId() ?? ''"
+                        (change)="editChoferId.set($any($event.target).value ? Number($any($event.target).value) : null)">
+                        <option value="">Sin asignar</option>
+                        @for (c of choferes(); track c.id) {
+                          <option [value]="c.id">
+                            {{ c.nombre_completo }}
+                          </option>
+                        }
+                      </select>
+                    </div>
+                  }
+
+                  <div class="w-full mt-auto"></div>
+                  } @else {
+                  <div class="avatar mb-4 placeholder">
+                    <div class="w-24 rounded-full bg-base-200 ring ring-base-100 ring-offset-2 flex items-center justify-center text-base-content/20">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                            </svg>
+                          </div>
+                        </div>
+                  <h4 class="text-lg font-bold text-base-content/70">
+                    Sin Asignar
+                  </h4>
+                  <p class="text-sm text-base-content/50 mb-6 px-4">
+                    Esta máquina no tiene conductor responsable actualmente.
+                  </p>
+                  <button
+                    class="btn btn-primary w-full shadow-lg shadow-primary/20"
+                    [routerLink]="['/maquinas', machine()?.id, 'editar']">
+                    Asignar Conductor
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
+      }
+
+        <!-- Registros diarios -->
+      @if (activeTab() === 'records' && loadedTabs().has('records')) {
+        <app-machine-daily-records
+          [records]="dailyRecords()"
+          [choferes]="choferes()"
+          [filters]="recordFilters()"
+          (filterChange)="onRecordFilterChange($event)"
+          (viewDetail)="onViewRecordDetail($event)">
+        </app-machine-daily-records>
+      }
+
+        <!-- Historial de asignaciones -->
+      @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
+        <app-machine-assignment-history
+          [assignments]="assignments()">
+        </app-machine-assignment-history>
+      }
+
+        <!-- Mantenimiento -->
+      @if (activeTab() === 'maintenance' && loadedTabs().has('maintenance')) {
+        @if (machineId()) {
+          <app-machine-maintenance
+            [machineId]="machineId()!"
+            [records]="maintenanceRecords()"
+            [availableItems]="maintenanceItems()"
+            [filters]="maintenanceFilters()"
+            (recordAdded)="onMaintenanceRecordAdded($event)"
+            (recordDeleted)="onMaintenanceRecordDeleted($event)"
+            (filterChange)="onMaintenanceFilterChange($event)">
+          </app-machine-maintenance>
         }
-      </div>
+        }
+      } @else {
+        <div class="card bg-base-100 shadow-sm border border-base-200">
+          <div class="card-body">
+            <span class="loading loading-spinner loading-sm mr-2"></span>
+            Cargando información de la máquina...
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [],
@@ -437,11 +508,22 @@ export class MachineDetail implements OnInit {
   private driverService = inject(DriverService);
   private dailyRecordService = inject(DailyRecordService);
 
+  isEditingGeneral = signal(false);
   activeTab = signal<'general' | 'records' | 'assignments' | 'maintenance'>('general');
   recordFilters = signal<MachineDailyRecordFilters>({});
   maintenanceFilters = signal<MaintenanceFilters>({});
   maintenanceRecords = signal<MaintenanceRecord[]>([]);
   maintenanceItems = signal<string[]>(['Neumáticos', 'Aceite Motor', 'Filtros', 'Reparación Frenos']);
+
+  // Valores editables temporales
+  editMarca = signal<string>('');
+  editAnio = signal<number | null>(null);
+  editPatente = signal<string>('');
+  editEstadoOperativo = signal<string>('');
+  editRevisionTecnica = signal<string>('');
+  editPermisoCirculacion = signal<string>('');
+  editSeguroObligatorio = signal<string>('');
+  editChoferId = signal<number | null>(null);
 
   // Cargar máquina - usando route.params para reactividad
   machineIdParam = toSignal(
@@ -506,7 +588,80 @@ export class MachineDetail implements OnInit {
     // Inicialización adicional si es necesaria
   }
 
+  toggleEditGeneral(): void {
+    const isEditing = !this.isEditingGeneral();
+    
+    if (isEditing) {
+      // Cambiar a la tab 'general' antes de activar el modo edición
+      this.activeTab.set('general');
+      
+      // Inicializar valores editables con los valores actuales
+      const m = this.machine();
+      if (m) {
+        this.editMarca.set(m.marca || '');
+        this.editAnio.set(m['año'] || null);
+        this.editPatente.set(m.patente || '');
+        this.editEstadoOperativo.set(m.estado_operativo || '');
+        this.editRevisionTecnica.set(m.documentos?.revision_tecnica || '');
+        this.editPermisoCirculacion.set(m.documentos?.permiso_circulacion || '');
+        this.editSeguroObligatorio.set(m.documentos?.seguro_obligatorio || '');
+        this.editChoferId.set(m.chofer_actual?.id || null);
+      }
+    }
+    
+    this.isEditingGeneral.set(isEditing);
+  }
+
+  onSaveGeneral(): void {
+    const machineId = this.machineId();
+    if (!machineId) return;
+
+    const choferId = this.editChoferId();
+    const estado = this.editEstadoOperativo() as 'Operativa' | 'En Taller' | 'Inactiva' | undefined;
+    
+    const updateData: Partial<Machine> = {
+      marca: this.editMarca(),
+      'año': this.editAnio() ?? undefined,
+      patente: this.editPatente(),
+      estado_operativo: estado,
+      documentos: {
+        revision_tecnica: this.editRevisionTecnica() || undefined,
+        permiso_circulacion: this.editPermisoCirculacion() || undefined,
+        seguro_obligatorio: this.editSeguroObligatorio() || undefined
+      }
+    };
+
+    // Agregar chofer_actual_id solo si existe (el backend puede esperar este campo)
+    if (choferId !== null) {
+      (updateData as any).chofer_actual_id = choferId;
+    }
+
+    this.machineService.updateMachine(machineId, updateData)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al actualizar máquina:', error);
+          alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
+          return of(null);
+        })
+      )
+      .subscribe((updatedMachine) => {
+        if (updatedMachine) {
+          // Recargar la máquina actualizada
+          this.machineService.getMachineById(machineId).subscribe((machine) => {
+            // El signal se actualizará automáticamente a través de machineData
+          });
+          this.isEditingGeneral.set(false);
+          alert('Cambios guardados correctamente.');
+        }
+      });
+  }
+
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {
+    // No permitir cambiar de tab si se está editando
+    if (this.isEditingGeneral()) {
+      return;
+    }
+    
     this.activeTab.set(tab);
     
     // Cargar datos solo si el tab no ha sido cargado antes
@@ -751,6 +906,10 @@ export class MachineDetail implements OnInit {
     } catch {
       return '';
     }
+  }
+
+  onBack(): void {
+    this.router.navigate(['/maquinas']);
   }
 }
 
