@@ -10,20 +10,21 @@ import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton],
   template: `
-    <div class="space-y-6">
+    <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div>
+      <div class="animate-header-enter">
         <h1 class="text-4xl font-bold mb-2 tracking-tight text-base-content">Contabilidad</h1>
         <p class="text-base-content/60 font-medium">Gestión financiera y nómina de conductores.</p>
       </div>
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
-      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6">
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6 animate-card-enter">
         <!-- Segmented Control (Tabs) - Edge-to-edge en móvil -->
         <div class="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-hide">
           <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 min-w-full lg:min-w-0">
@@ -137,46 +138,66 @@ import { switchMap } from 'rxjs/operators';
       </div>
 
       <!-- Contenido de Tabs -->
-      <div class="card bg-base-100 shadow-xl">
+      <div class="card bg-base-100 shadow-xl animate-card-enter-delay-1">
         <div class="card-body">
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
-            <div class="space-y-8">
-              <!-- KPIs: Contenedor independiente -->
-              @if (summary()) {
-                <app-accounting-kpis [summary]="summary()!" />
-              }
+            <div class="space-y-8 animate-tab-panel">
+              @if (isLoading().summary && !summary()) {
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  @for (i of [1,2,3,4]; track i) {
+                    <app-loading-skeleton type="kpi" />
+                  }
+                </div>
+              } @else {
+                <!-- KPIs: Contenedor independiente -->
+                @if (summary()) {
+                  <app-accounting-kpis [summary]="summary()!" />
+                }
 
-              <!-- Separador Visual y Gráfico: Contexto independiente -->
-              @if (dailyData().length > 0) {
-                <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
-                <app-accounting-chart [dailyData]="dailyData()" />
+                <!-- Separador Visual y Gráfico: Contexto independiente -->
+                @if (dailyData().length > 0) {
+                  <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
+                  <app-accounting-chart [dailyData]="dailyData()" />
+                }
               }
             </div>
           }
 
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
-            @if (weeklySummaries().length > 0) {
-              <app-weekly-summary-table [summaries]="weeklySummaries()" />
+            @if (isLoading().weekly && weeklySummaries().length === 0) {
+              <app-loading-skeleton type="table" [count]="5" />
+            } @else if (weeklySummaries().length > 0) {
+              <div class="animate-tab-panel">
+                <app-weekly-summary-table [summaries]="weeklySummaries()" />
+              </div>
             }
           }
 
           <!-- Tab: Liquidación de Choferes -->
           @if (activeTab() === 'payroll') {
-            @if (liquidation()) {
-              <app-liquidation-table
-                [liquidation]="liquidation()!"
-                (confirmPayment)="onConfirmPayment($event)"
-                (missingAmountChange)="onMissingAmountChange($event)"
-                (closePeriod)="onClosePeriod()" />
+            @if (isLoading().payroll && !liquidation()) {
+              <app-loading-skeleton type="table" [count]="8" />
+            } @else if (liquidation()) {
+              <div class="animate-tab-panel">
+                <app-liquidation-table
+                  [liquidation]="liquidation()!"
+                  (confirmPayment)="onConfirmPayment($event)"
+                  (missingAmountChange)="onMissingAmountChange($event)"
+                  (closePeriod)="onClosePeriod()" />
+              </div>
             }
           }
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (liquidationHistory().length > 0) {
-              <app-liquidation-history [liquidations]="liquidationHistory()" />
+            @if (isLoading().history && liquidationHistory().length === 0) {
+              <app-loading-skeleton type="table" [count]="5" />
+            } @else if (liquidationHistory().length > 0) {
+              <div class="animate-tab-panel">
+                <app-liquidation-history [liquidations]="liquidationHistory()" />
+              </div>
             }
           }
         </div>
@@ -209,6 +230,12 @@ export class Contabilidad implements OnInit {
   
   selectedMonth = signal(11); // Noviembre por defecto
   selectedYear = signal(2025);
+  isLoading = signal({
+    summary: true,
+    weekly: true,
+    payroll: true,
+    history: true
+  } as { summary: boolean; weekly: boolean; payroll: boolean; history: boolean });
 
   // Datos
   summaryData = signal<AccountingSummary | null>(null);
@@ -278,12 +305,14 @@ export class Contabilidad implements OnInit {
   }
 
   loadSummary(): void {
+    this.isLoading.update(state => ({ ...state, summary: true }));
     this.accountingService.getSummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of(null)))
       .subscribe(summary => {
         if (summary) {
           this.summaryData.set(summary);
         }
+        this.isLoading.update(state => ({ ...state, summary: false }));
       });
   }
 
@@ -296,28 +325,34 @@ export class Contabilidad implements OnInit {
   }
 
   loadWeeklySummaries(): void {
+    this.isLoading.update(state => ({ ...state, weekly: true }));
     this.accountingService.getWeeklySummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of([])))
       .subscribe(summaries => {
         this.weeklySummaries.set(summaries);
+        this.isLoading.update(state => ({ ...state, weekly: false }));
       });
   }
 
   loadLiquidation(): void {
+    this.isLoading.update(state => ({ ...state, payroll: true }));
     this.accountingService.getLiquidation(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of(null)))
       .subscribe(liquidation => {
         if (liquidation) {
           this.liquidationData.set(liquidation);
         }
+        this.isLoading.update(state => ({ ...state, payroll: false }));
       });
   }
 
   loadLiquidationHistory(): void {
+    this.isLoading.update(state => ({ ...state, history: true }));
     this.accountingService.getLiquidationHistory()
       .pipe(catchError(() => of([])))
       .subscribe(history => {
         this.liquidationHistoryData.set(history);
+        this.isLoading.update(state => ({ ...state, history: false }));
       });
   }
 

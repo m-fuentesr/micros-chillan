@@ -7,10 +7,11 @@ import { DashboardService } from '../../shared/services/dashboard.service';
 import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared/models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-home',
-  imports: [AlertList, FinancialSummary, DailyRecordsTable],
+  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
@@ -23,16 +24,21 @@ import { catchError, of } from 'rxjs';
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Card 1: Ganancia Neta Total -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter group overflow-hidden relative">
+        @if (isLoading()) {
+          @for (i of [1,2,3,4]; track i) {
+            <app-loading-skeleton type="kpi" />
+          }
+        } @else {
+          <!-- Card 1: Ganancia Neta Total -->
+          <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-success/10 group-hover:text-success/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <div class="card-body relative z-10">
+          <div class="card-body p-5 relative z-10 min-w-0">
             <div class="text-sm text-base-content/70 mb-1">Ganancia Neta Total</div>
-            <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold">{{ gananciaNetaTotal() }}</div>
+            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums break-words leading-tight">{{ gananciaNetaTotal() }}</div>
             <div class="text-xs text-base-content/60 mt-2">Período actual</div>
           </div>
         </div>
@@ -44,9 +50,9 @@ import { catchError, of } from 'rxjs';
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
           </div>
-          <div class="card-body relative z-10">
+          <div class="card-body p-5 relative z-10 min-w-0">
             <div class="text-sm text-base-content/70 mb-1">Ingreso Total</div>
-            <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold">{{ ingresoTotal() }}</div>
+            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums break-words leading-tight">{{ ingresoTotal() }}</div>
             <div class="text-xs text-base-content/60 mt-2">Período actual</div>
           </div>
         </div>
@@ -58,9 +64,9 @@ import { catchError, of } from 'rxjs';
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
             </svg>
           </div>
-          <div class="card-body relative z-10">
+          <div class="card-body p-5 relative z-10 min-w-0">
             <div class="text-sm text-base-content/70 mb-1">Máquinas Activas</div>
-            <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold">{{ maquinasActivas() }}</div>
+            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold break-words leading-tight">{{ maquinasActivas() }}</div>
             <div class="text-xs text-base-content/60 mt-2">En operación hoy</div>
           </div>
         </div>
@@ -72,7 +78,7 @@ import { catchError, of } from 'rxjs';
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
           </div>
-          <div class="card-body relative z-10">
+          <div class="card-body p-5 relative z-10 min-w-0">
             <div class="text-sm text-base-content/70 mb-2">Resumen de Alertas</div>
             <div class="space-y-1">
               <div class="flex items-center gap-2">
@@ -99,6 +105,7 @@ import { catchError, of } from 'rxjs';
             </div>
           </div>
         </div>
+        }
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
@@ -120,10 +127,14 @@ import { catchError, of } from 'rxjs';
 
       <!-- Zona de Detalle: Tabla Full Width -->
       <div class="animate-page-enter" style="animation-delay: 300ms; animation-fill-mode: both;">
-        <app-daily-records-table
-          [records]="dailyRecords()"
-          [showOnlyPending]="showOnlyPending()"
-          (toggleFilter)="togglePendingFilter()" />
+        @if (isLoading()) {
+          <app-loading-skeleton type="table" [count]="5" />
+        } @else {
+          <app-daily-records-table
+            [records]="dailyRecords()"
+            [showOnlyPending]="showOnlyPending()"
+            (toggleFilter)="togglePendingFilter()" />
+        }
       </div>
     </div>
   `,
@@ -136,6 +147,7 @@ export class Home implements OnInit {
 
   showOnlyPending = signal(false);
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
+  isLoading = signal(true);
   
   // Cargar alertas
   alertsData = toSignal(
@@ -161,10 +173,17 @@ export class Home implements OnInit {
     this.dashboardService.getDailyRecords().pipe(
       catchError(() => of<DailyRecord[]>(this.getMockDailyRecords()))
     ),
-    { initialValue: this.getMockDailyRecords() }
+    { initialValue: [] }
   );
 
-  dailyRecords = computed(() => this.dailyRecordsData() ?? []);
+  dailyRecords = computed(() => {
+    const records = this.dailyRecordsData() ?? [];
+    // Si tenemos datos, desactivar loading
+    if (records.length > 0 && this.isLoading()) {
+      setTimeout(() => this.isLoading.set(false), 100);
+    }
+    return records;
+  });
 
   // Datos financieros (mismos que usa financial-summary)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({
@@ -210,6 +229,12 @@ export class Home implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente con toSignal
+    // Desactivar loading después de un tiempo razonable
+    setTimeout(() => {
+      if (this.dailyRecords().length > 0 || this.alerts().length > 0) {
+        this.isLoading.set(false);
+      }
+    }, 500);
   }
 
   onMetricChange(metric: FinancialMetric): void {
@@ -235,6 +260,7 @@ export class Home implements OnInit {
 
     return [
       {
+        id: 'mock-1',
         machineId: '02',
         driver: 'Ana Gómez',
         date: yesterday,
@@ -242,6 +268,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-2',
         machineId: '04',
         driver: 'Luis Martínez',
         date: today,
@@ -249,6 +276,7 @@ export class Home implements OnInit {
         recaudacion: 85000
       },
       {
+        id: 'mock-3',
         machineId: '01',
         driver: 'Carlos Rodríguez',
         date: today,
@@ -256,6 +284,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-4',
         machineId: '05',
         driver: 'Juan Pérez',
         date: yesterday,
@@ -263,6 +292,7 @@ export class Home implements OnInit {
         motivo: 'Descanso Semanal'
       },
       {
+        id: 'mock-5',
         machineId: '03',
         driver: 'María López',
         date: today,
@@ -270,6 +300,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-6',
         machineId: '07',
         driver: 'Pedro Gómez',
         date: today,
@@ -277,6 +308,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-7',
         machineId: '08',
         driver: 'Juan Pérez',
         date: today,
@@ -284,6 +316,7 @@ export class Home implements OnInit {
         recaudacion: 100000
       },
       {
+        id: 'mock-8',
         machineId: '09',
         driver: 'Juan Pérez',
         date: today,

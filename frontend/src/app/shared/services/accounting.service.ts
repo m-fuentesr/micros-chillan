@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation } from '../models/accounting.models';
 
 @Injectable({
@@ -10,40 +10,73 @@ import { AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPe
 export class AccountingService {
   private http = inject(HttpClient);
   private apiUrl = '/api';
+  
+  // Caché simple en memoria
+  private summaryCache: Map<string, { data: AccountingSummary; timestamp: number }> = new Map();
+  private dailyProfitabilityCache: Map<string, { data: DailyProfitabilityData[]; timestamp: number }> = new Map();
+  private weeklySummaryCache: Map<string, { data: WeeklySummary[]; timestamp: number }> = new Map();
+  private liquidationCache: Map<string, { data: LiquidationPeriod; timestamp: number }> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
   // GET /api/accounting/summary - Resumen general (RF-019)
   getSummary(mes: number, anio: number): Observable<AccountingSummary> {
+    const cacheKey = `${mes}-${anio}`;
+    
+    // Verificar caché
+    const cached = this.summaryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
     
     return this.http.get<AccountingSummary>(`${this.apiUrl}/accounting/summary`, { params }).pipe(
+      map(summary => {
+        this.summaryCache.set(cacheKey, { data: summary, timestamp: Date.now() });
+        return summary;
+      }),
       catchError(() => {
         // Mock data
         const today = new Date();
         const isCurrentMonth = mes === today.getMonth() + 1 && anio === today.getFullYear();
-        return of({
+        const mock = {
           periodo: { mes, anio },
           totales: {
             total_recaudado: 15123456,
             total_costo_diesel: 4158024,
             total_pago_choferes: 2200000,
-            gastos_repuestos: 655000,
+            total_gastos_mantenimiento: 655000,
             ganancia_liquida: 8110432
           },
           es_mes_actual: isCurrentMonth
-        });
+        };
+        this.summaryCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+        return of(mock);
       })
     );
   }
 
   // GET /api/accounting/daily-profitability - Evolución diaria
   getDailyProfitability(mes: number, anio: number): Observable<DailyProfitabilityData[]> {
+    const cacheKey = `${mes}-${anio}`;
+    
+    // Verificar caché
+    const cached = this.dailyProfitabilityCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
     
     return this.http.get<DailyProfitabilityData[]>(`${this.apiUrl}/accounting/daily-profitability`, { params }).pipe(
+      map(data => {
+        this.dailyProfitabilityCache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+      }),
       catchError(() => {
         // Mock data - 30 días
         const mockData: DailyProfitabilityData[] = [];
@@ -55,6 +88,7 @@ export class AccountingService {
             ganancia: 300000 + Math.random() * 20000
           });
         }
+        this.dailyProfitabilityCache.set(cacheKey, { data: mockData, timestamp: Date.now() });
         return of(mockData);
       })
     );
@@ -62,28 +96,56 @@ export class AccountingService {
 
   // GET /api/accounting/weekly-summary - Resumen semanal
   getWeeklySummary(mes: number, anio: number): Observable<WeeklySummary[]> {
+    const cacheKey = `${mes}-${anio}`;
+    
+    // Verificar caché
+    const cached = this.weeklySummaryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
     
     return this.http.get<WeeklySummary[]>(`${this.apiUrl}/accounting/weekly-summary`, { params }).pipe(
+      map(data => {
+        this.weeklySummaryCache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+      }),
       catchError(() => {
-        // Mock data
-        return of(this.getMockWeeklySummary(mes, anio));
+        const mock = this.getMockWeeklySummary(mes, anio);
+        this.weeklySummaryCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+        return of(mock);
       })
     );
   }
 
   // GET /api/accounting/liquidation - Liquidación de choferes (RF-022)
-  getLiquidation(mes: number, anio: number): Observable<LiquidationPeriod> {
+  getLiquidation(mes: number, anio: number, choferId?: number): Observable<LiquidationPeriod> {
+    const cacheKey = choferId ? `${mes}-${anio}-${choferId}` : `${mes}-${anio}`;
+    
+    // Verificar caché
+    const cached = this.liquidationCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
+    if (choferId) {
+      params.set('chofer_id', choferId.toString());
+    }
     
     return this.http.get<LiquidationPeriod>(`${this.apiUrl}/accounting/liquidation`, { params }).pipe(
+      map(data => {
+        this.liquidationCache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+      }),
       catchError(() => {
         // Mock data
-        return of<LiquidationPeriod>({
+        const mock: LiquidationPeriod = {
           mes,
           anio,
           estado: 'abierto' as const,
@@ -116,7 +178,9 @@ export class AccountingService {
               estado_pago: 'pendiente' as const
             }
           ]
-        });
+        };
+        this.liquidationCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+        return of(mock);
       })
     );
   }
@@ -418,6 +482,16 @@ export class AccountingService {
         ]
       }
     ];
+  }
+  
+  /**
+   * Invalidar caché (útil cuando se actualizan datos)
+   */
+  clearCache(): void {
+    this.summaryCache.clear();
+    this.dailyProfitabilityCache.clear();
+    this.weeklySummaryCache.clear();
+    this.liquidationCache.clear();
   }
 }
 

@@ -8,10 +8,11 @@ import { Machine, StatusFilter, ViewMode, MachineKPIs as MachineKPIsType, Machin
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, map } from 'rxjs';
 import { calculateMachineDocumentStatus } from '../../shared/utils/document.utils';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-maquinas',
-  imports: [MachineKPIs, MachineList, RouterLink],
+  imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
@@ -33,11 +34,26 @@ import { calculateMachineDocumentStatus } from '../../shared/utils/document.util
       </div>
 
       <!-- KPIs -->
-      <app-machine-kpis [kpis]="kpis()" />
+      @if (isLoading()) {
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          @for (i of [1,2,3]; track i) {
+            <app-loading-skeleton type="kpi" />
+          }
+        </div>
+      } @else {
+        <app-machine-kpis [kpis]="kpis()" />
+      }
 
       <!-- Layout Principal: Lista de Máquinas (Full Width) -->
       <div class="animate-page-enter" style="animation-delay: 200ms; animation-fill-mode: both;">
-        <app-machine-list
+        @if (isLoading() && machines().length === 0) {
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            @for (i of [1,2,3,4,5,6]; track i) {
+              <app-loading-skeleton type="card" />
+            }
+          </div>
+        } @else {
+          <app-machine-list
           [machines]="filteredMachines()"
           [viewMode]="viewMode()"
           [statusFilter]="statusFilter()"
@@ -45,6 +61,7 @@ import { calculateMachineDocumentStatus } from '../../shared/utils/document.util
           [alerts]="documentAlerts()"
           (viewModeChange)="onViewModeChange($event)"
           (filterChange)="onFilterChange($event)" />
+        }
       </div>
     </div>
   `,
@@ -56,13 +73,14 @@ export class Maquinas implements OnInit {
 
   viewMode = signal<ViewMode>('cards');
   statusFilter = signal<StatusFilter>('all');
+  isLoading = signal(true);
 
   // Cargar máquinas
   machinesData = toSignal(
     this.machineService.getMachines().pipe(
       catchError(() => of<Machine[]>(this.getMockMachines()))
     ),
-    { initialValue: this.getMockMachines() }
+    { initialValue: [] }
   );
 
   machines = computed(() => this.machinesData() ?? []);
@@ -72,7 +90,7 @@ export class Maquinas implements OnInit {
     this.machineService.getKPIs().pipe(
       catchError(() => of<MachineKPIsType>(this.calculateMockKPIs()))
     ),
-    { initialValue: this.calculateMockKPIs() }
+    { initialValue: null }
   );
 
   kpis = computed(() => this.kpisData() ?? this.calculateMockKPIs());
@@ -128,6 +146,11 @@ export class Maquinas implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente con toSignal
+    setTimeout(() => {
+      if (this.machines().length > 0 || this.kpis()) {
+        this.isLoading.set(false);
+      }
+    }, 500);
   }
 
   onViewModeChange(mode: ViewMode): void {

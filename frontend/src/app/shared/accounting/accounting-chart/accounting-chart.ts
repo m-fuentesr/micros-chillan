@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, input, computed, OnInit, inject } f
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { DailyProfitabilityData } from '../../models/accounting.models';
+import { LazyChartDirective } from '../../directives/lazy-chart.directive';
 
 @Component({
   selector: 'app-accounting-chart',
-  imports: [BaseChartDirective],
+  imports: [BaseChartDirective, LazyChartDirective],
   template: `
     <div class="card bg-base-100 shadow-sm border border-base-200 w-full">
       <div class="card-body p-6">
@@ -18,14 +19,23 @@ import { DailyProfitabilityData } from '../../models/accounting.models';
           </div>
         </div>
         
-        <div class="w-full relative h-[400px]">
-          @if (chartData().labels && chartData().labels!.length > 0) {
-            <canvas baseChart
-              class="w-full h-full"
-              [data]="chartData()"
-              [options]="chartOptions"
-              [type]="chartType">
-            </canvas>
+        <div class="w-full relative h-[400px]" appLazyChart #lazyChart="lazyChart">
+          @if (lazyChart.isVisible()) {
+            @if (chartData().labels && chartData().labels!.length > 0) {
+              <canvas baseChart
+                class="w-full h-full"
+                [data]="chartData()"
+                [options]="chartOptions"
+                [type]="chartType">
+              </canvas>
+            }
+          } @else {
+            <div class="flex items-center justify-center h-full text-base-content/40">
+              <div class="text-center">
+                <div class="loading loading-spinner loading-md mb-2"></div>
+                <p class="text-sm">Cargando gráfico...</p>
+              </div>
+            </div>
           }
         </div>
       </div>

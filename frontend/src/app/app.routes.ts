@@ -1,51 +1,129 @@
 import { Routes } from '@angular/router';
-import { Home } from './pages/home/home';
-import { About } from './pages/about/about';
-import { Maquinas } from './pages/maquinas/maquinas';
-import { MachineCreate } from './pages/maquinas/machine-create/machine-create';
-import { MachineDetail } from './pages/maquinas/machine-detail/machine-detail';
-import { DriversList } from './pages/choferes/drivers-list/drivers-list';
-import { DriverDetail } from './pages/choferes/driver-detail/driver-detail';
-import { DriverCreate } from './pages/choferes/driver-create/driver-create';
-import { Contabilidad } from './pages/contabilidad/contabilidad';
-import { Reportes } from './pages/reportes/reportes';
-import { Configuracion } from './pages/configuracion/configuracion';
-import { CentroAyuda } from './pages/centro-ayuda/centro-ayuda';
-import { Login } from './pages/login/login';
-import { Trabajador } from './pages/trabajador/trabajador';
-import { Reportar } from './pages/trabajador/reportar/reportar';
-import { MiHistorial } from './pages/trabajador/mi-historial/mi-historial';
-import { Perfil } from './pages/trabajador/perfil/perfil';
-import { ReporteExito } from './pages/trabajador/reporte-exito/reporte-exito';
-import { RecuperarClave } from './pages/recuperar-clave/recuperar-clave';
 
 import { authGuard } from './shared/guards/auth.guard';
 import { adminGuard } from './shared/guards/admin.guard';
 import { workerGuard } from './shared/guards/worker.guard';
 
 export const routes: Routes = [
-  { path: 'login', component: Login }, // Ruta: /login
-  { path: 'recuperar-clave', component: RecuperarClave }, // Recuperar contraseña
-  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
+  // --- Auth ---
+  {
+    path: 'login',
+    loadComponent: () =>
+      import('./pages/login/login').then(m => m.Login)
+  },
+  {
+    path: 'recuperar-clave',
+    loadComponent: () =>
+      import('./pages/recuperar-clave/recuperar-clave').then(m => m.RecuperarClave)
+  },
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
 
-  { path: 'dashboard', component: Home, canActivate: [authGuard, adminGuard] }, // Dashboard de administrador
-  { path: 'about', component: About, canActivate: [authGuard, adminGuard] }, // Ruta: /about
-  { path: 'maquinas', component: Maquinas, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas
-  { path: 'maquinas/nueva', component: MachineCreate, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas/nueva
-  { path: 'maquinas/:id', component: MachineDetail, canActivate: [authGuard, adminGuard] }, // Ruta: /maquinas/:id
-  { path: 'choferes', component: DriversList, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes
-  { path: 'choferes/nuevo', component: DriverCreate, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes/nuevo
-  { path: 'choferes/:id', component: DriverDetail, canActivate: [authGuard, adminGuard] }, // Ruta: /choferes/:id
-  { path: 'contabilidad', component: Contabilidad, canActivate: [authGuard, adminGuard] }, // Ruta: /contabilidad
-  { path: 'reportes', component: Reportes, canActivate: [authGuard, adminGuard] }, // Ruta: /reportes
-  { path: 'configuracion', component: Configuracion, canActivate: [authGuard, adminGuard] }, // Ruta: /configuracion
-  { path: 'centro-ayuda', component: CentroAyuda, canActivate: [authGuard, adminGuard] }, // Ruta: /centro-ayuda
+  // --- Admin ---
+  {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./pages/home/home').then(m => m.Home),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'about',
+    loadComponent: () =>
+      import('./pages/about/about').then(m => m.About),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'maquinas',
+    loadComponent: () =>
+      import('./pages/maquinas/maquinas').then(m => m.Maquinas),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'maquinas/nueva',
+    loadComponent: () =>
+      import('./pages/maquinas/machine-create/machine-create').then(m => m.MachineCreate),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'maquinas/:id',
+    loadComponent: () =>
+      import('./pages/maquinas/machine-detail/machine-detail').then(m => m.MachineDetail),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'choferes',
+    loadComponent: () =>
+      import('./pages/choferes/drivers-list/drivers-list').then(m => m.DriversList),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'choferes/nuevo',
+    loadComponent: () =>
+      import('./pages/choferes/driver-create/driver-create').then(m => m.DriverCreate),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'choferes/:id',
+    loadComponent: () =>
+      import('./pages/choferes/driver-detail/driver-detail').then(m => m.DriverDetail),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'contabilidad',
+    loadComponent: () =>
+      import('./pages/contabilidad/contabilidad').then(m => m.Contabilidad),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'reportes',
+    loadComponent: () =>
+      import('./pages/reportes/reportes').then(m => m.Reportes),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'configuracion',
+    loadComponent: () =>
+      import('./pages/configuracion/configuracion').then(m => m.Configuracion),
+    canActivate: [authGuard, adminGuard]
+  },
+  {
+    path: 'centro-ayuda',
+    loadComponent: () =>
+      import('./pages/centro-ayuda/centro-ayuda').then(m => m.CentroAyuda),
+    canActivate: [authGuard, adminGuard]
+  },
 
-  { path: 'trabajador', component: Trabajador, canActivate: [authGuard, workerGuard] }, // Página principal de trabajador
-  { path: 'trabajador/reportar', component: Reportar, canActivate: [authGuard, workerGuard] }, // Página de reportar
-  { path: 'trabajador/reporte-exito', component: ReporteExito, canActivate: [authGuard, workerGuard] }, // Página de éxito del reporte
-  { path: 'trabajador/mi-historial', component: MiHistorial, canActivate: [authGuard, workerGuard] }, // Página de mi historial
-  { path: 'trabajador/perfil', component: Perfil, canActivate: [authGuard, workerGuard] }, // Página de perfil
+  // --- Worker ---
+  {
+    path: 'trabajador',
+    loadComponent: () =>
+      import('./pages/trabajador/trabajador').then(m => m.Trabajador),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/reportar',
+    loadComponent: () =>
+      import('./pages/trabajador/reportar/reportar').then(m => m.Reportar),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/reporte-exito',
+    loadComponent: () =>
+      import('./pages/trabajador/reporte-exito/reporte-exito').then(m => m.ReporteExito),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/mi-historial',
+    loadComponent: () =>
+      import('./pages/trabajador/mi-historial/mi-historial').then(m => m.MiHistorial),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/perfil',
+    loadComponent: () =>
+      import('./pages/trabajador/perfil/perfil').then(m => m.Perfil),
+    canActivate: [authGuard, workerGuard]
+  },
 
-  { path: '**', redirectTo: '/login' } // Ruta para 404, redirige a login
+  // --- Fallback 404 ---
+  { path: '**', redirectTo: '/login' }
 ];

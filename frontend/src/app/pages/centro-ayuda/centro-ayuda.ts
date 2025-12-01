@@ -1,254 +1,608 @@
-import { Component, ChangeDetectionStrategy, signal, OnInit, inject, effect } from '@angular/core';
-import { HelpMenu, HelpMenuItem } from '../../shared/help/help-menu/help-menu';
-import { HelpSection } from '../../shared/help/help-section/help-section';
+import { Component, ChangeDetectionStrategy, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+
+type IconName =
+  | 'introduccion'
+  | 'dashboard'
+  | 'maquinas'
+  | 'choferes'
+  | 'registro-diario'
+  | 'contabilidad'
+  | 'reportes'
+  | 'configuracion'
+  | 'faq';
+
+interface HelpNavItem {
+  id: string;
+  title: string;
+  icon: IconName;
+  description: string;
+}
+
+interface HelpModule {
+  id: string;
+  title: string;
+  icon: IconName;
+  description: string;
+  context?: string;
+  highlights?: Array<{ title: string; body: string }>;
+  list?: string[];
+  steps?: Array<{ title: string }>;
+}
+
+interface FaqItem {
+  question: string;
+  answer: string;
+}
 
 @Component({
   selector: 'app-centro-ayuda',
-  imports: [HelpMenu, HelpSection],
+  standalone: true,
+  imports: [CommonModule, FormsModule],
   template: `
-    <div class="space-y-6">
-      <!-- Header -->
-      <div>
-        <h1 class="text-4xl font-bold mb-2">Centro de Ayuda</h1>
-        <p class="text-base-content/70">
-          Manual completo de uso de la plataforma de gestión de flotas
-        </p>
-      </div>
+    <div class="min-h-screen bg-base-200 pb-16">
+      <!-- Hero -->
+      <div class="bg-base-100 border-b border-base-200 py-12 px-6 mb-10 shadow-sm">
+        <div class="max-w-4xl mx-auto text-center animate-header-enter space-y-8">
+          <div>
+            <p class="text-xs font-bold uppercase tracking-[0.4em] text-primary mb-3">Knowledge Base Pro</p>
+            <h1 class="text-4xl lg:text-5xl font-black text-base-content tracking-tight">
+              ¿Cómo podemos ayudarte hoy?
+            </h1>
+            <p class="text-base-content/70 text-lg mt-4">
+              Explora documentación accionable para dashboard, contabilidad, reportes y flujos diarios.
+            </p>
+          </div>
 
-      <!-- Layout: Menú y Contenido -->
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <!-- Menú Lateral (1 columna) -->
-        <div class="lg:col-span-1">
-          <app-help-menu
-            [items]="menuItems()"
-            [activeSection]="activeSection()"
-            (itemClick)="onMenuClick($event)" />
-        </div>
-
-        <!-- Contenido (3 columnas) -->
-        <div class="lg:col-span-3">
-          <div class="card bg-base-100 shadow-xl">
-            <div class="card-body">
-              <!-- Introducción -->
-              <app-help-section
-                id="introduccion"
-                title="Introducción"
-                [text]="'Bienvenido al sistema de gestión de flotas. Esta plataforma ha sido diseñada para facilitar el control integral de tu flota, desde el registro diario de operaciones hasta el análisis financiero detallado.'"
-                [listItems]="[
-                  '<strong>Administrador:</strong> Acceso completo a todas las funcionalidades, incluyendo gestión de máquinas, choferes, contabilidad y reportes.',
-                  '<strong>Trabajador:</strong> Acceso limitado para registrar reportes diarios de trabajo y consultar su historial.'
-                ]"
-                [tip]="{ title: 'Consejo', text: 'Familiarízate con el menú lateral de navegación. Puedes acceder rápidamente a cualquier módulo desde cualquier pantalla.' }" />
-
-              <!-- Dashboard -->
-              <app-help-section
-                id="dashboard"
-                title="Dashboard"
-                [text]="'El Dashboard es tu centro de control principal. Aquí encontrarás un resumen en tiempo real del estado de tu flota.'"
-                subtitle="Elementos del Dashboard"
-                [listItems]="[
-                  '<strong>KPIs Principales:</strong> Ingresos mensuales, ganancias netas, alertas activas y horas trabajadas.',
-                  '<strong>Gráfico de Ingresos:</strong> Visualización mensual con filtros por período y tipo de visualización.',
-                  '<strong>Estado de Máquinas:</strong> Resumen rápido del estado operativo de cada máquina.',
-                  '<strong>Alertas y Notificaciones:</strong> Avisos importantes sobre mantenimientos, documentos vencidos o problemas operativos.'
-                ]"
-                [tip]="{ title: 'Tip de Productividad', text: 'Revisa el Dashboard cada mañana para detectar rápidamente cualquier anomalía o tarea pendiente urgente.' }" />
-
-              <!-- Máquinas -->
-              <app-help-section
-                id="maquinas"
-                title="Gestión de Máquinas"
-                [text]="'El módulo de máquinas te permite administrar toda la información de tu flota de maquinaria pesada.'"
-                [subtitle]="'Registrar una Nueva Máquina'"
-                [steps]="[
-                  { number: 1, title: 'Accede al Listado de Máquinas', text: 'Haz clic en Máquinas en el menú lateral y luego en el botón Agregar Máquina.' },
-                  { number: 2, title: 'Completa la Información Básica', text: 'Ingresa el número de máquina, tipo (camión, grúa, excavadora, etc.), marca, modelo y año de fabricación.' },
-                  { number: 3, title: 'Configura la Información Técnica', text: 'Define la capacidad de carga, consumo promedio de combustible y otras especificaciones técnicas relevantes.' },
-                  { number: 4, title: 'Registra Documentación', text: 'Ingresa fechas de vencimiento para revisión técnica, seguro, permisos de circulación y otros documentos requeridos.' },
-                  { number: 5, title: 'Guarda y Confirma', text: 'Revisa toda la información y haz clic en Guardar Máquina para completar el registro.' }
-                ]"
-                [subtitle2]="'Ver Detalles de una Máquina'"
-                [listItems]="[
-                  '<strong>Información General:</strong> Datos técnicos y documentación.',
-                  '<strong>Historial de Trabajo:</strong> Registro completo de operaciones realizadas.',
-                  '<strong>Choferes Asignados:</strong> Listado de operadores habilitados.',
-                  '<strong>Estadísticas:</strong> Rendimiento, consumo de combustible y rentabilidad.'
-                ]"
-                [warning]="{ title: 'Importante', text: 'El sistema generará alertas automáticas cuando los documentos estén próximos a vencer. Mantén siempre actualizada la información de vencimientos.' }" />
-
-              <!-- Choferes -->
-              <app-help-section
-                id="choferes"
-                title="Gestión de Choferes"
-                [text]="'Administra la información de todos los operadores de tu flota, incluyendo sus credenciales, asignaciones y desempeño.'"
-                [subtitle]="'Registrar un Nuevo Chofer'"
-                [steps]="[
-                  { number: 1, title: 'Ir al Módulo de Choferes', text: 'Accede desde el menú lateral y selecciona Agregar Chofer.' },
-                  { number: 2, title: 'Datos Personales', text: 'Completa nombre completo, RUT, fecha de nacimiento y datos de contacto (teléfono, email, dirección).' },
-                  { number: 3, title: 'Información Profesional', text: 'Registra tipo de licencia de conducir, número de licencia y fecha de vencimiento. Indica las especialidades o certificaciones adicionales.' },
-                  { number: 4, title: 'Asignación de Máquinas', text: 'Selecciona las máquinas que el chofer está autorizado a operar.' },
-                  { number: 5, title: 'Configuración de Acceso', text: 'Crea credenciales de acceso al sistema para que el chofer pueda registrar sus reportes diarios.' }
-                ]"
-                [subtitle2]="'Gestionar Desempeño'"
-                [listItems]="[
-                  'Historial completo de trabajos realizados',
-                  'Estadísticas de horas trabajadas y rentabilidad generada',
-                  'Evaluaciones y observaciones de desempeño',
-                  'Estado de documentación (licencias, certificados)'
-                ]"
-                [warning]="{ title: 'Importante', text: 'Verifica regularmente el vencimiento de licencias de conducir. El sistema bloqueará la asignación de trabajos a choferes con documentación vencida.' }" />
-
-              <!-- Registro Diario -->
-              <app-help-section
-                id="registro-diario"
-                title="Registro Diario de Operaciones"
-                [text]="'El registro diario es fundamental para el control operativo y contable. Permite documentar cada jornada de trabajo de manera detallada.'"
-                [subtitle]="'Cómo Registrar un Día de Trabajo'"
-                [steps]="[
-                  { number: 1, title: 'Seleccionar Fecha y Máquina', text: 'Elige la fecha del trabajo (por defecto aparece el día actual) y selecciona la máquina utilizada.' },
-                  { number: 2, title: 'Datos del Trabajo', text: 'Ingresa el lugar de trabajo, cliente, tipo de labor realizada y descripción detallada de las actividades.' },
-                  { number: 3, title: 'Horarios', text: 'Registra hora de inicio y hora de término. El sistema calculará automáticamente las horas trabajadas.' },
-                  { number: 4, title: 'Combustible', text: 'Anota la cantidad de litros de combustible consumidos y el costo total. Opcionalmente adjunta el comprobante de carga.' },
-                  { number: 5, title: 'Información Financiera', text: 'Indica el monto cobrado al cliente y el pago correspondiente al chofer (si aplica).' },
-                  { number: 6, title: 'Observaciones y Guardar', text: 'Añade cualquier comentario relevante (incidentes, mantenimientos necesarios, etc.) y guarda el registro.' }
-                ]"
-                [tip]="{ title: 'Buena Práctica', text: 'Registra cada jornada el mismo día del trabajo. Esto garantiza la precisión de los datos y facilita la gestión contable posterior.' }" />
-
-              <!-- Contabilidad -->
-              <app-help-section
-                id="contabilidad"
-                title="Contabilidad"
-                [text]="'El módulo de contabilidad centraliza toda la información financiera de tu operación, permitiéndote tomar decisiones basadas en datos reales.'"
-                [subtitle]="'Funcionalidades Principales'"
-                [listItems]="[
-                  '<strong>Registro de Ingresos:</strong> Control detallado de todas las facturaciones por trabajos realizados.',
-                  '<strong>Control de Gastos:</strong> Combustible, mantenimientos, salarios, seguros y otros gastos operativos.',
-                  '<strong>Flujo de Caja:</strong> Visualización del movimiento de efectivo en tiempo real.',
-                  '<strong>Balance por Período:</strong> Resúmenes mensuales, trimestrales o anuales de ingresos vs. gastos.',
-                  '<strong>Exportación de Datos:</strong> Descarga información contable en formato Excel o PDF para tu contador.'
-                ]"
-                [subtitle2]="'Categorías de Gastos'"
-                [listItems2]="[
-                  'Combustible',
-                  'Mantenimientos y reparaciones',
-                  'Salarios y pagos a choferes',
-                  'Seguros y permisos',
-                  'Gastos administrativos',
-                  'Otros gastos operacionales'
-                ]"
-                [warning]="{ title: 'Importante', text: 'Los registros contables son acumulativos. Verifica siempre la fecha correcta antes de ingresar movimientos para evitar inconsistencias en los reportes.' }" />
-
-              <!-- Reportes -->
-              <app-help-section
-                id="reportes"
-                title="Centro de Reportes y Análisis"
-                [text]="'El Centro de Reportes te proporciona análisis visuales y numéricos del desempeño de tu flota, facilitando la toma de decisiones estratégicas.'"
-                [subtitle]="'Reportes Disponibles'"
-                [steps]="[
-                  { number: 1, title: 'Rentabilidad por Máquina', text: 'Analiza qué máquinas generan mayor ganancia neta considerando ingresos totales menos gastos de operación (combustible, pagos a choferes, etc.). Este reporte incluye gráfico de barras horizontales y tabla detallada con ranking.' },
-                  { number: 2, title: 'Ranking de Ingresos (Bruto)', text: 'Visualiza qué máquinas generan mayores ingresos brutos, sin considerar gastos. Útil para identificar las unidades más demandadas por los clientes.' },
-                  { number: 3, title: 'Rentabilidad por Chofer', text: 'Evalúa el desempeño financiero de cada operador, comparando los ingresos que genera versus los costos asociados (pago al chofer, combustible consumido).' }
-                ]"
-                [subtitle2]="'Exportar Reportes'"
-                [listItems]="[
-                  '<strong>XLSX (Excel):</strong> Ideal para análisis posterior o integración con otras herramientas.',
-                  '<strong>CSV:</strong> Formato simple compatible con cualquier hoja de cálculo.',
-                  '<strong>PDF:</strong> Perfecto para imprimir o compartir presentaciones.'
-                ]"
-                [text2]="'Para exportar, haz clic en el botón Exportar y selecciona el formato deseado del menú desplegable.'"
-                [tip]="{ title: 'Análisis Estratégico', text: 'Revisa los reportes mensualmente para identificar tendencias. Una máquina con alto ingreso pero baja rentabilidad puede indicar costos operativos excesivos que requieren atención.' }" />
-
-              <!-- Configuración -->
-              <app-help-section
-                id="configuracion"
-                title="Configuración del Sistema"
-                [text]="'En el módulo de configuración puedes personalizar diversos aspectos de la plataforma según las necesidades de tu negocio.'"
-                [subtitle]="'Opciones de Configuración'"
-                [listItems]="[
-                  '<strong>Perfil de Empresa:</strong> Nombre, logo, datos de contacto y configuración regional (moneda, formato de fecha).',
-                  '<strong>Usuarios y Permisos:</strong> Administrar cuentas de acceso, roles y niveles de autorización.',
-                  '<strong>Notificaciones:</strong> Configura alertas automáticas por email o SMS para vencimientos, mantenimientos programados, etc.',
-                  '<strong>Parámetros Contables:</strong> Categorías de gastos personalizadas, centros de costo, tasas de impuestos.',
-                  '<strong>Integraciones:</strong> Conexión con sistemas externos de facturación, contabilidad o GPS.'
-                ]"
-                [warning]="{ title: 'Solo Administradores', text: 'Las opciones de configuración solo están disponibles para usuarios con rol de Administrador. Los cambios afectan a todo el sistema.' }" />
-
-              <!-- FAQ -->
-              <app-help-section
-                id="faq"
-                title="Preguntas Frecuentes (FAQ)"
-                [steps]="[
-                  { number: 1, title: '¿Cómo recupero mi contraseña?', text: 'En la pantalla de login, haz clic en ¿Olvidaste tu contraseña?. Ingresa tu email registrado y recibirás instrucciones para crear una nueva contraseña.' },
-                  { number: 2, title: '¿Puedo editar un registro después de guardarlo?', text: 'Sí, los usuarios administradores pueden editar cualquier registro. Accede al detalle del elemento (máquina, chofer, registro diario) y haz clic en el botón Editar.' },
-                  { number: 3, title: '¿Los datos se respaldan automáticamente?', text: 'Sí, el sistema realiza respaldos automáticos diarios. Adicionalmente, puedes exportar manualmente toda tu información desde el módulo de Configuración.' },
-                  { number: 4, title: '¿Puedo usar el sistema desde mi celular?', text: 'Sí, la plataforma está optimizada para dispositivos móviles. Los choferes pueden registrar sus reportes diarios directamente desde sus smartphones.' },
-                  { number: 5, title: '¿Cuántos usuarios puedo crear?', text: 'No hay límite. Puedes crear cuentas para todos tus choferes y personal administrativo que requiera acceso al sistema.' },
-                  { number: 6, title: '¿Qué hago si detecto un error en los datos?', text: 'Contacta inmediatamente al soporte técnico a través del email de contacto o el formulario disponible en esta sección. Incluye capturas de pantalla y descripción detallada del problema.' },
-                  { number: 7, title: '¿Puedo eliminar registros?', text: 'Los administradores pueden eliminar registros, pero esta acción es irreversible. El sistema solicitará confirmación antes de proceder. Recomendamos editar en lugar de eliminar siempre que sea posible.' }
-                ]"
-                [tip]="{ title: '¿Necesitas más ayuda?', text: 'Si tienes dudas que no están cubiertas en este manual, no dudes en contactar a nuestro equipo de soporte. Estamos aquí para ayudarte a aprovechar al máximo la plataforma.' }" />
+          <div class="relative max-w-xl mx-auto group">
+            <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/40 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              class="input input-lg w-full pl-12 pr-16 rounded-2xl shadow-xl border-base-200 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              placeholder="Buscar temas, ej: 'Liquidación', 'Exportar reporte', 'Registrar chofer'..."
+              [ngModel]="searchQuery()"
+              (ngModelChange)="searchQuery.set($event)"
+            />
+            <div class="absolute inset-y-0 right-3 flex items-center">
+              <kbd class="kbd kbd-sm hidden md:flex">Ctrl K</kbd>
             </div>
           </div>
+
+          @if (searchQuery().trim()) {
+            <div class="max-w-xl mx-auto bg-base-100 border border-base-200 rounded-2xl p-4 text-left animate-card-enter shadow-md">
+              <p class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-3">Resultados sugeridos</p>
+              <ul class="space-y-2">
+                @for (item of filteredNav(); track item.id) {
+                  <li>
+                    <button
+                      type="button"
+                      class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-base-200 transition-colors text-sm"
+                      (click)="scrollToSection(item.id, true)"
+                    >
+                      <svg
+                        class="w-5 h-5 text-primary"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        [innerHTML]="icons[item.icon]"
+                      ></svg>
+                      <div class="flex-1">
+                        <p class="font-medium">{{ item.title }}</p>
+                        <p class="text-xs text-base-content/50 truncate">{{ item.description }}</p>
+                      </div>
+                    </button>
+                  </li>
+                }
+                @if (filteredNav().length === 0) {
+                  <li class="text-sm text-base-content/60 italic">No encontramos resultados para "{{ searchQuery() }}".</li>
+                }
+              </ul>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Layout principal -->
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Menú lateral -->
+          <aside class="hidden lg:block lg:col-span-3">
+            <nav class="sticky top-24 space-y-4 animate-card-enter">
+              <p class="px-3 text-xs font-bold text-base-content/40 uppercase tracking-[0.35em]">Contenido</p>
+              @for (item of navItems(); track item.id) {
+                <button
+                  type="button"
+                  class="w-full text-left px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all duration-200 border border-transparent"
+                  (click)="scrollToSection(item.id)"
+                  [class.bg-primary]="activeSection() === item.id"
+                  [class.text-primary-content]="activeSection() === item.id"
+                  [class.shadow-lg]="activeSection() === item.id"
+                  [class.hover:bg-base-300]="activeSection() !== item.id"
+                  [class.bg-base-100]="activeSection() !== item.id"
+                >
+                  <div class="flex items-center gap-2">
+                    <svg
+                      class="w-5 h-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                      [innerHTML]="icons[item.icon]"
+                    ></svg>
+                    <span>{{ item.title }}</span>
+                  </div>
+                  @if (activeSection() === item.id) {
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
+                    </svg>
+                  }
+                </button>
+              }
+            </nav>
+          </aside>
+
+          <!-- Contenido principal -->
+          <section class="lg:col-span-9 space-y-12">
+            @for (section of sections(); track section.id) {
+              <article
+                [id]="section.id"
+                class="scroll-mt-28 animate-card-enter bg-base-100 border border-base-200 shadow-sm rounded-3xl"
+              >
+                <div class="card-body space-y-6">
+                  <header class="flex flex-col gap-3">
+                    <div class="flex items-center gap-4">
+                      <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                        <svg
+                          class="w-7 h-7"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.5"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          aria-hidden="true"
+                          [innerHTML]="icons[section.icon]"
+                        ></svg>
+                      </div>
+                      <div>
+                        <h2 class="text-2xl font-bold">{{ section.title }}</h2>
+                        <p class="text-base-content/60 text-sm">{{ section.description }}</p>
+                      </div>
+                    </div>
+                    @if (section.context) {
+                      <div class="alert alert-info bg-info/10 border-info/20 text-sm text-base-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <div>{{ section.context }}</div>
+                      </div>
+                    }
+                  </header>
+
+                  @if (section.highlights?.length) {
+                    <div class="grid sm:grid-cols-2 gap-4">
+                      @for (item of section.highlights; track item.title) {
+                        <div class="p-4 rounded-2xl border border-base-200 bg-base-200/40">
+                          <h3 class="font-semibold mb-1">{{ item.title }}</h3>
+                          <p class="text-sm text-base-content/70">{{ item.body }}</p>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (section.list?.length) {
+                    <div class="space-y-2">
+                      <h3 class="text-sm uppercase tracking-widest text-base-content/50 font-bold">Elementos clave</h3>
+                      <ul class="list-disc list-outside pl-6 text-sm text-base-content/80 space-y-1">
+                        @for (item of section.list; track item) {
+                          <li [innerHTML]="item"></li>
+                        }
+                      </ul>
+                    </div>
+                  }
+
+                  @if (section.steps?.length) {
+                    <div class="space-y-4">
+                      <h3 class="text-sm uppercase tracking-widest text-base-content/50 font-bold">Flujo recomendado</h3>
+                      <div class="steps steps-vertical lg:steps-horizontal w-full">
+                        @for (step of section.steps; track step.title) {
+                          <li class="step step-primary text-xs">{{ step.title }}</li>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </article>
+            }
+
+            <!-- FAQ -->
+            <section id="faq" class="scroll-mt-28">
+              <div class="card bg-base-100 border border-base-200 shadow-sm rounded-3xl">
+                <div class="card-body space-y-6">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                      <svg
+                        class="w-6 h-6"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.5"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                        [innerHTML]="icons['faq']"
+                      ></svg>
+                    </div>
+                    <div>
+                      <h2 class="text-2xl font-bold">Preguntas Frecuentes</h2>
+                      <p class="text-sm text-base-content/60">Explora respuestas rápidas sin salir del flujo.</p>
+                    </div>
+                  </div>
+
+                  <div class="space-y-2">
+                    @for (faq of faqs(); track faq.question) {
+                      <div class="collapse collapse-arrow bg-base-100 border border-base-200 shadow-sm">
+                        <input type="radio" name="faq-accordion" /> 
+                        <div class="collapse-title text-base font-semibold">
+                          {{ faq.question }}
+                        </div>
+                        <div class="collapse-content text-base-content/70 text-sm leading-relaxed">
+                          <p>{{ faq.answer }}</p>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- CTA Soporte -->
+            <section class="card bg-primary text-primary-content shadow-xl rounded-3xl animate-card-enter-delay-3">
+              <div class="card-body flex flex-col md:flex-row md:items-center gap-6">
+                <div class="w-16 h-16 bg-primary-content/10 rounded-full flex items-center justify-center text-primary-content">
+                  <svg
+                    class="w-10 h-10"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    aria-hidden="true"
+                  >
+                    <circle cx="12" cy="12" r="7.5" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 4.5v2.25" />
+                    <path d="M12 17.25V19.5" />
+                    <path d="M4.5 12h2.25" />
+                    <path d="M17.25 12h2.25" />
+                  </svg>
+                </div>
+                <div class="space-y-2 flex-1">
+                  <h2 class="text-2xl font-bold">¿Sigues con dudas?</h2>
+                  <p class="text-primary-content/80">
+                    Nuestro equipo puede revisar logs, datos contables o ayudarte a cerrar períodos complejos.
+                  </p>
+                </div>
+                <button class="btn btn-white text-primary border-none hover:bg-base-100">Contactar soporte</button>
+              </div>
+            </section>
+          </section>
         </div>
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.1); border-radius: 20px; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class CentroAyuda implements OnInit {
-  activeSection = signal<string>('introduccion');
+export class CentroAyuda implements OnInit, OnDestroy {
+  searchQuery = signal('');
+  activeSection = signal('introduccion');
+  private observer?: IntersectionObserver;
+  private readonly sanitizer = inject(DomSanitizer);
 
-  menuItems = signal<HelpMenuItem[]>([
-    { id: 'introduccion', label: 'Introducción' },
-    { id: 'dashboard', label: 'Dashboard' },
-    { id: 'maquinas', label: 'Gestión de Máquinas' },
-    { id: 'choferes', label: 'Gestión de Choferes' },
-    { id: 'registro-diario', label: 'Registro Diario' },
-    { id: 'contabilidad', label: 'Contabilidad' },
-    { id: 'reportes', label: 'Centro de Reportes' },
-    { id: 'configuracion', label: 'Configuración' },
-    { id: 'faq', label: 'Preguntas Frecuentes' }
+  readonly icons: Record<IconName, SafeHtml> = {
+    introduccion: this.icon(`
+      <circle cx="12" cy="12" r="7.5"></circle>
+      <path d="M12 10.5v4.5"></path>
+      <path d="M12 7.5h.01"></path>
+    `),
+    dashboard: this.icon(`
+      <path d="M6 18.75V10.5"></path>
+      <path d="M12 18.75V5.25"></path>
+      <path d="M18 18.75v-6"></path>
+      <path d="M3.75 18.75h16.5"></path>
+    `),
+    maquinas: this.icon(`
+      <path d="M3.75 14.25h8.25V7.5A1.5 1.5 0 0 1 13.5 6h2.25l3 3v5.25H18"></path>
+      <path d="M12 14.25h3.75"></path>
+      <circle cx="7.5" cy="17.25" r="1.5"></circle>
+      <circle cx="17.25" cy="17.25" r="1.5"></circle>
+    `),
+    choferes: this.icon(`
+      <path d="M5.25 18.75v-1.5a4.5 4.5 0 0 1 4.5-4.5h4.5a4.5 4.5 0 0 1 4.5 4.5v1.5"></path>
+      <circle cx="12" cy="9.75" r="3.25"></circle>
+    `),
+    'registro-diario': this.icon(`
+      <path d="M9 5.25h6a1.5 1.5 0 0 1 1.5 1.5v11.25a1.5 1.5 0 0 1-1.5 1.5H9a1.5 1.5 0 0 1-1.5-1.5V6.75A1.5 1.5 0 0 1 9 5.25z"></path>
+      <path d="M9 8.25h6"></path>
+      <path d="M9 11.25h6"></path>
+      <path d="M9 14.25h4"></path>
+    `),
+    contabilidad: this.icon(`
+      <rect x="5.25" y="8.25" width="13.5" height="9.75" rx="1"></rect>
+      <circle cx="12" cy="13.125" r="2.25"></circle>
+      <path d="M12 10.875v4.5"></path>
+      <path d="M5.25 11.25h2.25"></path>
+      <path d="M16.5 15h2.25"></path>
+    `),
+    reportes: this.icon(`
+      <path d="M5.25 14.25l4.5-4.5 3 3 4.5-6"></path>
+      <path d="M4.5 18.75h15"></path>
+    `),
+    configuracion: this.icon(`
+      <circle cx="12" cy="12" r="5"></circle>
+      <circle cx="12" cy="12" r="2"></circle>
+      <path d="M12 4.5v1.5"></path>
+      <path d="M12 18v1.5"></path>
+      <path d="M6.6 6.6l1.05 1.05"></path>
+      <path d="M16.35 16.35l1.05 1.05"></path>
+      <path d="M4.5 12h1.5"></path>
+      <path d="M18 12h1.5"></path>
+    `),
+    faq: this.icon(`
+      <circle cx="12" cy="12" r="7.5"></circle>
+      <path d="M9.75 10.125a2.25 2.25 0 1 1 4.5 0c0 1.5-2.25 2.25-2.25 3.375v.375"></path>
+      <path d="M12 16.5h.01"></path>
+    `)
+  };
+
+  readonly navItems = signal<HelpNavItem[]>([
+    { id: 'introduccion', title: 'Introducción', icon: 'introduccion', description: 'Conceptos y roles' },
+    { id: 'dashboard', title: 'Dashboard', icon: 'dashboard', description: 'KPIs, alertas, registros' },
+    { id: 'maquinas', title: 'Máquinas', icon: 'maquinas', description: 'Estados, documentos, filtros' },
+    { id: 'choferes', title: 'Choferes', icon: 'choferes', description: 'Datos, licencias, desempeño' },
+    { id: 'registro-diario', title: 'Registro Diario', icon: 'registro-diario', description: 'Bitácora operativa' },
+    { id: 'contabilidad', title: 'Contabilidad', icon: 'contabilidad', description: 'KPIs financieros, nómina' },
+    { id: 'reportes', title: 'Reportes', icon: 'reportes', description: 'Insights y exportaciones' },
+    { id: 'configuracion', title: 'Configuración', icon: 'configuracion', description: 'Parámetros y alertas' },
+    { id: 'faq', title: 'FAQ', icon: 'faq', description: 'Problemas comunes' }
   ]);
 
+  readonly sections = signal<HelpModule[]>([
+    {
+      id: 'introduccion',
+      title: 'Introducción',
+      icon: 'introduccion',
+      description: 'Conoce los roles y el recorrido general de la plataforma.',
+      highlights: [
+        { title: 'Perfil Administrador', body: 'Todo el control: registra máquinas, gestiona choferes, revisa finanzas y configura alertas.' },
+        { title: 'Perfil Trabajador', body: 'Experiencia pensada para el día a día: reportar trabajos, adjuntar gastos y revisar tu historial personal desde el móvil.' }
+      ],
+      list: [
+        '<strong>Barra lateral inteligente:</strong> Los accesos están organizados por áreas (Operación, Finanzas, Soporte). Usa el botón de colapsar si necesitas más espacio.',
+        '<strong>Diseño responsivo:</strong> En escritorio tienes la vista completa; en tablets y móviles los tableros se transforman en tarjetas fáciles de leer.',
+        '<strong>Flujo recomendado:</strong> Revisa el Dashboard → atiende alertas → registra/valida operaciones → cierra el período contable.'
+      ]
+    },
+    {
+      id: 'dashboard',
+      title: 'Dashboard',
+      icon: 'dashboard',
+      description: 'Tu panel de control diario.',
+      context: 'Ideal para comenzar la jornada: te muestra ingresos, gastos, alertas y registros recientes en segundos.',
+      highlights: [
+        { title: 'KPIs principales', body: 'Ganancia neta, ingreso total, horas trabajadas y estado documental en un solo vistazo.' },
+        { title: 'Centro de alertas', body: 'Colores tipo semáforo: rojo = urgente, amarillo = revisa hoy, verde = todo al día.' }
+      ],
+      list: [
+        'Haz clic sobre cualquier KPI para ir al módulo relacionado (por ejemplo, “Máquinas con documentos por vencer”).',
+        'Usa las tarjetas de registros diarios para abrir rápidamente el detalle y corregir datos si hace falta.',
+        'Tip operativo: revisa el Dashboard a primera hora. Resolver alertas aquí evita sorpresas al cerrar el mes.'
+      ]
+    },
+    {
+      id: 'maquinas',
+      title: 'Gestión de Máquinas',
+      icon: 'maquinas',
+      description: 'Estado de la flota, documentos y mantenimientos.',
+      highlights: [
+        { title: 'Tarjetas detalladas', body: 'Cada máquina muestra su chofer asignado, fecha del último servicio y documentos próximos a vencer.' },
+        { title: 'Filtros rápidos', body: 'Filtra por estado (operativa, en taller, inactiva) o por tipo de alerta documental.' }
+      ],
+      list: [
+        'Al abrir una máquina verás su historial de trabajos y mantenimientos. Usa las acciones rápidas para crear un servicio o actualizar datos.',
+        'Si un documento está por vencer, el sistema lo marca en ámbar y sugiere la acción necesaria.',
+        'En móviles, desliza horizontalmente para acceder a todos los filtros sin perder el listado.'
+      ]
+    },
+    {
+      id: 'choferes',
+      title: 'Gestión de Choferes',
+      icon: 'choferes',
+      description: 'Información personal y desempeño de cada operador.',
+      highlights: [
+        { title: 'Ficha resumida', body: 'Incluye datos de contacto, licencias, certificaciones y máquinas que puede operar.' },
+        { title: 'Seguimiento continuo', body: 'Pronto se habilitarán evaluaciones y métricas de productividad en el mismo módulo.' }
+      ],
+      list: [
+        'Para agregar un chofer necesitarás sus datos básicos, licencia y máquinas habilitadas. El sistema te guía paso a paso.',
+        'Mantén actualizadas las licencias: el panel te avisará cuando estén por vencer.',
+        'Desde aquí podrás asignar credenciales para que el chofer registre sus reportes diarios.'
+      ]
+    },
+    {
+      id: 'registro-diario',
+      title: 'Registro Diario',
+      icon: 'registro-diario',
+      description: 'Bitácora del día a día (combustible, horas y cobros).',
+      context: 'Disponible para choferes y administradores. En móvil se abre en “modo enfoque” para escribir rápido.',
+      steps: [
+        { title: 'Selecciona fecha y máquina' },
+        { title: 'Describe el trabajo realizado' },
+        { title: 'Ingresa horarios de inicio y fin' },
+        { title: 'Registra combustible y otros costos' },
+        { title: 'Confirma montos cobrados y pago al chofer' }
+      ],
+      list: [
+        'Si te equivocaste en un dato, vuelve a la tarjeta y edítalo; los administradores pueden revisar todas las jornadas.',
+        'Los campos de dinero muestran el símbolo $ y están alineados para que comparar sea más fácil.',
+        'El historial del trabajador se presenta como línea de tiempo para que identifique rápidamente jornadas pendientes o en revisión.'
+      ]
+    },
+    {
+      id: 'contabilidad',
+      title: 'Contabilidad',
+      icon: 'contabilidad',
+      description: 'Todo lo relacionado con ingresos, gastos y liquidaciones.',
+      context: 'Organizado en pestañas: Resumen general, Semanal, Liquidación de choferes e Historial.',
+      highlights: [
+        { title: 'Tabs intuitivas', body: 'Cada pestaña tiene un propósito claro y puedes alternar sin perder los filtros seleccionados.' },
+        { title: 'Botón Confirmar', body: 'Cuando un chofer tiene pago pendiente verás el botón “Confirmar” en modo outline (ligero) y opciones extra en el menú de tres puntos.' }
+      ],
+      list: [
+        'Resumen general: revisa los KPIs y el gráfico de tendencia antes de tomar decisiones.',
+        'Liquidación: edita montos faltantes, confirma pagos y usa el menú lateral para descargar reportes o ver detalles.',
+        'Historial de cierres: cada período cerrado aparece como “recibo” con la información clave y acciones de exportación.'
+      ]
+    },
+    {
+      id: 'reportes',
+      title: 'Reportes',
+      icon: 'reportes',
+      description: 'Análisis visual para entender la rentabilidad.',
+      context: 'Incluye rentabilidad por máquina, ranking de ingresos y rentabilidad por chofer.',
+      highlights: [
+        { title: 'Tablas legibles', body: 'Columnas importantes (ganancia neta) se resaltan con un fondo suave y números alineados a la derecha.' },
+        { title: 'Tab panels animados', body: 'Cada cambio de pestaña aplica una animación corta para entender que cambiaste de contexto.' }
+      ],
+      list: [
+        'Los gráficos se adaptan al ancho disponible y limitan la cantidad de etiquetas para que siempre puedas leerlos.',
+        'En cada tabla encontrarás el ranking, el identificador (máquina o chofer) y los montos relevantes.',
+        'Usa el botón “Exportar” para compartir la información en PDF o Excel con tu equipo financiero.'
+      ]
+    },
+    {
+      id: 'configuracion',
+      title: 'Configuración',
+      icon: 'configuracion',
+      description: 'Personaliza la plataforma según tu empresa.',
+      highlights: [
+        { title: 'Perfil de la compañía', body: 'Actualiza nombre, logo y datos de contacto que aparecerán en el encabezado y reportes.' },
+        { title: 'Alertas y notificaciones', body: 'Enciende o apaga recordatorios de documentos, mantenimientos o avisos contables.' }
+      ],
+      list: [
+        'Solo los administradores pueden modificar esta sección.',
+        'Los cambios se aplican inmediatamente y afectan a todos los usuarios.',
+        'Revisa esta sección al menos una vez al trimestre para asegurarte de que los datos estén actualizados.'
+      ]
+    }
+  ]);
+
+  readonly faqs = signal<FaqItem[]>([
+    {
+      question: '¿Cómo recupero mi contraseña?',
+      answer: 'En la pantalla de login selecciona “¿Olvidaste tu contraseña?”. Ingresa tu correo registrado y recibirás un enlace seguro para restablecerla.'
+    },
+    {
+      question: '¿Qué hago si un registro diario queda incompleto?',
+      answer: 'Los administradores pueden editar cualquier jornada desde el módulo correspondiente. Para choferes, solicita la corrección a tu administrador.'
+    },
+    {
+      question: '¿La información contable se puede exportar?',
+      answer: 'Sí. Cada tab de contabilidad y reportes incluye botón “Exportar” con opciones CSV, XLSX o PDF siguiendo la configuración de Chart.js/Tablas.'
+    },
+    {
+      question: '¿Puedo usar la app sin conexión?',
+      answer: 'La sincronización es en tiempo real, por lo que se requiere conexión. Si pierdes señal, guarda un borrador local y envíalo cuando vuelvas a tener internet.'
+    },
+    {
+      question: '¿Cómo contacto soporte?',
+      answer: 'Utiliza el CTA “Contactar soporte” al final de esta página o escribe al correo corporativo con capturas y pasos para reproducir el problema.'
+    }
+  ]);
+
+  readonly filteredNav = computed(() => {
+    const term = this.searchQuery().trim().toLowerCase();
+    if (!term) {
+      return [];
+    }
+
+    return this.navItems()
+      .filter(item => `${item.title} ${item.description}`.toLowerCase().includes(term))
+      .slice(0, 5);
+  });
+
   ngOnInit(): void {
-    // Configurar Intersection Observer para detectar sección visible
     this.setupIntersectionObserver();
   }
 
-  onMenuClick(id: string): void {
-    this.activeSection.set(id);
+  ngOnDestroy(): void {
+    this.observer?.disconnect();
+  }
+
+  scrollToSection(id: string, clearSearch = false): void {
     const element = document.getElementById(id);
-    if (element) {
-      const yOffset = -20;
-      const y = element.getBoundingClientRect().top + window.pageYOffset + yOffset;
-      window.scrollTo({ top: y, behavior: 'smooth' });
+    if (!element) {
+      return;
+    }
+
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    this.activeSection.set(id);
+
+    if (clearSearch) {
+      this.searchQuery.set('');
     }
   }
 
   private setupIntersectionObserver(): void {
-    const sections = document.querySelectorAll('[id^="introduccion"], [id^="dashboard"], [id^="maquinas"], [id^="choferes"], [id^="registro-diario"], [id^="contabilidad"], [id^="reportes"], [id^="configuracion"], [id^="faq"]');
-    
-    const observerOptions = {
-      root: null,
-      rootMargin: '-20% 0px -70% 0px',
-      threshold: 0
-    };
+    const targets = [...this.sections().map(section => section.id), 'faq'];
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          const id = entry.target.getAttribute('id');
-          if (id) {
-            this.activeSection.set(id);
+    this.observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const id = entry.target.getAttribute('id');
+            if (id) {
+              this.activeSection.set(id);
+            }
           }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '-20% 0px -60% 0px',
+        threshold: 0
+      }
+    );
+
+    setTimeout(() => {
+      targets.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          this.observer?.observe(el);
         }
       });
-    }, observerOptions);
+    }, 200);
+  }
 
-    // Esperar a que el DOM esté listo
-    setTimeout(() => {
-      sections.forEach(section => observer.observe(section));
-    }, 100);
+  private icon(svg: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(svg);
   }
 }
+

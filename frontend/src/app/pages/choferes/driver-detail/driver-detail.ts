@@ -2,6 +2,9 @@ import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, e
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DriverService } from '../../../shared/services/driver.service';
 import { MachineService } from '../../../shared/services/machine.service';
+import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import { AccountingService } from '../../../shared/services/accounting.service';
+import type { DailyRecord, DailyRecordStatus } from '../../../shared/models/daily-record.models';
 import { DriverHeader } from '../../../shared/drivers/driver-header/driver-header';
 import { DriverPersonalInfo } from '../../../shared/drivers/driver-personal-info/driver-personal-info';
 import { DriverLicenseInfo } from '../../../shared/drivers/driver-license-info/driver-license-info';
@@ -82,6 +85,8 @@ export class DriverDetail implements OnInit {
   private router = inject(Router);
   private driverService = inject(DriverService);
   private machineService = inject(MachineService);
+  private dailyRecordService = inject(DailyRecordService);
+  private accountingService = inject(AccountingService);
 
   // Cargar chofer
   driverIdParam = toSignal(
@@ -195,69 +200,130 @@ export class DriverDetail implements OnInit {
   }
 
   private loadDailyRecords(): void {
-    // Mock data - en producción vendría del servicio
-    this.dailyRecords.set([
-      {
-        id: 1,
-        fecha: '2024-11-14',
-        estado: 'completo',
-        recaudado: 450000,
-        diesel: 80000,
-        observaciones: 'Sin novedades'
+    const driverId = this.driverId();
+    if (!driverId) return;
+
+    this.dailyRecordService.getDailyRecords({
+      chofer_id: driverId
+    }).subscribe({
+      next: (response) => {
+        const records = response.datos || [];
+        
+        // Mapear DailyRecord a DriverDailyRecord
+        const driverRecords: DriverDailyRecord[] = records.map((record: DailyRecord) => {
+          // Mapear estado
+          let estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado';
+          switch (record.estado) {
+            case 'COMPLETO':
+              estado = 'completo';
+              break;
+            case 'PENDIENTE_TRABAJADOR':
+              estado = 'pendiente_trabajador';
+              break;
+            case 'INCIDENTE_REPORTADO':
+              estado = 'incidente_reportado';
+              break;
+            case 'NO_TRABAJADO':
+            case 'DIA_NO_TRABAJADO':
+              estado = 'no_trabajado';
+              break;
+            default:
+              estado = 'completo';
+          }
+
+          return {
+            id: parseInt(record.id),
+            fecha: record.fecha,
+            estado,
+            recaudado: record.recaudado || 0,
+            diesel: record.costo_diesel || 0,
+            observaciones: record.observaciones || null
+          };
+        });
+
+        // Ordenar por fecha (más reciente primero)
+        driverRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+
+        this.dailyRecords.set(driverRecords);
       },
-      {
-        id: 2,
-        fecha: '2024-11-13',
-        estado: 'pendiente_trabajador',
-        recaudado: 0,
-        diesel: 0,
-        observaciones: null
-      },
-      {
-        id: 3,
-        fecha: '2024-11-12',
-        estado: 'completo',
-        recaudado: 520000,
-        diesel: 75000,
-        observaciones: 'Buen día'
+      error: (error) => {
+        console.error('Error al cargar registros diarios:', error);
+        this.dailyRecords.set([]);
       }
-    ]);
+    });
   }
 
   private loadLiquidations(): void {
-    // Mock data - en producción vendría del servicio
-    this.liquidations.set([
-      {
-        id: 1,
-        fecha: '01 Nov 2024',
-        total_ganado: 450000,
-        minimo_garantizado: 400000,
-        pago_final: 450000,
-        metodo_pago: 'transferencia',
-        codigo_transferencia: 'TRF-2024-001',
-        estado_pago: 'pagado'
+    const driverId = this.driverId();
+    if (!driverId) return;
+
+    // Obtener liquidaciones del chofer
+    // Por ahora, obtener del mes actual y meses anteriores
+    const today = new Date();
+    const currentMonth = today.getMonth() + 1;
+    const currentYear = today.getFullYear();
+
+    this.accountingService.getLiquidation(currentMonth, currentYear).subscribe({
+      next: (liquidation) => {
+        const liquidations: DriverLiquidation[] = [];
+
+        // Buscar el chofer en la liquidación
+        const driverLiquidation = liquidation.choferes.find(c => c.chofer_id === driverId);
+        
+        if (driverLiquidation) {
+          liquidations.push({
+            id: driverLiquidation.chofer_id,
+            fecha: `${String(currentMonth).padStart(2, '0')}/${currentYear}`,
+            total_ganado: driverLiquidation.total_ganado,
+            minimo_garantizado: driverLiquidation.minimo_garantizado || 0,
+            pago_final: driverLiquidation.pago_final,
+            metodo_pago: driverLiquidation.metodo_pago || 'transferencia',
+            codigo_transferencia: driverLiquidation.codigo_transferencia || null,
+            estado_pago: driverLiquidation.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
+          });
+        }
+
+        // Obtener historial de liquidaciones
+        this.accountingService.getLiquidationHistory().subscribe({
+          next: (history) => {
+            // Filtrar liquidaciones del chofer
+            history.forEach((item) => {
+              const driverItem = item.choferes.find(c => c.chofer_id === driverId);
+              if (driverItem) {
+                liquidations.push({
+                  id: driverItem.chofer_id,
+                  fecha: `${String(item.mes).padStart(2, '0')}/${item.anio}`,
+                  total_ganado: driverItem.total_ganado,
+                  minimo_garantizado: driverItem.minimo_garantizado || 0,
+                  pago_final: driverItem.pago_final,
+                  metodo_pago: driverItem.metodo_pago || 'transferencia',
+                  codigo_transferencia: driverItem.codigo_transferencia || null,
+                  estado_pago: driverItem.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
+                });
+              }
+            });
+
+            // Ordenar por fecha (más reciente primero)
+            liquidations.sort((a, b) => {
+              const [monthA, yearA] = a.fecha.split('/').map(Number);
+              const [monthB, yearB] = b.fecha.split('/').map(Number);
+              if (yearA !== yearB) return yearB - yearA;
+              return monthB - monthA;
+            });
+
+            this.liquidations.set(liquidations);
+          },
+          error: (error) => {
+            console.error('Error al cargar historial de liquidaciones:', error);
+            this.liquidations.set(liquidations);
+          }
+        });
       },
-      {
-        id: 2,
-        fecha: '01 Oct 2024',
-        total_ganado: 380000,
-        minimo_garantizado: 400000,
-        pago_final: 400000,
-        metodo_pago: 'transferencia',
-        codigo_transferencia: 'TRF-2024-002',
-        estado_pago: 'pagado'
-      },
-      {
-        id: 3,
-        fecha: '01 Sep 2024',
-        total_ganado: 520000,
-        minimo_garantizado: 400000,
-        pago_final: 520000,
-        metodo_pago: 'transferencia',
-        codigo_transferencia: 'TRF-2024-003',
-        estado_pago: 'pendiente'
+      error: (error) => {
+        console.error('Error al cargar liquidaciones:', error);
+        this.liquidations.set([]);
       }
-    ]);
+    });
   }
 }
 

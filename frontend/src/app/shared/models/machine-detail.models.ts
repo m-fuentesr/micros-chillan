@@ -1,14 +1,22 @@
 // Modelos para el detalle de máquina
+// MachineDailyRecord es compatible con DailyRecord del modelo unificado
+// Ver: src/app/shared/models/daily-record.models.ts
 
+import type { DailyRecord, DailyRecordStatus } from './daily-record.models';
+
+/**
+ * Registro diario visto desde el contexto de una máquina
+ * Compatible con DailyRecord unificado
+ */
 export interface MachineDailyRecord {
   id: number;
   fecha: string;
-  chofer: string;
+  chofer: string; // Alias de chofer_nombre para compatibilidad
   chofer_id: number;
   recaudado: number;
-  diesel: number;
+  diesel: number; // Alias de costo_diesel para compatibilidad
   observaciones?: string | null;
-  estado: 'PENDIENTE_TRABAJADOR' | 'INCIDENTE_REPORTADO' | 'COMPLETO' | 'NO_TRABAJADO' | 'DIA_NO_TRABAJADO';
+  estado: DailyRecordStatus;
 }
 
 export interface MachineAssignment {

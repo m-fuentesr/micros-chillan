@@ -9,7 +9,7 @@ export interface AccountingSummary {
     total_recaudado: number;
     total_costo_diesel: number;
     total_pago_choferes: number;
-    gastos_repuestos: number;
+    total_gastos_mantenimiento: number; // Cambiado de gastos_repuestos según especificaciones
     ganancia_liquida: number;
   };
   es_mes_actual: boolean;
