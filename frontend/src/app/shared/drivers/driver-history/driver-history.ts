@@ -61,8 +61,8 @@ import { DriverDailyRecord, DriverLiquidation } from '../../models/driver.models
                         }
                       }
                     </td>
-                    <td class="font-semibold">{{ formatCurrency(record.recaudado) }}</td>
-                    <td class="font-semibold">{{ formatCurrency(record.diesel) }}</td>
+                    <td class="font-bold">{{ formatCurrency(record.recaudado) }}</td>
+                    <td class="font-bold">{{ formatCurrency(record.diesel) }}</td>
                     <td>
                       @if (record.observaciones) {
                         <div class="tooltip" [attr.data-tip]="record.observaciones">
@@ -83,7 +83,7 @@ import { DriverDailyRecord, DriverLiquidation } from '../../models/driver.models
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="6" class="text-center py-8 text-base-content/50">
+                    <td colspan="6" class="text-left py-8 text-base-content/50 pl-4 border-l-4 border-l-primary">
                       No hay registros disponibles
                     </td>
                   </tr>
@@ -112,9 +112,9 @@ import { DriverDailyRecord, DriverLiquidation } from '../../models/driver.models
                 @for (liquidation of liquidations(); track liquidation.id) {
                   <tr>
                     <td class="font-mono text-sm">{{ liquidation.fecha }}</td>
-                    <td class="font-semibold">{{ formatCurrency(liquidation.total_ganado) }}</td>
-                    <td class="font-semibold">{{ formatCurrency(liquidation.minimo_garantizado) }}</td>
-                    <td class="font-semibold">{{ formatCurrency(liquidation.pago_final) }}</td>
+                    <td class="font-bold">{{ formatCurrency(liquidation.total_ganado) }}</td>
+                    <td class="font-bold">{{ formatCurrency(liquidation.minimo_garantizado) }}</td>
+                    <td class="font-bold">{{ formatCurrency(liquidation.pago_final) }}</td>
                     <td>{{ liquidation.metodo_pago || '—' }}</td>
                     <td>{{ liquidation.codigo_transferencia || '—' }}</td>
                     <td>

@@ -12,7 +12,7 @@ import { Driver } from '../../models/driver.models';
         <div class="space-y-4">
           <div class="border-b border-base-300 pb-2">
             <span class="text-xs uppercase tracking-wide text-base-content/70">ID Chofer</span>
-            <div class="font-semibold mt-1">CH-{{ driver().id.toString().padStart(3, '0') }}</div>
+            <div class="font-bold mt-1">CH-{{ driver().id.toString().padStart(3, '0') }}</div>
           </div>
           
           <div class="border-b border-base-300 pb-2">

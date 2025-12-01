@@ -109,7 +109,7 @@ import { MaintenanceRecord, MaintenanceFilters } from '../../models/machine-deta
                   <tr>
                     <td class="font-mono text-sm">{{ formatDate(record.fecha) }}</td>
                     <td class="truncate tooltip" [attr.data-tip]="record.item">{{ record.item }}</td>
-                    <td class="text-right font-semibold">{{ formatCurrency(record.costo) }}</td>
+                    <td class="text-left font-bold font-mono tabular-nums">{{ formatCurrency(record.costo) }}</td>
                     <td class="font-mono text-sm break-all">{{ record.numero_factura }}</td>
                     <td>
                       @if (record.categoria === 'preventivo') {
@@ -128,7 +128,7 @@ import { MaintenanceRecord, MaintenanceFilters } from '../../models/machine-deta
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="6" class="text-center text-base-content/50 py-8">
+                    <td colspan="6" class="text-left text-base-content/50 py-8 pl-4 border-l-4 border-l-primary">
                       No hay registros que coincidan con los filtros
                     </td>
                   </tr>

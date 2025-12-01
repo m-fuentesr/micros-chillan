@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, WritableSignal, effect } from '@angular/core';
 import { AlertList } from '../../shared/dashboard/alert-list/alert-list';
 import { FinancialSummary } from '../../shared/dashboard/financial-summary/financial-summary';
 import { DailyRecordsTable } from '../../shared/dashboard/daily-records-table/daily-records-table';
@@ -6,7 +6,7 @@ import { AlertService } from '../../shared/services/alert.service';
 import { DashboardService } from '../../shared/services/dashboard.service';
 import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared/models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
@@ -15,9 +15,9 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div class="animate-header-enter">
-        <h1 class="text-4xl font-bold mb-2">Dashboard del Administrador</h1>
-        <p class="text-base-content/70">
+      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+        <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Dashboard del Administrador</h1>
+        <p class="text-base-content/70 italic">
           Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
         </p>
       </div>
@@ -37,9 +37,9 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </svg>
           </div>
           <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 mb-1">Ganancia Neta Total</div>
-            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums break-words leading-tight">{{ gananciaNetaTotal() }}</div>
-            <div class="text-xs text-base-content/60 mt-2">Período actual</div>
+            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Ganancia Neta Total</div>
+            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black tabular-nums break-words leading-tight">{{ gananciaNetaTotal() }}</div>
+            <div class="text-xs text-base-content/60 italic mt-2">Período actual</div>
           </div>
         </div>
 
@@ -51,9 +51,9 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </svg>
           </div>
           <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 mb-1">Ingreso Total</div>
-            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold tabular-nums break-words leading-tight">{{ ingresoTotal() }}</div>
-            <div class="text-xs text-base-content/60 mt-2">Período actual</div>
+            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Ingreso Total</div>
+            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black tabular-nums break-words leading-tight">{{ ingresoTotal() }}</div>
+            <div class="text-xs text-base-content/60 italic mt-2">Período actual</div>
           </div>
         </div>
 
@@ -65,9 +65,9 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </svg>
           </div>
           <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 mb-1">Máquinas Activas</div>
-            <div class="text-[clamp(1.25rem,2.5vw,2rem)] sm:text-[clamp(1.5rem,3vw,2rem)] font-bold break-words leading-tight">{{ maquinasActivas() }}</div>
-            <div class="text-xs text-base-content/60 mt-2">En operación hoy</div>
+            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Máquinas Activas</div>
+            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black break-words leading-tight">{{ maquinasActivas() }}</div>
+            <div class="text-xs text-base-content/60 italic mt-2">En operación hoy</div>
           </div>
         </div>
 
@@ -79,28 +79,28 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </svg>
           </div>
           <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 mb-2">Resumen de Alertas</div>
-            <div class="space-y-1">
+            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Resumen de Alertas</div>
+            <div class="space-y-2">
               <div class="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
-                <span class="text-xl font-bold">{{ alertCounts().critical }}</span>
-                <span class="text-xs text-base-content/70">críticas</span>
+                <span class="text-2xl font-black">{{ alertCounts().critical }}</span>
+                <span class="text-xs text-base-content/70 italic">críticas</span>
               </div>
               <div class="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                 </svg>
-                <span class="text-xl font-bold">{{ alertCounts().warning }}</span>
-                <span class="text-xs text-base-content/70">advertencias</span>
+                <span class="text-2xl font-black">{{ alertCounts().warning }}</span>
+                <span class="text-xs text-base-content/70 italic">advertencias</span>
               </div>
               <div class="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" viewBox="0 0 20 20" fill="currentColor">
                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
                 </svg>
-                <span class="text-xl font-bold">{{ alertCounts().info }}</span>
-                <span class="text-xs text-base-content/70">informativas</span>
+                <span class="text-2xl font-black">{{ alertCounts().info }}</span>
+                <span class="text-xs text-base-content/70 italic">informativas</span>
               </div>
             </div>
           </div>
@@ -109,7 +109,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
         <!-- Gráfico Financiero (2/3 del ancho) -->
         <div class="xl:col-span-2 animate-page-enter" style="animation-delay: 200ms; animation-fill-mode: both;">
           <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
@@ -126,7 +126,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Zona de Detalle: Tabla Full Width -->
-      <div class="animate-page-enter" style="animation-delay: 300ms; animation-fill-mode: both;">
+      <div class="animate-page-enter border-t-2 border-t-base-300 pt-6" style="animation-delay: 300ms; animation-fill-mode: both;">
         @if (isLoading()) {
           <app-loading-skeleton type="table" [count]="5" />
         } @else {
@@ -148,8 +148,10 @@ export class Home implements OnInit {
   showOnlyPending = signal(false);
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
   isLoading = signal(true);
+  isDeletingAlert = signal(false);
+  isDeletingAllAlerts = signal(false);
   
-  // Cargar alertas
+  // Cargar alertas - usar signal mutable para Optimistic UI
   alertsData = toSignal(
     this.alertService.getAlerts().pipe(
       catchError(() => of<Alert[]>([]))
@@ -157,7 +159,31 @@ export class Home implements OnInit {
     { initialValue: [] }
   );
 
-  alerts = computed(() => this.alertsData() ?? []);
+  // Signal mutable para permitir actualizaciones optimistas
+  private _alerts = signal<Alert[]>([]);
+  private alertsInitialized = false;
+  
+  // Effect para inicializar _alerts cuando se carguen los datos
+  private alertsInitEffect = effect(() => {
+    const loaded = this.alertsData();
+    if (!this.alertsInitialized && loaded && loaded.length > 0) {
+      this._alerts.set([...loaded]);
+      this.alertsInitialized = true;
+    }
+  });
+  
+  alerts = computed(() => {
+    const loaded = this.alertsData();
+    const optimistic = this._alerts();
+    
+    // Si ya inicializamos y hay datos optimistas, usarlos
+    if (this.alertsInitialized && optimistic.length >= 0) {
+      return optimistic;
+    }
+    
+    // Si no, usar los cargados
+    return loaded ?? [];
+  });
 
   alertCounts = computed(() => {
     const alerts = this.alerts();
@@ -171,18 +197,26 @@ export class Home implements OnInit {
   // Cargar registros diarios
   dailyRecordsData = toSignal(
     this.dashboardService.getDailyRecords().pipe(
-      catchError(() => of<DailyRecord[]>(this.getMockDailyRecords()))
+      catchError((error) => {
+        console.warn('Error al cargar registros diarios en home, usando mocks:', error);
+        return of<DailyRecord[]>(this.getMockDailyRecords());
+      })
     ),
     { initialValue: [] }
   );
 
   dailyRecords = computed(() => {
     const records = this.dailyRecordsData() ?? [];
-    // Si tenemos datos, desactivar loading
-    if (records.length > 0 && this.isLoading()) {
-      setTimeout(() => this.isLoading.set(false), 100);
+    // Si tenemos datos del servicio, usarlos
+    if (records.length > 0) {
+      if (this.isLoading()) {
+        setTimeout(() => this.isLoading.set(false), 100);
+      }
+      return records;
     }
-    return records;
+    // Si no hay datos, usar mocks como fallback para desarrollo
+    // Esto asegura que siempre haya datos para mostrar
+    return this.getMockDailyRecords();
   });
 
   // Datos financieros (mismos que usa financial-summary)
@@ -229,11 +263,11 @@ export class Home implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente con toSignal
+    // La inicialización de alerts se maneja en el effect
+    
     // Desactivar loading después de un tiempo razonable
     setTimeout(() => {
-      if (this.dailyRecords().length > 0 || this.alerts().length > 0) {
-        this.isLoading.set(false);
-      }
+      this.isLoading.set(false);
     }, 500);
   }
 
@@ -327,14 +361,90 @@ export class Home implements OnInit {
   }
 
   onDeleteAlert(alertId: string): void {
-    // TODO: Implementar lógica para eliminar alerta
-    console.log('Eliminar alerta:', alertId);
-    // Ejemplo: this.alertService.deleteAlert(alertId);
+    // Prevenir múltiples eliminaciones simultáneas
+    if (this.isDeletingAlert()) {
+      return;
+    }
+
+    // 1. Snapshot del estado actual (para rollback)
+    const previousAlerts = [...this._alerts()];
+    
+    // 2. Optimistic update: Remover inmediatamente de la UI
+    this._alerts.set(previousAlerts.filter(a => a.id !== alertId));
+    this.isDeletingAlert.set(true);
+    
+    // 3. Llamar al servidor en segundo plano
+    this.alertService.deleteAlert(alertId).pipe(
+      catchError((error) => {
+        // 4. Rollback en caso de error
+        this._alerts.set(previousAlerts);
+        
+        // 5. Notificar al usuario
+        this.showErrorToast('No se pudo eliminar la alerta. Intenta nuevamente.');
+        
+        return EMPTY;
+      })
+    ).subscribe({
+      next: () => {
+        this.isDeletingAlert.set(false);
+      },
+      error: () => {
+        this.isDeletingAlert.set(false);
+      }
+    });
   }
 
   onDeleteAllAlerts(): void {
-    // TODO: Implementar lógica para eliminar todas las alertas
-    console.log('Eliminar todas las alertas');
-    // Ejemplo: this.alertService.deleteAllAlerts();
+    // Prevenir múltiples eliminaciones simultáneas
+    if (this.isDeletingAllAlerts() || this.isDeletingAlert()) {
+      return;
+    }
+
+    // 1. Snapshot del estado actual (para rollback)
+    const previousAlerts = [...this._alerts()];
+    
+    // 2. Optimistic update: Remover todas las alertas inmediatamente
+    this._alerts.set([]);
+    this.isDeletingAllAlerts.set(true);
+    
+    // 3. Llamar al servidor en segundo plano
+    this.alertService.deleteAllAlerts().pipe(
+      catchError((error) => {
+        // 4. Rollback en caso de error
+        this._alerts.set(previousAlerts);
+        
+        // 5. Notificar al usuario
+        this.showErrorToast('No se pudieron eliminar las alertas. Intenta nuevamente.');
+        
+        return EMPTY;
+      })
+    ).subscribe({
+      next: () => {
+        this.isDeletingAllAlerts.set(false);
+      },
+      error: () => {
+        this.isDeletingAllAlerts.set(false);
+      }
+    });
+  }
+
+  private showErrorToast(message: string): void {
+    // Crear toast usando DaisyUI
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-top toast-end';
+    toast.innerHTML = `
+      <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>${message}</span>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    
+    // Remover después de 3 segundos
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
   }
 }

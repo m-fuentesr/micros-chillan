@@ -21,7 +21,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
             <p class="text-base-content/70">
               Consolida la información clave de cada chofer y agiliza las tareas administrativas.
             </p>
-            <ul class="text-sm text-base-content/80 space-y-1">
+            <ul class="text-sm text-base-content/80 space-y-2">
               <li>• Control de licencias y certificaciones.</li>
               <li>• Historial de asignaciones y desempeño.</li>
               <li>• Accesos al portal de reportes diarios.</li>

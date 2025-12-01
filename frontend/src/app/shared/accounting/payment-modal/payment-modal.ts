@@ -18,7 +18,7 @@ import { LiquidationDriver } from '../../models/accounting.models';
           
           <div class="form-control mb-4">
             <label class="label">
-              <span class="label-text font-semibold">Método de Pago <span class="text-error">*</span></span>
+              <span class="label-text font-bold">Método de Pago <span class="text-error">*</span></span>
             </label>
             <select
               class="select select-bordered w-full"
@@ -33,7 +33,7 @@ import { LiquidationDriver } from '../../models/accounting.models';
           @if (paymentMethod() === 'transferencia') {
             <div class="form-control mb-4">
               <label class="label">
-                <span class="label-text font-semibold">Código de Transferencia <span class="text-error">*</span></span>
+                <span class="label-text font-bold">Código de Transferencia <span class="text-error">*</span></span>
               </label>
               <input
                 type="text"

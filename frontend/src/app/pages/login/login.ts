@@ -49,16 +49,16 @@ import { AuthService } from '../../shared/services/auth.service';
       <!-- Panel formulario -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-16 z-10">
         <div class="w-full max-w-md bg-base-100 rounded-2xl shadow-xl lg:shadow-none p-6 sm:p-8 mt-[180px] sm:mt-[200px] lg:mt-0 animate-in fade-in slide-in-from-bottom-8 duration-700">
-          <div class="text-center lg:text-left mb-8 space-y-2">
-            <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-semibold">Acceso corporativo</p>
-            <h1 class="text-2xl lg:text-3xl font-bold text-base-content">Iniciar sesión</h1>
-            <p class="text-base-content/60 text-sm">Ingresa tu RUT o correo corporativo.</p>
+          <div class="text-left mb-8 space-y-2 border-l-4 border-l-primary pl-4">
+            <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-bold">Acceso corporativo</p>
+            <h1 class="text-2xl lg:text-4xl font-bold text-base-content">Iniciar sesión</h1>
+            <p class="text-base-content/60 text-sm italic">Ingresa tu RUT o correo corporativo.</p>
           </div>
 
           <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-5">
             <div class="form-control">
               <label class="label pt-0">
-            <span class="label-text font-semibold">Usuario</span>
+            <span class="label-text font-bold">Usuario</span>
               </label>
               <label class="input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors h-12">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 opacity-70">
@@ -76,7 +76,7 @@ import { AuthService } from '../../shared/services/auth.service';
 
             <div class="form-control">
               <label class="label pt-0">
-                <span class="label-text font-semibold">Contraseña</span>
+                <span class="label-text font-bold">Contraseña</span>
               </label>
               <label class="input input-bordered flex items-center gap-2 focus-within:input-primary transition-colors h-12">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" class="w-4 h-4 opacity-70">
@@ -91,7 +91,7 @@ import { AuthService } from '../../shared/services/auth.service';
                 />
               </label>
               <div class="flex justify-end mt-1">
-                <a routerLink="/recuperar-clave" class="text-xs link link-primary no-underline hover:underline font-medium">Recuperar clave</a>
+                <a routerLink="/recuperar-clave" class="text-xs link link-primary no-underline hover:underline font-normal italic">Recuperar clave</a>
               </div>
             </div>
 

@@ -11,7 +11,7 @@ import { ClosedLiquidation } from '../../models/accounting.models';
       <div class="card-body p-4 sm:p-6">
         
         <div class="mb-6">
-          <h2 class="text-lg sm:text-xl font-bold">Historial de Cierres</h2>
+          <h2 class="text-2xl font-bold border-l-4 border-l-primary pl-3">Historial de Cierres</h2>
           <p class="text-xs sm:text-sm text-base-content/60">Registro inmutable de liquidaciones.</p>
         </div>
 
@@ -23,7 +23,7 @@ import { ClosedLiquidation } from '../../models/accounting.models';
                 <th class="pl-6 w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Período</th>
                 <th class="w-1/6 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha Cierre</th>
                 <th class="w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Responsable</th>
-                <th class="text-right text-xs font-bold uppercase tracking-widest text-base-content/60 pr-12">Total</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 pr-12 font-mono tabular-nums">Total</th>
                 <th class="w-16"></th>
               </tr>
             </thead>
@@ -57,10 +57,10 @@ import { ClosedLiquidation } from '../../models/accounting.models';
                       </span>
                     </div>
                   </td>
-                  <td class="text-right pr-12">
+                  <td class="text-left pr-12 font-mono tabular-nums">
                     <span class="font-black text-base-content tabular-nums tracking-tight">{{ formatCurrency(liquidation.total_pagado) }}</span>
                   </td>
-                  <td class="pr-6 text-right">
+                  <td class="pr-6 text-left font-mono tabular-nums">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
                         [class.rotate-180]="expandedId() === liquidation.id" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -144,15 +144,15 @@ import { ClosedLiquidation } from '../../models/accounting.models';
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 py-4 border-b border-base-100">
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Total Liquidado</div>
-            <div class="text-lg sm:text-xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
+            <div class="text-2xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Choferes</div>
-            <div class="text-lg sm:text-xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
+            <div class="text-2xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Promedio</div>
-            <div class="text-lg sm:text-xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
+            <div class="text-2xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Estado</div>
@@ -171,8 +171,8 @@ import { ClosedLiquidation } from '../../models/accounting.models';
             <thead class="text-base-content/40 border-b border-base-100">
               <tr>
                 <th class="pl-6 font-normal">Beneficiario</th>
-                <th class="text-right font-normal">Base</th>
-                <th class="text-right font-normal">Ajuste</th>
+                <th class="text-left font-bold font-mono tabular-nums">Base</th>
+                <th class="text-left font-bold font-mono tabular-nums">Ajuste</th>
                 <th class="text-right font-normal">Total</th>
                 <th class="pl-8 font-normal">Método</th>
                 <th class="font-normal">Ref</th>

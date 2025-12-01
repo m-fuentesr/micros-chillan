@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
       <!-- Revisión Técnica -->
       <div class="form-control">
         <label class="label">
-          <span class="label-text font-semibold">
+          <span class="label-text font-bold">
             Fecha Vencimiento Revisión Técnica <span class="text-error">*</span>
           </span>
         </label>
@@ -32,7 +32,7 @@ import { CommonModule } from '@angular/common';
       <!-- Permiso de Circulación -->
       <div class="form-control">
         <label class="label">
-          <span class="label-text font-semibold">
+          <span class="label-text font-bold">
             Fecha Vencimiento Permiso de Circulación <span class="text-error">*</span>
           </span>
         </label>
@@ -54,7 +54,7 @@ import { CommonModule } from '@angular/common';
       <!-- Seguro Obligatorio -->
       <div class="form-control">
         <label class="label">
-          <span class="label-text font-semibold">
+          <span class="label-text font-bold">
             Fecha Vencimiento Seguro Obligatorio <span class="text-error">*</span>
           </span>
         </label>

@@ -88,8 +88,8 @@ interface WeekGroup {
         </div>
 
         @if (filteredData().length === 0) {
-          <div class="p-8 text-center">
-            <p class="text-base-content/60">No hay reportes en este período</p>
+          <div class="p-8 text-left pl-4 border-l-4 border-l-primary">
+            <p class="text-base-content/60 italic">No hay reportes en este período</p>
           </div>
         } @else {
           <div class="history-container">
@@ -114,10 +114,10 @@ interface WeekGroup {
                           <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
                           </svg>
-                          <span class="font-medium">-{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }} ({{ item.dieselLiters }}L)</span>
+                          <span class="font-normal">-{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }} ({{ item.dieselLiters }}L)</span>
                         </div>
                       }
-                      <div class="text-[11px] font-semibold" [class.text-warning]="item.status === 'pending'" [class.text-success]="item.status === 'processed'">
+                      <div class="text-[11px] font-bold" [class.text-warning]="item.status === 'pending'" [class.text-success]="item.status === 'processed'">
                         @if (item.status === 'pending') {
                           ⚠️ Validación Pendiente
                         } @else {

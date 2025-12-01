@@ -13,7 +13,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().rut">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">RUT</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'RUT: ' + (summary().rut || 'No ingresado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'RUT: ' + (summary().rut || 'No ingresado')">
                 {{ summary().rut || '--' }}
               </div>
             </div>
@@ -22,7 +22,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().nombre">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Nombre completo</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Nombre completo: ' + (summary().nombre || 'No ingresado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Nombre completo: ' + (summary().nombre || 'No ingresado')">
                 {{ summary().nombre || '--' }}
               </div>
             </div>
@@ -32,7 +32,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().telefono">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Teléfono</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Teléfono: ' + (summary().telefono || 'No ingresado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Teléfono: ' + (summary().telefono || 'No ingresado')">
                 {{ summary().telefono || '--' }}
               </div>
             </div>
@@ -41,7 +41,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().estado">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Estado</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Estado: ' + (summary().estado || 'No seleccionado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Estado: ' + (summary().estado || 'No seleccionado')">
                 {{ summary().estado || '--' }}
               </div>
             </div>
@@ -50,7 +50,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().maquina">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Máquina asignada</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Máquina asignada: ' + (summary().maquina || 'Sin asignar')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Máquina asignada: ' + (summary().maquina || 'Sin asignar')">
                 {{ summary().maquina || '— Sin asignar —' }}
               </div>
             </div>

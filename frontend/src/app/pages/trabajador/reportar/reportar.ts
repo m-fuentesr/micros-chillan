@@ -25,9 +25,9 @@ import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.m
           </svg>
         </a>
 
-        <div class="relative z-10 text-center">
+        <div class="relative z-10 text-left pl-4 border-l-4 border-l-white/30">
           <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.35em] mb-1">Nuevo registro</p>
-          <h1 class="text-2xl font-bold text-white tracking-tight">Reporte diario</h1>
+          <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Reporte diario</h1>
         </div>
         <div
           class="absolute top-0 left-0 w-full h-full opacity-10"
@@ -35,7 +35,7 @@ import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.m
         ></div>
       </header>
 
-      <form class="px-4 -mt-16 relative z-20 space-y-6" [formGroup]="reportForm" (ngSubmit)="enviarReporte()">
+      <form class="px-4 mt-4 relative z-20 space-y-6" [formGroup]="reportForm" (ngSubmit)="enviarReporte()">
         <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1 overflow-hidden">
           <div class="flex items-center p-4 gap-4">
             <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
@@ -89,26 +89,26 @@ import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.m
           </div>
 
           <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-1">
-              <label class="text-xs text-slate-400 font-medium ml-1">Litros</label>
+            <div class="space-y-2">
+              <label class="text-xs text-slate-400 font-normal ml-1">Litros</label>
               <div class="relative">
                 <input
                   type="number"
                   formControlName="fuelLiters"
                   placeholder="0"
-                  class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-center"
+                  class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
                 />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">L</span>
               </div>
             </div>
-            <div class="space-y-1">
-              <label class="text-xs text-slate-400 font-medium ml-1">Costo total</label>
+            <div class="space-y-2">
+              <label class="text-xs text-slate-400 font-normal ml-1">Costo total</label>
               <div class="relative">
                 <input
                   type="number"
                   formControlName="fuelCost"
                   placeholder="0"
-                  class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-center"
+                  class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
                 />
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">$</span>
               </div>

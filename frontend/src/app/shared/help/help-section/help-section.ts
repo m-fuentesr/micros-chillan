@@ -15,7 +15,7 @@ import { HelpWarning } from '../help-warning/help-warning';
       }
 
       @if (subtitle()) {
-        <h3 class="text-lg font-semibold mt-6 mb-4">{{ subtitle() }}</h3>
+        <h3 class="text-xl font-bold mt-6 mb-4 border-l-4 border-l-primary pl-3">{{ subtitle() }}</h3>
       }
 
       @if (listItems().length > 0) {
@@ -27,7 +27,7 @@ import { HelpWarning } from '../help-warning/help-warning';
       }
 
       @if (subtitle2()) {
-        <h3 class="text-lg font-semibold mt-6 mb-4">{{ subtitle2() }}</h3>
+        <h3 class="text-xl font-bold mt-6 mb-4 border-l-4 border-l-primary pl-3">{{ subtitle2() }}</h3>
       }
 
       @if (listItems2().length > 0) {

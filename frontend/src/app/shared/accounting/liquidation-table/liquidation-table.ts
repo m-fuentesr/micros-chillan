@@ -39,11 +39,11 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
             <thead class="bg-base-200/50 border-b border-base-200">
               <tr>
                 <th class="pl-6 w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Colaborador</th>
-                <th class="text-right text-xs font-bold uppercase tracking-widest text-base-content/60">Base (Ganado)</th>
-                <th class="text-right text-xs font-bold uppercase tracking-widest text-base-content/60">Garantizado</th>
-                <th class="text-right text-xs font-bold uppercase tracking-widest text-base-content/60 w-40">Ajuste / Bono</th>
-                <th class="text-right text-xs font-bold uppercase tracking-widest text-base-content/60 bg-base-200">A Pagar</th>
-                <th class="text-center text-xs font-bold uppercase tracking-widest text-base-content/60 bg-base-200">Acción</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums">Base (Ganado)</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums">Garantizado</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 w-40 font-mono tabular-nums">Ajuste / Bono</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 bg-base-200 font-mono tabular-nums">A Pagar</th>
+                <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 bg-base-200">Acción</th>
               </tr>
             </thead>
             <tbody>
@@ -67,19 +67,19 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                     </div>
                   </td>
 
-                  <td class="text-right">
-                    <div class="tabular-nums font-medium text-base-content/70">
+                  <td class="text-left">
+                    <div class="tabular-nums font-bold text-base-content/70 font-mono">
                       {{ chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                     </div>
                   </td>
 
-                  <td class="text-right">
-                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50">
+                  <td class="text-left">
+                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
                       Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                     </span>
                   </td>
 
-                  <td class="text-right">
+                  <td class="text-left">
                     <div class="relative flex items-center justify-end">
                       <span class="absolute right-24 text-base-content/30 text-xs mr-2 group-hover:opacity-100 opacity-0 transition-opacity">+</span>
                       <input
@@ -94,7 +94,7 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                     </div>
                   </td>
 
-                  <td class="text-right bg-base-50/50 font-bold text-base-content tabular-nums text-lg border-l border-base-200">
+                  <td class="text-left bg-base-50/50 font-bold text-base-content tabular-nums text-lg border-l border-base-200 font-mono">
                     {{ chofer.pago_final | currency:'CLP':'symbol-narrow':'1.0-0' }}
                   </td>
 

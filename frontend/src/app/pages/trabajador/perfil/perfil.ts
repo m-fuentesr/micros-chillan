@@ -37,14 +37,14 @@ import type { DailyRecord } from '../../../shared/models/daily-record.models';
         </div>
       </header>
 
-      <div class="px-4 -mt-16 mb-6 relative z-10">
+      <div class="px-4 mt-4 mb-6 relative z-10">
         <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
-          <div class="flex-1 text-center px-2">
+          <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-primary">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Días Trab.</p>
             <p class="text-2xl font-black text-slate-800 tabular-nums">{{ daysWorked() }}</p>
           </div>
 
-          <div class="flex-1 text-center px-2">
+          <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-primary">
             <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Recaudado</p>
             <p class="text-2xl font-black text-emerald-600 tracking-tight tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
           </div>
@@ -74,7 +74,7 @@ import type { DailyRecord } from '../../../shared/models/daily-record.models';
             @if (rut()) {
               <div class="flex justify-between border-b border-slate-50 pb-3">
                 <span class="text-sm text-slate-400">RUT</span>
-                <span class="text-sm font-semibold text-slate-700 font-mono">{{ rut() }}</span>
+                <span class="text-sm font-bold text-slate-700 font-mono">{{ rut() }}</span>
               </div>
             }
             @if (assignedMachine()) {

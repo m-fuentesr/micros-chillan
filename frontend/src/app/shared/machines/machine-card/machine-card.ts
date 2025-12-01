@@ -7,10 +7,10 @@ import { Machine, DocumentStatus } from '../../models/machine.models';
   imports: [RouterLink],
   template: `
     <div class="card bg-base-100 shadow-xl hover-lift relative">
-      <div class="card-body flex flex-col items-center text-center p-6">
+      <div class="card-body flex flex-col items-start text-left p-6 pl-4 border-l-4 border-l-primary">
         <!-- Estado/Número en esquina superior derecha -->
         <div class="absolute top-4 right-4">
-          <span class="badge badge-sm font-semibold"
+          <span class="badge badge-sm font-bold"
             [class.badge-success]="machine().estado_operativo === 'Operativa'"
             [class.badge-warning]="machine().estado_operativo === 'En Taller'"
             [class.badge-error]="machine().estado_operativo === 'Inactiva'">
@@ -99,7 +99,7 @@ import { Machine, DocumentStatus } from '../../models/machine.models';
 
         <!-- Bio corta (Patente) -->
         <p class="text-xs text-base-content/50 mb-4 break-all">
-          Patente: <span class="font-mono font-semibold">{{ machine().patente }}</span>
+          Patente: <span class="font-mono font-bold">{{ machine().patente }}</span>
         </p>
 
         <!-- Botón de acción -->

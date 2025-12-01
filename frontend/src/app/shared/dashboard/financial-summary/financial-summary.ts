@@ -47,7 +47,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
         <div class="flex flex-wrap items-center gap-4 mb-4 flex-shrink-0">
           <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1">
             <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-medium"
+              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
               [class.bg-white]="currentMetric() === 'Ganancia Neta'"
               [class.shadow-sm]="currentMetric() === 'Ganancia Neta'"
               [class.text-primary]="currentMetric() === 'Ganancia Neta'"
@@ -58,7 +58,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
               Ganancia Neta
             </button>
             <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-medium"
+              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
               [class.bg-white]="currentMetric() === 'Ingreso Total'"
               [class.shadow-sm]="currentMetric() === 'Ingreso Total'"
               [class.text-primary]="currentMetric() === 'Ingreso Total'"
@@ -90,7 +90,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
             </canvas>
           } @else {
             <div class="flex items-center justify-center h-full text-base-content/40">
-              <div class="text-center">
+              <div class="text-left pl-4 border-l-4 border-l-primary">
                 <div class="loading loading-spinner loading-md mb-2"></div>
                 <p class="text-sm">Cargando gráfico...</p>
               </div>

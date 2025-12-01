@@ -18,18 +18,18 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div class="animate-header-enter">
-        <h1 class="text-4xl font-bold mb-2 tracking-tight text-base-content">Contabilidad</h1>
-        <p class="text-base-content/60 font-medium">Gestión financiera y nómina de conductores.</p>
+      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Contabilidad</h1>
+        <p class="text-base-content/60 italic">Gestión financiera y nómina de conductores.</p>
       </div>
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
       <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-base-200 pb-6 mb-6 animate-card-enter">
         <!-- Segmented Control (Tabs) - Edge-to-edge en móvil -->
-        <div class="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-hide">
+        <div class="w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 px-4 lg:px-0 scrollbar-hide">
           <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 min-w-full lg:min-w-0">
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'summary'"
               [class.shadow-sm]="activeTab() === 'summary'"
               [class.text-primary]="activeTab() === 'summary'"
@@ -45,7 +45,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'weekly'"
               [class.shadow-sm]="activeTab() === 'weekly'"
               [class.text-primary]="activeTab() === 'weekly'"
@@ -60,7 +60,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'payroll'"
               [class.shadow-sm]="activeTab() === 'payroll'"
               [class.text-primary]="activeTab() === 'payroll'"
@@ -75,7 +75,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap"
               [class.bg-white]="activeTab() === 'history'"
               [class.shadow-sm]="activeTab() === 'history'"
               [class.text-primary]="activeTab() === 'history'"

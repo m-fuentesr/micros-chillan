@@ -27,7 +27,7 @@ interface LicenseAlerts {
             
             <!-- Filtro rápido integrado -->
             <div class="flex flex-wrap items-center gap-3 mb-3">
-              <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">Filtro rápido:</span>
+              <span class="text-xs font-bold uppercase tracking-wide text-base-content/70">Filtro rápido:</span>
               <div class="flex flex-wrap gap-2">
                 <button
                   class="btn btn-sm"
@@ -55,7 +55,7 @@ interface LicenseAlerts {
             
             <!-- Alertas de licencias -->
             <div class="flex flex-wrap items-center gap-4">
-              <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">Alertas de licencias:</span>
+              <span class="text-xs font-bold uppercase tracking-wide text-base-content/70">Alertas de licencias:</span>
               <div class="flex flex-wrap gap-3">
                 <div class="flex items-center gap-2 text-sm">
                   <span class="w-2 h-2 rounded-full bg-error"></span>
@@ -80,7 +80,7 @@ interface LicenseAlerts {
           <!-- Contenedor derecho: Badge y Selector -->
           <div class="flex flex-col items-end gap-3 xl:flex-row xl:items-center">
             <!-- Badge de conteo -->
-            <span class="badge badge-lg badge-outline font-semibold">
+            <span class="badge badge-lg badge-outline font-bold">
               {{ filteredDrivers().length }} {{ filteredDrivers().length === 1 ? 'chofer' : 'choferes' }}
             </span>
             
@@ -115,11 +115,11 @@ interface LicenseAlerts {
                 <app-driver-card [driver]="driver" />
               </div>
             } @empty {
-              <div class="col-span-full text-center py-12">
-                <div class="flex flex-col items-center gap-2">
+              <div class="col-span-full text-left py-12 pl-4 border-l-4 border-l-primary">
+                <div class="flex flex-col items-start gap-2">
                   <div class="text-4xl opacity-50">👤</div>
-                  <h3 class="font-semibold">No hay choferes disponibles</h3>
-                  <p class="text-sm text-base-content/70">
+                  <h3 class="font-bold">No hay choferes disponibles</h3>
+                  <p class="text-sm text-base-content/70 italic">
                     Relaja los filtros para ver más resultados.
                   </p>
                 </div>

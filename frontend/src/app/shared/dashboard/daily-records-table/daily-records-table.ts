@@ -9,8 +9,8 @@ import { DailyRecord } from '../../models/dashboard.models';
     <div class="card bg-base-100 shadow-xl border border-base-200/50 overflow-hidden animate-scale-up">
       <div class="card-header p-6 border-b border-base-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 class="card-title text-xl font-bold text-base-content">Registros de Operación</h2>
-          <p class="text-xs text-base-content/50 mt-1">Visión general del rendimiento diario de la flota.</p>
+          <h2 class="card-title text-2xl font-bold text-base-content border-l-4 border-l-primary pl-3">Registros de Operación</h2>
+          <p class="text-xs text-base-content/50 italic mt-1">Visión general del rendimiento diario de la flota.</p>
         </div>
         
         <div class="flex gap-2 bg-base-200/50 p-1 rounded-lg">

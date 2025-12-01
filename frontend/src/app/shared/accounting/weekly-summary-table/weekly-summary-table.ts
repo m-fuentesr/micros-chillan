@@ -13,10 +13,10 @@ import { WeeklySummary } from '../../models/accounting.models';
         <div class="mb-6 flex flex-col gap-4">
           <div class="flex justify-between items-start">
             <div>
-              <h2 class="text-lg sm:text-xl font-bold">Desempeño Semanal</h2>
+              <h2 class="text-2xl font-bold border-l-4 border-l-primary pl-3">Desempeño Semanal</h2>
               <p class="text-xs sm:text-sm text-base-content/60">Rentabilidad operativa.</p>
             </div>
-            <div class="bg-success/10 px-3 py-1.5 rounded-lg border border-success/20 text-right">
+            <div class="bg-success/10 px-3 py-1.5 rounded-lg border border-success/20 text-left pl-4 border-l-4 border-l-success">
               <div class="text-[10px] text-success/80 uppercase font-bold tracking-wider">Total Mes</div>
               <div class="font-bold text-success text-base sm:text-lg tabular-nums tracking-tight">
                 {{ getTotalGanancia() | currency:'CLP':'symbol-narrow':'1.0-0' }}
@@ -86,11 +86,11 @@ import { WeeklySummary } from '../../models/accounting.models';
             <thead class="bg-base-100 border-b border-base-200">
               <tr>
                 <th class="pl-6 w-48 text-base-content/70 text-xs font-bold uppercase tracking-wider">Semana</th>
-                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Recaudado</th>
-                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Combustible</th>
-                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Mant.</th>
-                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider">Egresos</th>
-                <th class="text-right pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider">Ganancia Neta</th>
+                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Recaudado</th>
+                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Combustible</th>
+                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Mant.</th>
+                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Egresos</th>
+                <th class="text-left pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Ganancia Neta</th>
                 <th class="w-10"></th>
               </tr>
             </thead>
@@ -104,7 +104,7 @@ import { WeeklySummary } from '../../models/accounting.models';
                   <td class="pl-6 py-4">
                     <div class="flex flex-col">
                       <span class="font-bold text-base-content group-hover:text-primary transition-colors">Semana {{ summary.semana }}</span>
-                      <span class="text-xs text-base-content/50 font-medium">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</span>
+                      <span class="text-xs text-base-content/50 font-normal italic">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</span>
                     </div>
                   </td>
                   

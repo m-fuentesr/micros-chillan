@@ -94,8 +94,8 @@ import { Driver } from '../../models/driver.models';
                 <tr>
                   <td class="font-mono text-sm">{{ formatDate(record.fecha) }}</td>
                   <td class="truncate tooltip" [attr.data-tip]="record.chofer">{{ record.chofer }}</td>
-                  <td class="font-semibold">{{ formatCurrency(record.recaudado) }}</td>
-                  <td class="font-semibold">{{ formatCurrency(record.diesel) }}</td>
+                  <td class="font-bold">{{ formatCurrency(record.recaudado) }}</td>
+                  <td class="font-bold">{{ formatCurrency(record.diesel) }}</td>
                   <td>
                     @if (record.observaciones) {
                       <div class="tooltip" [attr.data-tip]="record.observaciones">
@@ -116,7 +116,7 @@ import { Driver } from '../../models/driver.models';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="6" class="text-center text-base-content/50 py-8">
+                  <td colspan="6" class="text-left text-base-content/50 py-8 pl-4 border-l-4 border-l-primary">
                     No hay registros que coincidan con los filtros
                   </td>
                 </tr>

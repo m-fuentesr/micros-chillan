@@ -18,7 +18,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 RUT <span class="text-error">*</span>
               </span>
             </label>
@@ -41,7 +41,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Primer Nombre <span class="text-error">*</span>
               </span>
             </label>
@@ -63,7 +63,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Segundo Nombre</span>
+              <span class="label-text font-bold">Segundo Nombre</span>
             </label>
             <input
               type="text"
@@ -74,7 +74,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Apellido Paterno <span class="text-error">*</span>
               </span>
             </label>
@@ -96,7 +96,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Apellido Materno <span class="text-error">*</span>
               </span>
             </label>
@@ -118,7 +118,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Teléfono <span class="text-error">*</span>
               </span>
             </label>
@@ -140,7 +140,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Correo Electrónico <span class="text-error">*</span>
               </span>
             </label>
@@ -162,7 +162,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Estado <span class="text-error">*</span>
               </span>
             </label>
@@ -183,7 +183,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Máquina Asignada</span>
+              <span class="label-text font-bold">Máquina Asignada</span>
             </label>
             <select formControlName="maquina_id" class="select select-bordered w-full">
               <option value="">Sin asignar</option>
@@ -206,7 +206,7 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Fecha Vencimiento Licencia</span>
+              <span class="label-text font-bold">Fecha Vencimiento Licencia</span>
             </label>
             <input
               type="date"

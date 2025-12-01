@@ -31,24 +31,24 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
               </div>
               <div>
                 <span class="text-xs uppercase tracking-wide text-base-content/70">MARCA</span>
-                <div class="font-semibold truncate tooltip" [attr.data-tip]="machine().marca">{{ machine().marca }}</div>
+                <div class="font-bold truncate tooltip" [attr.data-tip]="machine().marca">{{ machine().marca }}</div>
               </div>
               <div>
                 <span class="text-xs uppercase tracking-wide text-base-content/70">PATENTE</span>
-                <div class="font-semibold break-all">{{ machine().patente }}</div>
+                <div class="font-bold break-all">{{ machine().patente }}</div>
               </div>
               <div>
                 <span class="text-xs uppercase tracking-wide text-base-content/70">ESTADO Y ASIGNACIÓN</span>
                 <div class="space-y-2 mt-2">
                   @if (year()) {
-                    <div><span class="font-semibold">AÑO:</span> {{ year() }}</div>
+                    <div><span class="font-bold">AÑO:</span> {{ year() }}</div>
                   }
                   <div>
-                    <span class="font-semibold">ESTADO OPERATIVO:</span>
+                    <span class="font-bold">ESTADO OPERATIVO:</span>
                     <span class="badge badge-success ml-2">{{ machine().estado_operativo }}</span>
                   </div>
                   <div>
-                    <span class="font-semibold">CHOFER ASIGNADO:</span>
+                    <span class="font-bold">CHOFER ASIGNADO:</span>
                     @if (machine().chofer_actual) {
                       <span class="ml-2 truncate tooltip" [attr.data-tip]="machine().chofer_actual!.nombre_completo">{{ machine().chofer_actual!.nombre_completo }}</span>
                     } @else {
@@ -80,7 +80,7 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
             <!-- Revisión Técnica -->
             <div class="flex items-center justify-between border-b border-base-300 pb-4">
               <div class="flex-1">
-                <div class="font-semibold mb-1">Revisión Técnica</div>
+                <div class="font-bold mb-1">Revisión Técnica</div>
                 @if (docStatus().revision_tecnica) {
                   <div class="text-sm text-base-content/70">
                     {{ formatDate(docStatus().revision_tecnica!.fecha || '') }}
@@ -89,7 +89,7 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
                   <div class="text-sm text-base-content/50">Sin fecha registrada</div>
                 }
               </div>
-              <div class="text-right">
+              <div class="text-left">
                 @if (docStatus().revision_tecnica) {
                   <span 
                     class="badge"
@@ -105,7 +105,7 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
             <!-- Permiso de Circulación -->
             <div class="flex items-center justify-between border-b border-base-300 pb-4">
               <div class="flex-1">
-                <div class="font-semibold mb-1">Permiso de Circulación</div>
+                <div class="font-bold mb-1">Permiso de Circulación</div>
                 @if (docStatus().permiso_circulacion) {
                   <div class="text-sm text-base-content/70">
                     {{ formatDate(docStatus().permiso_circulacion!.fecha || '') }}
@@ -114,7 +114,7 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
                   <div class="text-sm text-base-content/50">Sin fecha registrada</div>
                 }
               </div>
-              <div class="text-right">
+              <div class="text-left">
                 @if (docStatus().permiso_circulacion) {
                   <span 
                     class="badge"
@@ -139,7 +139,7 @@ import { calculateMachineDocumentStatus } from '../../utils/document.utils';
                   <div class="text-sm text-base-content/50">Sin fecha registrada</div>
                 }
               </div>
-              <div class="text-right">
+              <div class="text-left">
                 @if (docStatus().seguro_obligatorio) {
                   <span 
                     class="badge"

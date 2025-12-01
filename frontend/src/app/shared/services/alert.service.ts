@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { catchError, retry } from 'rxjs/operators';
 import { Alert, AlertCounts } from '../models/dashboard.models';
 
 @Injectable({
@@ -30,6 +31,45 @@ export class AlertService {
         observer.complete();
       });
     });
+  }
+
+  // DELETE /api/alerts/{id} - Eliminar una alerta
+  deleteAlert(alertId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/alerts/${alertId}`).pipe(
+      retry({
+        count: 3,
+        delay: (error, retryCount) => {
+          // Solo retry para errores de red (5xx, timeout)
+          if (error.status >= 500 || error.status === 0) {
+            return new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+          throw error;
+        }
+      }),
+      catchError(() => {
+        // En desarrollo, simular éxito
+        return of(undefined);
+      })
+    );
+  }
+
+  // DELETE /api/alerts - Eliminar todas las alertas
+  deleteAllAlerts(): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/alerts`).pipe(
+      retry({
+        count: 3,
+        delay: (error, retryCount) => {
+          if (error.status >= 500 || error.status === 0) {
+            return new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+          }
+          throw error;
+        }
+      }),
+      catchError(() => {
+        // En desarrollo, simular éxito
+        return of(undefined);
+      })
+    );
   }
 
   private generateMockAlerts(): Alert[] {

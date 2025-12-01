@@ -6,8 +6,8 @@ import { Machine, DocumentStatus } from '../../models/machine.models';
   selector: 'app-machine-table',
   imports: [RouterLink],
   template: `
-    <div class="overflow-x-auto -mx-4 sm:mx-0">
-      <div class="inline-block min-w-full align-middle px-4 sm:px-0">
+    <div class="overflow-x-auto">
+      <div class="inline-block min-w-full align-middle">
         <table class="table table-zebra w-full min-w-[800px]">
           <thead>
             <tr>
@@ -72,11 +72,11 @@ import { Machine, DocumentStatus } from '../../models/machine.models';
               </tr>
             } @empty {
               <tr>
-                <td colspan="5" class="text-center py-8">
-                  <div class="flex flex-col items-center gap-2">
+                <td colspan="5" class="text-left py-8 pl-4 border-l-4 border-l-primary">
+                  <div class="flex flex-col items-start gap-2">
                     <div class="text-4xl opacity-50">🚛</div>
-                    <h3 class="font-semibold">No hay máquinas coincidentes</h3>
-                    <p class="text-sm text-base-content/70">
+                    <h3 class="font-bold">No hay máquinas coincidentes</h3>
+                    <p class="text-sm text-base-content/70 italic">
                       Ajusta los filtros o registra una nueva máquina.
                     </p>
                   </div>

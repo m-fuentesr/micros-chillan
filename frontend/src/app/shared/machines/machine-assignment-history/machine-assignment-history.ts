@@ -68,7 +68,7 @@ import { MachineAssignment } from '../../models/machine-detail.models';
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="4" class="text-center text-base-content/50 py-8">
+                  <td colspan="4" class="text-left text-base-content/50 py-8 pl-4 border-l-4 border-l-primary">
                     No hay asignaciones registradas
                   </td>
                 </tr>

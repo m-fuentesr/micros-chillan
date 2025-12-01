@@ -66,9 +66,10 @@ export class LoadingOverlay {
 
   /**
    * Clases del overlay
+   * z-40 para que quede debajo del navbar (z-50) pero encima del contenido del main
    */
   overlayClasses = () => {
-    return 'fixed inset-0 z-50 flex items-center justify-center bg-base-100/80 transition-opacity duration-300';
+    return 'fixed inset-0 z-40 flex items-center justify-center bg-base-100/80 transition-opacity duration-300';
   };
 }
 

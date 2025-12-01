@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnInit, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnInit, OnDestroy, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 
@@ -16,7 +16,7 @@ import { AuthService } from '../services/auth.service';
 
       <div class="flex flex-col items-center">
         <span class="font-bold text-lg tracking-tight text-base-content leading-none">NombreApp</span>
-        <span class="text-[10px] text-base-content/40 font-medium tracking-wide">ADMINISTRACIÓN</span>
+        <span class="text-[10px] text-base-content/40 font-normal tracking-wide">ADMINISTRACIÓN</span>
       </div>
 
       <div class="w-10 h-10 rounded-lg bg-base-200/50 flex items-center justify-center text-xs font-bold text-base-content/70 ring-1 ring-base-200">
@@ -34,22 +34,22 @@ import { AuthService } from '../services/auth.service';
 
     <!-- Sidebar Premium -->
     <aside 
-      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0"
-      [class.w-72]="!isCollapsed()"
-      [class.w-16]="isCollapsed()"
+      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      [class.lg:w-72]="!isCollapsed()"
+      [class.lg:w-16]="isCollapsed()"
+      [class.collapsed]="isCollapsed()"
       [class.-translate-x-full]="!isMobileMenuOpen()"
       [class.translate-x-0]="isMobileMenuOpen()">
       
       <!-- Header con Branding -->
-      <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0"
-           [class.justify-center]="isCollapsed()"
-           [class.justify-between]="!isCollapsed()">
-        @if (!isCollapsed()) {
-          <div class="flex flex-col">
-            <span class="font-bold text-lg tracking-tight text-base-content leading-none">NombreApp</span>
-            <span class="text-[10px] text-base-content/40 font-medium tracking-wide mt-1">ADMINISTRACIÓN</span>
-          </div>
-        }
+      <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
+           [class.lg:justify-center]="isCollapsed()"
+           [class.lg:justify-between]="!isCollapsed()">
+        <div class="flex flex-col"
+             [class.lg:hidden]="isCollapsed()">
+          <span class="font-bold text-lg tracking-tight text-base-content leading-none">NombreApp</span>
+          <span class="text-[10px] text-base-content/40 font-medium tracking-wide mt-1">ADMINISTRACIÓN</span>
+        </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <button 
             (click)="toggleCollapse()"
@@ -74,7 +74,7 @@ import { AuthService } from '../services/auth.service';
       </div>
 
       <!-- Menú de navegación Premium -->
-      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto custom-scrollbar">
+      <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
         <!-- Dashboard -->
         <a 
           routerLink="/dashboard" 
@@ -87,9 +87,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 transition-transform group-hover:scale-110 duration-200">
             <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clip-rule="evenodd" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-bold text-sm tracking-wide">Dashboard</span>
-          }
+          <span class="font-bold text-sm tracking-wide"
+                [class.lg:hidden]="isCollapsed()">Dashboard</span>
         </a>
 
         <!-- Bitácora de Operaciones -->
@@ -105,19 +104,17 @@ import { AuthService } from '../services/auth.service';
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Bitácora de Operaciones</span>
-          }
+          <span class="font-normal text-sm"
+                [class.lg:hidden]="isCollapsed()">Bitácora de Operaciones</span>
         </a>
 
         <!-- Separador: Gestión de Flota -->
-        <div class="nav-separator" [class.collapsed]="isCollapsed()">
-          @if (!isCollapsed()) {
-            <div class="mt-6 mb-2 px-4 flex items-center justify-between group cursor-default">
-              <span class="text-[10px] font-black text-base-content/30 uppercase tracking-widest group-hover:text-primary/60 transition-colors">Gestión de Flota</span>
-              <div class="h-px bg-base-200 flex-1 ml-3 group-hover:bg-primary/20 transition-colors"></div>
-            </div>
-          }
+        <div class="nav-separator" [class.collapsed]="isCollapsed()" [class.lg:collapsed]="isCollapsed()">
+          <div class="mt-6 mb-2 px-4 flex items-center justify-between group cursor-default"
+               [class.lg:hidden]="isCollapsed()">
+            <span class="text-[10px] font-black text-base-content/30 uppercase tracking-widest group-hover:text-primary/60 transition-colors">Gestión de Flota</span>
+            <div class="h-px bg-base-200 flex-1 ml-3 group-hover:bg-primary/20 transition-colors"></div>
+          </div>
         </div>
 
         <!-- Máquinas -->
@@ -132,9 +129,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Máquinas</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Máquinas</span>
         </a>
 
         <!-- Choferes -->
@@ -149,19 +145,17 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Choferes</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Choferes</span>
         </a>
 
         <!-- Separador: Finanzas -->
-        <div class="nav-separator" [class.collapsed]="isCollapsed()">
-          @if (!isCollapsed()) {
-            <div class="mt-6 mb-2 px-4 flex items-center justify-between group cursor-default">
-              <span class="text-[10px] font-black text-base-content/30 uppercase tracking-widest group-hover:text-primary/60 transition-colors">Finanzas</span>
-              <div class="h-px bg-base-200 flex-1 ml-3 group-hover:bg-primary/20 transition-colors"></div>
-            </div>
-          }
+        <div class="nav-separator" [class.collapsed]="isCollapsed()" [class.lg:collapsed]="isCollapsed()">
+          <div class="mt-6 mb-2 px-4 flex items-center justify-between group cursor-default"
+               [class.lg:hidden]="isCollapsed()">
+            <span class="text-[10px] font-black text-base-content/30 uppercase tracking-widest group-hover:text-primary/60 transition-colors">Finanzas</span>
+            <div class="h-px bg-base-200 flex-1 ml-3 group-hover:bg-primary/20 transition-colors"></div>
+          </div>
         </div>
 
         <!-- Contabilidad -->
@@ -176,9 +170,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Contabilidad</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Contabilidad</span>
         </a>
 
         <!-- Reportes -->
@@ -193,9 +186,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Reportes</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Reportes</span>
         </a>
       </nav>
 
@@ -214,9 +206,8 @@ import { AuthService } from '../services/auth.service';
             <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Configuración</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Configuración</span>
         </a>
 
         <!-- Centro de Ayuda -->
@@ -231,9 +222,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Centro de Ayuda</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Centro de Ayuda</span>
         </a>
 
         <!-- Cerrar Sesión -->
@@ -244,9 +234,8 @@ import { AuthService } from '../services/auth.service';
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          @if (!isCollapsed()) {
-            <span class="font-medium text-sm">Cerrar Sesión</span>
-          }
+          <span class="font-medium text-sm"
+                [class.lg:hidden]="isCollapsed()">Cerrar Sesión</span>
         </a>
       </div>
     </aside>
@@ -433,13 +422,15 @@ import { AuthService } from '../services/auth.service';
     
     /* Animación optimizada de colapso para nav - Secuencia simplificada (solo desktop) */
     @media (min-width: 1024px) {
-      :host ::ng-deep .sidebar-container.w-16 nav {
+      :host ::ng-deep .sidebar-container.collapsed nav,
+      :host ::ng-deep .sidebar-container[class*="w-16"] nav {
         transition: padding var(--duration-collapse) var(--easing-collapse) var(--delay-medium);
         padding: 1rem 0.5rem !important;
       }
       
       /* Estado colapsado - Centrar iconos y ocultar texto */
-      :host ::ng-deep .sidebar-container.w-16 nav a {
+      :host ::ng-deep .sidebar-container.collapsed nav a,
+      :host ::ng-deep .sidebar-container[class*="w-16"] nav a {
         padding: 0.75rem !important;
         justify-content: center !important;
         gap: 0 !important;
@@ -447,18 +438,24 @@ import { AuthService } from '../services/auth.service';
         min-height: 3rem !important;
       }
       
-      :host ::ng-deep .sidebar-container.w-16 nav a svg {
+      :host ::ng-deep .sidebar-container.collapsed nav a svg,
+      :host ::ng-deep .sidebar-container[class*="w-16"] nav a svg {
         margin: 0 !important;
         flex-shrink: 0;
         width: 1.25rem !important;
         height: 1.25rem !important;
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
       }
       
-      :host ::ng-deep .sidebar-container.w-16 nav a .nav-indicator {
+      :host ::ng-deep .sidebar-container.collapsed nav a .nav-indicator,
+      :host ::ng-deep .sidebar-container[class*="w-16"] nav a .nav-indicator {
         display: none;
       }
       
-      :host ::ng-deep .sidebar-container.w-16 nav a span {
+      :host ::ng-deep .sidebar-container.collapsed nav a span,
+      :host ::ng-deep .sidebar-container[class*="w-16"] nav a span {
         display: none !important;
       }
     }
@@ -479,8 +476,10 @@ import { AuthService } from '../services/auth.service';
     
     /* Animación optimizada de colapso para footer - Secuencia simplificada (solo desktop) */
     @media (min-width: 1024px) {
-      :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a,
-      :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a {
+      :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a,
+      :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a,
+      :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a,
+      :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a {
         transition: padding var(--duration-collapse) var(--easing-collapse) var(--delay-medium),
                     justify-content var(--duration-collapse) var(--easing-collapse) var(--delay-medium),
                     gap var(--duration-collapse) var(--easing-collapse) var(--delay-medium),
@@ -488,16 +487,20 @@ import { AuthService } from '../services/auth.service';
       }
       
       /* Animación optimizada para iconos del footer */
-      :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a svg,
-      :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a svg {
+      :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a svg,
+      :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a svg,
+      :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a svg,
+      :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a svg {
         transition: transform var(--duration-collapse) var(--easing-collapse) var(--delay-medium),
                     color 200ms var(--easing-expand);
         will-change: transform;
       }
       
       /* Animación optimizada de colapso para footer - Padding se ajusta al final */
-      :host ::ng-deep .sidebar-container.w-16 .sidebar-footer,
-      :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] {
+      :host ::ng-deep .sidebar-container.collapsed .sidebar-footer,
+      :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer,
+      :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"],
+      :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] {
         transition: padding var(--duration-collapse) var(--easing-collapse) var(--delay-medium);
         padding: 1rem 0.5rem !important;
       }
@@ -510,8 +513,10 @@ import { AuthService } from '../services/auth.service';
       will-change: transform;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a {
       padding: 0.75rem !important;
       justify-content: center !important;
       gap: 0 !important;
@@ -519,21 +524,30 @@ import { AuthService } from '../services/auth.service';
       min-height: 3rem !important;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a svg,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a svg {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a svg,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a svg {
       margin: 0 !important;
       flex-shrink: 0;
       width: 1.25rem !important;
       height: 1.25rem !important;
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a .nav-indicator,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a .nav-indicator {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a .nav-indicator,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a .nav-indicator,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a .nav-indicator,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a .nav-indicator {
       display: none;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a span,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a span {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a span,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a span,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a span,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a span {
       display: none !important;
     }
     
@@ -592,27 +606,34 @@ import { AuthService } from '../services/auth.service';
     }
     
     /* Estado activo en modo colapsado - Fondo azul alrededor del icono */
-    :host ::ng-deep .sidebar-container.w-16 nav a.active {
+    :host ::ng-deep .sidebar-container.collapsed nav a.active,
+    :host ::ng-deep .sidebar-container[class*="w-16"] nav a.active {
       background-color: hsl(217, 91%, 60% / 0.15) !important;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 nav a.active svg {
+    :host ::ng-deep .sidebar-container.collapsed nav a.active svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] nav a.active svg {
       color: hsl(217, 91%, 60%) !important;
     }
     
     /* Footer activo en modo colapsado */
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a.active,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a.active {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a.active,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a.active,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a.active,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a.active {
       background-color: hsl(217, 91%, 60% / 0.15) !important;
     }
     
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a.active svg,
-    :host ::ng-deep .sidebar-container.w-16 div[class*="border-t"] a.active svg {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a.active svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a.active svg,
+    :host ::ng-deep .sidebar-container.collapsed div[class*="border-t"] a.active svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] div[class*="border-t"] a.active svg {
       color: hsl(217, 91%, 60%) !important;
     }
     
     /* Cerrar Sesión mantiene su color de error incluso cuando está activo */
-    :host ::ng-deep .sidebar-container.w-16 .sidebar-footer a.text-error svg {
+    :host ::ng-deep .sidebar-container.collapsed .sidebar-footer a.text-error svg,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-footer a.text-error svg {
       color: hsl(var(--er)) !important;
     }
     
@@ -683,7 +704,8 @@ import { AuthService } from '../services/auth.service';
     }
     
     /* Cuando está colapsado, mantener altura pero mostrar línea */
-    :host ::ng-deep .sidebar-container.w-16 .nav-separator {
+    :host ::ng-deep .sidebar-container.collapsed .nav-separator,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .nav-separator {
       margin-top: 1.5rem;
       margin-bottom: 0.5rem;
       height: 1.5rem;
@@ -761,7 +783,8 @@ import { AuthService } from '../services/auth.service';
     }
     
     /* Forzar estructura del pseudo-elemento ::after cuando está colapsado */
-    :host ::ng-deep .sidebar-container.w-16 .nav-separator.collapsed::after {
+    :host ::ng-deep .sidebar-container.collapsed .nav-separator.collapsed::after,
+    :host ::ng-deep .sidebar-container[class*="w-16"] .nav-separator.collapsed::after {
       content: '' !important;
       display: block !important;
       background-color: rgba(0, 0, 0, 0.2) !important;
@@ -832,11 +855,23 @@ import { AuthService } from '../services/auth.service';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Navbar {
+export class Navbar implements OnInit {
+  // Input para recibir el estado inicial del sidebar desde app.ts
+  initialCollapsed = input<boolean>(false);
+  
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);
   private readonly auth = inject(AuthService);
+  private initialized = false;
+
+  ngOnInit(): void {
+    // Sincronizar el estado inicial solo una vez al montar el componente
+    if (!this.initialized) {
+      this.isCollapsed.set(this.initialCollapsed());
+      this.initialized = true;
+    }
+  }
 
   toggleCollapse(): void {
     this.isCollapsed.update(v => {

@@ -8,7 +8,7 @@ import { StatusFilter, MachineDocumentAlerts } from '../../models/machine.models
     <div class="card bg-base-100 shadow-xl hover-lift">
       <div class="card-body">
         <section>
-          <h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/70 mb-4">
+          <h3 class="text-sm font-bold uppercase tracking-wide text-base-content/70 mb-4">
             Filtro rápido
           </h3>
           <div class="flex flex-wrap gap-2">
@@ -44,7 +44,7 @@ import { StatusFilter, MachineDocumentAlerts } from '../../models/machine.models
         </section>
 
         <section class="mt-6">
-          <h3 class="text-sm font-semibold uppercase tracking-wide text-base-content/70 mb-4">
+          <h3 class="text-sm font-bold uppercase tracking-wide text-base-content/70 mb-4">
             Alertas documentales
           </h3>
           <ul class="space-y-2">

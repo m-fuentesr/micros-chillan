@@ -21,7 +21,7 @@ import { DocumentStatus } from '../../models/machine.models';
             
             <!-- Filtro rápido integrado -->
             <div class="flex flex-wrap items-center gap-3 mb-3">
-              <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">Filtro rápido:</span>
+              <span class="text-xs font-bold uppercase tracking-wide text-base-content/70">Filtro rápido:</span>
               <div class="flex flex-wrap gap-2">
                 <button
                   class="btn btn-sm"
@@ -56,7 +56,7 @@ import { DocumentStatus } from '../../models/machine.models';
             
             <!-- Alertas documentales -->
             <div class="flex flex-wrap items-center gap-4">
-              <span class="text-xs font-semibold uppercase tracking-wide text-base-content/70">Alertas documentales:</span>
+              <span class="text-xs font-bold uppercase tracking-wide text-base-content/70">Alertas documentales:</span>
               <div class="flex flex-wrap gap-3">
                 <div class="flex items-center gap-2 text-sm">
                   <span class="w-2 h-2 rounded-full bg-error"></span>
@@ -81,7 +81,7 @@ import { DocumentStatus } from '../../models/machine.models';
           <!-- Contenedor derecho: Badge y Selector -->
           <div class="flex flex-col items-end gap-3 xl:flex-row xl:items-center">
             <!-- Badge de conteo -->
-            <span class="badge badge-lg badge-outline font-semibold">
+            <span class="badge badge-lg badge-outline font-bold">
               {{ filteredMachines().length }} {{ filteredMachines().length === 1 ? 'máquina' : 'máquinas' }}
             </span>
             
@@ -120,11 +120,11 @@ import { DocumentStatus } from '../../models/machine.models';
                 </div>
               }
             } @empty {
-              <div class="col-span-full text-center py-12">
-                <div class="flex flex-col items-center gap-2">
+              <div class="col-span-full text-left py-12 pl-4 border-l-4 border-l-primary">
+                <div class="flex flex-col items-start gap-2">
                   <div class="text-4xl opacity-50">🚛</div>
-                  <h3 class="font-semibold">No hay máquinas disponibles</h3>
-                  <p class="text-sm text-base-content/70">
+                  <h3 class="font-bold">No hay máquinas disponibles</h3>
+                  <p class="text-sm text-base-content/70 italic">
                     Relaja los filtros para ver más resultados.
                   </p>
                 </div>

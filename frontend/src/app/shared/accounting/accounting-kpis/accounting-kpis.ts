@@ -9,7 +9,7 @@ import { AccountingSummary } from '../../models/accounting.models';
       <!-- Hero Card: Ganancia Líquida (Ocupa 5/12 del ancho) -->
       <div class="lg:col-span-5 card bg-base-100 shadow-xl border-l-8 border-success h-full">
         <div class="card-body flex flex-col justify-center gap-1">
-          <h3 class="text-sm uppercase tracking-widest text-base-content/60 font-semibold">
+          <h3 class="text-sm uppercase tracking-widest text-base-content/60 font-bold">
             Ganancia Líquida (Neta)
           </h3>
           

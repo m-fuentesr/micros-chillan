@@ -12,7 +12,7 @@ import { Component, ChangeDetectionStrategy, input } from '@angular/core';
           </div>
         </div>
         <div class="flex-1">
-          <div class="font-semibold text-base mb-1">{{ title() }}</div>
+          <div class="font-bold text-base mb-1">{{ title() }}</div>
           <p class="text-sm text-base-content/70 leading-relaxed">{{ text() }}</p>
         </div>
       </div>

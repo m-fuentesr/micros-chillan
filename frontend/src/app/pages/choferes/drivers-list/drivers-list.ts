@@ -14,11 +14,11 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div class="animate-header-enter">
+      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
         <div class="flex justify-between items-start flex-wrap gap-4">
           <div>
-            <h1 class="text-4xl font-bold mb-2">Lista de Choferes</h1>
-            <p class="text-base-content/70">
+            <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Lista de Choferes</h1>
+            <p class="text-base-content/70 italic">
               Gestiona todos los choferes registrados en el sistema.
             </p>
           </div>

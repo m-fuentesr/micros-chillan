@@ -18,7 +18,7 @@ import { Driver } from '../../models/driver.models';
           <!-- Información -->
           <div class="flex-1 min-w-0">
             <h1 class="text-sm @xs:text-base @lg:text-xl font-bold mb-2 truncate tooltip" [attr.data-tip]="driver().nombre_completo">{{ driver().nombre_completo }}</h1>
-            <div class="space-y-1 text-sm text-base-content/70">
+            <div class="space-y-2 text-sm text-base-content/70">
               <div class="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 20 20" class="flex-shrink-0">
                   <path fill-rule="evenodd" d="M4.5 2A1.5 1.5 0 003 3.5v13A1.5 1.5 0 004.5 18h11a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0015.5 2h-11zm4.5 8a1 1 0 100-2 1 1 0 000 2zm2.5-1a1 1 0 11-2 0 1 1 0 012 0zm1.5 1a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />

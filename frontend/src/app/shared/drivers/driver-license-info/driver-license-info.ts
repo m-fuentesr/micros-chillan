@@ -25,7 +25,7 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
           <!-- Vista -->
           <div>
             <label class="text-xs uppercase tracking-wide text-base-content/70">Fecha de Vencimiento</label>
-            <div class="font-semibold mb-4">{{ formatDate(driver().fecha_venc_licencia) }}</div>
+            <div class="font-bold mb-4">{{ formatDate(driver().fecha_venc_licencia) }}</div>
             @if (licenseStatus().estado === 'error') {
               <div class="alert alert-error">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
@@ -53,7 +53,7 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
           <form [formGroup]="form">
             <div class="form-control">
               <label class="label">
-                <span class="label-text font-semibold">Fecha de Vencimiento de Licencia</span>
+                <span class="label-text font-bold">Fecha de Vencimiento de Licencia</span>
               </label>
               <input type="date" formControlName="fecha_venc_licencia" class="input input-bordered w-full">
             </div>

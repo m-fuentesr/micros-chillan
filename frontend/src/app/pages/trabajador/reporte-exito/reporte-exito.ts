@@ -23,16 +23,16 @@ import { CommonModule } from '@angular/common';
           </div>
         </div>
 
-        <div class="text-center text-white mb-8">
+        <div class="text-left text-white mb-8 pl-4 border-l-4 border-l-white/30">
           <h1 class="text-3xl font-black tracking-tight mb-2">¡Todo listo!</h1>
-          <p class="text-emerald-100 text-sm font-medium">Tu reporte ha sido registrado y sincronizado.</p>
+          <p class="text-emerald-100 text-sm italic">Tu reporte ha sido registrado y sincronizado.</p>
         </div>
 
         <div class="bg-white rounded-2xl shadow-xl shadow-emerald-900/20 overflow-hidden relative">
           <div class="h-2 bg-emerald-400 w-full"></div>
           
           <div class="p-6">
-            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 text-center">Resumen de Operación</h3>
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-6 text-left pl-4 border-l-4 border-l-primary">Resumen de Operación</h3>
             
             <div class="space-y-4">
               <div class="flex justify-between items-center border-b border-slate-100 pb-3">
@@ -41,7 +41,7 @@ import { CommonModule } from '@angular/common';
               </div>
               <div class="flex justify-between items-center border-b border-slate-100 pb-3">
                 <span class="text-sm text-slate-500">Combustible</span>
-                <span class="text-base font-semibold text-slate-800 tabular-nums">13.231 Lts</span>
+                <span class="text-base font-bold text-slate-800 tabular-nums">13.231 Lts</span>
               </div>
               <div class="flex justify-between items-center">
                 <span class="text-sm text-slate-500">Fecha</span>

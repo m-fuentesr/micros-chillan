@@ -38,9 +38,9 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
         </div>
       </header>
 
-      <div class="px-5 -mt-10 relative z-20">
+      <div class="px-5 mt-4 relative z-20">
         <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-          <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-center border-b border-orange-100/50">
+          <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-left border-b border-orange-100/50 pl-4 border-l-4 border-l-primary">
             <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
               <span class="relative flex h-2 w-2">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -50,9 +50,9 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
             </p>
           </div>
           <div class="p-6">
-            <div class="text-center mb-6">
-              <h2 class="text-xl font-bold text-slate-800 mb-1 tracking-tight">Inicio de turno</h2>
-              <p class="text-sm text-slate-500 leading-relaxed">Registra el estado inicial de tu unidad para comenzar la operación.</p>
+            <div class="text-left mb-6 pl-4 border-l-4 border-l-primary">
+              <h2 class="text-2xl font-bold text-slate-800 mb-2 tracking-tight">Inicio de turno</h2>
+              <p class="text-sm text-slate-500 italic leading-relaxed">Registra el estado inicial de tu unidad para comenzar la operación.</p>
             </div>
             <a
               routerLink="/trabajador/reportar"
@@ -82,7 +82,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
               <div class="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100" [class.border-l-4]="activity.type === 'warning'" [class.border-l-amber-400]="activity.type === 'warning'" [class.group-active:scale-[0.99]]="activity.type === 'report'" [class.transition-transform]="activity.type === 'report'">
                 <div class="flex justify-between items-start mb-1">
                   <p class="font-bold text-sm text-slate-800">{{ activity.title }}</p>
-                  <span class="text-[10px] font-medium text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{{ activity.time }}</span>
+                  <span class="text-[10px] font-normal text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{{ activity.time }}</span>
                 </div>
                 <p class="text-xs text-slate-500">{{ activity.description }}</p>
               </div>
@@ -90,8 +90,8 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
           }
           @if (recentActivity().length === 0) {
             <div class="pl-10 pb-8">
-              <div class="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100">
-                <p class="text-xs text-slate-500 text-center">No hay actividad reciente</p>
+              <div class="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100 pl-4 border-l-4 border-l-primary">
+                <p class="text-xs text-slate-500 italic">No hay actividad reciente</p>
               </div>
             </div>
           }

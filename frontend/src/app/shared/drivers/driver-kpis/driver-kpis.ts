@@ -13,7 +13,7 @@ import { DriverKPIs as DriverKPIsType } from '../../models/driver.models';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <div class="card-body text-center relative z-10">
+        <div class="card-body text-left relative z-10 pl-4 border-l-4 border-l-primary">
           <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-success mb-2">{{ kpis().activos }}</div>
           <div class="text-sm text-base-content/70">Choferes Activos</div>
         </div>
@@ -27,7 +27,7 @@ import { DriverKPIs as DriverKPIsType } from '../../models/driver.models';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
         </div>
-        <div class="card-body text-center relative z-10">
+        <div class="card-body text-left relative z-10 pl-4 border-l-4 border-l-primary">
           <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-warning mb-2">{{ kpis().inactivos }}</div>
           <div class="text-sm text-base-content/70">Choferes Inactivos</div>
         </div>
@@ -40,7 +40,7 @@ import { DriverKPIs as DriverKPIsType } from '../../models/driver.models';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
           </svg>
         </div>
-        <div class="card-body text-center relative z-10">
+        <div class="card-body text-left relative z-10 pl-4 border-l-4 border-l-primary">
           <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-base-content/50 mb-2">{{ kpis().con_maquina }}</div>
           <div class="text-sm text-base-content/70">Máquinas Asignadas</div>
         </div>
@@ -53,7 +53,7 @@ import { DriverKPIs as DriverKPIsType } from '../../models/driver.models';
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <div class="card-body text-center relative z-10">
+        <div class="card-body text-left relative z-10 pl-4 border-l-4 border-l-primary">
           <div class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-error mb-2">{{ kpis().licencias_por_vencer }}</div>
           <div class="text-sm text-base-content/70">Licencias por Vencer</div>
         </div>

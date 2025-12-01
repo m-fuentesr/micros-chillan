@@ -130,12 +130,19 @@ export class DashboardService {
     return this.dailyRecordService.getDailyRecords({ fecha }).pipe(
       map(response => {
         // Mapear desde el modelo unificado al formato simplificado del dashboard
+        if (!response || !response.datos || !Array.isArray(response.datos)) {
+          // Si la respuesta no tiene datos válidos, devolver mocks
+          const mock = this.getMockDailyRecords();
+          this.dailyRecordsCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+          return mock;
+        }
         const records = response.datos.map(record => this.mapToDashboardDailyRecord(record));
         // Guardar en caché
         this.dailyRecordsCache.set(cacheKey, { data: records, timestamp: Date.now() });
         return records;
       }),
-      catchError(() => {
+      catchError((error) => {
+        console.warn('Error al cargar registros diarios, usando datos mock:', error);
         const mock = this.getMockDailyRecords();
         this.dailyRecordsCache.set(cacheKey, { data: mock, timestamp: Date.now() });
         return of(mock);

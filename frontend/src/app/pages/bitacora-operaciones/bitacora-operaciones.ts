@@ -34,10 +34,10 @@ interface DailyRecordView {
         <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
         
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-b-base-300 pb-4 mb-6">
           <div class="animate-header-enter">
-            <h1 class="text-4xl font-bold mb-2 tracking-tight text-base-content">Bitácora de Operaciones</h1>
-            <p class="text-base-content/60 font-medium">Auditoría y gestión centralizada de reportes diarios.</p>
+            <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Bitácora de Operaciones</h1>
+            <p class="text-base-content/60 italic">Auditoría y gestión centralizada de reportes diarios.</p>
           </div>
           <button 
             (click)="openNewRecordModal()"
@@ -236,7 +236,7 @@ interface DailyRecordView {
           <!-- Cards Mobile/Tablet -->
           <div class="xl:hidden space-y-4 p-4">
             @if (isLoadingPage()) {
-              <div class="flex justify-center items-center py-12">
+              <div class="flex justify-start items-center py-12 pl-4 border-l-4 border-l-primary">
                 <app-loading-spinner size="md" text="Cargando registros..." />
               </div>
             } @else if (isLoading() && paginatedRecords().length === 0) {
@@ -339,19 +339,19 @@ interface DailyRecordView {
                   <!-- Información Financiera y Fecha -->
                   <div class="grid grid-cols-2 gap-4 mb-4">
                     <div>
-                      <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">Fecha</div>
+                      <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Fecha</div>
                       <div class="font-mono text-sm text-base-content/80">{{ record.date }}</div>
                     </div>
                     <div class="text-right">
-                      <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">Ingreso</div>
-                      <div class="font-mono font-bold text-base-content tabular-nums text-sm">
+                      <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Ingreso</div>
+                      <div class="font-mono font-black text-base-content tabular-nums text-sm">
                         {{ record.income | currency:'CLP':'symbol':'1.0-0' }}
                       </div>
                     </div>
                   </div>
                   
                   <div class="mb-4">
-                    <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">Gasto Diésel</div>
+                    <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Gasto Diésel</div>
                     <div class="font-mono tabular-nums text-sm" [class.text-error/80]="record.dieselExpense > 0" [class.text-base-content/30]="record.dieselExpense === 0">
                       {{ record.dieselExpense > 0 ? (record.dieselExpense | currency:'CLP':'symbol':'1.0-0') : '-' }}
                     </div>
@@ -437,8 +437,8 @@ interface DailyRecordView {
                   </svg>
                 </div>
                 <div class="min-w-0">
-                  <h3 class="font-bold text-base sm:text-lg text-base-content leading-tight truncate">Nuevo Registro Diario</h3>
-                  <p class="text-[10px] sm:text-xs text-base-content/50 font-medium hidden sm:block">Ingresa los datos operativos de la jornada.</p>
+                  <h3 class="font-bold text-xl sm:text-2xl text-base-content leading-tight truncate border-l-4 border-l-primary pl-3">Nuevo Registro Diario</h3>
+                  <p class="text-[10px] sm:text-xs text-base-content/50 italic hidden sm:block">Ingresa los datos operativos de la jornada.</p>
                 </div>
               </div>
               <button class="btn btn-sm btn-circle btn-ghost text-base-content/50 hover:bg-base-200 flex-shrink-0 ml-2" (click)="closeNewRecordModal()" type="button">
@@ -456,7 +456,7 @@ interface DailyRecordView {
                   <div class="card-body p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
                     <div class="min-w-0 flex-1">
                       <span class="font-bold text-xs sm:text-sm block text-base-content">Estado de Operación</span>
-                      <span class="text-[10px] sm:text-xs text-base-content/60 block mt-0.5">¿La máquina trabajó hoy?</span>
+                      <span class="text-[10px] sm:text-xs text-base-content/60 italic block mt-0.5">¿La máquina trabajó hoy?</span>
                     </div>
                     <label class="cursor-pointer flex items-center gap-2 sm:gap-3 flex-shrink-0">
                       <span class="text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-colors whitespace-nowrap" [class.text-base-content/40]="!newRecordForm.get('noWorkDay')?.value" [class.text-primary]="newRecordForm.get('noWorkDay')?.value">
@@ -470,7 +470,7 @@ interface DailyRecordView {
                     <div class="border-t border-base-200 p-3 sm:p-4">
                       <label class="form-control w-full">
                         <div class="label pt-0">
-                          <span class="label-text font-medium text-[10px] sm:text-xs uppercase text-base-content/60">Motivo de Inactividad</span>
+                          <span class="label-text font-normal text-[10px] sm:text-xs uppercase text-base-content/60">Motivo de Inactividad</span>
                         </div>
                         <select class="select select-bordered w-full bg-white focus:border-primary text-sm" formControlName="noWorkDayReason">
                           <option value="">Seleccione un motivo...</option>
@@ -502,8 +502,8 @@ interface DailyRecordView {
                     </div>
                     <div class="form-control">
                       <label class="label">
-                        <span class="label-text font-medium text-sm sm:text-base">Gasto en Diésel</span>
-                        <span class="label-text-alt text-base-content/50 text-[10px] sm:text-xs">(Opcional)</span>
+                        <span class="label-text font-normal text-sm sm:text-base">Gasto en Diésel</span>
+                        <span class="label-text-alt text-base-content/50 italic text-[10px] sm:text-xs">(Opcional)</span>
                       </label>
                       <div class="relative group">
                         <span class="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-base-content/40 font-bold text-base sm:text-lg group-focus-within:text-primary transition-colors">$</span>
@@ -511,13 +511,13 @@ interface DailyRecordView {
                           type="number" 
                           formControlName="dieselExpense"
                           placeholder="0" 
-                          class="input input-bordered w-full pl-7 sm:pl-8 font-mono text-base sm:text-lg font-semibold tabular-nums focus:input-primary h-11 sm:h-12 bg-base-100" />
+                          class="input input-bordered w-full pl-7 sm:pl-8 font-mono text-base sm:text-lg font-bold tabular-nums focus:input-primary h-11 sm:h-12 bg-base-100" />
                       </div>
                     </div>
                     <div class="form-control sm:col-span-2">
                       <label class="label">
-                        <span class="label-text font-medium text-sm sm:text-base">Litros Cargados</span>
-                        <span class="label-text-alt text-base-content/50 text-[10px] sm:text-xs">(Opcional)</span>
+                        <span class="label-text font-normal text-sm sm:text-base">Litros Cargados</span>
+                        <span class="label-text-alt text-base-content/50 italic text-[10px] sm:text-xs">(Opcional)</span>
                       </label>
                       <label class="input input-bordered flex items-center gap-2 bg-base-100 focus-within:input-primary h-11 sm:h-12">
                         <input 
@@ -525,7 +525,7 @@ interface DailyRecordView {
                           formControlName="dieselLiters"
                           step="0.1"
                           placeholder="0.0" 
-                          class="grow font-mono font-semibold text-sm sm:text-base" />
+                          class="grow font-mono font-bold text-sm sm:text-base" />
                         <span class="badge badge-sm badge-ghost font-mono text-[10px] sm:text-xs">LTS</span>
                       </label>
                     </div>
@@ -581,7 +581,7 @@ interface DailyRecordView {
                         </div>
                         <div class="min-w-0">
                           <p class="text-xs sm:text-sm font-bold text-red-800 truncate">¿Ocurrió un incidente crítico?</p>
-                          <p class="text-[10px] sm:text-xs text-red-600/70">Choque, falla mecánica, etc.</p>
+                          <p class="text-[10px] sm:text-xs text-red-600/70 italic">Choque, falla mecánica, etc.</p>
                         </div>
                       </div>
                       <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
@@ -598,7 +598,7 @@ interface DailyRecordView {
                 <!-- Observaciones -->
                 <div class="form-control">
                   <label class="label">
-                    <span class="label-text font-medium text-sm sm:text-base">Observaciones</span>
+                    <span class="label-text font-normal text-sm sm:text-base">Observaciones</span>
                   </label>
                   <textarea 
                     formControlName="observations"
@@ -609,7 +609,7 @@ interface DailyRecordView {
 
               <!-- Footer -->
               <div class="px-3 sm:px-4 lg:px-6 py-2.5 sm:py-3 lg:py-4 border-t border-base-200 bg-base-50/50 flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 flex-shrink-0">
-                <button type="button" class="btn btn-ghost hover:bg-base-200 font-medium btn-xs sm:btn-sm lg:btn-md w-full sm:w-auto" (click)="closeNewRecordModal()">Cancelar</button>
+                <button type="button" class="btn btn-ghost hover:bg-base-200 font-normal btn-xs sm:btn-sm lg:btn-md w-full sm:w-auto" (click)="closeNewRecordModal()">Cancelar</button>
                 <button type="submit" [disabled]="newRecordForm.invalid" class="btn btn-primary px-3 sm:px-4 lg:px-6 shadow-lg shadow-primary/20 gap-1.5 sm:gap-2 btn-xs sm:btn-sm lg:btn-md w-full sm:w-auto">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4">
                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />

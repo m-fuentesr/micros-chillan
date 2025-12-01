@@ -25,39 +25,39 @@ import { Driver } from '../../models/driver.models';
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Primer Nombre</label>
-              <div class="font-semibold">{{ driver().nombre || '--' }}</div>
+              <div class="font-bold">{{ driver().nombre || '--' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Segundo Nombre</label>
-              <div class="font-semibold">{{ driver().segundo_nombre || '--' }}</div>
+              <div class="font-bold">{{ driver().segundo_nombre || '--' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Apellido Paterno</label>
-              <div class="font-semibold">{{ driver().apellido || '--' }}</div>
+              <div class="font-bold">{{ driver().apellido || '--' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Apellido Materno</label>
-              <div class="font-semibold">{{ driver().segundo_apellido || '--' }}</div>
+              <div class="font-bold">{{ driver().segundo_apellido || '--' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">RUT</label>
-              <div class="font-semibold break-all">{{ driver().rut }}</div>
+              <div class="font-bold break-all">{{ driver().rut }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Teléfono</label>
-              <div class="font-semibold break-all">{{ driver().telefono }}</div>
+              <div class="font-bold break-all">{{ driver().telefono }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Email</label>
-              <div class="font-semibold truncate tooltip" [attr.data-tip]="driver().correo">{{ driver().correo }}</div>
+              <div class="font-bold truncate tooltip" [attr.data-tip]="driver().correo">{{ driver().correo }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Estado</label>
-              <div class="font-semibold">{{ driver().estado === 'activo' ? 'Activo' : 'Inactivo' }}</div>
+              <div class="font-bold">{{ driver().estado === 'activo' ? 'Activo' : 'Inactivo' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Máquina Asignada</label>
-              <div class="font-semibold truncate tooltip" [attr.data-tip]="driver().maquina_actual?.identificador || 'Sin asignar'">{{ driver().maquina_actual?.identificador || 'Sin asignar' }}</div>
+              <div class="font-bold truncate tooltip" [attr.data-tip]="driver().maquina_actual?.identificador || 'Sin asignar'">{{ driver().maquina_actual?.identificador || 'Sin asignar' }}</div>
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Porcentaje</label>

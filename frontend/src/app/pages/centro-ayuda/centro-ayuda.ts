@@ -45,13 +45,13 @@ interface FaqItem {
     <div class="min-h-screen bg-base-200 pb-16">
       <!-- Hero -->
       <div class="bg-base-100 border-b border-base-200 py-12 px-6 mb-10 shadow-sm">
-        <div class="max-w-4xl mx-auto text-center animate-header-enter space-y-8">
+        <div class="max-w-4xl mx-auto text-left animate-header-enter space-y-8 pl-4 border-l-4 border-l-primary">
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.4em] text-primary mb-3">Knowledge Base Pro</p>
             <h1 class="text-4xl lg:text-5xl font-black text-base-content tracking-tight">
               ¿Cómo podemos ayudarte hoy?
             </h1>
-            <p class="text-base-content/70 text-lg mt-4">
+            <p class="text-base-content/70 text-lg italic mt-4">
               Explora documentación accionable para dashboard, contabilidad, reportes y flujos diarios.
             </p>
           </div>
@@ -76,7 +76,7 @@ interface FaqItem {
 
           @if (searchQuery().trim()) {
             <div class="max-w-xl mx-auto bg-base-100 border border-base-200 rounded-2xl p-4 text-left animate-card-enter shadow-md">
-              <p class="text-xs font-semibold text-base-content/50 uppercase tracking-widest mb-3">Resultados sugeridos</p>
+              <p class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-3">Resultados sugeridos</p>
               <ul class="space-y-2">
                 @for (item of filteredNav(); track item.id) {
                   <li>
@@ -97,7 +97,7 @@ interface FaqItem {
                         [innerHTML]="icons[item.icon]"
                       ></svg>
                       <div class="flex-1">
-                        <p class="font-medium">{{ item.title }}</p>
+                        <p class="font-bold">{{ item.title }}</p>
                         <p class="text-xs text-base-content/50 truncate">{{ item.description }}</p>
                       </div>
                     </button>
@@ -122,7 +122,7 @@ interface FaqItem {
               @for (item of navItems(); track item.id) {
                 <button
                   type="button"
-                  class="w-full text-left px-4 py-3 rounded-xl text-sm font-semibold flex items-center justify-between transition-all duration-200 border border-transparent"
+                  class="w-full text-left px-4 py-3 rounded-xl text-sm font-bold flex items-center justify-between transition-all duration-200 border border-transparent"
                   (click)="scrollToSection(item.id)"
                   [class.bg-primary]="activeSection() === item.id"
                   [class.text-primary-content]="activeSection() === item.id"
@@ -194,7 +194,7 @@ interface FaqItem {
                     <div class="grid sm:grid-cols-2 gap-4">
                       @for (item of section.highlights; track item.title) {
                         <div class="p-4 rounded-2xl border border-base-200 bg-base-200/40">
-                          <h3 class="font-semibold mb-1">{{ item.title }}</h3>
+                          <h3 class="font-bold mb-1">{{ item.title }}</h3>
                           <p class="text-sm text-base-content/70">{{ item.body }}</p>
                         </div>
                       }
@@ -204,7 +204,7 @@ interface FaqItem {
                   @if (section.list?.length) {
                     <div class="space-y-2">
                       <h3 class="text-sm uppercase tracking-widest text-base-content/50 font-bold">Elementos clave</h3>
-                      <ul class="list-disc list-outside pl-6 text-sm text-base-content/80 space-y-1">
+                      <ul class="list-disc list-outside pl-6 text-sm text-base-content/80 space-y-2">
                         @for (item of section.list; track item) {
                           <li [innerHTML]="item"></li>
                         }
@@ -254,7 +254,7 @@ interface FaqItem {
                     @for (faq of faqs(); track faq.question) {
                       <div class="collapse collapse-arrow bg-base-100 border border-base-200 shadow-sm">
                         <input type="radio" name="faq-accordion" /> 
-                        <div class="collapse-title text-base font-semibold">
+                        <div class="collapse-title text-base font-bold">
                           {{ faq.question }}
                         </div>
                         <div class="collapse-content text-base-content/70 text-sm leading-relaxed">

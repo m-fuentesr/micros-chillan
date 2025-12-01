@@ -73,7 +73,7 @@ import { Machine } from '../../models/machine.models';
         @if (showYear()) {
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Año de Fabricación</span>
+              <span class="label-text font-bold">Año de Fabricación</span>
             </label>
             <input
               type="number"
@@ -89,7 +89,7 @@ import { Machine } from '../../models/machine.models';
         @if (showDriver()) {
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Chofer Asignado (Opcional)</span>
+              <span class="label-text font-bold">Chofer Asignado (Opcional)</span>
             </label>
             <select formControlName="chofer_id" class="select select-bordered w-full">
               <option value="">-- Seleccionar Chofer --</option>
@@ -104,7 +104,7 @@ import { Machine } from '../../models/machine.models';
         @if (showStatus()) {
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">
+              <span class="label-text font-bold">
                 Estado Operativo <span class="text-error">*</span>
               </span>
             </label>
@@ -120,7 +120,7 @@ import { Machine } from '../../models/machine.models';
         @if (showInitialKm()) {
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-semibold">Kilometraje Inicial</span>
+              <span class="label-text font-bold">Kilometraje Inicial</span>
             </label>
             <input
               type="number"

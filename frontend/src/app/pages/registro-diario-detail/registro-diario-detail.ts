@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
+import { catchError, EMPTY } from 'rxjs';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -39,7 +40,7 @@ interface DailyRecordDetailView extends DailyRecord {
   selector: 'app-registro-diario-detail',
   imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage],
   template: `
-    <div class="bg-base-200 -mx-4 sm:-mx-6 -mt-4 sm:-mt-6">
+    <div class="bg-base-200 p-4 sm:p-6 rounded-lg">
       <!-- Sticky Header -->
       <div class="bg-base-100 border-b border-base-200 sticky top-0 z-30 shadow-sm transition-all">
         <div class="px-4 sm:px-6 py-3 sm:py-4 lg:h-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
@@ -53,7 +54,7 @@ interface DailyRecordDetailView extends DailyRecord {
               </svg>
             </button>
             <div class="flex-1 min-w-0">
-              <h1 class="text-lg sm:text-xl font-bold text-base-content flex flex-wrap items-center gap-2 sm:gap-3">
+              <h1 class="text-2xl sm:text-3xl font-black text-base-content flex flex-wrap items-center gap-2 sm:gap-3 border-l-4 border-l-primary pl-3 mb-3">
                 <span class="truncate">Registro #{{ record()?.id || '--' }}</span>
                 @if (isIncidente()) {
                   <span class="badge badge-error gap-1 font-mono font-bold text-white shadow-sm shadow-error/20 text-xs sm:text-sm whitespace-nowrap">
@@ -68,7 +69,7 @@ interface DailyRecordDetailView extends DailyRecord {
                   <span class="badge badge-warning gap-1 font-mono font-bold text-warning-content text-xs sm:text-sm whitespace-nowrap">⏳ Pendiente</span>
                 }
               </h1>
-              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/60 font-medium mt-0.5">
+              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/60 font-normal italic mt-0.5">
                 <span class="truncate">📅 {{ record()?.date }}</span>
                 <span class="hidden sm:inline">•</span>
                 <span class="truncate">🚛 {{ record()?.machine }}</span>
@@ -113,7 +114,7 @@ interface DailyRecordDetailView extends DailyRecord {
 
       <div class="px-4 sm:px-6 pt-4 sm:pt-6 pb-12 space-y-4 sm:space-y-6">
         @if (isLoading()) {
-          <div class="flex justify-center items-center h-64">
+          <div class="flex justify-start items-center h-64 pl-4 border-l-4 border-l-primary">
             <span class="loading loading-spinner loading-lg"></span>
           </div>
         } @else if (record()) {
@@ -126,9 +127,18 @@ interface DailyRecordDetailView extends DailyRecord {
                 </svg>
                 <div class="flex-1">
                   <h3 class="font-bold text-error">Incidente Crítico Reportado</h3>
-                  <div class="text-sm opacity-90 mt-1">El conductor reportó un choque leve en parachoques trasero. Revisa las observaciones y fotos antes de validar.</div>
+                  <div class="text-sm opacity-90 italic mt-1">El conductor reportó un choque leve en parachoques trasero. Revisa las observaciones y fotos antes de validar.</div>
                 </div>
-                <button class="btn btn-sm btn-error text-white shadow-sm" type="button" (click)="markIncidentResolved()">Marcar Resuelto</button>
+                <button 
+                  class="btn btn-sm btn-error text-white shadow-sm" 
+                  type="button" 
+                  (click)="markIncidentResolved()"
+                  [disabled]="isResolvingIncident()">
+                  @if (isResolvingIncident()) {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
+                  Marcar Resuelto
+                </button>
               </div>
             }
 
@@ -162,7 +172,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     @if (recordForm.get('noWorkDay')?.value) {
                       <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-base-200">
                         <label class="form-control w-full">
-                          <div class="label"><span class="label-text font-medium text-sm sm:text-base">Motivo de inactividad</span></div>
+                          <div class="label"><span class="label-text font-normal text-sm sm:text-base">Motivo de inactividad</span></div>
                           <select 
                             class="select select-bordered w-full bg-base-200 text-sm" 
                             formControlName="noWorkDayReason"
@@ -220,37 +230,37 @@ interface DailyRecordDetailView extends DailyRecord {
                         </div>
 
                         <div class="form-control">
-                          <label class="label">
-                            <span class="label-text font-medium">Costo Diésel</span>
-                          </label>
-                          <label class="input input-bordered flex items-center gap-2 bg-base-200/30 focus-within:bg-white focus-within:input-primary" [class.input-disabled]="!isEditMode()">
-                            <span class="text-base-content/40 font-bold">$</span>
-                            @if (isEditMode()) {
-                              <input 
-                                type="number" 
-                                class="grow font-mono font-semibold" 
-                                placeholder="0" 
-                                formControlName="dieselExpense" />
-                            } @else {
-                              <span class="grow font-mono font-semibold">{{ record()?.dieselExpense | currency:'CLP':'symbol':'1.0-0' }}</span>
-                            }
-                          </label>
-                        </div>
-                        <div class="form-control">
-                          <label class="label">
-                            <span class="label-text font-medium">Litros Cargados</span>
-                          </label>
-                          <label class="input input-bordered flex items-center gap-2 bg-base-200/30 focus-within:bg-white focus-within:input-primary" [class.input-disabled]="!isEditMode()">
-                            @if (isEditMode()) {
-                              <input 
-                                type="number" 
-                                class="grow font-mono font-semibold" 
-                                placeholder="0.0" 
-                                formControlName="dieselLiters" 
-                                step="0.1" />
-                            } @else {
-                              <span class="grow font-mono font-semibold">{{ record()?.dieselLiters || 0 }}</span>
-                            }
+                                <label class="label">
+                                  <span class="label-text font-normal">Costo Diésel</span>
+                                </label>
+                                <label class="input input-bordered flex items-center gap-2 bg-base-200/30 focus-within:bg-white focus-within:input-primary" [class.input-disabled]="!isEditMode()">
+                                  <span class="text-base-content/40 font-bold">$</span>
+                                  @if (isEditMode()) {
+                                    <input
+                                      type="number"
+                                      class="grow font-mono font-bold"
+                                      placeholder="0"
+                                      formControlName="dieselExpense" />
+                                  } @else {
+                                    <span class="grow font-mono font-bold">{{ record()?.dieselExpense | currency:'CLP':'symbol':'1.0-0' }}</span>
+                                  }
+                                </label>
+                              </div>
+                              <div class="form-control">
+                                <label class="label">
+                                  <span class="label-text font-normal">Litros Cargados</span>
+                                </label>
+                                <label class="input input-bordered flex items-center gap-2 bg-base-200/30 focus-within:bg-white focus-within:input-primary" [class.input-disabled]="!isEditMode()">
+                                  @if (isEditMode()) {
+                                    <input
+                                      type="number"
+                                      class="grow font-mono font-bold"
+                                      placeholder="0.0"
+                                      formControlName="dieselLiters"
+                                      step="0.1" />
+                                  } @else {
+                                    <span class="grow font-mono font-bold">{{ record()?.dieselLiters || 0 }}</span>
+                                  }
                             <span class="badge badge-sm badge-ghost font-mono text-xs">LTS</span>
                           </label>
                         </div>
@@ -405,13 +415,13 @@ interface DailyRecordDetailView extends DailyRecord {
                 <!-- Desglose de Pago con Gradiente (Penúltimo) - Solo si NO es día no trabajado -->
                 @if (!recordForm.get('noWorkDay')?.value) {
                   <div class="card bg-gradient-to-br from-white to-base-200 shadow-md border border-base-200 relative overflow-hidden group order-2 lg:order-2">
-                  <div class="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-primary/5 rounded-bl-full -mr-6 sm:-mr-8 -mt-6 sm:-mt-8 pointer-events-none"></div>
+                  <div class="absolute top-0 right-0 w-24 h-24 sm:w-32 sm:h-32 bg-primary/5 rounded-bl-full mr-0 sm:mr-0 mt-0 sm:mt-0 pointer-events-none"></div>
                   
                   <div class="card-body p-4 sm:p-5 relative z-10">
                     <h3 class="text-[10px] sm:text-xs font-black text-base-content/30 uppercase tracking-widest mb-4 sm:mb-6">Desglose de Pago</h3>
                     
-                    <div class="flex flex-col gap-1 mb-4 sm:mb-6">
-                      <span class="text-xs sm:text-sm font-medium text-base-content/60">A pagar al Chofer (30%)</span>
+                          <div class="flex flex-col gap-1 mb-4 sm:mb-6">
+                            <span class="text-xs sm:text-sm font-normal italic text-base-content/60">A pagar al Chofer (30%)</span>
                       <span class="text-2xl sm:text-3xl lg:text-4xl font-black text-primary tabular-nums tracking-tight break-all">
                         {{ (record()?.paymentBreakdown?.amount || 0) | currency:'CLP':'symbol':'1.0-0' }}
                       </span>
@@ -489,6 +499,8 @@ export class RegistroDiarioDetail {
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
   isEditMode = signal(false);
+  isResolvingIncident = signal(false);
+  private previousRecordState: DailyRecordDetailView | null = null;
 
   recordForm = this.fb.group({
     noWorkDay: [false],
@@ -540,6 +552,27 @@ export class RegistroDiarioDetail {
       const id = params.get('id');
       if (id) {
         this.loadRecord(id);
+      }
+    });
+
+    // Listener para actualizar UI optimistamente cuando cambian los toggles
+    this.recordForm.get('noWorkDay')?.valueChanges.subscribe(value => {
+      if (this.isEditMode() && this.record()) {
+        const currentRecord = this.record()!;
+        this.record.set({
+          ...currentRecord,
+          noWorkDay: value || false
+        });
+      }
+    });
+
+    this.recordForm.get('isEmergency')?.valueChanges.subscribe(value => {
+      if (this.isEditMode() && this.record()) {
+        const currentRecord = this.record()!;
+        this.record.set({
+          ...currentRecord,
+          isEmergency: value || false
+        });
       }
     });
   }
@@ -643,6 +676,23 @@ export class RegistroDiarioDetail {
     if (this.recordForm.valid && this.record()) {
       const formValue = this.recordForm.value;
       const recordId = this.record()!.id;
+      const currentRecord = this.record()!;
+      
+      // 1. Snapshot del estado actual (para rollback)
+      this.previousRecordState = { ...currentRecord };
+      
+      // 2. Optimistic update: Actualizar record signal inmediatamente
+      const optimisticRecord: DailyRecordDetailView = {
+        ...currentRecord,
+        isEmergency: formValue.isEmergency || false,
+        noWorkDay: formValue.noWorkDay || false,
+        noWorkDayReason: formValue.noWorkDay ? (formValue.noWorkDayReason as string) : undefined,
+        income: formValue.noWorkDay ? 0 : (formValue.income || 0),
+        dieselExpense: formValue.noWorkDay ? 0 : (formValue.dieselExpense || 0),
+        dieselLiters: formValue.noWorkDay ? 0 : (formValue.dieselLiters || 0),
+        observations: formValue.observations || ''
+      };
+      this.record.set(optimisticRecord);
       
       // Mapear formulario a DTO de actualización
       const updateDto: any = {
@@ -663,37 +713,130 @@ export class RegistroDiarioDetail {
         };
       }
       
-      this.dailyRecordService.updateDailyRecord(recordId, updateDto).subscribe({
+      this.dailyRecordService.updateDailyRecord(recordId, updateDto).pipe(
+        catchError((error) => {
+          // 3. Rollback en caso de error
+          if (this.previousRecordState) {
+            this.record.set(this.previousRecordState);
+            // Restaurar formulario al estado anterior
+            this.recordForm.patchValue({
+              noWorkDay: this.previousRecordState.noWorkDay,
+              noWorkDayReason: this.previousRecordState.noWorkDayReason || '',
+              isEmergency: this.previousRecordState.isEmergency || false,
+              income: this.previousRecordState.income,
+              dieselExpense: this.previousRecordState.dieselExpense,
+              dieselLiters: this.previousRecordState.dieselLiters || 0,
+              observations: this.previousRecordState.observations
+            });
+          }
+          
+          // 4. Notificar al usuario
+          this.showErrorToast('No se pudo guardar el registro. Intenta nuevamente.');
+          
+          return EMPTY;
+        })
+      ).subscribe({
         next: (updatedRecord) => {
           const viewRecord = this.mapToDetailView(updatedRecord);
           this.record.set(viewRecord);
           this.isEditMode.set(false);
           this.receiptFile.set(null);
-          // TODO: Mostrar mensaje de éxito
+          this.previousRecordState = null;
+          this.showSuccessToast('Registro guardado exitosamente');
         },
-        error: (error) => {
-          console.error('Error al guardar registro:', error);
-          // TODO: Mostrar mensaje de error al usuario
+        error: () => {
+          // Error ya manejado en catchError
         }
       });
     }
   }
 
   markIncidentResolved(): void {
-    if (this.record()) {
-      const recordId = this.record()!.id;
-      this.dailyRecordService.resolveIncident(recordId).subscribe({
-        next: (resolvedRecord) => {
-          const viewRecord = this.mapToDetailView(resolvedRecord);
-          this.record.set(viewRecord);
-          // TODO: Mostrar mensaje de éxito
-        },
-        error: (error) => {
-          console.error('Error al resolver incidente:', error);
-          // TODO: Mostrar mensaje de error al usuario
-        }
-      });
+    if (!this.record() || this.isResolvingIncident()) {
+      return;
     }
+
+    const currentRecord = this.record();
+    if (!currentRecord) {
+      return;
+    }
+
+    // 1. Snapshot del estado actual (para rollback)
+    const previousRecord = { ...currentRecord };
+    
+    // 2. Optimistic update: Actualizar estado inmediatamente
+    const optimisticRecord: DailyRecordDetailView = {
+      ...currentRecord,
+      estado: 'COMPLETO' as const,
+      // Actualizar historial con la acción
+      history: [
+        ...(currentRecord.history || []),
+        {
+          id: `temp-${Date.now()}`,
+          usuario: 'Usuario',
+          accion: 'Incidente marcado como resuelto',
+          timestamp: new Date().toISOString()
+        }
+      ]
+    };
+    
+    this.record.set(optimisticRecord);
+    this.isResolvingIncident.set(true);
+    
+    // 3. Llamar al servidor en segundo plano
+    const recordId = currentRecord.id;
+    this.dailyRecordService.resolveIncident(recordId).pipe(
+      catchError((error) => {
+        // 4. Rollback en caso de error
+        this.record.set(previousRecord);
+        
+        // 5. Notificar al usuario
+        this.showErrorToast('No se pudo resolver el incidente. Intenta nuevamente.');
+        
+        return EMPTY;
+      })
+    ).subscribe({
+      next: (resolvedRecord) => {
+        // Actualizar con la respuesta del servidor
+        const viewRecord = this.mapToDetailView(resolvedRecord);
+        this.record.set(viewRecord);
+        this.isResolvingIncident.set(false);
+        this.showSuccessToast('Incidente resuelto exitosamente');
+      },
+      error: () => {
+        this.isResolvingIncident.set(false);
+      }
+    });
+  }
+
+  private showErrorToast(message: string): void {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-top toast-end';
+    toast.innerHTML = `
+      <div class="alert alert-error">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>${message}</span>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+  }
+
+  private showSuccessToast(message: string): void {
+    const toast = document.createElement('div');
+    toast.className = 'toast toast-top toast-end';
+    toast.innerHTML = `
+      <div class="alert alert-success">
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <span>${message}</span>
+      </div>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
   }
 
   formatTimeAgo(timestamp: string): string {

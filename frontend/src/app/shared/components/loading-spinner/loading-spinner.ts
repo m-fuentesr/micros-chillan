@@ -32,7 +32,7 @@ import { CommonModule } from '@angular/common';
       [class.justify-center]="fullScreen()"
       [class.bg-base-100/80]="fullScreen()"
       [class.backdrop-blur-sm]="fullScreen()"
-      [class.z-50]="fullScreen()">
+      [class.z-40]="fullScreen()">
       <div class="flex flex-col items-center justify-center gap-3">
         <div 
           [class]="spinnerClasses()"
@@ -133,7 +133,7 @@ export class LoadingSpinner {
       xl: 'text-lg'
     };
 
-    return `${sizeTextClasses[this.size()]} text-base-content/70 font-medium`;
+    return `${sizeTextClasses[this.size()]} text-base-content/70 font-normal`;
   };
 }
 

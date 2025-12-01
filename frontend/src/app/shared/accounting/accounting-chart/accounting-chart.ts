@@ -31,7 +31,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
             }
           } @else {
             <div class="flex items-center justify-center h-full text-base-content/40">
-              <div class="text-center">
+              <div class="text-left pl-4 border-l-4 border-l-primary">
                 <div class="loading loading-spinner loading-md mb-2"></div>
                 <p class="text-sm">Cargando gráfico...</p>
               </div>

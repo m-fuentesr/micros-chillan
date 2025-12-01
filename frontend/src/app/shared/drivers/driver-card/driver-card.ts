@@ -8,10 +8,10 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
   imports: [RouterLink],
   template: `
     <div class="card bg-base-100 shadow-xl hover-lift relative">
-      <div class="card-body flex flex-col items-center text-center p-6">
+      <div class="card-body flex flex-col items-start text-left p-6 pl-4 border-l-4 border-l-primary">
         <!-- Estado/RUT en esquina superior derecha -->
         <div class="absolute top-4 right-4">
-          <span class="badge badge-sm font-semibold break-all max-w-[80px] truncate" [attr.data-tip]="driver().rut">
+          <span class="badge badge-sm font-bold break-all max-w-[80px] truncate" [attr.data-tip]="driver().rut">
             {{ driver().rut }}
           </span>
         </div>
@@ -37,12 +37,12 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
         </div>
 
         <!-- Nombre -->
-        <h3 class="text-xl font-bold mb-1 truncate w-full" [attr.data-tip]="driver().nombre_completo">
+        <h3 class="text-2xl font-bold mb-2 truncate w-full" [attr.data-tip]="driver().nombre_completo">
           {{ driver().nombre_completo }}
         </h3>
 
         <!-- Título/Profesión (Correo) -->
-        <p class="text-sm text-base-content/70 mb-2 truncate w-full" [attr.data-tip]="driver().correo">
+        <p class="text-sm text-base-content/70 italic mb-2 truncate w-full" [attr.data-tip]="driver().correo">
           {{ driver().correo }}
         </p>
 
@@ -80,7 +80,7 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
 
         <!-- Bio corta (Teléfono) -->
         <p class="text-xs text-base-content/50 mb-4 break-all">
-          <span class="font-mono font-semibold">{{ driver().telefono }}</span>
+          <span class="font-mono font-bold">{{ driver().telefono }}</span>
         </p>
 
         <!-- Botón de acción -->

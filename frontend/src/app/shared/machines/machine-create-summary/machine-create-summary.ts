@@ -13,7 +13,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().numero">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Número de Máquina</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Número de Máquina: ' + (summary().numero || 'No ingresado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Número de Máquina: ' + (summary().numero || 'No ingresado')">
                 {{ summary().numero || '--' }}
               </div>
             </div>
@@ -31,7 +31,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().marca">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Marca / Modelo</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Marca / Modelo: ' + (summary().marca || 'No ingresado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Marca / Modelo: ' + (summary().marca || 'No ingresado')">
                 {{ summary().marca || '--' }}
               </div>
             </div>
@@ -41,7 +41,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().chofer">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Chofer asignado</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Chofer asignado: ' + (summary().chofer || 'Sin asignar')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Chofer asignado: ' + (summary().chofer || 'Sin asignar')">
                 {{ summary().chofer || '— Sin asignar —' }}
               </div>
             </div>
@@ -50,7 +50,7 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().estado">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Estado operativo</span>
-              <div class="summary-value font-semibold mt-1 truncate" [attr.aria-label]="'Estado operativo: ' + (summary().estado || 'No seleccionado')">
+              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Estado operativo: ' + (summary().estado || 'No seleccionado')">
                 {{ summary().estado || '--' }}
               </div>
             </div>

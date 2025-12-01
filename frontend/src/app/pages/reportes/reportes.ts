@@ -33,18 +33,18 @@ interface DriverProfit {
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header -->
-      <div class="animate-header-enter">
-        <h1 class="text-4xl font-bold mb-2 tracking-tight text-base-content">Reportes y Estadísticas</h1>
-        <p class="text-base-content/60 font-medium">Análisis financiero y operativo de la flota</p>
+      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Reportes y Estadísticas</h1>
+        <p class="text-base-content/60 italic">Análisis financiero y operativo de la flota</p>
       </div>
 
       <!-- Barra de Comandos: Tabs -->
       <div class="border-b border-base-200 pb-4 mb-6">
         <!-- Segmented Control (Tabs) - Carrusel horizontal en móvil -->
-        <div class="flex overflow-x-auto gap-2 -mx-4 px-4 lg:mx-0 lg:px-0 scrollbar-hide items-center">
+        <div class="flex overflow-x-auto gap-2 px-4 lg:px-0 scrollbar-hide items-center">
           <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 lg:min-w-0">
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
               [class.bg-white]="activeTab() === 'profit'"
               [class.shadow-sm]="activeTab() === 'profit'"
               [class.text-primary]="activeTab() === 'profit'"
@@ -59,7 +59,7 @@ interface DriverProfit {
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
               [class.bg-white]="activeTab() === 'revenue'"
               [class.shadow-sm]="activeTab() === 'revenue'"
               [class.text-primary]="activeTab() === 'revenue'"
@@ -74,7 +74,7 @@ interface DriverProfit {
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-medium gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
+              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
               [class.bg-white]="activeTab() === 'driver'"
               [class.shadow-sm]="activeTab() === 'driver'"
               [class.text-primary]="activeTab() === 'driver'"
@@ -100,7 +100,7 @@ interface DriverProfit {
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                 <div>
-                  <div class="text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total</div>
+                  <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total</div>
                   <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                 </div>
                 <div class="flex items-center gap-2 w-full lg:w-auto">
@@ -136,8 +136,8 @@ interface DriverProfit {
                     [type]="barChartType">
                   </canvas>
                 } @else {
-                  <div class="flex items-center justify-center h-full text-base-content/40">
-                    <div class="text-center">
+                  <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
+                    <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
                     </div>
                   </div>
@@ -210,7 +210,7 @@ interface DriverProfit {
                       <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm border-t border-base-100 pt-3">
                         <div>
                           <div class="text-xs text-base-content/50 mb-0.5">Ingreso Total</div>
-                          <div class="font-semibold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          <div class="font-bold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                         </div>
                         <div>
                           <div class="text-xs text-base-content/50 mb-0.5">Pago Choferes</div>
@@ -243,7 +243,7 @@ interface DriverProfit {
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                 <div>
-                  <div class="text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Ingreso Total Bruto</div>
+                  <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ingreso Total Bruto</div>
                   <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalIncome() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                 </div>
                 <div class="flex items-center gap-2 w-full lg:w-auto">
@@ -279,8 +279,8 @@ interface DriverProfit {
                     [type]="barChartType">
                   </canvas>
                 } @else {
-                  <div class="flex items-center justify-center h-full text-base-content/40">
-                    <div class="text-center">
+                  <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
+                    <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
                     </div>
                   </div>
@@ -350,7 +350,7 @@ interface DriverProfit {
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
                 <div>
-                  <div class="text-xs font-semibold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total Choferes</div>
+                  <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total Choferes</div>
                   <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                 </div>
                 <div class="flex items-center gap-2 w-full lg:w-auto">
@@ -386,8 +386,8 @@ interface DriverProfit {
                     [type]="barChartType">
                   </canvas>
                 } @else {
-                  <div class="flex items-center justify-center h-full text-base-content/40">
-                    <div class="text-center">
+                  <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
+                    <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
                     </div>
                   </div>
@@ -452,7 +452,7 @@ interface DriverProfit {
                       <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm border-t border-base-100 pt-3">
                         <div>
                           <div class="text-xs text-base-content/50 mb-0.5">Ingreso Total</div>
-                          <div class="font-semibold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          <div class="font-bold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                         </div>
                         <div>
                           <div class="text-xs text-base-content/50 mb-0.5">Pago Chofer</div>

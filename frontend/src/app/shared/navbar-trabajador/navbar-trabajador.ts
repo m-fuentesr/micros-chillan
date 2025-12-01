@@ -23,14 +23,14 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
         <a
           routerLink="/trabajador/reportar"
           routerLinkActive="text-primary"
-          class="flex flex-col items-center justify-center w-full h-full -mt-6"
+          class="flex flex-col items-center justify-center w-full h-full mt-2"
         >
           <div class="w-14 h-14 bg-primary text-primary-content rounded-full shadow-xl border-4 border-base-100 flex items-center justify-center transition-transform active:scale-95">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
               <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
             </svg>
           </div>
-          <span class="text-[10px] font-semibold mt-1 text-primary">Nuevo</span>
+          <span class="text-[10px] font-bold mt-1 text-primary">Nuevo</span>
         </a>
 
         <a

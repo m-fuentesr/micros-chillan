@@ -1,4 +1,4 @@
-import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed } from '@angular/core';
+import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed, effect } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Navbar } from './shared/navbar/navbar';
 import { NavbarTrabajador } from './shared/navbar-trabajador/navbar-trabajador';
@@ -14,7 +14,9 @@ import { filter } from 'rxjs';
     @if (isAdmin()) {
       <!-- Layout con Sidebar (Administrador) -->
       <div class="h-dvh">
-        <app-navbar (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
+        <app-navbar 
+          [initialCollapsed]="sidebarCollapsed()"
+          (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
         <main 
           [attr.class]="adminMainClasses()">
           <div class="p-4 sm:p-6">
@@ -68,6 +70,17 @@ export class App {
     }
     const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
     return url.startsWith('/trabajador/reportar');
+  });
+
+  // Effect para resetear el estado del sidebar cuando cambia la autenticación
+  private resetSidebarOnAuthChange = effect(() => {
+    const user = this.auth.currentUser();
+    const wasAdmin = this.isAdmin();
+    
+    // Si el usuario no es admin (cerró sesión o cambió de rol), resetear el sidebar
+    if (!wasAdmin) {
+      this.sidebarCollapsed.set(false);
+    }
   });
 
   onSidebarCollapseChange(collapsed: boolean): void {
