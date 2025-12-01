@@ -1,146 +1,149 @@
 import { Routes } from '@angular/router';
-import { Login } from './pages/login/login';
-import { authGuard } from './shared/services/auth.guard';
+import { authGuard } from './shared/guards/auth.guard';
+import { adminGuard } from './shared/guards/admin.guard';
+import { workerGuard } from './shared/guards/worker.guard';
 
 export const routes: Routes = [
-  { path: 'login', component: Login }, // Ruta: /login
-  { path: '', redirectTo: '/login', pathMatch: 'full' }, // Redirige a login por defecto
+  // --- Auth ---
   {
-    path: 'dashboard',
-    canActivate: [authGuard],
-    data: { role: 'admin' },
+    path: 'login',
     loadComponent: () =>
-      import('./pages/home/home').then(m => m.Home)
-  }, // Dashboard de administrador (lazy)
-  {
-    path: 'bitacora-operaciones',
-    canActivate: [authGuard],
-    data: { role: 'admin' },
-    loadComponent: () =>
-      import('./pages/bitacora-operaciones/bitacora-operaciones').then(m => m.BitacoraOperaciones)
-  }, // Ruta: /bitacora-operaciones (lazy)
-  {
-    path: 'registro-diario/:id',
-    canActivate: [authGuard],
-    data: { role: 'admin' },
-    loadComponent: () =>
-      import('./pages/registro-diario-detail/registro-diario-detail').then(m => m.RegistroDiarioDetail)
-  }, // Ruta: /registro-diario/:id (lazy)
-  {
-    path: 'trabajador',
-    canActivate: [authGuard],
-    data: { role: 'worker' },
-    loadComponent: () =>
-      import('./pages/trabajador/trabajador').then(m => m.Trabajador)
-  }, // Página principal de trabajador (lazy)
-  {
-    path: 'trabajador/reportar',
-    canActivate: [authGuard],
-    data: { role: 'worker' },
-    loadComponent: () =>
-      import('./pages/trabajador/reportar/reportar').then(m => m.Reportar)
-  }, // Página de reportar (lazy)
-  {
-    path: 'trabajador/reporte-exito',
-    canActivate: [authGuard],
-    data: { role: 'worker' },
-    loadComponent: () =>
-      import('./pages/trabajador/reporte-exito/reporte-exito').then(m => m.ReporteExito)
-  }, // Página de éxito del reporte (lazy)
-  {
-    path: 'trabajador/mi-historial',
-    canActivate: [authGuard],
-    data: { role: 'worker' },
-    loadComponent: () =>
-      import('./pages/trabajador/mi-historial/mi-historial').then(m => m.MiHistorial)
-  }, // Página de mi historial (lazy)
-  {
-    path: 'trabajador/perfil',
-    canActivate: [authGuard],
-    data: { role: 'worker' },
-    loadComponent: () =>
-      import('./pages/trabajador/perfil/perfil').then(m => m.Perfil)
-  }, // Página de perfil (lazy)
+      import('./pages/login/login').then(m => m.Login)
+  },
   {
     path: 'recuperar-clave',
     loadComponent: () =>
       import('./pages/recuperar-clave/recuperar-clave').then(m => m.RecuperarClave)
-  }, // Recuperar contraseña (lazy, pequeño impacto)
+  },
+  { path: '', redirectTo: '/login', pathMatch: 'full' },
+
+  // --- Admin ---
+  {
+    path: 'dashboard',
+    loadComponent: () =>
+      import('./pages/home/home').then(m => m.Home),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'about',
     canActivate: [authGuard],
     loadComponent: () =>
-      import('./pages/about/about').then(m => m.About)
-  }, // Ruta: /about (lazy)
+      import('./pages/about/about').then(m => m.About),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'maquinas',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/maquinas/maquinas').then(m => m.Maquinas)
-  }, // Ruta: /maquinas (lazy)
+      import('./pages/maquinas/maquinas').then(m => m.Maquinas),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'maquinas/nueva',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/maquinas/machine-create/machine-create').then(m => m.MachineCreate)
-  }, // Ruta: /maquinas/nueva (lazy)
+      import('./pages/maquinas/machine-create/machine-create').then(m => m.MachineCreate),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'maquinas/:id',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/maquinas/machine-detail/machine-detail').then(m => m.MachineDetail)
-  }, // Ruta: /maquinas/:id (lazy)
+      import('./pages/maquinas/machine-detail/machine-detail').then(m => m.MachineDetail),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'choferes',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/choferes/drivers-list/drivers-list').then(m => m.DriversList)
-  }, // Ruta: /choferes (lazy)
+      import('./pages/choferes/drivers-list/drivers-list').then(m => m.DriversList),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'choferes/nuevo',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/choferes/driver-create/driver-create').then(m => m.DriverCreate)
-  }, // Ruta: /choferes/nuevo (lazy)
+      import('./pages/choferes/driver-create/driver-create').then(m => m.DriverCreate),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'choferes/:id',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/choferes/driver-detail/driver-detail').then(m => m.DriverDetail)
-  }, // Ruta: /choferes/:id (lazy)
+      import('./pages/choferes/driver-detail/driver-detail').then(m => m.DriverDetail),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'contabilidad',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/contabilidad/contabilidad').then(m => m.Contabilidad)
-  }, // Ruta: /contabilidad (lazy)
+      import('./pages/contabilidad/contabilidad').then(m => m.Contabilidad),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'reportes',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/reportes/reportes').then(m => m.Reportes)
-  }, // Ruta: /reportes (lazy)
+      import('./pages/reportes/reportes').then(m => m.Reportes),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'configuracion',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/configuracion/configuracion').then(m => m.Configuracion)
-  }, // Ruta: /configuracion (lazy)
+      import('./pages/configuracion/configuracion').then(m => m.Configuracion),
+    canActivate: [authGuard, adminGuard]
+  },
   {
     path: 'centro-ayuda',
     canActivate: [authGuard],
     data: { role: 'admin' },
     loadComponent: () =>
-      import('./pages/centro-ayuda/centro-ayuda').then(m => m.CentroAyuda)
-  }, // Ruta: /centro-ayuda (lazy)
-  { path: '**', redirectTo: '/login' } // Ruta para 404, redirige a login
+      import('./pages/centro-ayuda/centro-ayuda').then(m => m.CentroAyuda),
+    canActivate: [authGuard, adminGuard]
+  },
+
+  // --- Worker ---
+  {
+    path: 'trabajador',
+    loadComponent: () =>
+      import('./pages/trabajador/trabajador').then(m => m.Trabajador),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/reportar',
+    loadComponent: () =>
+      import('./pages/trabajador/reportar/reportar').then(m => m.Reportar),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/reporte-exito',
+    loadComponent: () =>
+      import('./pages/trabajador/reporte-exito/reporte-exito').then(m => m.ReporteExito),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/mi-historial',
+    loadComponent: () =>
+      import('./pages/trabajador/mi-historial/mi-historial').then(m => m.MiHistorial),
+    canActivate: [authGuard, workerGuard]
+  },
+  {
+    path: 'trabajador/perfil',
+    loadComponent: () =>
+      import('./pages/trabajador/perfil/perfil').then(m => m.Perfil),
+    canActivate: [authGuard, workerGuard]
+  },
+
+  // --- Fallback 404 ---
+  { path: '**', redirectTo: '/login' }
 ];

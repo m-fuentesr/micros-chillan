@@ -1,12 +1,13 @@
 ﻿from fastapi import APIRouter, Depends
 from app.utils.auth import get_current_user
-from app.services import worker_service
+from app.services import driver_service
+from app.schemas.driver import WorkerProfileResponse  # <--- Importante: El schema que creamos
 
 router = APIRouter(prefix="/api/worker", tags=["Worker"])
 
-@router.get("/profile")
-async def worker_profile(current_user=Depends(get_current_user)):
+@router.get("/profile", response_model=WorkerProfileResponse)
+async def worker_profile(current_user: dict = Depends(get_current_user)):
     """
-    Obtiene el perfil del trabajador.
+    Obtiene el perfil del trabajador logueado.
     """
-    return await worker_service.get_profile(current_user)
+    return await driver_service.get_profile(current_user)

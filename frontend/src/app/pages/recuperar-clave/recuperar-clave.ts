@@ -10,7 +10,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
   template: `
     <div class="min-h-screen flex flex-col lg:flex-row w-full bg-base-200 lg:bg-base-100 relative">
       <!-- Header móvil -->
-      <div class="lg:hidden absolute top-0 left-0 w-full h-[240px] bg-primary rounded-b-[3rem] overflow-hidden z-0">
+      <div class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0">
         <div class="absolute -top-20 -left-12 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div>
         <div class="absolute bottom-6 right-0 w-32 h-32 bg-white/10 rounded-full blur-xl"></div>
         <div class="flex flex-col items-center justify-center h-full pb-6 text-primary-content">

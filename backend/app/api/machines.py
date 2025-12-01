@@ -1,13 +1,20 @@
-﻿from fastapi import APIRouter, Depends, status
-from app.schemas.machine import MachineCreate
+﻿from typing import List
+from fastapi import APIRouter, Depends, status
 from app.utils.auth import get_current_user
 from app.services import machine_service
+from app.schemas.machine import MachineSelect
+# from app.schemas.machine import MachineCreate # (Descomentar cuando implementes crear)
 
 router = APIRouter(prefix="/api/machines", tags=["Machines"])
 
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def create_machine(payload: MachineCreate, current_user=Depends(get_current_user)):
+# ---------------------------------------------------------
+# 1. LISTAR MÁQUINAS DISPONIBLES (Para el Chofer)
+# ---------------------------------------------------------
+@router.get("/active", response_model=List[MachineSelect])
+async def list_active_machines(current_user: dict = Depends(get_current_user)):
     """
-    Crear una máquina.
+    Retorna la lista de máquinas con estado 'operativa'.
+    Útil para el selector del chofer.
     """
-    return await machine_service.create_machine(payload, current_user)
+    return await machine_service.get_active_machines()
+
