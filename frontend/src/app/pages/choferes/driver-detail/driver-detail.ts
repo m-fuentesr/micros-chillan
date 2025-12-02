@@ -289,7 +289,7 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
                           type="number"
                           class="input input-sm w-full"
                           [value]="editPorcentajePago()"
-                          (input)="editPorcentajePago.set($any($event.target).value ? Number($any($event.target).value) : 0)"
+                          (input)="onPorcentajePagoChange($any($event.target).value)"
                           placeholder="0"
                           min="0"
                           max="100"
@@ -327,11 +327,15 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
                   [class.bg-success/5]="licenseStatus().estado === 'ok'">
                   <div
                     class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-                    [ngClass]="{
-                      'bg-error/5 text-error border-error/20': licenseStatus().estado === 'error',
-                      'bg-warning/5 text-warning border-warning/20': licenseStatus().estado === 'warning',
-                      'bg-success/5 text-success border-success/20': licenseStatus().estado === 'ok'
-                    }">
+                    [class.bg-error/5]="licenseStatus().estado === 'error'"
+                    [class.text-error]="licenseStatus().estado === 'error'"
+                    [class.border-error/20]="licenseStatus().estado === 'error'"
+                    [class.bg-warning/5]="licenseStatus().estado === 'warning'"
+                    [class.text-warning]="licenseStatus().estado === 'warning'"
+                    [class.border-warning/20]="licenseStatus().estado === 'warning'"
+                    [class.bg-success/5]="licenseStatus().estado === 'ok'"
+                    [class.text-success]="licenseStatus().estado === 'ok'"
+                    [class.border-success/20]="licenseStatus().estado === 'ok'">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
                     </svg>
@@ -383,7 +387,7 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
                   </div>
 
                   <h4 class="text-xl font-bold text-base-content">
-                    {{ driver()!.maquina_actual.identificador }}
+                    {{ driver()!.maquina_actual?.identificador }}
                   </h4>
                   <p class="text-sm font-medium text-primary mb-1">
                     Máquina Asignada
@@ -399,11 +403,11 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
                       <select
                         class="select select-sm w-full max-w-xs"
                         [value]="editMaquinaId() ?? ''"
-                        (change)="editMaquinaId.set($any($event.target).value ? Number($any($event.target).value) : null)">
+                        (change)="onMaquinaIdChange($any($event.target).value)">
                         <option value="">Sin asignar</option>
                         @if (driver()!.maquina_actual) {
-                          <option [value]="driver()!.maquina_actual.id">
-                            {{ driver()!.maquina_actual.identificador }} (actual)
+                          <option [value]="driver()!.maquina_actual!.id">
+                            {{ driver()!.maquina_actual!.identificador }} (actual)
                           </option>
                         }
                         @for (m of maquinas(); track m.id) {
@@ -440,7 +444,7 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
                       <select
                         class="select select-sm w-full max-w-xs"
                         [value]="editMaquinaId() ?? ''"
-                        (change)="editMaquinaId.set($any($event.target).value ? Number($any($event.target).value) : null)">
+                        (change)="onMaquinaIdChange($any($event.target).value)">
                         <option value="">Sin asignar</option>
                         @for (m of maquinas(); track m.id) {
                           <option [value]="m.id">
@@ -1297,6 +1301,17 @@ export class DriverDetail implements OnInit {
 
   onBack(): void {
     this.router.navigate(['/choferes']);
+  }
+
+  // Métodos auxiliares para conversiones en plantillas
+  onPorcentajePagoChange(value: string): void {
+    const numValue = value ? parseFloat(value) : 0;
+    this.editPorcentajePago.set(isNaN(numValue) ? 0 : numValue);
+  }
+
+  onMaquinaIdChange(value: string): void {
+    const numValue = value ? parseInt(value, 10) : null;
+    this.editMaquinaId.set(numValue && !isNaN(numValue) ? numValue : null);
   }
 }
 

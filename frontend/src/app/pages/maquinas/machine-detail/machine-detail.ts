@@ -185,11 +185,15 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                 <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
                   <div
                     class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-                    [ngClass]="{
-                      'bg-error/5 text-error border-error/20': docStatus().revision_tecnica?.estado === 'error',
-                      'bg-warning/5 text-warning border-warning/20': docStatus().revision_tecnica?.estado === 'warning',
-                      'bg-success/5 text-success border-success/20': docStatus().revision_tecnica?.estado === 'ok'
-                    }">
+                    [class.bg-error/5]="docStatus().revision_tecnica?.estado === 'error'"
+                    [class.text-error]="docStatus().revision_tecnica?.estado === 'error'"
+                    [class.border-error/20]="docStatus().revision_tecnica?.estado === 'error'"
+                    [class.bg-warning/5]="docStatus().revision_tecnica?.estado === 'warning'"
+                    [class.text-warning]="docStatus().revision_tecnica?.estado === 'warning'"
+                    [class.border-warning/20]="docStatus().revision_tecnica?.estado === 'warning'"
+                    [class.bg-success/5]="docStatus().revision_tecnica?.estado === 'ok'"
+                    [class.text-success]="docStatus().revision_tecnica?.estado === 'ok'"
+                    [class.border-success/20]="docStatus().revision_tecnica?.estado === 'ok'">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                       </svg>
@@ -221,11 +225,15 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                 <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
                   <div
                     class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-                    [ngClass]="{
-                      'bg-error/5 text-error border-error/20': docStatus().permiso_circulacion?.estado === 'error',
-                      'bg-warning/5 text-warning border-warning/20': docStatus().permiso_circulacion?.estado === 'warning',
-                      'bg-success/5 text-success border-success/20': docStatus().permiso_circulacion?.estado === 'ok'
-                    }">
+                    [class.bg-error/5]="docStatus().permiso_circulacion?.estado === 'error'"
+                    [class.text-error]="docStatus().permiso_circulacion?.estado === 'error'"
+                    [class.border-error/20]="docStatus().permiso_circulacion?.estado === 'error'"
+                    [class.bg-warning/5]="docStatus().permiso_circulacion?.estado === 'warning'"
+                    [class.text-warning]="docStatus().permiso_circulacion?.estado === 'warning'"
+                    [class.border-warning/20]="docStatus().permiso_circulacion?.estado === 'warning'"
+                    [class.bg-success/5]="docStatus().permiso_circulacion?.estado === 'ok'"
+                    [class.text-success]="docStatus().permiso_circulacion?.estado === 'ok'"
+                    [class.border-success/20]="docStatus().permiso_circulacion?.estado === 'ok'">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                       </svg>
@@ -257,11 +265,15 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                 <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30">
                   <div
                     class="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 border"
-                    [ngClass]="{
-                      'bg-error/5 text-error border-error/20': docStatus().seguro_obligatorio?.estado === 'error',
-                      'bg-warning/5 text-warning border-warning/20': docStatus().seguro_obligatorio?.estado === 'warning',
-                      'bg-success/5 text-success border-success/20': docStatus().seguro_obligatorio?.estado === 'ok'
-                    }">
+                    [class.bg-error/5]="docStatus().seguro_obligatorio?.estado === 'error'"
+                    [class.text-error]="docStatus().seguro_obligatorio?.estado === 'error'"
+                    [class.border-error/20]="docStatus().seguro_obligatorio?.estado === 'error'"
+                    [class.bg-warning/5]="docStatus().seguro_obligatorio?.estado === 'warning'"
+                    [class.text-warning]="docStatus().seguro_obligatorio?.estado === 'warning'"
+                    [class.border-warning/20]="docStatus().seguro_obligatorio?.estado === 'warning'"
+                    [class.bg-success/5]="docStatus().seguro_obligatorio?.estado === 'ok'"
+                    [class.text-success]="docStatus().seguro_obligatorio?.estado === 'ok'"
+                    [class.border-success/20]="docStatus().seguro_obligatorio?.estado === 'ok'">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                       </svg>
@@ -330,7 +342,7 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                           type="number"
                           class="input input-sm w-full mt-1 font-bold"
                           [value]="editAnio() ?? ''"
-                          (input)="editAnio.set($any($event.target).value ? Number($any($event.target).value) : null)"
+                          (input)="onAnioChange($any($event.target).value)"
                           placeholder="Año"
                           min="1900"
                           max="2100">
@@ -419,7 +431,7 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
                       <select
                         class="select select-sm w-full max-w-xs"
                         [value]="editChoferId() ?? ''"
-                        (change)="editChoferId.set($any($event.target).value ? Number($any($event.target).value) : null)">
+                        (change)="onChoferIdChange($any($event.target).value)">
                         <option value="">Sin asignar</option>
                         @for (c of choferes(); track c.id) {
                           <option [value]="c.id">
@@ -910,6 +922,17 @@ export class MachineDetail implements OnInit {
 
   onBack(): void {
     this.router.navigate(['/maquinas']);
+  }
+
+  // Métodos auxiliares para conversiones en plantillas
+  onAnioChange(value: string): void {
+    const numValue = value ? parseInt(value, 10) : null;
+    this.editAnio.set(numValue && !isNaN(numValue) ? numValue : null);
+  }
+
+  onChoferIdChange(value: string): void {
+    const numValue = value ? parseInt(value, 10) : null;
+    this.editChoferId.set(numValue && !isNaN(numValue) ? numValue : null);
   }
 }
 
