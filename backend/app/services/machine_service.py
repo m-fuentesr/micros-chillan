@@ -1,7 +1,8 @@
 ﻿from fastapi import HTTPException
+from datetime import date, timedelta
 from app.db.supabase_client import supabase
+from app.utils.auth import require_admin
 
-  # Usamos tu importación correcta
 
 async def get_active_machines():
     """
@@ -47,3 +48,95 @@ async def get_active_machines():
         })
 
     return items
+
+
+async def get_summary(current_user: dict):
+    """
+    Devuelve:
+    {
+        "estados": {
+            "operativas": X,
+            "en_taller": Y,
+            "inactivas": Z
+        },
+        "documentos": {
+            "total_con_alertas": N
+        }
+    }
+    """
+
+    require_admin(current_user)
+
+    # ---------------------------------------------------------
+    # 1) Contar máquinas por estado
+    # ---------------------------------------------------------
+    estados_raw = (
+        supabase.table("maquinas")
+        .select("estado_operativo")
+        .execute()
+    )
+
+    if getattr(estados_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo estados: {estados_raw.error}")
+
+    operativas = 0
+    en_taller = 0
+    inactivas = 0
+
+    for m in estados_raw.data:
+        est = m["estado_operativo"]
+        if est == "operativa":
+            operativas += 1
+        elif est == "en_taller":
+            en_taller += 1
+        elif est == "inactiva":
+            inactivas += 1
+
+    # ---------------------------------------------------------
+    # 2) Contar máquinas con documentos en alerta
+    # ---------------------------------------------------------
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
+
+    docs_raw = (
+        supabase.table("documentos_maquina")
+        .select("maquina_id, tipo_documento, fecha_vencimiento")
+        .execute()
+    )
+
+    if getattr(docs_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo documentos: {docs_raw.error}")
+
+    maquinas_con_alerta = set()
+
+    for d in docs_raw.data:
+        fecha_str = d["fecha_vencimiento"]
+        if not fecha_str:
+            continue
+
+        fecha = date.fromisoformat(fecha_str)
+
+        # Vencido
+        if fecha < hoy:
+            maquinas_con_alerta.add(d["maquina_id"])
+            continue
+
+        # Por vencer
+        if hoy <= fecha <= limite_warning:
+            maquinas_con_alerta.add(d["maquina_id"])
+
+    total_alertas = len(maquinas_con_alerta)
+
+    # ---------------------------------------------------------
+    # 3) Respuesta final
+    # ---------------------------------------------------------
+    return {
+        "estados": {
+            "operativas": operativas,
+            "en_taller": en_taller,
+            "inactivas": inactivas
+        },
+        "documentos": {
+            "total_con_alertas": total_alertas
+        }
+    }

@@ -18,3 +18,12 @@ async def list_active_machines(current_user: dict = Depends(get_current_user)):
     """
     return await machine_service.get_active_machines()
 
+@router.get("/summary")
+async def get_machines_summary(current_user=Depends(get_current_user)):
+    """
+    Resumen para las tarjetas superiores:
+    - Cantidad por estado (operativas, en taller, inactivas)
+    - Máquinas con alertas documentales
+    """
+    return await machine_service.get_summary(current_user)
+

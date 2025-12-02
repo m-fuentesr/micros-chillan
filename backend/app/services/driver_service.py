@@ -279,7 +279,6 @@ async def list_drivers(current_user: dict):
     """
     Lista de choferes.
     Admin only.
-    Estructura básica (completar)
     """
     require_admin(current_user)
 
