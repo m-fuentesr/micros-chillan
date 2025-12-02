@@ -179,24 +179,16 @@ export class App {
     return url.startsWith('/trabajador/reportar');
   });
 
-  // Effect para monitorear cambios de navegación y transición
+  // Effect para monitorear cambios de navegación y transición (sin logs en producción)
   private monitorNavigation = effect(() => {
     const navEnd = this.navigationEnd();
     const url = navEnd?.urlAfterRedirects ?? this.router.url;
     const isTransitioning = this.transitionService.isTransitioning();
-    
-    console.log('[APP] 🔄 Navigation Event:', {
-      url,
-      isTransitioning,
-      shouldShowAdminNav: this.shouldShowAdminNav(),
-      timestamp: new Date().toISOString()
-    });
   });
 
-  // Effect para monitorear cambios en el estado de transición
+  // Effect para monitorear cambios en el estado de transición (sin logs en producción)
   private monitorTransition = effect(() => {
     const isTransitioning = this.transitionService.isTransitioning();
-    console.log('[APP] 🎭 Estado de transición cambió:', isTransitioning, 'Timestamp:', new Date().toISOString());
   });
 
   // Effect para resetear el estado del sidebar cuando cambia la autenticación
@@ -239,9 +231,5 @@ export class App {
 
   onSidebarCollapseChange(collapsed: boolean): void {
     this.sidebarCollapsed.set(collapsed);
-  }
-
-  onOverlayLoad(): void {
-    console.log('[APP] Overlay cargado');
   }
 }

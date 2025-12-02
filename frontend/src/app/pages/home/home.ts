@@ -239,12 +239,9 @@ export class Home implements OnInit {
   private transitionService = inject(TransitionService);
 
   constructor() {
-    console.log('[DASHBOARD] 🏠 Componente Home inicializado');
-    
     // Monitorear cuando el componente se monta
     effect(() => {
       const isTransitioning = this.transitionService.isTransitioning();
-      console.log('[DASHBOARD] 🔄 Estado de transición cambió:', isTransitioning);
     });
   }
 
@@ -365,14 +362,12 @@ export class Home implements OnInit {
   });
 
   ngOnInit(): void {
-    console.log('[DASHBOARD] 🎯 ngOnInit ejecutado');
     // Los datos se cargan automáticamente con toSignal
     // La inicialización de alerts se maneja en el effect
     
     // Desactivar loading después de un tiempo razonable
     setTimeout(() => {
       this.isLoading.set(false);
-      console.log('[DASHBOARD] ✅ Loading desactivado');
     }, 500);
   }
 

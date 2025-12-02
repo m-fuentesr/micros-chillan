@@ -1418,24 +1418,16 @@ export class Login {
 
       // Si estamos en pleno flujo de login (loading true), dejamos que onSubmit controle la navegación
       if (this.loading()) {
-        console.log('[LOGIN] ⏸️ Effect bloqueado: loading está activo (flujo de login manual)');
         return;
       }
 
       // No navegar si estamos en proceso de salida/expansión (transición visual)
-      if (this.leaving()) {
-        console.log('[LOGIN] ⏸️ Effect bloqueado: leaving está activo');
-        return;
-      }
-
-      if (this.expanding()) {
-        console.log('[LOGIN] ⏸️ Effect bloqueado: expanding está activo');
+      if (this.leaving() || this.expanding()) {
         return;
       }
 
       const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
       if (this.router.url !== target) {
-        console.log('[LOGIN] 🔄 Effect detectó usuario con sesión previa, navegando a:', target, 'URL actual:', this.router.url);
         queueMicrotask(() => this.router.navigate([target]));
       }
     });
@@ -1462,41 +1454,32 @@ export class Login {
         this.loginSuccess.set(true);
       this.error.set(null);
         
-        console.log('[LOGIN] ✅ Login exitoso, esperando 1200ms para mostrar check...');
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
         
-        console.log('[LOGIN] 🎬 Activando fase LEAVING (salida física del login)...');
-        // Fase de salida física del login (se desplaza y desvanece)
+        // Fase de salida física del login (fade-out rápido)
         this.leaving.set(true);
         await new Promise(resolve => setTimeout(resolve, 650));
 
-        console.log('[LOGIN] 🎬 Activando expansión y animaciones de salida (EXPANDING)...');
         // Activar expansión ripple y animaciones de salida
         this.expanding.set(true);
         
-        console.log('[LOGIN] 🌐 Activando overlay de transición global...');
         // Activar el overlay de transición global ANTES de navegar
         this.transitionService.startTransition();
         
-        console.log('[LOGIN] ⏳ Esperando 50ms para que overlay se active...');
         // Esperar un momento para que el overlay se active
         await new Promise(resolve => setTimeout(resolve, 50));
         
-        console.log('[LOGIN] ⏳ Esperando 900ms para animación de expansión...');
         // Esperar a que la animación termine completamente (900ms) antes de navegar
         await new Promise(resolve => setTimeout(resolve, 900));
         
-        console.log('[LOGIN] 🚀 Navegando al dashboard...');
         // Navegar después de la animación
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
         await this.router.navigate([target]);
         
-        console.log('[LOGIN] ⏳ Esperando 200ms para que dashboard se cargue...');
         // Esperar a que el dashboard se cargue antes de ocultar el overlay
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        console.log('[LOGIN] 🎭 Ocultando overlay de transición...');
         // Ocultar el overlay de transición
         this.transitionService.endTransition();
         
@@ -1530,41 +1513,32 @@ export class Login {
         this.error.set(null);
         this.loginSuccess.set(true);
         
-        console.log('[LOGIN] ✅ Login exitoso, esperando 1200ms para mostrar check...');
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
         
-        console.log('[LOGIN] 🎬 Activando fase LEAVING (salida física del login)...');
-        // Fase de salida física del login (se desplaza y desvanece)
+        // Fase de salida física del login (fade-out rápido)
         this.leaving.set(true);
         await new Promise(resolve => setTimeout(resolve, 650));
 
-        console.log('[LOGIN] 🎬 Activando expansión y animaciones de salida (EXPANDING)...');
         // Activar expansión ripple y animaciones de salida
         this.expanding.set(true);
         
-        console.log('[LOGIN] 🌐 Activando overlay de transición global...');
         // Activar el overlay de transición global ANTES de navegar
         this.transitionService.startTransition();
         
-        console.log('[LOGIN] ⏳ Esperando 50ms para que overlay se active...');
         // Esperar un momento para que el overlay se active
         await new Promise(resolve => setTimeout(resolve, 50));
         
-        console.log('[LOGIN] ⏳ Esperando 900ms para animación de expansión...');
         // Esperar a que la animación termine completamente (900ms) antes de navegar
         await new Promise(resolve => setTimeout(resolve, 900));
         
-        console.log('[LOGIN] 🚀 Navegando al dashboard...');
         // Navegar después de la animación
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
         await this.router.navigate([target]);
         
-        console.log('[LOGIN] ⏳ Esperando 200ms para que dashboard se cargue...');
         // Esperar a que el dashboard se cargue antes de ocultar el overlay
         await new Promise(resolve => setTimeout(resolve, 200));
         
-        console.log('[LOGIN] 🎭 Ocultando overlay de transición...');
         // Ocultar el overlay de transición
         this.transitionService.endTransition();
         
