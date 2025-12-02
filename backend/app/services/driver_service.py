@@ -2,10 +2,9 @@
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
-from app.utils.auth import require_admin
 
 
-async def create_driver(data: DriverCreate, current_user: dict):
+async def create_driver(data: DriverCreate):
     """
     Crear un chofer nuevo + invitarlo vía correo usando Supabase Auth.
 
@@ -18,8 +17,6 @@ async def create_driver(data: DriverCreate, current_user: dict):
     6) Enlaza usuarios.chofer_id.
     7) (Opcional) Crea asignación inicial de máquina.
     """
-    require_admin(current_user)
-
     # Normalizar correo
     email = data.correo_electronico.strip().lower()
 
@@ -275,13 +272,11 @@ async def create_driver(data: DriverCreate, current_user: dict):
         raise
 
 
-async def list_drivers(current_user: dict):
+async def list_drivers():
     """
     Lista de choferes.
     Admin only.
-    Estructura básica (completar)
     """
-    require_admin(current_user)
 
     res = (
         supabase.table("choferes")
