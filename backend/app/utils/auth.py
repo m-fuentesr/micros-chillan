@@ -17,12 +17,19 @@ async def get_current_user(
     """
     token = credentials.credentials
 
+    if not token:
+        raise HTTPException(status_code=401, detail="Token no proporcionado")
+
     try:
         # Valida el token y obtiene el usuario desde Supabase Auth
         response = supabase.auth.get_user(token)
         user = response.user
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Token inválido: {str(e)}")
+        # Log del error para debugging (sin exponer detalles sensibles)
+        error_msg = str(e)
+        if "expired" in error_msg.lower() or "invalid" in error_msg.lower():
+            raise HTTPException(status_code=401, detail="Token expirado o inválido")
+        raise HTTPException(status_code=401, detail="Error al validar token")
 
     if user is None:
         raise HTTPException(status_code=401, detail="Token inválido o expirado")
@@ -30,13 +37,19 @@ async def get_current_user(
     supabase_uid = user.id
 
     # Buscar en tabla 'usuarios' por supabase_uid
-    db_res = (
-        supabase.table("usuarios")
-        .select("*")
-        .eq("supabase_uid", supabase_uid)
-        .single()
-        .execute()
-    )
+    try:
+        db_res = (
+            supabase.table("usuarios")
+            .select("*")
+            .eq("supabase_uid", supabase_uid)
+            .single()
+            .execute()
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Error al consultar la base de datos"
+        )
 
     if getattr(db_res, "error", None):
         raise HTTPException(

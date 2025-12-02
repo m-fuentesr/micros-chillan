@@ -11,7 +11,7 @@ import { filter } from 'rxjs';
   selector: 'app-root',
   imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule],
   template: `
-    @if (isAdmin()) {
+    @if (shouldShowAdminNav()) {
       <!-- Layout con Sidebar (Administrador) -->
       <div class="h-dvh">
         <app-navbar 
@@ -24,7 +24,7 @@ import { filter } from 'rxjs';
           </div>
         </main>
       </div>
-    } @else if (isWorker()) {
+    } @else if (shouldShowWorkerNav()) {
       <!-- Layout con Navbar Móvil (Trabajador) -->
       <div class="flex flex-col min-h-screen bg-base-200">
         <main class="flex-1 bg-base-200 p-4 pb-24">
@@ -54,6 +54,18 @@ export class App {
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
+  
+  // Verificar que no estemos en login antes de mostrar el navbar
+  shouldShowAdminNav = computed(() => {
+    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
+    return this.isAdmin() && !url.startsWith('/login') && !url.startsWith('/recuperar-clave');
+  });
+  
+  shouldShowWorkerNav = computed(() => {
+    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
+    return this.isWorker() && !url.startsWith('/login') && !url.startsWith('/recuperar-clave');
+  });
+  
   adminMainClasses = computed(() => {
     const base = 'bg-base-200 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0';
     return `${base} ${this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72'}`;

@@ -39,29 +39,52 @@ export class AuthService {
   private readonly _currentUser = signal<AuthUser | null>(this.hydrateUser());
   readonly currentUser = this._currentUser;
 
+  // Flag para prevenir múltiples llamadas simultáneas a syncDomainUser
+  private isSyncing = false;
+  // Flag para prevenir múltiples inicializaciones
+  private isInitialized = false;
+
   constructor() {
     this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     this.supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth event:', event, session);
+      // Evitar logs excesivos en producción
+      if (event !== 'TOKEN_REFRESHED') {
+        console.log('Auth event:', event, session);
+      }
 
       switch (event) {
         case 'TOKEN_REFRESHED':
+          // Solo actualizar el token, no sincronizar de nuevo
+          if (session?.access_token) {
+            this.persistToken(session.access_token);
+          }
+          break;
+
         case 'SIGNED_IN':
           if (session?.access_token) {
             this.persistToken(session.access_token);
-            await this.syncDomainUser();
+            // Solo sincronizar si no estamos ya sincronizando
+            if (!this.isSyncing) {
+              await this.syncDomainUser();
+            }
           }
           break;
 
         case 'SIGNED_OUT':
           this.clearSession();
-          await this.router.navigate(['/login']);
+          // Solo navegar si no estamos ya en login
+          if (!this.router.url.startsWith('/login')) {
+            await this.router.navigate(['/login']);
+          }
           break;
 
         case 'USER_UPDATED':
-          await this.syncDomainUser();
+          // Solo sincronizar si no estamos ya sincronizando
+          if (!this.isSyncing) {
+            await this.syncDomainUser();
+          }
           break;
 
         default:
@@ -69,7 +92,11 @@ export class AuthService {
       }
     });
 
-    this.tryRestoreSession();
+    // Solo intentar restaurar sesión una vez
+    if (!this.isInitialized) {
+      this.tryRestoreSession();
+      this.isInitialized = true;
+    }
   }
 
   async loginWithCredentials(email: string, password: string): Promise<void> {
@@ -96,6 +123,13 @@ export class AuthService {
   }
 
   private async syncDomainUser(): Promise<void> {
+    // Prevenir múltiples llamadas simultáneas
+    if (this.isSyncing) {
+      return;
+    }
+
+    this.isSyncing = true;
+
     try {
       const me = await firstValueFrom(
         this.http.get<MeResponse>(`${API_BASE_URL}/api/auth/me`)
@@ -114,18 +148,42 @@ export class AuthService {
       };
 
       this.persistUser(user);
-    } catch {
-      this.clearSession();
+    } catch (error: any) {
+      // Solo limpiar sesión si es un error 401 (no autorizado)
+      // No limpiar en otros errores (red, servidor, etc.)
+      if (error?.status === 401) {
+        this.clearSession();
+        // Cerrar sesión en Supabase también para evitar loops
+        await this.supabase.auth.signOut();
+        // Solo navegar si no estamos ya en login
+        if (!this.router.url.startsWith('/login')) {
+          await this.router.navigate(['/login']);
+        }
+      }
       throw new Error('No se pudo validar la sesión con el servidor.');
+    } finally {
+      this.isSyncing = false;
     }
   }
 
   private async tryRestoreSession(): Promise<void> {
-    const { data } = await this.supabase.auth.getSession();
+    try {
+      const { data } = await this.supabase.auth.getSession();
 
-    if (data.session?.access_token) {
-      this.persistToken(data.session.access_token);
-      await this.syncDomainUser();
+      if (data.session?.access_token) {
+        this.persistToken(data.session.access_token);
+        // Solo sincronizar si no estamos ya sincronizando
+        if (!this.isSyncing) {
+          await this.syncDomainUser();
+        }
+      } else {
+        // Si no hay sesión, limpiar estado local
+        this.clearSession();
+      }
+    } catch (error) {
+      // Si hay error al obtener la sesión, limpiar estado local
+      console.error('Error al restaurar sesión:', error);
+      this.clearSession();
     }
   }
   /**
