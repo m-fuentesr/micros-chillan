@@ -1,10 +1,23 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, effect, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
+import { FormBuilder, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { AuthService } from '../../shared/services/auth.service';
+
+// Validador personalizado para verificar que las contraseñas coincidan
+function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
+  const password = control.get('password');
+  const confirmPassword = control.get('confirmPassword');
+  
+  if (!password || !confirmPassword) {
+    return null;
+  }
+  
+  return password.value === confirmPassword.value ? null : { passwordMismatch: true };
+}
 
 @Component({
-  selector: 'app-recuperar-clave',
+  selector: 'app-restablecer-clave',
   standalone: true,
   imports: [CommonModule, RouterLink, ReactiveFormsModule],
   template: `
@@ -31,7 +44,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
           >
             GF
           </div>
-          <h2 class="text-xl font-bold tracking-tight animate-entrance-fade-up delay-300">Recuperación de acceso</h2>
+          <h2 class="text-xl font-bold tracking-tight animate-entrance-fade-up delay-300">Restablecer contraseña</h2>
         </div>
       </div>
 
@@ -55,15 +68,15 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
             <span class="text-2xl font-bold tracking-tight">Gestor de Flotas</span>
           </a>
           <h2 class="text-4xl font-bold leading-tight max-w-md">
-            Seguridad ante todo.
+            Crea una contraseña segura.
           </h2>
           <p class="mt-4 text-lg opacity-90 max-w-sm">
-            Restablece tu acceso de forma segura. Si necesitas ayuda, soporte TI está disponible 24/7.
+            Tu nueva contraseña debe tener al menos 8 caracteres. Combina letras, números y símbolos para mayor seguridad.
           </p>
         </div>
 
         <div
-          class="relative z-10 flex justify-between items-end text-sm opacity-70"
+          class="relative z-10 flex justify-between items-end text-sm opacity-70 animate-entrance-fade-left opacity-preserved delay-200"
         >
           <div>
             <p class="flex items-center gap-1.5">
@@ -82,63 +95,179 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
       <!-- Panel formulario -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-16 z-10">
         <div class="w-full max-w-md bg-base-100 rounded-2xl shadow-xl lg:shadow-none p-6 sm:p-8 mt-[180px] sm:mt-[200px] lg:mt-0 animate-entrance-zoom delay-mobile-400 delay-100 relative overflow-hidden">
-          <a 
-            routerLink="/login" 
-            class="absolute top-4 right-4 lg:top-6 lg:right-6 btn btn-circle btn-ghost btn-sm text-base-content/60 hover:text-base-content hover:bg-base-200/80 transition-all duration-200 z-20 animate-entrance-fade-up delay-mobile-300 delay-50 backdrop-blur-sm"
-            aria-label="Volver al inicio de sesión"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
-          </a>
+          @if (isMockMode()) {
+            <div class="absolute top-2 right-2 bg-warning/20 text-warning text-xs px-3 py-1 rounded-full border border-warning/30 font-medium z-20">
+              🔧 MODO DEV
+            </div>
+          }
 
-          @if (currentStep() === 'request') {
+          @if (tokenValid() === null) {
+            <!-- Estado de carga inicial -->
+            <div class="text-center py-10">
+              <span class="loading loading-spinner loading-lg text-primary"></span>
+              <p class="mt-4 text-base-content/60 text-sm">Verificando enlace...</p>
+            </div>
+          }
+
+          @if (tokenValid() === false) {
+            <!-- Token inválido o expirado -->
+            <div class="text-left animate-entrance-fade-up delay-200 py-10">
+              <div class="w-20 h-20 bg-error/10 text-error rounded-full flex items-center justify-center mx-auto mb-6 animate-entrance-zoom delay-300">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+              </div>
+              <div class="pl-4 border-l-4 border-l-error mb-8">
+                <h2 class="text-2xl font-bold mb-2 animate-entrance-fade-up delay-400">Enlace inválido o expirado</h2>
+                <p class="text-base-content/60 text-sm px-4 animate-entrance-fade-up delay-500">
+                  El enlace de recuperación no es válido o ha expirado. Por favor, solicita uno nuevo.
+                </p>
+              </div>
+              <div class="space-y-3 animate-entrance-fade-up delay-600">
+                <a routerLink="/recuperar-clave" class="btn btn-primary btn-block h-12">
+                  Solicitar nuevo enlace
+                </a>
+                <a routerLink="/login" class="btn btn-ghost btn-sm btn-block text-base-content/50 font-normal">
+                  Volver al inicio de sesión
+                </a>
+              </div>
+            </div>
+          }
+
+          @if (tokenValid() === true && currentStep() === 'form') {
+            <!-- Formulario de restablecimiento -->
             <div class="pt-6 lg:pt-2">
               <div class="text-left mb-8 space-y-2 border-l-4 border-l-primary pl-4 animate-entrance-fade-up delay-mobile-500 delay-200">
-                <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-bold">Recuperación de acceso</p>
-                <h1 class="text-2xl lg:text-4xl font-bold text-base-content">¿Olvidaste tu clave?</h1>
-                <p class="text-base-content/60 text-sm italic">Ingresa tu correo corporativo y te enviaremos las instrucciones para restablecerla.</p>
+                <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-bold">Restablecimiento de acceso</p>
+                <h1 class="text-2xl lg:text-4xl font-bold text-base-content">Nueva contraseña</h1>
+                <p class="text-base-content/60 text-sm italic">Ingresa tu nueva contraseña. Asegúrate de que sea segura y fácil de recordar.</p>
               </div>
 
-              <form [formGroup]="form" (ngSubmit)="onSubmit()" class="space-y-6 mt-2 transition-all">
-                <!-- Input Email Premium -->
+              <form 
+                [formGroup]="form" 
+                (ngSubmit)="onSubmit()" 
+                class="space-y-6 mt-2 transition-all"
+                [class.animate-shake]="shakeError()"
+              >
+                <!-- Input Nueva Contraseña Premium -->
                 <div class="form-control animate-entrance-fade-up delay-mobile-600 delay-300">
                   <label class="label pb-2.5">
-                    <span class="label-text font-semibold text-base-content text-sm tracking-wide">Correo electrónico</span>
+                    <span class="label-text font-semibold text-base-content text-sm tracking-wide">Nueva contraseña</span>
                   </label>
                   <div class="relative premium-input-wrapper" 
-                       [class.premium-input-error]="form.get('email')?.invalid && form.get('email')?.touched">
+                       [class.premium-input-error]="form.get('password')?.invalid && form.get('password')?.touched">
                     <div class="premium-input-icon">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
-                        <path d="M2.5 3A1.5 1.5 0 0 0 1 4.5v.793c.026.009.051.02.076.032L7.674 8.51c.206.1.446.1.652 0l6.598-3.185A.755.755 0 0 1 15 5.293V4.5A1.5 1.5 0 0 0 13.5 3h-11Z" />
-                        <path d="M15 6.954 8.978 9.86a2.25 2.25 0 0 1-1.956 0L1 6.954V11.5A1.5 1.5 0 0 0 2.5 13h11a1.5 1.5 0 0 0 1.5-1.5V6.954Z" />
+                        <path fill-rule="evenodd" d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z" clip-rule="evenodd" />
                       </svg>
                     </div>
                     <input
-                      type="email"
-                      id="email"
-                      class="premium-input w-full"
-                      placeholder="usuario@empresa.com"
-                      formControlName="email"
-                      autocomplete="email"
+                      [type]="showPassword() ? 'text' : 'password'"
+                      id="password"
+                      class="premium-input w-full pr-12"
+                      placeholder="Contraseña ..."
+                      formControlName="password"
                       required
+                      autocomplete="new-password"
                     />
-                    @if (form.get('email')?.invalid && form.get('email')?.touched) {
-                      <div class="absolute right-4 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
+                    <button
+                      type="button"
+                      (click)="showPassword.set(!showPassword())"
+                      class="absolute right-4 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content transition-all duration-200 hover:scale-110 active:scale-95 z-10 rounded-md p-1 hover:bg-base-200/50"
+                      [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    >
+                      @if (!showPassword()) {
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      }
+                    </button>
+                    @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                      <div class="absolute right-12 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                           <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
                         </svg>
                       </div>
                     }
                   </div>
-                  @if (form.get('email')?.invalid && form.get('email')?.touched) {
-                    <span class="text-error text-xs mt-1 px-1">Ingresa un correo válido.</span>
+                  @if (form.get('password')?.invalid && form.get('password')?.touched) {
+                    <span class="text-error text-xs mt-1 px-1">
+                      @if (form.get('password')?.errors?.['required']) {
+                        La contraseña es requerida.
+                      } @else if (form.get('password')?.errors?.['minlength']) {
+                        Mínimo 8 caracteres.
+                      }
+                    </span>
+                  }
+                </div>
+
+                <!-- Input Confirmar Contraseña Premium -->
+                <div class="form-control animate-entrance-fade-up delay-mobile-600 delay-300">
+                  <label class="label pb-2.5">
+                    <span class="label-text font-semibold text-base-content text-sm tracking-wide">Confirmar contraseña</span>
+                  </label>
+                  <div class="relative premium-input-wrapper" 
+                       [class.premium-input-error]="(form.get('confirmPassword')?.invalid || form.errors?.['passwordMismatch']) && form.get('confirmPassword')?.touched">
+                    <div class="premium-input-icon">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
+                        <path fill-rule="evenodd" d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z" clip-rule="evenodd" />
+                      </svg>
+                    </div>
+                    <input
+                      [type]="showConfirmPassword() ? 'text' : 'password'"
+                      id="confirmPassword"
+                      class="premium-input w-full pr-12"
+                      placeholder="Confirma tu contraseña ..."
+                      formControlName="confirmPassword"
+                      required
+                      autocomplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      (click)="showConfirmPassword.set(!showConfirmPassword())"
+                      class="absolute right-4 top-1/2 -translate-y-1/2 text-base-content/40 hover:text-base-content transition-all duration-200 hover:scale-110 active:scale-95 z-10 rounded-md p-1 hover:bg-base-200/50"
+                      [attr.aria-label]="showConfirmPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
+                    >
+                      @if (!showConfirmPassword()) {
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                        </svg>
+                      }
+                    </button>
+                    @if ((form.get('confirmPassword')?.invalid || form.errors?.['passwordMismatch']) && form.get('confirmPassword')?.touched) {
+                      <div class="absolute right-12 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                        </svg>
+                      </div>
+                    }
+                  </div>
+                  @if (form.errors?.['passwordMismatch'] && form.get('confirmPassword')?.touched) {
+                    <span class="text-error text-xs mt-1 px-1 flex items-center gap-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-4a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 6Zm0 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                      </svg>
+                      Las contraseñas no coinciden.
+                    </span>
+                  }
+                  @if (form.get('confirmPassword')?.invalid && form.get('confirmPassword')?.touched && !form.errors?.['passwordMismatch']) {
+                    <span class="text-error text-xs mt-1 px-1">Confirma tu contraseña.</span>
                   }
                 </div>
 
                 <div class="pt-2 animate-entrance-fade-up delay-mobile-700 delay-400 relative overflow-hidden">
                   <!-- Partículas de Éxito -->
-                  @if (submitSuccess() && !loading()) {
+                  @if (resetSuccess() && !loading()) {
                     <div class="success-particles">
                       <div class="particle particle-1"></div>
                       <div class="particle particle-2"></div>
@@ -151,30 +280,30 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
                   <button
                     type="submit"
                     class="button-morph-premium"
-                    [class.state-idle]="!loading() && !submitSuccess()"
-                    [class.state-loading]="loading() && !submitSuccess()"
-                    [class.state-success]="submitSuccess() && !loading()"
-                    [disabled]="form.invalid || loading()"
+                    [class.state-idle]="!loading() && !resetSuccess()"
+                    [class.state-loading]="loading() && !resetSuccess()"
+                    [class.state-success]="resetSuccess() && !loading()"
+                    [disabled]="form.invalid || loading() || form.errors?.['passwordMismatch']"
                   >
                     <!-- Capa de profundidad (Neumorphism sutil) -->
                     <div class="button-depth-layer"></div>
                     
                     <!-- Contenido del botón -->
                     <span class="button-content-wrapper relative z-10">
-                      @if (!loading() && !submitSuccess()) {
+                      @if (!loading() && !resetSuccess()) {
                         <span class="button-text-premium">
-                          <span class="button-text-main">Enviar instrucciones</span>
-                          <span class="button-text-glow">Enviar instrucciones</span>
+                          <span class="button-text-main">Cambiar contraseña</span>
+                          <span class="button-text-glow">Cambiar contraseña</span>
                         </span>
                       }
-                      @if (loading() && !submitSuccess()) {
+                      @if (loading() && !resetSuccess()) {
                         <div class="spinner-dots-orbit">
                           <div class="orbit-dot dot-1"></div>
                           <div class="orbit-dot dot-2"></div>
                           <div class="orbit-dot dot-3"></div>
                         </div>
                       }
-                      @if (submitSuccess() && !loading()) {
+                      @if (resetSuccess() && !loading()) {
                         <div class="checkmark-premium-wrapper">
                           <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                             <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
@@ -185,32 +314,36 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
                     </span>
                   </button>
                 </div>
+
+                <p
+                  *ngIf="error()"
+                  class="mt-4 text-sm font-medium text-error text-center whitespace-pre-line animate-pulse"
+                >
+                  {{ error() }}
+                </p>
               </form>
             </div>
           }
 
           @if (currentStep() === 'success') {
+            <!-- Éxito -->
             <div class="text-left animate-entrance-fade-up delay-200 py-10">
               <div class="w-20 h-20 bg-success/10 text-success rounded-full flex items-center justify-center mx-auto mb-6 animate-entrance-zoom delay-300">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-10 h-10">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                 </svg>
               </div>
-              <div class="pl-4 border-l-4 border-l-primary mb-8">
-                <h2 class="text-2xl font-bold mb-2 animate-entrance-fade-up delay-400">¡Revisa tu correo!</h2>
+              <div class="pl-4 border-l-4 border-l-success mb-8">
+                <h2 class="text-2xl font-bold mb-2 animate-entrance-fade-up delay-400">¡Contraseña restablecida!</h2>
                 <p class="text-base-content/60 text-sm px-4 animate-entrance-fade-up delay-500">
-                  Enviamos un enlace de recuperación a <br />
-                  <span class="font-bold text-base-content">{{ submittedEmail() }}</span>
+                  Tu contraseña ha sido cambiada exitosamente. Ya puedes iniciar sesión con tu nueva contraseña.
                 </p>
               </div>
 
               <div class="space-y-3 animate-entrance-fade-up delay-600">
-                <a routerLink="/login" class="btn btn-outline btn-block h-12 border-base-300 hover:bg-base-200 hover:text-base-content">
-                  Volver al inicio de sesión
+                <a routerLink="/login" class="btn btn-primary btn-block h-12">
+                  Ir al inicio de sesión
                 </a>
-                <button class="btn btn-ghost btn-sm text-base-content/50 font-normal" (click)="currentStep.set('request'); submitSuccess.set(false);">
-                  Probar con otro correo
-                </button>
               </div>
             </div>
           }
@@ -347,12 +480,12 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
       height: 12px;
       min-width: 12px;
       min-height: 12px;
-      background-color: #22c55e; /* Success Green directo para asegurar visibilidad */
+      background-color: #22c55e;
       border-radius: 50%;
       flex-shrink: 0;
-      z-index: 1; /* Asegurar que esté por encima de la onda */
-      opacity: 1 !important; /* Forzar opacidad completa */
-      vertical-align: middle; /* Alineación vertical con el texto */
+      z-index: 1;
+      opacity: 1 !important;
+      vertical-align: middle;
     }
 
     /* La onda expansiva detrás del punto - Centrada perfectamente */
@@ -380,11 +513,6 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
         transform: translate(-50%, -50%) scale(2.5);
         opacity: 0;
       }
-    }
-
-    /* Asegurar que el footer mantenga su opacidad después de la animación */
-    .animate-entrance-fade-left .opacity-70 {
-      animation-fill-mode: forwards;
     }
 
     .animate-entrance-zoom {
@@ -866,7 +994,10 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
       }
     }
 
-    /* INPUTS PREMIUM - Diseño Elegante y Funcional */
+    /* ============================================
+       INPUTS PREMIUM - Diseño Elegante y Funcional
+       ============================================ */
+
     .premium-input-wrapper {
       position: relative;
       background: hsl(var(--bc) / 0.04);
@@ -988,6 +1119,34 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
       -webkit-box-shadow: 0 0 0px 1000px hsl(var(--b1)) inset;
     }
 
+    /* Shake Animation for Errors */
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+      20%, 40%, 60%, 80% { transform: translateX(4px); }
+    }
+
+    .animate-shake {
+      animation: shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+    }
+
+    /* Password Toggle Icon Animation */
+    button[type="button"][aria-label] {
+      transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    button[type="button"][aria-label]:hover {
+      transform: scale(1.1);
+    }
+
+    button[type="button"][aria-label]:active {
+      transform: scale(0.95);
+    }
+
+    button[type="button"][aria-label] svg {
+      transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
     /* Accesibilidad - Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       .animate-blob-1,
@@ -1013,42 +1172,181 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
       .particle {
         animation: none !important;
       }
+
+      .animate-shake {
+        animation: none;
+      }
+
+      button[type="button"] svg {
+        transition: none;
+      }
     }
     `,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class RecuperarClave {
+export class RestablecerClave implements OnInit {
   private readonly fb = inject(FormBuilder);
-  form = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-  });
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly auth = inject(AuthService);
 
-  currentStep = signal<'request' | 'success'>('request');
-  submittedEmail = signal('');
+  form = this.fb.group(
+    {
+      password: ['', [Validators.required, Validators.minLength(8)]],
+      confirmPassword: ['', [Validators.required]],
+    },
+    { validators: passwordMatchValidator }
+  );
+
+  currentStep = signal<'form' | 'success'>('form');
+  tokenValid = signal<boolean | null>(null);
   loading = signal(false);
-  submitSuccess = signal(false);
+  error = signal<string | null>(null);
+  showPassword = signal(false);
+  showConfirmPassword = signal(false);
+  shakeError = signal(false);
+  resetSuccess = signal(false);
+  isMockMode = signal(false);
 
-  async onSubmit(): Promise<void> {
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
+  async ngOnInit() {
+    // Verificar si estamos en modo mock/dev
+    const mockParam = this.route.snapshot.queryParams['mock'] || this.route.snapshot.queryParams['dev'];
+    if (mockParam === 'true' || mockParam === '1') {
+      this.isMockMode.set(true);
+      this.tokenValid.set(true);
       return;
     }
 
+    // Verificar si hay un token en la URL (Supabase lo maneja automáticamente)
+    // El token puede venir como hash fragment (#access_token=...) o query param
+    await this.validateToken();
+    
+    // Si el usuario ya está autenticado pero no hay token de recovery válido,
+    // mostrar mensaje informativo (pero permitir continuar si hay token válido)
+    const currentUser = this.auth.currentUser();
+    if (currentUser && this.tokenValid() !== true) {
+      // El usuario está autenticado pero no tiene token de recovery válido
+      // Esto puede ser porque accedió directamente sin el enlace del correo
+      // En este caso, permitimos el acceso pero el token será inválido
+      // y se mostrará el mensaje de error correspondiente
+    }
+  }
+
+  private async validateToken() {
+    this.tokenValid.set(null);
+
+    try {
+      // Verificar si hay un hash fragment con token de recuperación
+      const hash = window.location.hash;
+      const hasRecoveryToken = hash.includes('access_token=') && hash.includes('type=recovery');
+      
+      if (hasRecoveryToken) {
+        // El token está en el hash, Supabase debería procesarlo automáticamente
+        // Esperar un momento para que Supabase procese el hash
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Limpiar el hash de la URL después de procesarlo (seguridad)
+        // Esto previene que el token quede expuesto en la URL
+        if (window.history && window.history.replaceState) {
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+      }
+
+      // Verificar si hay una sesión de recuperación activa
+      const { data: { session }, error } = await this.auth['supabase'].auth.getSession();
+      
+      if (error || !session) {
+        this.tokenValid.set(false);
+        return;
+      }
+
+      // Si hay un token de recovery en el hash, priorizar esa validación
+      // Esto asegura que incluso si el usuario tiene una sesión normal activa,
+      // el token de recovery tenga prioridad
+      if (hasRecoveryToken && session.user) {
+        this.tokenValid.set(true);
+        return;
+      }
+
+      // Si no hay token de recovery en el hash, verificar que la sesión sea de tipo recovery
+      // y que el usuario no tenga una sesión normal activa en nuestra app
+      const currentUser = this.auth.currentUser();
+      const isRecoverySession = session.user && 
+        session.user.app_metadata?.provider === 'email' &&
+        !currentUser; // Si hay un usuario autenticado en nuestra app, no es una sesión de recovery
+
+      if (isRecoverySession) {
+        this.tokenValid.set(true);
+      } else {
+        // Si hay una sesión pero no es de recovery, invalidar
+        this.tokenValid.set(false);
+      }
+    } catch (err) {
+      console.error('Error validando token:', err);
+      this.tokenValid.set(false);
+    }
+  }
+
+  async onSubmit() {
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      
+      if (this.form.errors?.['passwordMismatch']) {
+        this.shakeError.set(true);
+        setTimeout(() => this.shakeError.set(false), 500);
+      }
+      return;
+    }
+
+    const { password } = this.form.value;
     this.loading.set(true);
-    this.submitSuccess.set(false);
+    this.error.set(null);
+    this.shakeError.set(false);
+    this.resetSuccess.set(false);
 
-    // Simular envío (aquí se integrará la llamada real a Supabase en futuras versiones)
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      // En modo mock, simular el éxito sin hacer la llamada real
+      if (this.isMockMode()) {
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Simular delay de red
+        
+        // Éxito simulado
+        this.resetSuccess.set(true);
+        this.error.set(null);
+        
+        // Cambiar a paso de éxito después de un breve delay
+        setTimeout(() => {
+          this.currentStep.set('success');
+        }, 800);
+        return;
+      }
 
-    const email = this.form.value.email ?? '';
-    this.submittedEmail.set(email);
-    this.submitSuccess.set(true);
-    this.loading.set(false);
+      // Actualizar la contraseña usando Supabase
+      const { error: updateError } = await this.auth['supabase'].auth.updateUser({
+        password: password!,
+      });
 
-    // Esperar un momento para mostrar el éxito, luego cambiar al paso de éxito
-    await new Promise(resolve => setTimeout(resolve, 800));
-    this.currentStep.set('success');
+      if (updateError) {
+        throw new Error(updateError.message || 'No se pudo actualizar la contraseña');
+      }
+
+      // Éxito
+      this.resetSuccess.set(true);
+      this.error.set(null);
+      
+      // Cambiar a paso de éxito después de un breve delay
+      setTimeout(() => {
+        this.currentStep.set('success');
+      }, 800);
+    } catch (err: any) {
+      this.error.set(
+        err.message || 'No se pudo restablecer la contraseña.\nInténtalo nuevamente.'
+      );
+      this.shakeError.set(true);
+      setTimeout(() => this.shakeError.set(false), 500);
+      this.resetSuccess.set(false);
+    } finally {
+      this.loading.set(false);
+    }
   }
 }
-

@@ -34,7 +34,7 @@ import { AuthService } from '../services/auth.service';
 
     <!-- Sidebar Premium -->
     <aside 
-      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      class="sidebar-container sidebar-enter fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
       [class.lg:w-72]="!isCollapsed()"
       [class.lg:w-16]="isCollapsed()"
       [class.collapsed]="isCollapsed()"
@@ -254,6 +254,42 @@ import { AuthService } from '../services/auth.service';
       --easing-collapse: cubic-bezier(0.4, 0, 0.6, 1); /* Material Design ease-in-out inverso */
       --delay-fast: 0ms;
       --delay-medium: 100ms;
+    }
+    
+    /* ============================================
+       TRANSICIÓN "LA INMERSIÓN FOCAL" - SIDEBAR
+       Entrada desde la izquierda cuando se carga el dashboard
+       ============================================ */
+    
+    .sidebar-enter {
+      animation: sidebarEnter 700ms cubic-bezier(0.65, 0, 0.35, 1) 100ms forwards;
+      transform: translateX(-30px);
+      opacity: 0;
+    }
+    
+    @keyframes sidebarEnter {
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+    
+    /* En móvil, mantener comportamiento original */
+    @media (max-width: 1023px) {
+      .sidebar-enter {
+        animation: none;
+        transform: none;
+        opacity: 1;
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .sidebar-enter {
+        animation: none;
+        transform: translateX(0);
+        opacity: 1;
+      }
     }
     
     /* Contenedor principal - Animación optimizada */

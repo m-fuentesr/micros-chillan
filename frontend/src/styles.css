@@ -283,6 +283,9 @@ html {
 .animate-shake {
   animation: shake 400ms var(--ease-bounce);
 }
+.animate-shake-error {
+  animation: shake 600ms var(--ease-bounce);
+}
 
 /* Pulse border para alertas críticas - Parpadeo lento y suave */
 .animate-pulse-border {
@@ -301,6 +304,31 @@ html {
   pointer-events: none;
   z-index: 10;
   border-radius: 0.25rem 0 0 0.25rem;
+}
+
+/* ============================================
+   TRANSICIÓN "LA INMERSIÓN FOCAL" - ESTILOS GLOBALES
+   ============================================ */
+
+/* Curva de transición principal */
+:root {
+  --transition-focal-curve: cubic-bezier(0.65, 0, 0.35, 1);
+  --transition-focal-duration: 600ms;
+}
+
+/* Asegurar que el contenedor blanco en expansión esté por encima de todo */
+.expanding-white {
+  z-index: 99999 !important;
+}
+
+/* Optimización de performance para transiciones */
+.slide-out-left,
+.expanding-white,
+.form-fade-out,
+.sidebar-enter,
+.dashboard-header-enter,
+.dashboard-content-enter {
+  will-change: transform, opacity, clip-path;
 }
 
 /* ============================================
@@ -330,7 +358,13 @@ html {
   .animate-table-row-enter,
   .animate-bounce-subtle,
   .animate-shake,
-  .animate-pulse-border {
+  .animate-pulse-border,
+  .slide-out-left,
+  .expanding-white,
+  .form-fade-out,
+  .sidebar-enter,
+  .dashboard-header-enter,
+  .dashboard-content-enter {
     animation: none !important;
   }
   
@@ -339,4 +373,15 @@ html {
   .hover-slide:hover {
     transform: none !important;
   }
+  
+  /* Asegurar que los elementos sean visibles sin animación */
+  .slide-out-left,
+  .form-fade-out,
+  .sidebar-enter,
+  .dashboard-header-enter,
+  .dashboard-content-enter {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
+

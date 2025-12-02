@@ -43,9 +43,51 @@ export class AuthService {
   private isSyncing = false;
   // Flag para prevenir múltiples inicializaciones
   private isInitialized = false;
+  // Flag para indicar que estamos en proceso de login manual
+  private isManualLogin = false;
 
   constructor() {
-    this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Configurar el cliente de Supabase
+    // Nota: El error NavigatorLockAcquireTimeoutError no es crítico.
+    // Ocurre cuando Supabase intenta usar LockManager para sincronizar entre pestañas
+    // pero otra pestaña ya tiene el lock. La sincronización seguirá funcionando
+    // a través de eventos de storage.
+    this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        // Usar localStorage para mejor sincronización entre pestañas
+        // Esto permite que múltiples pestañas compartan la sesión sin necesidad de locks
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true,
+      },
+    });
+
+    // Manejar errores de LockManager silenciosamente (no críticos)
+    if (typeof window !== 'undefined') {
+      const originalErrorHandler = window.onerror;
+      window.onerror = (message, source, lineno, colno, error) => {
+        // Ignorar errores de NavigatorLockAcquireTimeoutError
+        if (error?.name === 'NavigatorLockAcquireTimeoutError' || 
+            (typeof message === 'string' && message.includes('NavigatorLockAcquireTimeoutError'))) {
+          // Este error no es crítico - Supabase seguirá funcionando correctamente
+          return true; // Prevenir que el error se propague
+        }
+        // Llamar al handler original para otros errores
+        if (originalErrorHandler) {
+          return originalErrorHandler(message, source, lineno, colno, error);
+        }
+        return false;
+      };
+
+      // También manejar errores no capturados
+      window.addEventListener('unhandledrejection', (event) => {
+        if (event.reason?.name === 'NavigatorLockAcquireTimeoutError' ||
+            (typeof event.reason === 'string' && event.reason.includes('NavigatorLockAcquireTimeoutError'))) {
+          event.preventDefault(); // Prevenir que aparezca en la consola
+        }
+      });
+    }
 
     this.supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
@@ -56,18 +98,39 @@ export class AuthService {
 
       switch (event) {
         case 'TOKEN_REFRESHED':
-          // Solo actualizar el token, no sincronizar de nuevo
+          // Cuando el token se refresca, actualizar y sincronizar con el backend
           if (session?.access_token) {
             this.persistToken(session.access_token);
+            // Sincronizar con el backend para asegurar que el nuevo token es válido
+            if (!this.isSyncing) {
+              await this.syncDomainUser().catch((err) => {
+                // Si falla la sincronización con el nuevo token, limpiar sesión
+                console.error('Error al sincronizar después de refresh:', err);
+                this.clearSession();
+                if (!this.router.url.startsWith('/login')) {
+                  this.router.navigate(['/login']);
+                }
+              });
+            }
           }
           break;
 
         case 'SIGNED_IN':
           if (session?.access_token) {
             this.persistToken(session.access_token);
-            // Solo sincronizar si no estamos ya sincronizando
-            if (!this.isSyncing) {
+            // Solo sincronizar si no estamos ya sincronizando y no es un login manual
+            // (el login manual manejará la sincronización)
+            if (!this.isSyncing && !this.isManualLogin) {
               await this.syncDomainUser();
+            } else if (this.isManualLogin) {
+              // Si es login manual, esperar un momento para que el token se propague
+              // y luego sincronizar
+              setTimeout(async () => {
+                this.isManualLogin = false;
+                if (!this.isSyncing) {
+                  await this.syncDomainUser();
+                }
+              }, 100);
             }
           }
           break;
@@ -100,29 +163,49 @@ export class AuthService {
   }
 
   async loginWithCredentials(email: string, password: string): Promise<void> {
-    const { data, error } = await this.supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    // Marcar que estamos haciendo login manual
+    this.isManualLogin = true;
 
-    if (error || !data.session) {
-      throw new Error('Credenciales inválidas');
-    }
+    try {
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const accessToken = data.session.access_token;
-    this.persistToken(accessToken);
+      if (error || !data.session) {
+        this.isManualLogin = false;
+        throw new Error('Credenciales inválidas');
+      }
 
-    await this.syncDomainUser();
+      const accessToken = data.session.access_token;
+      this.persistToken(accessToken);
 
-    const user = this.currentUser();
-    if (user) {
-      await this.router.navigate(
-        user.role === 'admin' ? ['/dashboard'] : ['/trabajador']
-      );
+      // Esperar un momento para que el evento SIGNED_IN se procese
+      // y luego sincronizar con el backend
+      await new Promise(resolve => setTimeout(resolve, 150));
+      
+      // Sincronizar con el backend (el evento SIGNED_IN ya actualizó el token)
+      await this.syncDomainUser();
+
+      const user = this.currentUser();
+      if (!user) {
+        // Si no hay usuario después de sincronizar, algo salió mal
+        throw new Error('No se pudo obtener la información del usuario');
+      }
+      // NO navegar automáticamente aquí - el componente Login manejará la navegación
+      // después de la animación de transición
+    } catch (error) {
+      this.isManualLogin = false;
+      throw error;
+    } finally {
+      // Asegurar que el flag se resetee incluso si hay un error
+      setTimeout(() => {
+        this.isManualLogin = false;
+      }, 500);
     }
   }
 
-  private async syncDomainUser(): Promise<void> {
+  private async syncDomainUser(retryCount = 0): Promise<void> {
     // Prevenir múltiples llamadas simultáneas
     if (this.isSyncing) {
       return;
@@ -152,14 +235,95 @@ export class AuthService {
       // Solo limpiar sesión si es un error 401 (no autorizado)
       // No limpiar en otros errores (red, servidor, etc.)
       if (error?.status === 401) {
-        this.clearSession();
+        // Si estamos en proceso de login manual y es el primer intento, esperar un poco y reintentar
+        // (puede haber un delay en la propagación del token al backend)
+        if (this.isManualLogin && retryCount === 0) {
+          this.isSyncing = false;
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // Reintentar - si el retry es exitoso, no lanzar error
+          try {
+            await this.syncDomainUser(1);
+            // Si el retry fue exitoso, salir sin error
+            this.isSyncing = false;
+            return;
+          } catch (retryError: any) {
+            // Si el retry también falla, continuar con el manejo de error
+            // pero solo si realmente falló (no es un 401 que se resolvió)
+            if (retryError?.status === 401) {
+              error = retryError;
+            } else {
+              // Si es otro tipo de error, lanzarlo
+              this.isSyncing = false;
+              throw retryError;
+            }
+          }
+        }
+
+        // Si no es un retry de login manual, intentar refrescar el token
+        if (retryCount > 0 || !this.isManualLogin) {
+          try {
+            const { data: sessionData } = await this.supabase.auth.getSession();
+            if (sessionData?.session) {
+              // Intentar refrescar el token
+              const { data: refreshData, error: refreshError } = await this.supabase.auth.refreshSession();
+              if (!refreshError && refreshData?.session?.access_token) {
+                // Si el refresh fue exitoso, actualizar el token y reintentar
+                this.persistToken(refreshData.session.access_token);
+                // Reintentar la sincronización una vez más
+                this.isSyncing = false;
+                await new Promise(resolve => setTimeout(resolve, 200));
+                // Reintentar - si el retry es exitoso, no lanzar error
+                try {
+                  await this.syncDomainUser(retryCount + 1);
+                  // Si el retry fue exitoso, salir sin error
+                  this.isSyncing = false;
+                  return;
+                } catch (retryError: any) {
+                  // Si el retry también falla, continuar con el manejo de error
+                  // pero solo si realmente falló (no es un 401 que se resolvió)
+                  if (retryError?.status === 401) {
+                    error = retryError;
+                  } else {
+                    // Si es otro tipo de error, lanzarlo
+                    this.isSyncing = false;
+                    throw retryError;
+                  }
+                }
+              }
+            }
+          } catch (refreshAttemptError) {
+            // Si el intento de refresh falla, continuar con el cierre de sesión
+            console.debug('Error al intentar refrescar token:', refreshAttemptError);
+          }
+        }
+
+        // Si llegamos aquí, el token es inválido y no se pudo refrescar
+        // Limpiar inmediatamente el estado local (signal)
+        this._currentUser.set(null);
+        
+        // Limpiar storage
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem(this.tokenStorageKey);
+          sessionStorage.removeItem(this.userStorageKey);
+        }
+        
         // Cerrar sesión en Supabase también para evitar loops
-        await this.supabase.auth.signOut();
-        // Solo navegar si no estamos ya en login
-        if (!this.router.url.startsWith('/login')) {
-          await this.router.navigate(['/login']);
+        try {
+          await this.supabase.auth.signOut();
+        } catch (signOutError) {
+          // Ignorar errores al cerrar sesión en Supabase
+          console.debug('Error al cerrar sesión en Supabase:', signOutError);
+        }
+        
+        // Forzar navegación al login si no estamos ya ahí
+        const currentUrl = this.router.url;
+        if (!currentUrl.startsWith('/login') && !currentUrl.startsWith('/recuperar-clave')) {
+          // Usar navigateByUrl para forzar la navegación incluso si hay guards
+          await this.router.navigateByUrl('/login', { skipLocationChange: false });
         }
       }
+      
+      // Solo lanzar error si no fue un retry exitoso
       throw new Error('No se pudo validar la sesión con el servidor.');
     } finally {
       this.isSyncing = false;
@@ -185,16 +349,6 @@ export class AuthService {
       console.error('Error al restaurar sesión:', error);
       this.clearSession();
     }
-  }
-  /**
-   * Accesos directos de DEV: usan cuentas reales de Supabase.
-   */
-  async loginAsAdminMock(): Promise<void> {
-    return this.loginWithCredentials('maj.fuentes@duocuc.cl', 'password');
-  }
-
-  async loginAsWorkerMock(): Promise<void> {
-    return this.loginWithCredentials('nelopi8088@moondyal.com', 'password');
   }
 
   async logout(): Promise<void> {

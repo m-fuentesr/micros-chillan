@@ -23,11 +23,15 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   return next(authReq).pipe(
     catchError((error: HttpErrorResponse) => {
       // Si recibimos un 401 (Unauthorized), el token es inválido o expiró
-      if (error.status === 401 && !req.url.includes('/login')) {
+      if (error.status === 401 && !req.url.includes('/login') && !req.url.includes('/api/auth/me')) {
         // Limpiar sesión y redirigir al login
+        // Nota: No hacer logout si es /api/auth/me porque syncDomainUser ya lo maneja
         auth.logout().catch(() => {
           // Si logout falla, forzar navegación
-          router.navigate(['/login']);
+          const currentUrl = router.url;
+          if (!currentUrl.startsWith('/login')) {
+            router.navigateByUrl('/login', { skipLocationChange: false });
+          }
         });
       }
       return throwError(() => error);

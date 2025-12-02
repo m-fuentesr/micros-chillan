@@ -8,14 +8,15 @@ import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { TransitionService } from '../../shared/services/transition.service';
 
 @Component({
   selector: 'app-home',
   imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
   template: `
-    <div class="space-y-6 animate-page-enter">
-      <!-- Header -->
-      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+    <div class="space-y-6">
+      <!-- Header - Aparece primero -->
+      <div class="dashboard-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
         <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Dashboard del Administrador</h1>
         <p class="text-base-content/70 italic">
           Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
@@ -23,7 +24,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 dashboard-content-enter">
         @if (isLoading()) {
           @for (i of [1,2,3,4]; track i) {
             <app-loading-skeleton type="kpi" />
@@ -109,14 +110,14 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6 dashboard-content-enter-delay-1">
         <!-- Gráfico Financiero (2/3 del ancho) -->
-        <div class="xl:col-span-2 animate-page-enter" style="animation-delay: 200ms; animation-fill-mode: both;">
+        <div class="xl:col-span-2">
           <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
         </div>
 
         <!-- Alertas Compactas (1/3 del ancho) -->
-        <div class="xl:col-span-1 animate-page-enter" style="animation-delay: 250ms; animation-fill-mode: both;">
+        <div class="xl:col-span-1">
           <app-alert-list
             [alerts]="alerts()"
             [isExpanded]="true"
@@ -126,7 +127,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
 
       <!-- Zona de Detalle: Tabla Full Width -->
-      <div class="animate-page-enter border-t-2 border-t-base-300 pt-6" style="animation-delay: 300ms; animation-fill-mode: both;">
+      <div class="border-t-2 border-t-base-300 pt-6 dashboard-content-enter-delay-2">
         @if (isLoading()) {
           <app-loading-skeleton type="table" [count]="5" />
         } @else {
@@ -138,12 +139,114 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       </div>
     </div>
   `,
-  styles: [],
+  styles: [
+    `
+    /* ============================================
+       TRANSICIÓN "LA INMERSIÓN FOCAL" - DASHBOARD
+       ============================================ */
+    
+    /* Header aparece primero - Fade up rápido */
+    .dashboard-header-enter {
+      animation: dashboardHeaderEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 260ms forwards;
+      opacity: 0;
+      transform: translateY(-15px);
+    }
+    
+    @keyframes dashboardHeaderEnter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Contenido principal - Staggered fade-up */
+    .dashboard-content-enter {
+      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 520ms forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    
+    @keyframes dashboardContentEnter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Delay para segunda sección */
+    .dashboard-content-enter-delay-1 {
+      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 620ms forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    
+    /* Delay para tercera sección */
+    .dashboard-content-enter-delay-2 {
+      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 720ms forwards;
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    
+    /* Cards individuales con stagger adicional */
+    .dashboard-content-enter .card {
+      animation: dashboardCardEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    
+    .dashboard-content-enter .card:nth-child(1) {
+      animation-delay: 260ms;
+    }
+    
+    .dashboard-content-enter .card:nth-child(2) {
+      animation-delay: 320ms;
+    }
+    
+    .dashboard-content-enter .card:nth-child(3) {
+      animation-delay: 380ms;
+    }
+    
+    .dashboard-content-enter .card:nth-child(4) {
+      animation-delay: 440ms;
+    }
+    
+    @keyframes dashboardCardEnter {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .dashboard-header-enter,
+      .dashboard-content-enter,
+      .dashboard-content-enter-delay-1,
+      .dashboard-content-enter-delay-2,
+      .dashboard-content-enter .card {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Home implements OnInit {
   private alertService = inject(AlertService);
   private dashboardService = inject(DashboardService);
+  private transitionService = inject(TransitionService);
+
+  constructor() {
+    console.log('[DASHBOARD] 🏠 Componente Home inicializado');
+    
+    // Monitorear cuando el componente se monta
+    effect(() => {
+      const isTransitioning = this.transitionService.isTransitioning();
+      console.log('[DASHBOARD] 🔄 Estado de transición cambió:', isTransitioning);
+    });
+  }
 
   showOnlyPending = signal(false);
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
@@ -262,12 +365,14 @@ export class Home implements OnInit {
   });
 
   ngOnInit(): void {
+    console.log('[DASHBOARD] 🎯 ngOnInit ejecutado');
     // Los datos se cargan automáticamente con toSignal
     // La inicialización de alerts se maneja en el effect
     
     // Desactivar loading después de un tiempo razonable
     setTimeout(() => {
       this.isLoading.set(false);
+      console.log('[DASHBOARD] ✅ Loading desactivado');
     }, 500);
   }
 

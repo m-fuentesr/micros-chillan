@@ -13,6 +13,11 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./pages/recuperar-clave/recuperar-clave').then(m => m.RecuperarClave)
   },
+  {
+    path: 'restablecer-clave',
+    loadComponent: () =>
+      import('./pages/restablecer-clave/restablecer-clave').then(m => m.RestablecerClave)
+  },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
 
   // --- Admin ---
