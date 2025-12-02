@@ -16,8 +16,7 @@ import { filter } from 'rxjs';
     @if (transitionService.isTransitioning()) {
       <div 
         class="transition-overlay-white" 
-        [attr.data-transition-active]="transitionService.isTransitioning()"
-        (load)="onOverlayLoad()">
+        [attr.data-transition-active]="transitionService.isTransitioning()">
       </div>
     }
     
