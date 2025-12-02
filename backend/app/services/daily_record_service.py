@@ -1,4 +1,5 @@
-﻿from fastapi import HTTPException
+﻿from datetime import date, timedelta
+from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.daily_record import DailyRecordCreate
 
@@ -72,3 +73,47 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
         raise HTTPException(status_code=400, detail=f"Error de BD: {res.error.message}")
 
     return res.data[0]
+
+async def get_driver_history(current_user: dict, rango: str):
+
+    chofer_id = current_user.get("chofer_id")
+    if not chofer_id:
+        raise HTTPException(status_code=400, detail="Usuario sin la asignacion de chofer")
+    
+    hoy = date.today()
+    fecha_inicio = None
+    fecha_fin = hoy
+
+    #Logica para los filtros
+    if rango == "esta_semana":
+        fecha_inicio = hoy - timedelta(days=hoy.weekday())
+    elif rango == "este_mes":
+        fecha_inicio = date(hoy.year, hoy.month, 1)
+    elif rango == "mes_anterior":
+        primero_este_mes = date(hoy.year, hoy.month, 1)
+        ultimo_mes_anterior = primero_este_mes - timedelta(days=1)
+        fecha_fin = ultimo_mes_anterior
+        fecha_inicio = date(ultimo_mes_anterior.year, ultimo_mes_anterior.month, 1)
+    elif rango == "todo":
+        fecha_inicio = None
+    else:
+        fecha_inicio = date(hoy.year, hoy.month, 1)
+
+    #Consulta a Supabase con JOIN
+    query = (
+        supabase.table("registros_diarios")
+        .select("*, maquinas(numero_interno, marca)")
+        .eq("chofer_id", chofer_id)
+    )
+
+    if fecha_inicio:
+        query = query.gte("fecha", fecha_inicio.isoformat())
+    
+    query = query.lte("fecha", fecha_fin.isoformat())
+
+    res = query.order("fecha", desc=True).execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error historial: {res.error}")
+    
+    return res.data
