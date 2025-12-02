@@ -1,6 +1,7 @@
 ﻿from datetime import date, datetime
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
+import calendar
 
 
 async def get_profile(current_user: dict):
@@ -82,5 +83,62 @@ async def get_profile(current_user: dict):
         "estadisticas": {
             "dias_trabajados": 0,
             "total_recaudado": 0
+        }
+    }
+
+async def get_monthly_stats(current_user: dict, mes: int = None, anio: int = None):
+    """
+    Calcula días trabajados y total recaudado para un mes específico.
+    Si no se envía mes/año, usa los actuales.
+    """
+    # 1. Validar Chofer
+    chofer_id = current_user.get("chofer_id")
+    if not chofer_id:
+        raise HTTPException(status_code=400, detail="Usuario sin chofer asignado")
+
+    # 2. Definir Fechas (Inicio y Fin de Mes)
+    hoy = date.today()
+    mes_target = mes if mes else hoy.month
+    anio_target = anio if anio else hoy.year
+
+    # Fecha Inicio: Día 1
+    fecha_inicio = date(anio_target, mes_target, 1).isoformat()
+    
+    # Fecha Fin: Último día del mes (ej: 28, 30, 31)
+    ultimo_dia = calendar.monthrange(anio_target, mes_target)[1]
+    fecha_fin = date(anio_target, mes_target, ultimo_dia).isoformat()
+
+    # 3. Consulta a Supabase
+    # Traemos solo la columna 'monto_recaudado' para sumar en Python
+    # Filtramos por chofer y rango de fechas
+    res = (
+        supabase.table("registros_diarios")
+        .select("monto_recaudado")
+        .eq("chofer_id", chofer_id)
+        .gte("fecha", fecha_inicio) # Mayor o igual al día 1
+        .lte("fecha", fecha_fin)    # Menor o igual al último día
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error calculando estadísticas: {res.error}")
+
+    data = res.data # Lista de diccionarios: [{'monto_recaudado': 150000}, ...]
+
+    # 4. Cálculos Matemáticos
+    dias_trabajados = len(data) # Cantidad de filas
+    
+    # Sumar montos (manejando posibles nulls con 0)
+    total_recaudado = sum((item.get("monto_recaudado") or 0) for item in data)
+
+    # 5. Retornar Respuesta
+    return {
+        "periodo": {
+            "mes": mes_target,
+            "anio": anio_target
+        },
+        "estadisticas": {
+            "dias_trabajados": dias_trabajados,
+            "total_recaudado": total_recaudado
         }
     }
