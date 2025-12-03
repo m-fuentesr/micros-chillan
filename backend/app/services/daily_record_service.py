@@ -17,6 +17,25 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
         raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
 
     # ---------------------------------------------------------------
+    # VALIDACIÓN: Verificar que no exista un reporte para la misma fecha
+    # ---------------------------------------------------------------
+    fecha_reporte = payload.fecha if payload.fecha else date.today()
+    
+    existing_record = (
+        supabase.table("registros_diarios")
+        .select("id, fecha, estado")
+        .eq("chofer_id", chofer_id)
+        .eq("fecha", fecha_reporte.isoformat())
+        .execute()
+    )
+
+    if existing_record.data and len(existing_record.data) > 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Ya existe un reporte diario para la fecha {fecha_reporte.isoformat()}. Solo se permite un reporte por día."
+        )
+
+    # ---------------------------------------------------------------
     # PASO CLAVE: BUSCAR EL PORCENTAJE (Para solucionar el error null)
     # ---------------------------------------------------------------
     resp_chofer = (
@@ -38,7 +57,7 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
     # ---------------------------------------------------------------
     # Calculamos cuánto dinero representa ese porcentaje
     # Ejemplo: Recaudó 100.000 * 16.5% = 16.500
-    monto_pago_chofer = int(payload.monto_recaudado * (porcentaje_del_chofer / 100))
+    monto_pago_chofer = int(payload.monto_recaudado * porcentaje_del_chofer)
 
     # Definir estado según el checkbox
     estado_calculado = "incidente_reportado" if payload.incidente_critico else "completo"
@@ -117,3 +136,48 @@ async def get_driver_history(current_user: dict, rango: str):
         raise HTTPException(status_code=400, detail=f"Error historial: {res.error}")
     
     return res.data
+
+async def get_today_record_status(current_user: dict):
+    """
+    Obtiene el estado del reporte diario de hoy para el chofer actual.
+    Retorna el registro si existe, None si no existe.
+    """
+    chofer_id = current_user.get("chofer_id")
+    if not chofer_id:
+        raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
+    
+    hoy = date.today()
+    fecha_busqueda = hoy.isoformat()
+    
+    try:
+        res = (
+            supabase.table("registros_diarios")
+            .select("id, fecha, estado, monto_recaudado, created_at")
+            .eq("chofer_id", chofer_id)
+            .eq("fecha", fecha_busqueda)
+            .limit(1)
+            .execute()
+        )
+        
+        if res.data and len(res.data) > 0:
+            return {
+                "exists": True,
+                "record": res.data[0],
+                "can_create_new": False,
+                "message": "Ya existe un reporte para hoy"
+            }
+        else:
+            return {
+                "exists": False,
+                "record": None,
+                "can_create_new": True,
+                "message": "Puede crear un nuevo reporte"
+            }
+    except Exception as e:
+        # Si hay un error, asumir que no existe el reporte
+        return {
+            "exists": False,
+            "record": None,
+            "can_create_new": True,
+            "message": "Puede crear un nuevo reporte"
+        }

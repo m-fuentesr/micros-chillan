@@ -1,11 +1,13 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DailyRecordService } from '../../../shared/services/daily-record.service';
-import { AuthService } from '../../../shared/services/auth.service';
-import { DriverService } from '../../../shared/services/driver.service';
+import { WorkerService } from '../../../shared/services/worker.service';
+import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
-import type { DailyRecord } from '../../../shared/models/daily-record.models';
+import { catchError, of, forkJoin, tap } from 'rxjs';
+import type { DailyRecordHistoryResponse } from '../../../shared/models/daily-record.models';
 
 interface HistoryItem {
   date: string;
@@ -15,6 +17,7 @@ interface HistoryItem {
   status: 'pending' | 'processed';
   observations?: string;
   machine: string;
+  incidenteCritico: boolean;
 }
 
 interface WeekGroup {
@@ -26,10 +29,39 @@ interface WeekGroup {
 @Component({
   selector: 'app-mi-historial',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, LoadingSkeleton, AnimatedCounterDirective],
   template: `
-    <main class="mobile-content pb-24">
-      <header class="card bg-primary text-primary-content shadow-lg mb-4">
+    <main class="historial-background-enter mobile-content pb-24">
+      @if (loadingState.showSkeleton() && isLoading()) {
+        <div class="card bg-slate-200 shadow-lg mb-4">
+          <div class="card-body p-4">
+            <div class="flex justify-between items-center">
+              <div class="space-y-2">
+                <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                <div class="h-6 w-32 skeleton-shimmer rounded"></div>
+              </div>
+              <div class="space-y-2 text-right">
+                <div class="h-3 w-20 skeleton-shimmer rounded ml-auto"></div>
+                <div class="h-6 w-24 skeleton-shimmer rounded ml-auto"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-base-100 rounded-xl shadow border border-base-200 overflow-hidden mb-4">
+          <div class="flex gap-2 px-4 pt-4 pb-2">
+            <div class="h-8 w-24 skeleton-shimmer rounded-full"></div>
+            <div class="h-8 w-24 skeleton-shimmer rounded-full"></div>
+            <div class="h-8 w-28 skeleton-shimmer rounded-full"></div>
+          </div>
+          <app-loading-skeleton type="list" [count]="5" />
+          @if (loadingState.showFeedback()) {
+            <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <p class="text-sm text-blue-700">{{ loadingState.feedbackMessage() }}</p>
+            </div>
+          }
+        </div>
+      } @else {
+      <header class="historial-header-enter card bg-primary text-primary-content shadow-lg mb-4">
         <div class="card-body p-4">
           <div class="flex justify-between items-center">
             <div>
@@ -37,14 +69,13 @@ interface WeekGroup {
               <h1 class="text-2xl font-bold">Mi Historial</h1>
             </div>
             <div class="text-right">
-              <p class="text-sm opacity-80">Máquina 05</p>
-              <p class="text-xl font-bold tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
+              <p class="text-xl font-bold tabular-nums" [appAnimatedCounter]="totalRevenue()" [duration]="1500" format="currency" currencyCode="CLP" currencyDisplay="symbol-narrow" [minFractionDigits]="0" [maxFractionDigits]="0"></p>
             </div>
           </div>
         </div>
       </header>
 
-      <section class="bg-base-100 rounded-xl shadow border border-base-200 overflow-hidden mb-4">
+      <section class="historial-content-enter bg-base-100 rounded-xl shadow border border-base-200 overflow-hidden mb-4">
         <div class="tabs bg-transparent p-0 mb-2 gap-2 px-4 pt-4 flex">
           <button 
             class="text-xs font-bold transition-all rounded-full px-4 py-2"
@@ -93,15 +124,15 @@ interface WeekGroup {
           </div>
         } @else {
           <div class="history-container">
-            @for (week of weekGroups(); track week.title) {
+            @for (week of weekGroups(); track week.title; let weekIndex = $index) {
               <div class="week-group">
-                <div class="week-header">
+                <div class="week-header historial-week-header-enter" [style.animation-delay.ms]="200 + (weekIndex * 50)">
                   <span class="week-header__title font-bold text-sm">{{ week.title }}</span>
                   <span class="week-header__summary font-bold text-success tabular-nums">{{ week.total | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                 </div>
 
-                @for (item of week.items; track item.date) {
-                  <a class="history-item" [class.is-pending]="item.status === 'pending'">
+                @for (item of week.items; track item.date; let itemIndex = $index) {
+                  <a class="history-item historial-item-enter" [class.has-incident]="item.incidenteCritico" [style.animation-delay.ms]="300 + (weekIndex * 50) + (itemIndex * 30)">
                     <div class="history-item__date-block">
                       <span class="history-item__weekday">{{ getWeekDay(item.date) }}</span>
                       <span class="history-item__day">{{ getDay(item.date) }}</span>
@@ -117,18 +148,15 @@ interface WeekGroup {
                           <span class="font-normal">-{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }} ({{ item.dieselLiters }}L)</span>
                         </div>
                       }
-                      <div class="text-[11px] font-bold" [class.text-warning]="item.status === 'pending'" [class.text-success]="item.status === 'processed'">
-                        @if (item.status === 'pending') {
-                          ⚠️ Validación Pendiente
-                        } @else {
-                          ✓ Procesado
-                        }
-                      </div>
+                      @if (item.incidenteCritico) {
+                        <div class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded mt-1 inline-block">
+                          🚨 Incidente Crítico
+                        </div>
+                      }
                     </div>
 
                     <div class="history-item__financials">
                       <span class="history-item__revenue-value">+{{ item.revenue | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-                      <div class="history-item__status-dot" [class.pending]="item.status === 'pending'" [class.processed]="item.status === 'processed'"></div>
                     </div>
 
                     @if (item.observations) {
@@ -144,6 +172,7 @@ interface WeekGroup {
           </div>
         }
       </section>
+      }
     </main>
   `,
   styles: [`
@@ -197,14 +226,15 @@ interface WeekGroup {
       border-bottom: none;
     }
 
-    .history-item.is-pending {
-      background-color: #fffbf2;
-      border-left: 4px solid #f59e0b;
+
+    .history-item.has-incident {
+      border-left-color: #ef4444;
+      background-color: #fef2f2;
     }
 
-    .history-item.is-pending .history-item__date-block {
-      border-color: #fcd34d;
-      background-color: #fffbeb;
+    .history-item.has-incident .history-item__date-block {
+      border-color: #fca5a5;
+      background-color: #fee2e2;
     }
 
     .history-item__date-block {
@@ -269,21 +299,6 @@ interface WeekGroup {
       letter-spacing: -0.5px;
     }
 
-    .history-item__status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: #e5e7eb;
-    }
-
-    .history-item__status-dot.pending {
-      background-color: #f59e0b;
-      box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
-    }
-
-    .history-item__status-dot.processed {
-      background-color: #10b981;
-    }
 
     .history-item__alert {
       grid-column: 2 / -1;
@@ -297,90 +312,282 @@ interface WeekGroup {
       gap: 6px;
       align-items: start;
     }
+
+    /* ============================================
+       ANIMACIONES DE ENTRADA ELEGANTES - HISTORIAL
+       Transición slide desde la derecha (profundidad/hijo)
+       ============================================ */
+    
+    /* Fondo: Fade-in suave */
+    .historial-background-enter {
+      animation: historialBackgroundEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      will-change: opacity;
+    }
+    
+    @keyframes historialBackgroundEnter {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    
+    /* Header: Slide desde la derecha con fade (más pronunciado que perfil) */
+    .historial-header-enter {
+      animation: historialHeaderEnter 700ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateX(50px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes historialHeaderEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(50px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Contenido principal: Slide desde la derecha con delay */
+    .historial-content-enter {
+      animation: historialContentEnter 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 150ms forwards;
+      opacity: 0;
+      transform: translateX(50px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes historialContentEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(50px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Headers de semana: Fade-up con stagger */
+    .historial-week-header-enter {
+      animation: historialWeekHeaderEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateY(15px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes historialWeekHeaderEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Items de historial: Slide desde la derecha con stagger individual */
+    .historial-item-enter {
+      animation: historialItemEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateX(30px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes historialItemEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Respetar preferencias de movimiento reducido */
+    @media (prefers-reduced-motion: reduce) {
+      .historial-background-enter,
+      .historial-header-enter,
+      .historial-content-enter,
+      .historial-week-header-enter,
+      .historial-item-enter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MiHistorial implements OnInit {
   private dailyRecordService = inject(DailyRecordService);
-  private authService = inject(AuthService);
-  private driverService = inject(DriverService);
+  private workerService = inject(WorkerService);
+  private loadingStateService = inject(LoadingStateService);
 
   selectedPeriod = signal<'week' | 'month' | 'previous'>('week');
   isLoading = signal(true);
-
-  // Obtener registros del trabajador actual
-  private dailyRecordsResponse = toSignal(
-    this.dailyRecordService.getDailyRecords().pipe(
-      catchError(() => of({ datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 }))
+  loadingState = this.loadingStateService.createLoadingState();
+  
+  // Obtener perfil del trabajador para mostrar la máquina asignada
+  private workerProfile = toSignal(
+    this.workerService.getProfile().pipe(
+      catchError(() => of({
+        nombre_completo: 'Trabajador',
+        rut: '',
+        telefono: '',
+        email: '',
+        maquina_detalle: null,
+        fecha_ingreso: '--/--/----'
+      }))
     ),
-    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
+    { initialValue: null }
+  );
+  
+  // Computed: Máquina asignada
+  assignedMachine = computed(() => {
+    const profile = this.workerProfile();
+    return profile?.maquina_detalle || 'Sin asignar';
+  });
+  
+  // Flag para trackear cuando el observable emite
+  private historyEmitted = signal(false);
+
+  // Mapear el período seleccionado al valor del backend
+  private getRangoForBackend(period: 'week' | 'month' | 'previous'): string {
+    switch (period) {
+      case 'week':
+        return 'esta_semana';
+      case 'month':
+        return 'este_mes';
+      case 'previous':
+        return 'mes_anterior';
+      default:
+        return 'este_mes';
+    }
+  }
+
+  // Cargar todos los rangos de una vez usando forkJoin (optimización)
+  private allHistoryData = toSignal(
+    forkJoin({
+      week: this.dailyRecordService.getMyHistory('esta_semana').pipe(
+        catchError(() => of([]))
+      ),
+      month: this.dailyRecordService.getMyHistory('este_mes').pipe(
+        catchError(() => of([]))
+      ),
+      previous: this.dailyRecordService.getMyHistory('mes_anterior').pipe(
+        catchError(() => of([]))
+      )
+    }).pipe(
+      tap(() => {
+        // Cuando el observable emite (éxito), marcar que emitió
+        this.historyEmitted.set(true);
+      }),
+      catchError(() => {
+        // También marcar como emitido en caso de error
+        this.historyEmitted.set(true);
+        return of({ week: [], month: [], previous: [] });
+      })
+    ),
+    { initialValue: { week: [], month: [], previous: [] } }
   );
 
-  // Mapear DailyRecord a HistoryItem
-  private allData = computed((): HistoryItem[] => {
-    const response = this.dailyRecordsResponse();
-    const records = response.datos || [];
-    const currentUser = this.authService.currentUser();
-    
-    if (!currentUser) {
-      return [];
+  // Effect como inicializador de campo (contexto de inyección válido)
+  private historyEffect = effect(() => {
+    // Monitorear cuando el observable emite
+    if (this.historyEmitted() && this.loadingState.isLoading()) {
+      this.isLoading.set(false);
+      this.loadingState.setDataLoaded();
     }
-
-    // Filtrar registros del chofer actual (por ahora usar chofer_id = 1 como mock)
-    // TODO: Obtener chofer_id real desde el backend basado en currentUser.id
-    const choferId = 1; // Mock
-    
-    return records
-      .filter((record) => record.chofer_id === choferId)
-      .map((record) => this.mapToHistoryItem(record));
   });
 
-  private mapToHistoryItem(record: DailyRecord): HistoryItem {
-    // Mapear estado: 'PENDIENTE_TRABAJADOR' o 'INCIDENTE_REPORTADO' -> 'pending', 'COMPLETO' -> 'processed'
-    const status: 'pending' | 'processed' = 
-      (record.estado === 'PENDIENTE_TRABAJADOR' || record.estado === 'INCIDENTE_REPORTADO') 
-        ? 'pending' 
-        : 'processed';
+  // Filtrar datos según el período seleccionado (filtrado local)
+  private historyData = computed((): DailyRecordHistoryResponse[] => {
+    const period = this.selectedPeriod();
+    const allData = this.allHistoryData();
+    
+    switch (period) {
+      case 'week':
+        return allData.week || [];
+      case 'month':
+        return allData.month || [];
+      case 'previous':
+        return allData.previous || [];
+      default:
+        return allData.month || [];
+    }
+  });
+
+  // Mapear DailyRecordHistoryResponse a HistoryItem (solo para el período seleccionado)
+  private allData = computed((): HistoryItem[] => {
+    const records = this.historyData();
+    return records.map((record) => this.mapToHistoryItem(record));
+  });
+
+  // Todos los datos sin filtrar por período (para calcular conteos)
+  private allUnfilteredData = computed((): HistoryItem[] => {
+    const allData = this.allHistoryData();
+    const allRecords: DailyRecordHistoryResponse[] = [
+      ...(allData.week || []),
+      ...(allData.month || []),
+      ...(allData.previous || [])
+    ];
+    // Eliminar duplicados por fecha (puede haber solapamiento entre rangos)
+    const uniqueRecords = new Map<string, DailyRecordHistoryResponse>();
+    allRecords.forEach(record => {
+      if (!uniqueRecords.has(record.fecha)) {
+        uniqueRecords.set(record.fecha, record);
+      }
+    });
+    return Array.from(uniqueRecords.values()).map((record) => this.mapToHistoryItem(record));
+  });
+
+  private mapToHistoryItem(record: DailyRecordHistoryResponse): HistoryItem {
+    // Todos los registros se muestran como procesados (es solo historial, no hay validaciones)
+    const status: 'pending' | 'processed' = 'processed';
+
+    // Construir nombre de máquina desde el objeto anidado
+    // El backend devuelve 'maquinas' (plural) como objeto anidado
+    // Puede ser un objeto único o un array (Supabase puede devolver arrays en relaciones)
+    let maquinaData = (record as any).maquinas || record.maquina;
+    
+    // Si es un array, tomar el primer elemento
+    if (Array.isArray(maquinaData)) {
+      maquinaData = maquinaData.length > 0 ? maquinaData[0] : null;
+    }
+    
+    // Construir el nombre de la máquina
+    const machineName = maquinaData && maquinaData.numero_interno && maquinaData.marca
+      ? `${maquinaData.numero_interno} - ${maquinaData.marca}`
+      : 'Sin máquina';
 
     return {
       date: record.fecha,
-      revenue: record.recaudado || 0,
+      revenue: record.monto_recaudado || 0,
       dieselLiters: record.litros_diesel || 0,
-      dieselCost: record.costo_diesel || 0,
+      dieselCost: record.costo_total_diesel || 0,
       status,
       observations: record.observaciones || undefined,
-      machine: record.maquina_identificador || `Máquina ${record.maquina_id}`
+      machine: machineName,
+      incidenteCritico: record.incidente_critico || false
     };
   }
 
   ngOnInit(): void {
-    // Los datos se cargan automáticamente a través de toSignal
-    this.isLoading.set(false);
+    // Iniciar estado de carga
+    this.loadingState.setLoading(true);
+    this.isLoading.set(true);
   }
 
+  // Los datos ya vienen filtrados del backend según el rango
   filteredData = computed(() => {
-    const data = this.allData();
-    const period = this.selectedPeriod();
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    return data.filter((item: HistoryItem) => {
-      const itemDate = new Date(item.date);
-      
-      if (period === 'week') {
-        const weekAgo = new Date(today);
-        weekAgo.setDate(weekAgo.getDate() - 7);
-        return itemDate >= weekAgo;
-      } else if (period === 'month') {
-        return itemDate.getMonth() === today.getMonth() && 
-               itemDate.getFullYear() === today.getFullYear();
-      } else {
-        const lastMonth = new Date(today);
-        lastMonth.setMonth(lastMonth.getMonth() - 1);
-        return itemDate.getMonth() === lastMonth.getMonth() && 
-               itemDate.getFullYear() === lastMonth.getFullYear();
-      }
-    });
+    return this.allData();
   });
 
   weekGroups = computed(() => {
@@ -419,26 +626,48 @@ export class MiHistorial implements OnInit {
     return this.filteredData().reduce((sum: number, item: HistoryItem) => sum + item.revenue, 0);
   });
 
-  weekCount = computed(() => this.filteredData().length);
-  monthCount = computed(() => {
-    const data = this.allData();
+  // Helper para formatear conteos con "99+" si es mayor a 99
+  private formatCount(count: number): string {
+    return count > 99 ? '99+' : count.toString();
+  }
+
+  weekCount = computed(() => {
+    // Siempre calcular desde todos los datos sin filtrar
+    const data = this.allUnfilteredData();
     const today = new Date();
-    return data.filter((item: HistoryItem) => {
+    const weekAgo = new Date(today);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const count = data.filter((item: HistoryItem) => {
+      const itemDate = new Date(item.date);
+      return itemDate >= weekAgo;
+    }).length;
+    return this.formatCount(count);
+  });
+
+  monthCount = computed(() => {
+    // Siempre calcular desde todos los datos sin filtrar
+    const data = this.allUnfilteredData();
+    const today = new Date();
+    const count = data.filter((item: HistoryItem) => {
       const itemDate = new Date(item.date);
       return itemDate.getMonth() === today.getMonth() && 
              itemDate.getFullYear() === today.getFullYear();
     }).length;
+    return this.formatCount(count);
   });
+
   previousCount = computed(() => {
-    const data = this.allData();
+    // Siempre calcular desde todos los datos sin filtrar
+    const data = this.allUnfilteredData();
     const today = new Date();
     const lastMonth = new Date(today);
     lastMonth.setMonth(lastMonth.getMonth() - 1);
-    return data.filter((item: HistoryItem) => {
+    const count = data.filter((item: HistoryItem) => {
       const itemDate = new Date(item.date);
       return itemDate.getMonth() === lastMonth.getMonth() && 
              itemDate.getFullYear() === lastMonth.getFullYear();
     }).length;
+    return this.formatCount(count);
   });
 
   getWeekDay(date: string): string {

@@ -3,13 +3,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation } from '../models/accounting.models';
+import { environment } from '../../../environments/environment.development';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AccountingService {
   private http = inject(HttpClient);
-  private apiUrl = '/api';
+  private apiUrl = environment.apiBaseUrl;
   
   // Caché simple en memoria
   private summaryCache: Map<string, { data: AccountingSummary; timestamp: number }> = new Map();

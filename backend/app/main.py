@@ -12,6 +12,7 @@ from app.api.reports import router as reports_router
 from app.api.users import router as users_router
 from app.api.test import router as test_router
 from app.api.worker import router as worker_router
+from app.api.storage import router as storage_router
 
 app = FastAPI(title="MicrosChillán Backend")
 
@@ -39,6 +40,7 @@ app.include_router(reports_router)
 app.include_router(worker_router)
 app.include_router(users_router)
 app.include_router(test_router)
+app.include_router(storage_router)
 
 # Ruta principal
 @app.get("/")

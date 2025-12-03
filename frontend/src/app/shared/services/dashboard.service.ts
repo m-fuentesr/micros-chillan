@@ -5,6 +5,7 @@ import { catchError, map } from 'rxjs/operators';
 import { Alert, DailyRecord, FinancialSummary } from '../models/dashboard.models';
 import { DailyRecordService } from './daily-record.service';
 import type { DailyRecord as UnifiedDailyRecord } from '../models/daily-record.models';
+import { environment } from '../../../environments/environment.development';
 
 /**
  * Servicio para el Dashboard
@@ -16,7 +17,7 @@ import type { DailyRecord as UnifiedDailyRecord } from '../models/daily-record.m
 export class DashboardService {
   private http = inject(HttpClient);
   private dailyRecordService = inject(DailyRecordService);
-  private apiUrl = '/api'; // Ajustar según tu configuración
+  private apiUrl = environment.apiBaseUrl;
   
   // Caché simple en memoria
   private alertsCache: { data: Alert[]; timestamp: number } | null = null;

@@ -1,27 +1,37 @@
-import { Component, ChangeDetectionStrategy, inject, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, OnInit, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../shared/services/auth.service';
-import { DriverService } from '../../../shared/services/driver.service';
-import { DailyRecordService } from '../../../shared/services/daily-record.service';
+import { WorkerService } from '../../../shared/services/worker.service';
+import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
-import type { DailyRecord } from '../../../shared/models/daily-record.models';
+import { catchError, of, delay } from 'rxjs';
+import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
 
 @Component({
   selector: 'app-perfil',
-  imports: [RouterLink, CommonModule],
+  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective],
   template: `
-    <div class="min-h-screen bg-slate-50 pb-28 font-sans">
-      <header class="relative bg-gradient-to-br from-blue-600 to-indigo-700 pb-24 pt-8 px-6 rounded-b-[2.5rem] shadow-lg">
-        <div class="flex flex-col items-center text-white">
+    <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
+      @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+        <div class="relative bg-gradient-to-br from-slate-200 to-slate-300 pb-24 pt-8 px-6 rounded-b-[2.5rem] shadow-lg">
+          <div class="flex flex-col items-center">
+            <div class="w-20 h-20 skeleton-shimmer rounded-full mb-3"></div>
+            <div class="h-6 w-32 skeleton-shimmer rounded mb-2"></div>
+            <div class="h-4 w-24 skeleton-shimmer rounded"></div>
+          </div>
+        </div>
+      } @else {
+      <header class="perfil-header-enter relative bg-gradient-to-br from-blue-600 to-indigo-700 pb-24 pt-8 px-6 rounded-b-[2.5rem] shadow-lg">
+        <div class="flex flex-col items-center text-white text-center">
           <div class="avatar online mb-3">
             <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
               {{ initials() }}
             </div>
           </div>
           
-          <h1 class="text-2xl font-bold">{{ workerName() }}</h1>
+          <h1 class="text-lg sm:text-xl md:text-2xl font-bold px-2 break-words max-w-full">{{ workerName() }}</h1>
           <div class="text-blue-100 text-sm flex flex-col items-center gap-1 mt-1">
             <span class="opacity-90">Chofer Profesional</span>
             
@@ -36,22 +46,39 @@ import type { DailyRecord } from '../../../shared/models/daily-record.models';
           </div>
         </div>
       </header>
+      }
 
-      <div class="px-4 mt-4 mb-6 relative z-10">
+      <div class="perfil-stats-enter px-4 mt-4 mb-6 relative z-10">
+        @if (statsLoadingState.showSkeleton() && statsLoadingState.isLoading()) {
+          <app-loading-skeleton type="worker-stats" />
+          @if (statsLoadingState.showFeedback()) {
+            <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <p class="text-sm text-blue-700">{{ statsLoadingState.feedbackMessage() }}</p>
+            </div>
+          }
+        } @else {
         <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
           <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-primary">
             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Días Trab.</p>
-            <p class="text-2xl font-black text-slate-800 tabular-nums">{{ daysWorked() }}</p>
+            <p class="text-2xl font-black text-slate-800 tabular-nums" [appAnimatedCounter]="daysWorked()" [duration]="1200"></p>
           </div>
 
           <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-primary">
             <p class="text-xs font-bold text-emerald-600 uppercase tracking-wider mb-1">Recaudado</p>
-            <p class="text-2xl font-black text-emerald-600 tracking-tight tabular-nums">{{ totalRevenue() | currency:'CLP':'symbol-narrow':'1.0-0' }}</p>
+            <p class="text-2xl font-black text-emerald-600 tracking-tight tabular-nums" [appAnimatedCounter]="totalRevenue()" [duration]="1500" format="currency" currencyCode="CLP" currencyDisplay="symbol-narrow" [minFractionDigits]="0" [maxFractionDigits]="0"></p>
           </div>
         </div>
+        }
       </div>
 
-      <div class="px-6 mt-6 space-y-6">
+      <div class="perfil-content-enter px-6 mt-6 space-y-6">
+        @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
+            <div class="h-4 w-full skeleton-shimmer rounded"></div>
+            <div class="h-4 w-full skeleton-shimmer rounded"></div>
+            <div class="h-4 w-3/4 skeleton-shimmer rounded"></div>
+          </div>
+        } @else {
         <div>
           <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 pl-2">Gestión</h3>
           <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
@@ -91,6 +118,7 @@ import type { DailyRecord } from '../../../shared/models/daily-record.models';
             }
           </div>
         </div>
+        }
 
         <div class="pt-4">
           <button class="btn btn-outline btn-error btn-block border-red-200 hover:bg-red-50 hover:border-red-300 h-12 rounded-xl font-bold" (click)="onLogout()">
@@ -102,135 +130,196 @@ import type { DailyRecord } from '../../../shared/models/daily-record.models';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [
+    `
+    /* ============================================
+       ANIMACIONES DE ENTRADA ELEGANTES - PERFIL
+       Transición slide desde la derecha (navegación lateral)
+       ============================================ */
+    
+    /* Fondo: Fade-in suave */
+    .perfil-background-enter {
+      animation: perfilBackgroundEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      will-change: opacity;
+    }
+    
+    @keyframes perfilBackgroundEnter {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    
+    /* Header: Slide desde la derecha con fade */
+    .perfil-header-enter {
+      animation: perfilHeaderEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateX(30px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes perfilHeaderEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Stats: Slide desde la derecha con delay */
+    .perfil-stats-enter {
+      animation: perfilContentEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 150ms forwards;
+      opacity: 0;
+      transform: translateX(30px);
+      will-change: opacity, transform;
+    }
+    
+    /* Contenido: Slide desde la derecha con delay adicional */
+    .perfil-content-enter {
+      animation: perfilContentEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 250ms forwards;
+      opacity: 0;
+      transform: translateX(30px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes perfilContentEnter {
+      0% {
+        opacity: 0;
+        transform: translateX(30px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Respetar preferencias de movimiento reducido */
+    @media (prefers-reduced-motion: reduce) {
+      .perfil-background-enter,
+      .perfil-header-enter,
+      .perfil-stats-enter,
+      .perfil-content-enter {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Perfil {
+export class Perfil implements OnInit {
   private readonly auth = inject(AuthService);
-  private driverService = inject(DriverService);
-  private dailyRecordService = inject(DailyRecordService);
+  private workerService = inject(WorkerService);
+  private loadingStateService = inject(LoadingStateService);
 
-  // Obtener usuario actual
-  currentUser = this.auth.currentUser;
+  // Estados de carga
+  profileLoadingState = this.loadingStateService.createLoadingState();
+  statsLoadingState = this.loadingStateService.createLoadingState();
 
-  // Obtener datos del chofer
-  driverData = toSignal(
-    this.driverService.getDrivers().pipe(
-      catchError(() => of([]))
+  // Obtener perfil del trabajador (carga crítica - sin delay)
+  private workerProfile = toSignal(
+    this.workerService.getProfile().pipe(
+      catchError(() => of(null))
     ),
-    { initialValue: [] }
+    { initialValue: null }
   );
 
-  // Obtener registros del trabajador
-  private dailyRecordsResponse = toSignal(
-    this.dailyRecordService.getDailyRecords().pipe(
-      catchError(() => of({ datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 }))
+  // Obtener estadísticas mensuales (carga secundaria - con delay de 200ms)
+  private monthlyStats = toSignal(
+    this.workerService.getMonthlyStats().pipe(
+      delay(200), // Stagger: cargar después del perfil
+      catchError(() => of(null))
     ),
-    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
+    { initialValue: null }
   );
 
-  // Computed: Obtener chofer actual
-  currentDriver = computed(() => {
-    const drivers = this.driverData();
-    // TODO: Obtener chofer_id real desde backend basado en currentUser.id
-    return drivers.find(d => d.id === 1) || null;
+  // Effects como inicializadores de campo (contexto de inyección válido)
+  private profileEffect = effect(() => {
+    const profile = this.workerProfile();
+    // Verificar que el perfil realmente llegó (no es null y tiene datos)
+    if (profile !== null && profile.nombre_completo && this.profileLoadingState.isLoading()) {
+      this.profileLoadingState.setDataLoaded();
+    }
   });
+
+  private statsEffect = effect(() => {
+    const stats = this.monthlyStats();
+    // Verificar que las stats realmente llegaron (no es null y tiene datos)
+    if (stats !== null && stats.estadisticas && this.statsLoadingState.isLoading()) {
+      this.statsLoadingState.setDataLoaded();
+    }
+  });
+
+  ngOnInit(): void {
+    // Iniciar carga de perfil (crítico)
+    this.profileLoadingState.setLoading(true);
+    
+    // Iniciar carga de stats después de 200ms (stagger)
+    setTimeout(() => {
+      this.statsLoadingState.setLoading(true);
+    }, 200);
+  }
 
   // Computed: Iniciales del nombre
   initials = computed(() => {
-    const driver = this.currentDriver();
-    if (driver?.nombre_completo) {
-      const parts = driver.nombre_completo.split(' ');
+    const profile = this.workerProfile();
+    if (profile?.nombre_completo) {
+      const parts = profile.nombre_completo.split(' ');
       if (parts.length >= 2) {
         return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
       }
-      return driver.nombre_completo.substring(0, 2).toUpperCase();
-    }
-    const user = this.currentUser();
-    if (user?.displayName) {
-      const parts = user.displayName.split(' ');
-      if (parts.length >= 2) {
-        return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      }
-      return user.displayName.substring(0, 2).toUpperCase();
+      return profile.nombre_completo.substring(0, 2).toUpperCase();
     }
     return 'TP';
   });
 
   // Computed: Nombre del trabajador
   workerName = computed(() => {
-    const driver = this.currentDriver();
-    if (driver?.nombre_completo) {
-      return driver.nombre_completo;
-    }
-    const user = this.currentUser();
-    return user?.displayName || 'Trabajador';
+    const profile = this.workerProfile();
+    return profile?.nombre_completo || 'Trabajador';
   });
 
   // Computed: RUT
   rut = computed(() => {
-    const driver = this.currentDriver();
-    return driver?.rut || null;
+    const profile = this.workerProfile();
+    return profile?.rut || null;
   });
 
   // Computed: Teléfono
   phoneNumber = computed(() => {
-    const driver = this.currentDriver();
-    return driver?.telefono || null;
+    const profile = this.workerProfile();
+    return profile?.telefono || null;
   });
 
   // Computed: Email
   email = computed(() => {
-    const user = this.currentUser();
-    return user?.email || null;
+    const profile = this.workerProfile();
+    return profile?.email || null;
   });
 
   // Computed: Máquina asignada
   assignedMachine = computed(() => {
-    const driver = this.currentDriver();
-    return driver?.maquina_actual || null;
+    const profile = this.workerProfile();
+    return profile?.maquina_detalle || null;
   });
 
   // Computed: Días trabajados (este mes)
   daysWorked = computed(() => {
-    const response = this.dailyRecordsResponse();
-    const records = response.datos || [];
-    const choferId = 1; // TODO: Obtener chofer_id real desde backend
-    
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    const monthRecords = records.filter((r: DailyRecord) => {
-      if (r.chofer_id !== choferId) return false;
-      const recordDate = new Date(r.fecha);
-      return recordDate.getMonth() === currentMonth && 
-             recordDate.getFullYear() === currentYear &&
-             !r.dia_no_trabajado;
-    });
-
-    return monthRecords.length;
+    const stats = this.monthlyStats();
+    return stats?.estadisticas.dias_trabajados || 0;
   });
 
   // Computed: Recaudado total (este mes)
   totalRevenue = computed(() => {
-    const response = this.dailyRecordsResponse();
-    const records = response.datos || [];
-    const choferId = 1; // TODO: Obtener chofer_id real desde backend
-    
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-
-    const monthRecords = records.filter((r: DailyRecord) => {
-      if (r.chofer_id !== choferId) return false;
-      const recordDate = new Date(r.fecha);
-      return recordDate.getMonth() === currentMonth && 
-             recordDate.getFullYear() === currentYear &&
-             !r.dia_no_trabajado;
-    });
-
-    return monthRecords.reduce((sum: number, r: DailyRecord) => sum + (r.recaudado || 0), 0);
+    const stats = this.monthlyStats();
+    return stats?.estadisticas.total_recaudado || 0;
   });
 
   onLogout(): void {

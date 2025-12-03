@@ -4,6 +4,16 @@
 /* Configuración del tema: Solo modo claro con tema corporate */
 html {
   color-scheme: light;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  position: relative;
 }
 
 /* Deshabilitar modo oscuro - forzar tema corporate */

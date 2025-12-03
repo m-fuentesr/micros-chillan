@@ -129,6 +129,7 @@ export interface CreateDailyRecordDto {
   motivo_inactividad?: InactivityReason | null;
   es_emergencia?: boolean;
   observaciones?: string | null;
+  incidente_critico?: boolean; // Nuevo campo para indicar incidente crítico
   comprobante_diesel?: {
     tipo?: string;
     numero?: string;
@@ -210,4 +211,31 @@ export type DriverDailyRecord = Pick<
   diesel: number; // Alias de costo_diesel para compatibilidad
   estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado'; // Mapeo de estados
 };
+
+/**
+ * Información de máquina en el historial
+ * Endpoint: GET /api/daily-records/my-history
+ */
+export interface MaquinaInfo {
+  numero_interno: number;
+  marca: string;
+}
+
+/**
+ * Item del historial del trabajador
+ * Endpoint: GET /api/daily-records/my-history
+ */
+export interface DailyRecordHistoryResponse {
+  id: number;
+  fecha: string; // YYYY-MM-DD
+  maquinas?: MaquinaInfo | null; // Objeto anidado con numero_interno y marca (backend devuelve 'maquinas' plural)
+  maquina?: MaquinaInfo | null; // Alias para compatibilidad
+  monto_recaudado: number;
+  estado: string; // Ej: "Completo", "Incidente Reportado"
+  incidente_critico: boolean;
+  litros_diesel?: number | null;
+  costo_total_diesel?: number | null;
+  observaciones?: string | null;
+  imagen_url?: string | null;
+}
 

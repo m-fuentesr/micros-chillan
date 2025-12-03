@@ -23,3 +23,13 @@ async def get_my_history(
     current_user: dict = Depends(get_current_user)
 ):
     return await daily_record_service.get_driver_history(current_user, rango)
+
+@router.get("/today-status")
+async def get_today_status(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Verifica si el usuario ya tiene un reporte diario para hoy.
+    Retorna el estado del reporte o null si no existe.
+    """
+    return await daily_record_service.get_today_record_status(current_user)

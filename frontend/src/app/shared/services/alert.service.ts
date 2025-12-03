@@ -3,13 +3,14 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, retry } from 'rxjs/operators';
 import { Alert, AlertCounts } from '../models/dashboard.models';
+import { environment } from '../../../environments/environment.development';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AlertService {
   private http = inject(HttpClient);
-  private apiUrl = '/api';
+  private apiUrl = environment.apiBaseUrl;
 
   // Obtener todas las alertas (registros diarios + documentación)
   getAlerts(): Observable<Alert[]> {

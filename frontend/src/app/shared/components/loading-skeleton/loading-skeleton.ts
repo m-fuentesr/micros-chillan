@@ -28,9 +28,9 @@ import { CommonModule } from '@angular/common';
         @case ('kpi') {
           <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body p-5">
-              <div class="h-4 w-24 bg-base-200 rounded mb-3 animate-pulse"></div>
-              <div class="h-8 w-32 bg-base-200 rounded mb-2 animate-pulse"></div>
-              <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+              <div class="h-4 w-24 skeleton-shimmer rounded mb-3"></div>
+              <div class="h-8 w-32 skeleton-shimmer rounded mb-2"></div>
+              <div class="h-3 w-20 skeleton-shimmer rounded"></div>
             </div>
           </div>
         }
@@ -39,14 +39,14 @@ import { CommonModule } from '@angular/common';
             <!-- Header -->
             <div class="flex gap-4 pb-2 border-b border-base-200">
               @for (col of tableColumns(); track $index) {
-                <div [class]="col" class="h-4 bg-base-200 rounded animate-pulse"></div>
+                <div [class]="col" class="h-4 skeleton-shimmer rounded"></div>
               }
             </div>
             <!-- Rows -->
             @for (row of rows(); track $index) {
               <div class="flex gap-4 py-3">
                 @for (col of tableColumns(); track $index) {
-                  <div [class]="col" class="h-4 bg-base-200 rounded animate-pulse"></div>
+                  <div [class]="col" class="h-4 skeleton-shimmer rounded"></div>
                 }
               </div>
             }
@@ -55,11 +55,11 @@ import { CommonModule } from '@angular/common';
         @case ('card') {
           <div class="card bg-base-100 shadow-sm border border-base-200">
             <div class="card-body p-5">
-              <div class="h-6 w-3/4 bg-base-200 rounded mb-4 animate-pulse"></div>
+              <div class="h-6 w-3/4 skeleton-shimmer rounded mb-4"></div>
               <div class="space-y-2">
-                <div class="h-4 w-full bg-base-200 rounded animate-pulse"></div>
-                <div class="h-4 w-5/6 bg-base-200 rounded animate-pulse"></div>
-                <div class="h-4 w-4/6 bg-base-200 rounded animate-pulse"></div>
+                <div class="h-4 w-full skeleton-shimmer rounded"></div>
+                <div class="h-4 w-5/6 skeleton-shimmer rounded"></div>
+                <div class="h-4 w-4/6 skeleton-shimmer rounded"></div>
               </div>
             </div>
           </div>
@@ -68,10 +68,10 @@ import { CommonModule } from '@angular/common';
           <div class="space-y-3">
             @for (item of rows(); track $index) {
               <div class="flex items-center gap-3 p-3 bg-base-100 rounded-lg border border-base-200">
-                <div class="w-10 h-10 bg-base-200 rounded-full animate-pulse flex-shrink-0"></div>
+                <div class="w-10 h-10 skeleton-shimmer rounded-full flex-shrink-0"></div>
                 <div class="flex-1 space-y-2">
-                  <div class="h-4 w-3/4 bg-base-200 rounded animate-pulse"></div>
-                  <div class="h-3 w-1/2 bg-base-200 rounded animate-pulse"></div>
+                  <div class="h-4 w-3/4 skeleton-shimmer rounded"></div>
+                  <div class="h-3 w-1/2 skeleton-shimmer rounded"></div>
                 </div>
               </div>
             }
@@ -80,32 +80,138 @@ import { CommonModule } from '@angular/common';
         @case ('text') {
           <div class="space-y-2">
             @for (line of textLines(); track $index) {
-              <div [class]="line" class="h-4 bg-base-200 rounded animate-pulse"></div>
+              <div [class]="line" class="h-4 skeleton-shimmer rounded"></div>
             }
           </div>
         }
         @case ('avatar') {
-          <div class="w-12 h-12 bg-base-200 rounded-full animate-pulse"></div>
+          <div class="w-12 h-12 skeleton-shimmer rounded-full"></div>
         }
         @case ('custom') {
           <div 
             [style.width]="width() || '100%'"
             [style.height]="height() || '100px'"
-            class="bg-base-200 rounded-lg animate-pulse">
+            class="skeleton-shimmer rounded-lg">
+          </div>
+        }
+        @case ('worker-header') {
+          <div class="relative pt-10 pb-20 px-6 rounded-b-[3rem] bg-gradient-to-br from-slate-200 to-slate-300">
+            <div class="flex justify-between items-start">
+              <div class="space-y-3">
+                <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                <div class="h-8 w-48 skeleton-shimmer rounded"></div>
+                <div class="h-6 w-32 skeleton-shimmer rounded-full"></div>
+              </div>
+              <div class="space-y-2">
+                <div class="h-8 w-12 skeleton-shimmer rounded"></div>
+                <div class="h-4 w-16 skeleton-shimmer rounded"></div>
+              </div>
+            </div>
+          </div>
+        }
+        @case ('worker-timeline') {
+          <div class="space-y-0 relative pl-2">
+            <div class="absolute left-[19px] top-2 bottom-4 w-[2px] bg-slate-100"></div>
+            @for (i of [1,2,3]; track i) {
+              <div class="relative pl-10 pb-8">
+                <div class="absolute left-0 top-0 w-10 h-10 bg-white rounded-full border-[3px] border-slate-50 shadow-sm z-10 flex items-center justify-center ring-1 ring-black/5">
+                  <div class="w-2.5 h-2.5 skeleton-shimmer rounded-full"></div>
+                </div>
+                <div class="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100">
+                  <div class="flex justify-between items-start mb-1">
+                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                    <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                  </div>
+                  <div class="h-3 w-48 skeleton-shimmer rounded mt-1"></div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+        @case ('worker-stats') {
+          <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
+            <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-slate-200">
+              <div class="h-3 w-20 skeleton-shimmer rounded mb-1"></div>
+              <div class="h-8 w-24 skeleton-shimmer rounded"></div>
+            </div>
+            <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-slate-200">
+              <div class="h-3 w-24 skeleton-shimmer rounded mb-1"></div>
+              <div class="h-8 w-32 skeleton-shimmer rounded"></div>
+            </div>
+          </div>
+        }
+        @case ('worker-form') {
+          <div class="space-y-6">
+            <!-- Select de máquinas -->
+            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1">
+              <div class="flex items-center p-4 gap-4">
+                <div class="w-12 h-12 skeleton-shimmer rounded-xl"></div>
+                <div class="flex-1">
+                  <div class="h-3 w-24 skeleton-shimmer rounded mb-2"></div>
+                  <div class="h-6 w-full skeleton-shimmer rounded"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Campo de recaudado -->
+            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-slate-200">
+              <div class="h-3 w-32 skeleton-shimmer rounded mb-2"></div>
+              <div class="h-12 w-3/4 skeleton-shimmer rounded"></div>
+              <div class="h-3 w-48 skeleton-shimmer rounded mt-2"></div>
+            </div>
+            <!-- Campos de combustible -->
+            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+              <div class="h-4 w-40 skeleton-shimmer rounded mb-4"></div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                  <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
+                </div>
+                <div class="space-y-2">
+                  <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                  <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
+                </div>
+              </div>
+            </div>
+            <!-- Área de imagen -->
+            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+              <div class="h-3 w-32 skeleton-shimmer rounded mb-3"></div>
+              <div class="w-full aspect-[3/1] skeleton-shimmer rounded-xl"></div>
+            </div>
+            <!-- Textarea -->
+            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+              <div class="h-20 w-full skeleton-shimmer rounded-xl"></div>
+            </div>
           </div>
         }
       }
     </div>
   `,
-  styles: [],
+  styles: [
+    `
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class LoadingSkeleton {
   /**
-   * Tipo de skeleton: kpi, table, card, list, text, avatar, custom
+   * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form
    * @default 'card'
    */
-  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom'>('card');
+  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom' | 'worker-header' | 'worker-timeline' | 'worker-stats' | 'worker-form'>('card');
 
   /**
    * Cantidad de elementos a mostrar (para table, list, text)

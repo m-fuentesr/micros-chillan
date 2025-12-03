@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment.development';
 
 /**
  * Filtros para reporte de rentabilidad
@@ -104,7 +105,7 @@ export interface MachineRanking {
 })
 export class ReportsService {
   private http = inject(HttpClient);
-  private apiUrl = '/api'; // Ajustar según configuración
+  private apiUrl = environment.apiBaseUrl;
   
   // Caché simple en memoria
   private profitabilityCache: Map<string, { data: ProfitabilityReport; timestamp: number }> = new Map();

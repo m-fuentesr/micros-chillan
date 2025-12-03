@@ -1,15 +1,17 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { catchError, map, tap, shareReplay } from 'rxjs/operators';
 import {
   DailyRecord,
   DailyRecordFilters,
   DailyRecordsResponse,
   CreateDailyRecordDto,
   UpdateDailyRecordDto,
-  DailyRecordsKPIs
+  DailyRecordsKPIs,
+  DailyRecordHistoryResponse
 } from '../models/daily-record.models';
+import { environment } from '../../../environments/environment.development';
 
 /**
  * Servicio para gestión de registros diarios
@@ -20,7 +22,12 @@ import {
 })
 export class DailyRecordService {
   private http = inject(HttpClient);
-  private apiUrl = '/api'; // Ajustar según configuración
+  private apiUrl = environment.apiBaseUrl;
+
+  // Sistema de caché para historial
+  private historyCache: Map<string, DailyRecordHistoryResponse[]> = new Map();
+  private historyCacheTimestamps: Map<string, number> = new Map();
+  private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
   /**
    * Obtener lista de registros diarios con filtros
@@ -50,7 +57,7 @@ export class DailyRecordService {
     params = params.set('pagina', pagina.toString());
     params = params.set('por_pagina', porPagina.toString());
 
-    return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/daily-records`, { params })
+    return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/api/daily-records`, { params })
       .pipe(
         catchError(() => of(this.getMockDailyRecordsResponse(filters)))
       );
@@ -61,38 +68,117 @@ export class DailyRecordService {
    * Endpoint: GET /api/daily-records/:id
    */
   getDailyRecordById(id: string): Observable<DailyRecord> {
-    return this.http.get<DailyRecord>(`${this.apiUrl}/daily-records/${id}`)
+    return this.http.get<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`)
       .pipe(
         catchError(() => of(this.getMockDailyRecord(id)))
       );
   }
 
   /**
-   * Crear un nuevo registro diario
-   * Endpoint: POST /api/daily-records
+   * Obtener historial del trabajador con filtros de tiempo
+   * Endpoint: GET /api/daily-records/my-history?rango={rango}
+   * @param rango Valores permitidos: 'esta_semana', 'este_mes', 'mes_anterior', 'todo'
+   * @param forceRefresh Si es true, fuerza la recarga desde el backend
    */
-  createDailyRecord(record: CreateDailyRecordDto): Observable<DailyRecord> {
-    // Si hay un archivo de imagen, usar FormData
-    const formData = new FormData();
-    formData.append('fecha', record.fecha);
-    formData.append('maquina_id', record.maquina_id.toString());
-    formData.append('chofer_id', record.chofer_id.toString());
-    formData.append('dia_no_trabajado', record.dia_no_trabajado.toString());
-    
-    if (record.recaudado !== undefined) formData.append('recaudado', record.recaudado.toString());
-    if (record.costo_diesel !== undefined) formData.append('costo_diesel', record.costo_diesel.toString());
-    if (record.litros_diesel !== undefined) formData.append('litros_diesel', record.litros_diesel.toString());
-    if (record.motivo_inactividad) formData.append('motivo_inactividad', record.motivo_inactividad);
-    if (record.es_emergencia !== undefined) formData.append('es_emergencia', record.es_emergencia.toString());
-    if (record.observaciones) formData.append('observaciones', record.observaciones);
-    
-    if (record.comprobante_diesel?.imagen instanceof File) {
-      formData.append('comprobante_imagen', record.comprobante_diesel.imagen);
+  getMyHistory(rango: string = 'este_mes', forceRefresh = false): Observable<DailyRecordHistoryResponse[]> {
+    const cacheKey = `history-${rango}`;
+    const now = Date.now();
+    const cachedTimestamp = this.historyCacheTimestamps.get(cacheKey) || 0;
+
+    // Verificar caché válido
+    if (!forceRefresh && this.historyCache.has(cacheKey) && (now - cachedTimestamp) < this.CACHE_TTL) {
+      return of(this.historyCache.get(cacheKey)!);
     }
 
-    return this.http.post<DailyRecord>(`${this.apiUrl}/daily-records`, formData)
+    const params = new HttpParams().set('rango', rango);
+    
+    return this.http.get<DailyRecordHistoryResponse[]>(`${this.apiUrl}/api/daily-records/my-history`, { params })
       .pipe(
-        catchError(() => {
+        tap((history) => {
+          // Guardar en caché después de respuesta exitosa
+          this.historyCache.set(cacheKey, history);
+          this.historyCacheTimestamps.set(cacheKey, now);
+        }),
+        shareReplay(1), // Compartir el observable entre múltiples suscriptores
+        catchError((error) => {
+          console.error('Error obteniendo historial del trabajador:', error);
+          // Si hay caché, retornarlo aunque esté expirado
+          if (this.historyCache.has(cacheKey)) {
+            return of(this.historyCache.get(cacheKey)!);
+          }
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Verificar estado del reporte de hoy
+   * Endpoint: GET /api/daily-records/today-status
+   * Retorna información sobre si el usuario ya tiene un reporte para hoy
+   */
+  getTodayStatus(): Observable<{exists: boolean, record: any, can_create_new: boolean, message: string}> {
+    return this.http.get<{exists: boolean, record: any, can_create_new: boolean, message: string}>(
+      `${this.apiUrl}/api/daily-records/today-status`
+    ).pipe(
+      catchError(() => of({
+        exists: false, 
+        record: null, 
+        can_create_new: true, 
+        message: 'Puede crear un nuevo reporte'
+      }))
+    );
+  }
+
+  /**
+   * Invalidar caché del historial
+   * Útil después de crear, actualizar o eliminar un reporte
+   */
+  invalidateHistoryCache(): void {
+    this.historyCache.clear();
+    this.historyCacheTimestamps.clear();
+  }
+
+  /**
+   * Crear un nuevo registro diario
+   * Endpoint: POST /api/daily-records
+   * Nota: El backend espera JSON con imagen_url como string.
+   * Si se proporciona un File, debe subirse primero a Supabase Storage.
+   */
+  createDailyRecord(record: CreateDailyRecordDto): Observable<DailyRecord> {
+    // El backend espera JSON con estos campos según el schema:
+    // maquina_id, fecha, monto_recaudado, litros_diesel, costo_total_diesel, 
+    // imagen_url, observaciones, incidente_critico
+    
+    // Extraer imagen_url del comprobante_diesel si existe
+    let imagen_url = '';
+    if (record.comprobante_diesel?.imagen) {
+      if (typeof record.comprobante_diesel.imagen === 'string') {
+        imagen_url = record.comprobante_diesel.imagen;
+      }
+    }
+    
+    const payload: any = {
+      maquina_id: record.maquina_id,
+      fecha: record.fecha,
+      monto_recaudado: record.recaudado || 0,
+      litros_diesel: record.litros_diesel || null,
+      costo_total_diesel: record.costo_diesel || null,
+      imagen_url: imagen_url, // URL de la imagen subida a Supabase Storage
+      observaciones: record.observaciones || null,
+      incidente_critico: record.incidente_critico || false
+    };
+    
+    // Debug: Verificar que la URL se esté pasando
+    if (imagen_url) {
+      console.log('📸 Enviando imagen_url al backend:', imagen_url);
+    } else {
+      console.log('⚠️ No hay imagen_url en el payload');
+    }
+
+    return this.http.post<DailyRecord>(`${this.apiUrl}/api/daily-records`, payload)
+      .pipe(
+        catchError((error) => {
+          console.error('Error creando registro diario:', error);
           // Mock response para desarrollo
           const mockRecord = this.getMockDailyRecord('new-' + Date.now());
           return of(mockRecord);
@@ -124,12 +210,12 @@ export class DailyRecordService {
         formData.append('comprobante_imagen', record.comprobante_diesel.imagen);
       }
       
-      return this.http.put<DailyRecord>(`${this.apiUrl}/daily-records/${id}`, formData)
+      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, formData)
         .pipe(
           catchError(() => of(this.getMockDailyRecord(id)))
         );
     } else {
-      return this.http.put<DailyRecord>(`${this.apiUrl}/daily-records/${id}`, record)
+      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, record)
         .pipe(
           catchError(() => of(this.getMockDailyRecord(id)))
         );
@@ -141,7 +227,7 @@ export class DailyRecordService {
    * Endpoint: PATCH /api/daily-records/:id/resolve
    */
   resolveIncident(id: string): Observable<DailyRecord> {
-    return this.http.patch<DailyRecord>(`${this.apiUrl}/daily-records/${id}/resolve`, {})
+    return this.http.patch<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}/resolve`, {})
       .pipe(
         catchError(() => {
           const mockRecord = this.getMockDailyRecord(id);
@@ -164,7 +250,7 @@ export class DailyRecordService {
       params = params.set('hasta', period.hasta);
     }
 
-    return this.http.get<DailyRecordsKPIs>(`${this.apiUrl}/daily-records/kpis`, { params })
+    return this.http.get<DailyRecordsKPIs>(`${this.apiUrl}/api/daily-records/kpis`, { params })
       .pipe(
         catchError(() => of(this.getMockKPIs()))
       );

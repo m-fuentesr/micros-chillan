@@ -53,3 +53,17 @@ export type MachineStatus = 'Operativa' | 'En Taller' | 'Inactiva';
 export type ViewMode = 'cards' | 'table';
 export type StatusFilter = 'all' | 'Operativa' | 'En Taller' | 'Inactiva';
 
+/**
+ * Máquina para selector (vista de choferes)
+ * Endpoint: GET /api/machines/active
+ */
+export interface MachineSelect {
+  id: number;
+  numero_interno: string;
+  marca: string;
+  modelo: string;
+  anio: number;
+  patente: string;
+  display_name: string; // Ej: "105 - Volvo (ABCD-12)"
+}
+

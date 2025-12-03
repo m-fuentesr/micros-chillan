@@ -12,13 +12,21 @@ import { filter } from 'rxjs';
   selector: 'app-root',
   imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule],
   template: `
-    <!-- Overlay de expansión blanca para transición Login -> Dashboard -->
+    <!-- Overlay de transición según el tipo (admin o worker) -->
     @if (transitionService.isTransitioning()) {
-      <div 
-        class="transition-overlay-white" 
-        [attr.data-transition-active]="transitionService.isTransitioning()"
-        (load)="onOverlayLoad()">
-      </div>
+      @if (transitionService.transitionType() === 'admin') {
+        <!-- Overlay blanco para Dashboard (Admin) -->
+        <div 
+          class="transition-overlay-white" 
+          [attr.data-transition-active]="transitionService.isTransitioning()">
+        </div>
+      } @else if (transitionService.transitionType() === 'worker') {
+        <!-- Overlay neutro sutil para Trabajador -->
+        <div 
+          class="transition-overlay-neutral" 
+          [attr.data-transition-active]="transitionService.isTransitioning()">
+        </div>
+      }
     }
     
     @if (shouldShowAdminNav()) {
@@ -134,6 +142,42 @@ import { filter } from 'rxjs';
     @media (max-width: 1023px) {
       .transition-overlay-white::before {
         right: 50%;
+      }
+    }
+    
+    /* ============================================
+       OVERLAY DE TRANSICIÓN NEUTRA - TRABAJADOR
+       Fade simple y elegante sin expansión llamativa
+       ============================================ */
+    .transition-overlay-neutral {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      background: rgba(248, 250, 252, 1); /* bg-slate-50 */
+      pointer-events: none;
+      overflow: hidden;
+      animation: transitionOverlayNeutralEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
+                 transitionOverlayNeutralExit 400ms cubic-bezier(0.22, 0.61, 0.36, 1) 800ms forwards;
+    }
+    
+    @keyframes transitionOverlayNeutralEnter {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    
+    @keyframes transitionOverlayNeutralExit {
+      to {
+        opacity: 0;
+        pointer-events: none;
       }
     }
     `

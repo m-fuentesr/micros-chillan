@@ -1,20 +1,25 @@
-import { Component, ChangeDetectionStrategy, inject, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, OnInit, OnDestroy, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { AuthService } from '../../shared/services/auth.service';
-import { DriverService } from '../../shared/services/driver.service';
+import { WorkerService } from '../../shared/services/worker.service';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
+import { TodayRecordStatusService } from '../../shared/services/today-record-status.service';
+import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { catchError, of, delay } from 'rxjs';
 import type { DailyRecord } from '../../shared/models/daily-record.models';
 
 @Component({
   selector: 'app-trabajador',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, LoadingSkeleton],
   template: `
-    <div class="min-h-screen bg-slate-50 pb-28 font-sans">
-      <header class="relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
+    <div class="trabajador-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
+      @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+        <app-loading-skeleton type="worker-header" />
+      } @else {
+      <header class="trabajador-header-enter relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
         <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0"></div>
         <div
           class="absolute inset-0 opacity-10 z-0"
@@ -31,51 +36,107 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
               <span class="font-mono font-bold text-sm tracking-wide">{{ assignedMachine() }}</span>
             </div>
           </div>
-          <div class="text-right">
+          <div class="text-center">
             <div class="text-3xl font-black leading-none tracking-tighter">{{ currentDay() }}</div>
             <div class="text-xs font-bold uppercase text-blue-200 tracking-[0.3em]">{{ currentMonth() }}</div>
           </div>
         </div>
       </header>
+      }
 
-      <div class="px-5 mt-4 relative z-20">
-        <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-          <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-left border-b border-orange-100/50 pl-4 border-l-4 border-l-primary">
-            <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
-              <span class="relative flex h-2 w-2">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-              </span>
-              Acción requerida
-            </p>
-          </div>
-          <div class="p-6">
-            <div class="text-left mb-6 pl-4 border-l-4 border-l-primary">
-              <h2 class="text-2xl font-bold text-slate-800 mb-2 tracking-tight">Inicio de turno</h2>
-              <p class="text-sm text-slate-500 italic leading-relaxed">Registra el estado inicial de tu unidad para comenzar la operación.</p>
+      <div class="px-5 mt-4 relative z-20 trabajador-content-enter">
+        @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+          <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
+            <div class="p-6 space-y-4">
+              <div class="h-6 w-3/4 skeleton-shimmer rounded"></div>
+              <div class="h-4 w-full skeleton-shimmer rounded"></div>
+              <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
             </div>
-            <a
-              routerLink="/trabajador/reportar"
-              class="group relative w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-200 active:scale-[0.98]"
-            >
-              <div class="absolute inset-x-0 top-0 h-[1px] bg-white/20"></div>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 transition-transform group-hover:-rotate-12">
-                <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
-              </svg>
-              <span class="tracking-wide">Ingresar reporte</span>
-            </a>
           </div>
-        </div>
+        } @else if (todayRecordStatus() === null || (statusLoadingState.showSkeleton() && statusLoadingState.isLoading())) {
+          <!-- Skeleton mientras carga el estado del reporte -->
+          <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
+            <div class="p-6 space-y-4">
+              <div class="h-6 w-3/4 skeleton-shimmer rounded"></div>
+              <div class="h-4 w-full skeleton-shimmer rounded"></div>
+              <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
+            </div>
+          </div>
+        } @else {
+        @if (hasReportToday()) {
+          <!-- Estado: Ya reportó hoy -->
+          <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
+            <div class="bg-gradient-to-r from-emerald-50 to-green-50 p-3 text-left border-b border-green-100/50 pl-4">
+              <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Reporte completado
+              </p>
+            </div>
+            <div class="p-6">
+              <div class="text-left pl-4 border-l-4 border-l-emerald-500">
+                <h2 class="text-2xl font-bold text-slate-800 mb-2 tracking-tight">Reporte enviado</h2>
+                <p class="text-sm text-slate-500 italic leading-relaxed">Ya has registrado tu reporte diario para hoy. Podrás crear uno nuevo después de las 12:00 AM.</p>
+              </div>
+            </div>
+          </div>
+        } @else {
+          <!-- Estado: Acción requerida -->
+          <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
+            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-left border-b border-orange-100/50 pl-4 border-l-4 border-l-primary">
+              <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
+                <span class="relative flex h-2 w-2">
+                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                  <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                </span>
+                Acción requerida
+              </p>
+            </div>
+            <div class="p-6">
+              <div class="text-left mb-6 pl-4 border-l-4 border-l-primary">
+                <h2 class="text-2xl font-bold text-slate-800 mb-2 tracking-tight">Registro diario</h2>
+                <p class="text-sm text-slate-500 italic leading-relaxed">Registra tu operación del día.</p>
+              </div>
+              <a
+                routerLink="/trabajador/reportar"
+                class="group relative w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-200 active:scale-[0.98]"
+              >
+                <div class="absolute inset-x-0 top-0 h-[1px] bg-white/20"></div>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 transition-transform group-hover:-rotate-12">
+                  <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
+                </svg>
+                <span class="tracking-wide">Ingresar reporte</span>
+              </a>
+            </div>
+          </div>
+        }
+        }
       </div>
 
-      <div class="px-6 mt-10">
+      <div class="px-6 mt-10 trabajador-content-enter-delay-1">
         <div class="flex justify-between items-end mb-6">
           <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.35em]">Actividad reciente</h3>
         </div>
+        @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+          <app-loading-skeleton type="worker-timeline" />
+          @if (historyLoadingState.showFeedback()) {
+            <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
+              <p class="text-sm text-blue-700">{{ historyLoadingState.feedbackMessage() }}</p>
+            </div>
+          }
+        } @else {
         <div class="space-y-0 relative pl-2">
           <div class="absolute left-[19px] top-2 bottom-4 w-[2px] bg-slate-100"></div>
           @for (activity of recentActivity(); track activity.id; let i = $index) {
-            <div class="relative pl-10 pb-8 group" [class.pb-0]="i === recentActivity().length - 1">
+            <div 
+              class="trabajador-activity-item relative pl-10 pb-8 group" 
+              [class.pb-0]="i === recentActivity().length - 1"
+              [class.trabajador-activity-delay-0]="i === 0"
+              [class.trabajador-activity-delay-1]="i === 1"
+              [class.trabajador-activity-delay-2]="i === 2">
               <div class="absolute left-0 top-0 w-10 h-10 bg-white rounded-full border-[3px] border-slate-50 shadow-sm z-10 flex items-center justify-center ring-1 ring-black/5">
                 <div class="w-2.5 h-2.5 rounded-full" [class.bg-emerald-500]="activity.type === 'report'" [class.bg-blue-500]="activity.type === 'assignment'" [class.bg-amber-500]="activity.type === 'warning'"></div>
               </div>
@@ -96,51 +157,216 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
             </div>
           }
         </div>
+        }
       </div>
     </div>
   `,
+  styles: [
+    `
+    /* ============================================
+       ANIMACIONES DE ENTRADA ELEGANTES - TRABAJADOR
+       Fade Simple con Stagger Elegante
+       ============================================ */
+    
+    /* Fondo: Fade-in suave */
+    .trabajador-background-enter {
+      animation: trabajadorBackgroundEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      will-change: opacity;
+    }
+    
+    @keyframes trabajadorBackgroundEnter {
+      0% {
+        opacity: 0;
+      }
+      100% {
+        opacity: 1;
+      }
+    }
+    
+    /* Header: Fade-in con slide-down sutil */
+    .trabajador-header-enter {
+      animation: trabajadorHeaderEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateY(-15px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes trabajadorHeaderEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(-15px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Contenido principal: Fade-up con stagger */
+    .trabajador-content-enter {
+      animation: trabajadorContentEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms forwards;
+      opacity: 0;
+      transform: translateY(20px);
+      will-change: opacity, transform;
+    }
+    
+    .trabajador-content-enter-delay-1 {
+      animation: trabajadorContentEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 200ms forwards;
+      opacity: 0;
+      transform: translateY(20px);
+      will-change: opacity, transform;
+    }
+    
+    @keyframes trabajadorContentEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Items de actividad: Stagger fade-up individual */
+    .trabajador-activity-item {
+      animation: trabajadorActivityItemEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      opacity: 0;
+      transform: translateY(15px);
+      will-change: opacity, transform;
+    }
+    
+    .trabajador-activity-delay-0 {
+      animation-delay: 300ms;
+    }
+    
+    .trabajador-activity-delay-1 {
+      animation-delay: 400ms;
+    }
+    
+    .trabajador-activity-delay-2 {
+      animation-delay: 500ms;
+    }
+    
+    @keyframes trabajadorActivityItemEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Respetar preferencias de movimiento reducido */
+    @media (prefers-reduced-motion: reduce) {
+      .trabajador-background-enter,
+      .trabajador-header-enter,
+      .trabajador-content-enter,
+      .trabajador-content-enter-delay-1,
+      .trabajador-activity-item {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+    `
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Trabajador {
-  private authService = inject(AuthService);
-  private driverService = inject(DriverService);
+export class Trabajador implements OnInit, OnDestroy {
+  private workerService = inject(WorkerService);
   private dailyRecordService = inject(DailyRecordService);
+  private todayRecordStatusService = inject(TodayRecordStatusService);
+  private loadingStateService = inject(LoadingStateService);
 
-  // Obtener usuario actual
-  currentUser = this.authService.currentUser;
+  // Estados de carga
+  profileLoadingState = this.loadingStateService.createLoadingState();
+  historyLoadingState = this.loadingStateService.createLoadingState();
+  statusLoadingState = this.loadingStateService.createLoadingState();
 
-  // Obtener datos del chofer
-  driverData = toSignal(
-    this.driverService.getDrivers().pipe(
+  // Obtener perfil del trabajador (carga crítica - sin delay)
+  private workerProfile = toSignal(
+    this.workerService.getProfile().pipe(
+      catchError(() => of(null))
+    ),
+    { initialValue: null }
+  );
+
+  // Obtener registros recientes usando my-history (carga secundaria - con delay de 400ms)
+  private recentHistory = toSignal(
+    this.dailyRecordService.getMyHistory('este_mes').pipe(
+      delay(400), // Stagger: cargar después del perfil
       catchError(() => of([]))
     ),
     { initialValue: [] }
   );
 
-  // Obtener registros recientes
-  private dailyRecordsResponse = toSignal(
-    this.dailyRecordService.getDailyRecords().pipe(
-      catchError(() => of({ datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 }))
-    ),
-    { initialValue: { datos: [], total: 0, pagina: 1, por_pagina: 10, total_paginas: 0 } }
-  );
+  // Usar el servicio compartido para el estado del reporte
+  todayRecordStatus = this.todayRecordStatusService.status;
+
+  // Effects como inicializadores de campo (contexto de inyección válido)
+  private profileEffect = effect(() => {
+    const profile = this.workerProfile();
+    // Verificar que el perfil realmente llegó (no es null y tiene datos)
+    if (profile !== null && profile.nombre_completo && this.profileLoadingState.isLoading()) {
+      this.profileLoadingState.setDataLoaded();
+    }
+  });
+
+  private historyEffect = effect(() => {
+    const history = this.recentHistory();
+    // Verificar que el historial realmente llegó (no es el array vacío inicial)
+    // Usamos una marca: si tiene elementos o si el observable ya emitió (verificamos por estructura)
+    if (history.length > 0 && this.historyLoadingState.isLoading()) {
+      this.historyLoadingState.setDataLoaded();
+    }
+  });
+
+  private statusEffect = effect(() => {
+    const status = this.todayRecordStatus();
+    // Verificar que el estado realmente llegó (no es null inicial)
+    if (status !== null && this.statusLoadingState.isLoading()) {
+      this.statusLoadingState.setDataLoaded();
+    }
+  });
+
+  ngOnInit(): void {
+    // Iniciar carga de perfil (crítico)
+    this.profileLoadingState.setLoading(true);
+    
+    // Iniciar carga del estado del reporte (crítico también, pero después del perfil)
+    this.statusLoadingState.setLoading(true);
+    
+    // Iniciar carga de historial después de 400ms (stagger)
+    setTimeout(() => {
+      this.historyLoadingState.setLoading(true);
+    }, 400);
+
+    // El servicio compartido ya maneja la verificación periódica
+    // Solo necesitamos asegurarnos de que el estado esté cargado
+    if (this.todayRecordStatus() === null) {
+      this.todayRecordStatusService.refreshStatus();
+    }
+  }
+
+  ngOnDestroy(): void {
+    // El servicio compartido maneja su propio ciclo de vida
+    // No necesitamos limpiar nada aquí
+  }
 
   // Computed: Nombre del trabajador
   workerName = computed(() => {
-    const user = this.currentUser();
-    if (!user) return 'Trabajador';
-    
-    // Intentar obtener nombre del chofer
-    const drivers = this.driverData();
-    const driver = drivers.find(d => d.id === 1); // TODO: Obtener chofer_id real desde backend
-    return driver?.nombre_completo || user.displayName || 'Trabajador';
+    const profile = this.workerProfile();
+    return profile?.nombre_completo || 'Trabajador';
   });
 
   // Computed: Máquina asignada
   assignedMachine = computed(() => {
-    const drivers = this.driverData();
-    const driver = drivers.find(d => d.id === 1); // TODO: Obtener chofer_id real desde backend
-    return driver?.maquina_actual || 'Máquina 05';
+    const profile = this.workerProfile();
+    return profile?.maquina_detalle || 'Sin asignar';
   });
 
   // Computed: Día actual
@@ -154,16 +380,34 @@ export class Trabajador {
     return months[new Date().getMonth()];
   });
 
+  // Computed: Determinar si puede crear reporte (usar servicio compartido)
+  canCreateReport = this.todayRecordStatusService.canCreateReport;
+
+  // Computed: Determinar si ya tiene reporte hoy (usar servicio compartido)
+  hasReportToday = this.todayRecordStatusService.hasReportToday;
+
+  // Computed: Obtener estado del reporte de hoy
+  todayRecord = computed(() => {
+    const status = this.todayRecordStatus();
+    if (status === null) return null; // Aún no se ha cargado
+    return status.record;
+  });
+
+  // Computed: Monto recaudado formateado
+  montoRecaudadoFormatted = computed(() => {
+    const record = this.todayRecord();
+    const monto = record?.monto_recaudado;
+    if (!monto) return '$0';
+    return '$' + monto.toLocaleString('es-CL');
+  });
+
   // Computed: Actividad reciente
   recentActivity = computed(() => {
-    const response = this.dailyRecordsResponse();
-    const records = response.datos || [];
-    const choferId = 1; // TODO: Obtener chofer_id real desde backend
+    const history = this.recentHistory();
     
-    // Obtener últimos 3 registros del chofer
-    const recentRecords = records
-      .filter((r: DailyRecord) => r.chofer_id === choferId)
-      .sort((a: DailyRecord, b: DailyRecord) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
+    // Obtener últimos 3 registros
+    const recentRecords = history
+      .sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())
       .slice(0, 3);
 
     const activities: Array<{
@@ -175,7 +419,7 @@ export class Trabajador {
     }> = [];
 
     // Agregar registros recientes
-    recentRecords.forEach((record: DailyRecord) => {
+    recentRecords.forEach((record) => {
       const date = new Date(record.fecha);
       const now = new Date();
       const diffTime = Math.abs(now.getTime() - date.getTime());
@@ -192,15 +436,16 @@ export class Trabajador {
         timeLabel = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
       }
 
-      const statusText = record.estado === 'COMPLETO' 
+      const estadoLower = record.estado.toLowerCase();
+      const statusText = estadoLower.includes('completo')
         ? 'completado sin incidentes'
-        : record.estado === 'INCIDENTE_REPORTADO'
+        : estadoLower.includes('incidente')
         ? 'con incidente reportado'
         : 'pendiente de validación';
 
       activities.push({
-        id: record.id,
-        type: record.estado === 'INCIDENTE_REPORTADO' ? 'warning' : 'report',
+        id: record.id.toString(),
+        type: record.incidente_critico ? 'warning' : 'report',
         title: 'Reporte enviado',
         description: `Registro diario ${statusText}.`,
         time: timeLabel
@@ -220,4 +465,16 @@ export class Trabajador {
 
     return activities;
   });
+
+  // Helper: Obtener estado del reporte
+  getRecordEstado(): string {
+    const record = this.todayRecord();
+    return record?.estado || 'Completo';
+  }
+
+  // Helper: Verificar si tiene monto recaudado
+  hasMontoRecaudado(): boolean {
+    const record = this.todayRecord();
+    return !!record?.monto_recaudado;
+  }
 }

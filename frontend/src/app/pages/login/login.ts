@@ -1457,36 +1457,58 @@ export class Login {
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
         
-        // Fase de salida física del login (fade-out rápido)
-        this.leaving.set(true);
-        await new Promise(resolve => setTimeout(resolve, 650));
-
-        // Activar expansión ripple y animaciones de salida
-        this.expanding.set(true);
-        
-        // Activar el overlay de transición global ANTES de navegar
-        this.transitionService.startTransition();
-        
-        // Esperar un momento para que el overlay se active
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Esperar a que la animación termine completamente (900ms) antes de navegar
-        await new Promise(resolve => setTimeout(resolve, 900));
-        
-        // Navegar después de la animación
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
-        await this.router.navigate([target]);
+        const isWorker = user.role === 'worker';
         
-        // Esperar a que el dashboard se cargue antes de ocultar el overlay
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Ocultar el overlay de transición
-        this.transitionService.endTransition();
-        
-        // Resetear el estado de expansión después de navegar
-        setTimeout(() => {
-          this.expanding.set(false);
-        }, 100);
+        if (isWorker) {
+          // Transición simple para trabajador: solo fade-out elegante
+          this.leaving.set(true);
+          
+          // Activar overlay neutro sutil
+          this.transitionService.startTransition('worker');
+          
+          // Esperar a que el fade-out termine (500ms)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Navegar después del fade-out
+          await this.router.navigate([target]);
+          
+          // Esperar a que el trabajador se cargue antes de ocultar el overlay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Ocultar el overlay de transición
+          this.transitionService.endTransition();
+        } else {
+          // Transición compleja para admin: expansión blanca
+          this.leaving.set(true);
+          await new Promise(resolve => setTimeout(resolve, 650));
+
+          // Activar expansión ripple y animaciones de salida
+          this.expanding.set(true);
+          
+          // Activar el overlay de transición global ANTES de navegar
+          this.transitionService.startTransition('admin');
+          
+          // Esperar un momento para que el overlay se active
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // Esperar a que la animación termine completamente (900ms) antes de navegar
+          await new Promise(resolve => setTimeout(resolve, 900));
+          
+          // Navegar después de la animación
+          await this.router.navigate([target]);
+          
+          // Esperar a que el dashboard se cargue antes de ocultar el overlay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Ocultar el overlay de transición
+          this.transitionService.endTransition();
+          
+          // Resetear el estado de expansión después de navegar
+          setTimeout(() => {
+            this.expanding.set(false);
+          }, 100);
+        }
       }
     } catch (err) {
       // Esperar más tiempo para dar tiempo a todos los retries de syncDomainUser
@@ -1516,36 +1538,58 @@ export class Login {
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
         
-        // Fase de salida física del login (fade-out rápido)
-        this.leaving.set(true);
-        await new Promise(resolve => setTimeout(resolve, 650));
-
-        // Activar expansión ripple y animaciones de salida
-        this.expanding.set(true);
-        
-        // Activar el overlay de transición global ANTES de navegar
-        this.transitionService.startTransition();
-        
-        // Esperar un momento para que el overlay se active
-        await new Promise(resolve => setTimeout(resolve, 50));
-        
-        // Esperar a que la animación termine completamente (900ms) antes de navegar
-        await new Promise(resolve => setTimeout(resolve, 900));
-        
-        // Navegar después de la animación
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
-        await this.router.navigate([target]);
+        const isWorker = user.role === 'worker';
         
-        // Esperar a que el dashboard se cargue antes de ocultar el overlay
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        // Ocultar el overlay de transición
-        this.transitionService.endTransition();
-        
-        // Resetear el estado de expansión después de navegar
-        setTimeout(() => {
-          this.expanding.set(false);
-        }, 100);
+        if (isWorker) {
+          // Transición simple para trabajador: solo fade-out elegante
+          this.leaving.set(true);
+          
+          // Activar overlay neutro sutil
+          this.transitionService.startTransition('worker');
+          
+          // Esperar a que el fade-out termine (500ms)
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Navegar después del fade-out
+          await this.router.navigate([target]);
+          
+          // Esperar a que el trabajador se cargue antes de ocultar el overlay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Ocultar el overlay de transición
+          this.transitionService.endTransition();
+        } else {
+          // Transición compleja para admin: expansión blanca
+          this.leaving.set(true);
+          await new Promise(resolve => setTimeout(resolve, 650));
+
+          // Activar expansión ripple y animaciones de salida
+          this.expanding.set(true);
+          
+          // Activar el overlay de transición global ANTES de navegar
+          this.transitionService.startTransition('admin');
+          
+          // Esperar un momento para que el overlay se active
+          await new Promise(resolve => setTimeout(resolve, 50));
+          
+          // Esperar a que la animación termine completamente (900ms) antes de navegar
+          await new Promise(resolve => setTimeout(resolve, 900));
+          
+          // Navegar después de la animación
+          await this.router.navigate([target]);
+          
+          // Esperar a que el dashboard se cargue antes de ocultar el overlay
+          await new Promise(resolve => setTimeout(resolve, 200));
+          
+          // Ocultar el overlay de transición
+          this.transitionService.endTransition();
+          
+          // Resetear el estado de expansión después de navegar
+          setTimeout(() => {
+            this.expanding.set(false);
+          }, 100);
+        }
       }
     } finally {
       this.loading.set(false);
