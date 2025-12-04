@@ -2,7 +2,7 @@
 from datetime import date, timedelta
 from app.db.supabase_client import supabase
 from app.utils.auth import require_admin
-
+from app.schemas.user import UserInDB
 
 async def get_active_machines():
     """
@@ -49,8 +49,6 @@ async def get_active_machines():
 
     return items
 
-
-from app.schemas.user import UserInDB
 
 async def get_summary(current_user: UserInDB):
     """
@@ -334,6 +332,7 @@ async def create_machine(data):
 
     return {"id": maquina_id, "message": "Máquina creada correctamente"}
 
+
 async def get_machine_detail(machine_id: int):
     # ----------------------------------------
     # 1. Obtener datos de máquina
@@ -359,7 +358,7 @@ async def get_machine_detail(machine_id: int):
         .select("chofer_id")
         .eq("maquina_id", machine_id)
         .is_("fecha_termino", None)
-        .single()
+        .limit(1)
         .execute()
     )
 
