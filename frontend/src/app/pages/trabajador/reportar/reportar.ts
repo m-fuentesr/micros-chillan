@@ -151,13 +151,13 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
               <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
             </svg>
-            Foto del comprobante *
+            Foto del comprobante del registro diario *
           </label>
 
           <!-- Preview de imagen -->
           @if (imagePreview()) {
             <div class="mb-4 relative rounded-xl overflow-hidden border-2 border-blue-200">
-              <img [src]="imagePreview()!" alt="Preview" class="w-full h-48 object-cover" />
+              <img [src]="imagePreview()!" alt="Preview comprobante registro" class="w-full h-48 object-cover" />
               <button
                 type="button"
                 (click)="removeImage()"
@@ -169,22 +169,6 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
                 </svg>
               </button>
-            </div>
-          }
-
-          <!-- Barra de progreso -->
-          @if (uploadProgress() && uploadProgress()!.percentage < 100) {
-            <div class="mb-4">
-              <div class="flex justify-between text-xs text-slate-500 mb-1">
-                <span>Subiendo imagen...</span>
-                <span>{{ uploadProgress()!.percentage }}%</span>
-              </div>
-              <div class="w-full bg-slate-200 rounded-full h-2 overflow-hidden">
-                <div
-                  class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  [style.width.%]="uploadProgress()!.percentage"
-                ></div>
-              </div>
             </div>
           }
 
@@ -206,6 +190,59 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                 <span class="text-xs font-bold uppercase">Tomar foto</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-blue-600">Cambiar imagen</span>
+              }
+            </div>
+          </label>
+        </div>
+
+        <!-- Comprobante de diesel (opcional) -->
+        <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="550">
+          <div class="flex items-center gap-2 mb-3">
+            <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em]">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
+              </svg>
+              Foto del comprobante de diesel
+            </label>
+            <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
+          </div>
+
+          <!-- Preview de imagen diesel -->
+          @if (dieselImagePreview()) {
+            <div class="mb-4 relative rounded-xl overflow-hidden border-2 border-amber-200">
+              <img [src]="dieselImagePreview()!" alt="Preview comprobante diesel" class="w-full h-48 object-cover" />
+              <button
+                type="button"
+                (click)="removeDieselImage()"
+                class="absolute top-2 right-2 bg-red-500 text-white rounded-full p-2 hover:bg-red-600 transition-colors shadow-lg"
+                aria-label="Eliminar imagen"
+                [disabled]="isSubmitting()"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+                </svg>
+              </button>
+            </div>
+          }
+
+          <!-- Input de archivo diesel -->
+          <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
+            <input 
+              type="file" 
+              class="hidden" 
+              accept="image/*" 
+              (change)="onDieselEvidenceSelected($event)"
+              [disabled]="isSubmitting()"
+            />
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
+              @if (!dieselImagePreview()) {
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
+                </svg>
+                <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
+              } @else {
+                <span class="text-xs font-bold uppercase text-amber-600">Cambiar imagen</span>
               }
             </div>
           </label>
@@ -895,9 +932,16 @@ export class Reportar implements OnInit {
   private storageService = inject(StorageService);
   private workerService = inject(WorkerService);
 
+  // Imagen del comprobante del registro diario (obligatorio)
   evidenceName = signal('');
   evidenceFile = signal<File | null>(null);
   imagePreview = signal<string | null>(null);
+  
+  // Imagen del comprobante de diesel (opcional)
+  dieselEvidenceName = signal('');
+  dieselEvidenceFile = signal<File | null>(null);
+  dieselImagePreview = signal<string | null>(null);
+  
   uploadProgress = signal<{ loaded: number; total: number; percentage: number } | null>(null);
   isSubmitting = signal(false);
   reportSuccess = signal(false);
@@ -1042,8 +1086,8 @@ export class Reportar implements OnInit {
 
     // La validación de foto ya se hizo al inicio de enviarReporte()
 
-    // Función para crear el registro después de subir la imagen (si es necesario)
-    const createRecord = (imagenUrl: string): Promise<void> => {
+    // Función para crear el registro después de subir las imágenes (si es necesario)
+    const createRecord = (imagenRegistroUrl: string, imagenDieselUrl?: string): Promise<void> => {
       // El backend espera estos campos según el schema DailyRecordCreate
       // Nota: chofer_id se obtiene automáticamente del token, no se envía
       const dto: CreateDailyRecordDto = {
@@ -1056,10 +1100,14 @@ export class Reportar implements OnInit {
         dia_no_trabajado: false,
         incidente_critico: formValue.incident || false, // Mapear checkbox a incidente_critico
         observaciones: formValue.notes || null,
-        // Incluir comprobante_diesel si hay fuelCost O si hay imagen subida
-        comprobante_diesel: (fuelCost || imagenUrl) ? {
+        // Comprobante del registro diario (obligatorio)
+        comprobante_registro: {
+          imagen: imagenRegistroUrl
+        },
+        // Comprobante de diesel (opcional) - solo si hay imagen o fuelCost
+        comprobante_diesel: (fuelCost || imagenDieselUrl) ? {
           monto: fuelCost || 0,
-          imagen: imagenUrl // Siempre incluir la URL si se subió una imagen
+          imagen: imagenDieselUrl || undefined
         } : undefined
       };
 
@@ -1130,23 +1178,24 @@ export class Reportar implements OnInit {
       });
     };
 
-    // Si hay archivo, subirlo primero
-    if (this.evidenceFile()) {
-      try {
+    // Subir imágenes si existen
+    try {
+      // Obtener choferId del usuario actual
+      const currentUser = this.authService.currentUser();
+      const choferId = currentUser?.choferId;
+      
+      if (!choferId) {
+        throw new Error('No se pudo obtener el ID del chofer');
+      }
+
+      let imagenRegistroUrl = '';
+      let imagenDieselUrl: string | undefined = undefined;
+
+      // Subir imagen del comprobante del registro diario (obligatorio)
+      if (this.evidenceFile()) {
         const file = this.evidenceFile()!;
-        
-        // Opcional: Comprimir antes de subir (mejora UX en conexiones lentas)
         const compressedFile = await this.storageService.compressImage(file);
         
-        // Obtener choferId del usuario actual
-        const currentUser = this.authService.currentUser();
-        const choferId = currentUser?.choferId;
-        
-        if (!choferId) {
-          throw new Error('No se pudo obtener el ID del chofer');
-        }
-
-        // Subir imagen con progreso
         const uploadResult = await new Promise<UploadResult>((resolve, reject) => {
           this.storageService.uploadDailyRecordImage(
             compressedFile,
@@ -1157,39 +1206,60 @@ export class Reportar implements OnInit {
             }
           ).subscribe({
             next: (result) => {
-              this.uploadProgress.set(null); // Limpiar progreso
-              console.log('✅ Imagen subida exitosamente:', result);
+              this.uploadProgress.set(null);
+              console.log('✅ Imagen del registro subida exitosamente:', result);
               resolve(result);
             },
             error: (error) => {
-              this.uploadProgress.set(null); // Limpiar progreso
+              this.uploadProgress.set(null);
               reject(error);
             }
           });
         });
+        
+        imagenRegistroUrl = uploadResult.url;
+      }
 
-        // Crear registro con la URL de la imagen subida
-        console.log('📤 URL de imagen a guardar:', uploadResult.url);
-        await createRecord(uploadResult.url);
-      } catch (error: any) {
-        console.error('Error al subir imagen:', error);
-        this.isSubmitting.set(false);
-        this.hasError.set(true);
-        this.uploadProgress.set(null);
-        this.showErrorToast(error.message || 'Error al subir la imagen');
-        return;
+      // Subir imagen del comprobante de diesel (opcional)
+      if (this.dieselEvidenceFile()) {
+        const dieselFile = this.dieselEvidenceFile()!;
+        const compressedDieselFile = await this.storageService.compressImage(dieselFile);
+        
+        const dieselUploadResult = await new Promise<UploadResult>((resolve, reject) => {
+          this.storageService.uploadDailyRecordImage(
+            compressedDieselFile,
+            choferId,
+            fecha,
+            (progress) => {
+              // Usar el mismo progreso para no confundir al usuario
+              this.uploadProgress.set(progress);
+            }
+          ).subscribe({
+            next: (result) => {
+              this.uploadProgress.set(null);
+              console.log('✅ Imagen del comprobante diesel subida exitosamente:', result);
+              resolve(result);
+            },
+            error: (error) => {
+              this.uploadProgress.set(null);
+              reject(error);
+            }
+          });
+        });
+        
+        imagenDieselUrl = dieselUploadResult.url;
       }
-    } else {
-      // No hay archivo, crear registro con imagen_url vacío
-      try {
-        await createRecord('');
-      } catch (error: any) {
-        console.error('Error al crear registro:', error);
-        this.isSubmitting.set(false);
-        this.hasError.set(true);
-        this.showErrorToast(this.getErrorMessage(error));
-        return;
-      }
+
+      // Crear registro con las URLs de las imágenes subidas
+      console.log('📤 URLs a guardar - Registro:', imagenRegistroUrl, 'Diesel:', imagenDieselUrl);
+      await createRecord(imagenRegistroUrl, imagenDieselUrl);
+    } catch (error: any) {
+      console.error('Error al subir imágenes o crear registro:', error);
+      this.isSubmitting.set(false);
+      this.hasError.set(true);
+      this.uploadProgress.set(null);
+      this.showErrorToast(error.message || 'Error al subir las imágenes');
+      return;
     }
 
   }
@@ -1243,10 +1313,52 @@ export class Reportar implements OnInit {
     this.evidenceFile.set(null);
     this.evidenceName.set('');
     this.imagePreview.set(null);
-    // Resetear el input file
-    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
-    if (input) {
-      input.value = '';
+    // Resetear el input file del comprobante del registro
+    const inputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
+    if (inputs.length > 0) {
+      inputs[0].value = '';
+    }
+  }
+
+  onDieselEvidenceSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (file) {
+      // Validación inmediata
+      const validationError = this.validateImageFile(file);
+      if (validationError) {
+        this.showErrorToast(validationError);
+        input.value = '';
+        return;
+      }
+
+      this.dieselEvidenceName.set(file.name);
+      this.dieselEvidenceFile.set(file);
+
+      // Generar preview inmediato
+      this.storageService.createPreviewUrl(file).subscribe({
+        next: (previewUrl) => {
+          this.dieselImagePreview.set(previewUrl);
+        },
+        error: (error) => {
+          console.error('Error generando preview:', error);
+        }
+      });
+    } else {
+      this.dieselEvidenceName.set('');
+      this.dieselEvidenceFile.set(null);
+      this.dieselImagePreview.set(null);
+    }
+  }
+
+  removeDieselImage(): void {
+    this.dieselEvidenceFile.set(null);
+    this.dieselEvidenceName.set('');
+    this.dieselImagePreview.set(null);
+    // Resetear el input file del comprobante de diesel
+    const inputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
+    if (inputs.length > 1) {
+      inputs[1].value = '';
     }
   }
 

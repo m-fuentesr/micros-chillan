@@ -2,8 +2,9 @@
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.daily_record import DailyRecordCreate
+from app.schemas.user import UserInDB
 
-async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
+async def create_daily_record(payload: DailyRecordCreate, current_user: UserInDB):
     """
     Crea el registro diario.
     1. Obtiene el porcentaje del chofer desde la tabla 'choferes'.
@@ -12,7 +13,7 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
     """
     
     # 1. Obtener ID del chofer
-    chofer_id = current_user.get("chofer_id")
+    chofer_id = current_user.chofer_id
     if not chofer_id:
         raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
 
@@ -72,7 +73,8 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
         "monto_recaudado": payload.monto_recaudado,
         "litros_diesel": payload.litros_diesel,
         "costo_total_diesel": payload.costo_total_diesel,
-        "imagen_url": payload.imagen_url,
+        "imagen_url": payload.imagen_url,  # Comprobante del registro diario (obligatorio)
+        "imagen_comprobante_diesel_url": payload.imagen_comprobante_diesel_url,  # Comprobante de diesel (opcional)
         "observaciones": payload.observaciones,
         "estado": estado_calculado,
 
@@ -93,9 +95,9 @@ async def create_daily_record(payload: DailyRecordCreate, current_user: dict):
 
     return res.data[0]
 
-async def get_driver_history(current_user: dict, rango: str):
+async def get_driver_history(current_user: UserInDB, rango: str):
 
-    chofer_id = current_user.get("chofer_id")
+    chofer_id = current_user.chofer_id
     if not chofer_id:
         raise HTTPException(status_code=400, detail="Usuario sin la asignacion de chofer")
     
@@ -137,12 +139,12 @@ async def get_driver_history(current_user: dict, rango: str):
     
     return res.data
 
-async def get_today_record_status(current_user: dict):
+async def get_today_record_status(current_user: UserInDB):
     """
     Obtiene el estado del reporte diario de hoy para el chofer actual.
     Retorna el registro si existe, None si no existe.
     """
-    chofer_id = current_user.get("chofer_id")
+    chofer_id = current_user.chofer_id
     if not chofer_id:
         raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
     

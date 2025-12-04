@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, computed, OnInit, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, computed, OnInit, effect, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../shared/services/auth.service';
@@ -8,10 +8,11 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-perfil',
-  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective],
+  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, ConfirmDialog],
   template: `
     <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
       @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
@@ -23,20 +24,27 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
           </div>
         </div>
       } @else {
-      <header class="perfil-header-enter relative bg-gradient-to-br from-blue-600 to-indigo-700 pb-24 pt-8 px-6 rounded-b-[2.5rem] shadow-lg">
-        <div class="flex flex-col items-center text-white text-center">
+      <header class="perfil-header-enter relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0"></div>
+        <div
+          class="absolute inset-0 opacity-10 z-0"
+          style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
+        ></div>
+        <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/30 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="relative z-10 flex flex-col items-center text-white text-center">
           <div class="avatar online mb-3">
             <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
               {{ initials() }}
             </div>
           </div>
           
-          <h1 class="text-lg sm:text-xl md:text-2xl font-bold px-2 break-words max-w-full">{{ workerName() }}</h1>
+          <h1 class="text-lg sm:text-xl md:text-2xl font-bold px-2 break-words max-w-full drop-shadow-sm">{{ workerName() }}</h1>
           <div class="text-blue-100 text-sm flex flex-col items-center gap-1 mt-1">
             <span class="opacity-90">Chofer Profesional</span>
             
             @if (phoneNumber()) {
-              <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full mt-1 backdrop-blur-md border border-white/10">
+              <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full mt-1 backdrop-blur-md border border-white/20 shadow-sm">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
                   <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.223.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clip-rule="evenodd" />
                 </svg>
@@ -118,17 +126,31 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
             }
           </div>
         </div>
+
+        <div class="mt-12">
+          <button class="w-full py-3 px-4 border border-red-200 text-red-600 bg-transparent rounded-xl font-semibold text-sm hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.98]" (click)="openLogoutConfirm()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2 inline-block"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" /></svg>
+            Cerrar Sesión
+          </button>
+        </div>
         }
 
         <div class="pt-4">
-          <button class="btn btn-outline btn-error btn-block border-red-200 hover:bg-red-50 hover:border-red-300 h-12 rounded-xl font-bold" (click)="onLogout()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" /></svg>
-            Cerrar Sesión
-          </button>
           <p class="text-center text-[10px] text-slate-300 mt-4">Versión 2.4.0</p>
         </div>
       </div>
     </div>
+
+    <!-- Modal de confirmación de cierre de sesión -->
+    <app-confirm-dialog
+      [isOpen]="showLogoutConfirm()"
+      title="Cerrar Sesión"
+      message="¿Estás seguro de que deseas cerrar sesión? Deberás iniciar sesión nuevamente para acceder a la aplicación."
+      confirmLabel="Sí, cerrar sesión"
+      type="destructive"
+      (confirm)="onLogout()"
+      (cancel)="closeLogoutConfirm()">
+    </app-confirm-dialog>
   `,
   styles: [
     `
@@ -142,6 +164,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       animation: perfilBackgroundEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
       opacity: 0;
       will-change: opacity;
+      animation-fill-mode: both;
     }
     
     @keyframes perfilBackgroundEnter {
@@ -159,6 +182,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       opacity: 0;
       transform: translateX(30px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
     }
     
     @keyframes perfilHeaderEnter {
@@ -178,6 +202,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       opacity: 0;
       transform: translateX(30px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
     }
     
     /* Contenido: Slide desde la derecha con delay adicional */
@@ -186,6 +211,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       opacity: 0;
       transform: translateX(30px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
     }
     
     @keyframes perfilContentEnter {
@@ -322,7 +348,19 @@ export class Perfil implements OnInit {
     return stats?.estadisticas.total_recaudado || 0;
   });
 
+  // Signal para controlar el modal de confirmación
+  showLogoutConfirm = signal(false);
+
+  openLogoutConfirm(): void {
+    this.showLogoutConfirm.set(true);
+  }
+
+  closeLogoutConfirm(): void {
+    this.showLogoutConfirm.set(false);
+  }
+
   onLogout(): void {
+    this.closeLogoutConfirm();
     this.auth.logout();
   }
 }

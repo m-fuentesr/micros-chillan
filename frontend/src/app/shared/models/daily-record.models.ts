@@ -83,8 +83,12 @@ export interface DailyRecord {
   estado: DailyRecordStatus;
   observaciones?: string | null;
   
-  // Comprobante y desglose
-  comprobante_diesel?: DieselReceipt | null;
+  // Comprobantes y desglose
+  comprobante_registro?: {  // Comprobante del registro diario (obligatorio)
+    imagen_url?: string;
+    subido_en?: string; // ISO date string
+  } | null;
+  comprobante_diesel?: DieselReceipt | null;  // Comprobante de carga de diesel (opcional)
   desglose_pago?: PaymentBreakdown;
   
   // Auditoría
@@ -130,7 +134,10 @@ export interface CreateDailyRecordDto {
   es_emergencia?: boolean;
   observaciones?: string | null;
   incidente_critico?: boolean; // Nuevo campo para indicar incidente crítico
-  comprobante_diesel?: {
+  comprobante_registro?: {  // Comprobante del registro diario (obligatorio)
+    imagen?: File | string; // File para upload, string para URL
+  };
+  comprobante_diesel?: {  // Comprobante de carga de diesel (opcional)
     tipo?: string;
     numero?: string;
     monto: number;
@@ -151,7 +158,10 @@ export interface UpdateDailyRecordDto {
   es_emergencia?: boolean;
   observaciones?: string | null;
   estado?: DailyRecordStatus;
-  comprobante_diesel?: {
+  comprobante_registro?: {  // Comprobante del registro diario
+    imagen?: File | string;
+  };
+  comprobante_diesel?: {  // Comprobante de carga de diesel
     tipo?: string;
     numero?: string;
     monto: number;

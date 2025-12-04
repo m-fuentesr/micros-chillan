@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, computed } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -17,7 +17,8 @@ import { TransitionService } from '../../shared/services/transition.service';
       @if (!expanding()) {
       <!-- Header móvil -->
       <div
-        class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
+        class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0 login-leaving"
+        [class.login-leaving-active]="leaving()"
       >
         <!-- Patrón de Grilla Tech (móvil) -->
         <div class="absolute inset-0 bg-grid-pattern z-0 pointer-events-none"></div>
@@ -121,7 +122,7 @@ import { TransitionService } from '../../shared/services/transition.service';
                 <span class="label-text font-semibold text-base-content text-sm tracking-wide">Usuario Corporativo</span>
               </label>
               <div class="relative premium-input-wrapper" 
-                   [class.premium-input-error]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched">
+                   [class.premium-input-error]="loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())">
                 <div class="premium-input-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
                     <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z" />
@@ -135,7 +136,7 @@ import { TransitionService } from '../../shared/services/transition.service';
                   formControlName="email"
                   autocomplete="email"
                 />
-                @if (loginForm.get('email')?.invalid && loginForm.get('email')?.touched) {
+                @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
                   <div class="absolute right-4 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
@@ -151,7 +152,8 @@ import { TransitionService } from '../../shared/services/transition.service';
                 <span class="label-text font-semibold text-base-content text-sm tracking-wide">Contraseña</span>
               </label>
               <div class="relative premium-input-wrapper"
-                   [class.premium-input-error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
+                   [class.premium-input-error]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched)"
+                   [class.premium-input-error-shake]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched) && !passwordErrorShown()">
                 <div class="premium-input-icon">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
                     <path fill-rule="evenodd" d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z" clip-rule="evenodd" />
@@ -164,6 +166,8 @@ import { TransitionService } from '../../shared/services/transition.service';
                   placeholder="Contraseña ..."
                   formControlName="password"
                   autocomplete="current-password"
+                  (blur)="onPasswordBlur()"
+                  (input)="onPasswordInput()"
                 />
                 <button
                   type="button"
@@ -208,7 +212,7 @@ import { TransitionService } from '../../shared/services/transition.service';
                 [class.state-loading]="loading() && !loginSuccess() && !expanding()"
                 [class.state-success]="loginSuccess() && !expanding()"
                 [class.state-expanding]="expanding()"
-                [disabled]="loginForm.invalid || loading() || expanding()"
+                [disabled]="isButtonDisabled()"
               >
                 <!-- Capa de profundidad (Neumorphism sutil) -->
                 <div class="button-depth-layer"></div>
@@ -565,7 +569,7 @@ import { TransitionService } from '../../shared/services/transition.service';
     }
 
     /* Estado IDLE - Botón ancho con texto */
-    .button-morph-premium.state-idle {
+    .button-morph-premium.state-idle:not(:disabled) {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
@@ -583,17 +587,54 @@ import { TransitionService } from '../../shared/services/transition.service';
       border-radius: 0.75rem;
     }
 
-    .button-morph-premium:disabled {
+    /* Estado DISABLED - Botón gris cuando está deshabilitado (solo en estado idle) */
+    .button-morph-premium.state-idle:disabled {
       opacity: 1; /* Mantener opacidad completa incluso cuando está disabled */
       cursor: not-allowed;
       transform: none !important;
-    }
-
-    .button-morph-premium:disabled:hover {
-      transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Gris cuando está deshabilitado */
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+      width: 100%;
+      height: 3.5rem;
+      min-width: auto;
+      border-radius: 0.75rem;
+      clip-path: inset(0 round 0.75rem);
+      color: white;
+    }
+
+    .button-morph-premium.state-idle:disabled:hover {
+      transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Mantener gris en hover */
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Los estados loading y success mantienen sus colores incluso cuando están disabled */
+    .button-morph-premium.state-loading:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir animaciones del botón si las hay */
+      /* Mantener el color azul del loading */
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .button-morph-premium.state-success:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir la animación successPulse */
+      /* Mantener el color verde del success */
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      box-shadow: 
+        0 0 0 4px rgba(16, 185, 129, 0.18),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.3) !important;
+      /* Mantener la animación de success - esta animación usa transform */
+      animation: successPulse 750ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
 
     .button-morph-premium.state-idle:hover:not(:disabled) {
@@ -1116,6 +1157,9 @@ import { TransitionService } from '../../shared/services/transition.service';
         0 0 0 3px hsl(var(--er) / 0.12),
         0 4px 12px rgba(239, 68, 68, 0.15),
         0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .premium-input-wrapper.premium-input-error.premium-input-error-shake {
       animation: premiumShake 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
@@ -1401,6 +1445,24 @@ export class Login {
   // Nuevo estado: fase de salida física del login antes del overlay global
   leaving = signal(false);
   expanding = signal(false);
+  submitted = signal(false);
+  passwordErrorShown = signal(false);
+
+  // Signal para rastrear si el formulario es válido
+  formValid = signal(false);
+
+  // Computed signal para determinar si el botón debe estar deshabilitado
+  // Considera todos los estados que requieren deshabilitación para evitar interrupciones
+  readonly isButtonDisabled = computed(() => {
+    return (
+      !this.formValid() ||           // Formulario inválido
+      this.loading() ||              // Cargando (petición en curso)
+      this.loginSuccess() ||         // Éxito (mostrando checkmark - evitar clicks múltiples)
+      this.expanding() ||            // Expansión (transición de salida)
+      this.leaving() ||              // Leaving (fade-out antes de navegar)
+      this.shakeError()              // Shake de error (durante animación de error)
+    );
+  });
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -1408,11 +1470,37 @@ export class Login {
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
 
+    // Suscribirse a los cambios del formulario para actualizar formValid
+    // Usar valueChanges y statusChanges para asegurar reactividad completa
+    this.loginForm.valueChanges.subscribe(() => {
+      this.formValid.set(this.loginForm.valid);
+    });
+
+    this.loginForm.statusChanges.subscribe(() => {
+      this.formValid.set(this.loginForm.valid);
+    });
+
+    // Inicializar el estado del formulario
+    this.formValid.set(this.loginForm.valid);
+
     // Si ya hay una sesión activa, redirige automáticamente
     // PERO NO durante la animación de expansión / salida ni durante un login manual en curso
     effect(() => {
+      // NO redirigir si la sesión aún se está inicializando
+      // Esto previene redirecciones prematuras cuando se abre una nueva pestaña
+      if (this.auth.isInitializing()) {
+        return;
+      }
+
       const user = this.auth.currentUser();
       if (!user) {
+        return;
+      }
+
+      // Verificar que el token exista y sea válido antes de redirigir
+      // Esto asegura que la sesión esté completamente validada
+      const token = this.auth.token;
+      if (!token) {
         return;
       }
 
@@ -1433,18 +1521,38 @@ export class Login {
     });
   }
 
+  onPasswordBlur() {
+    if (this.loginForm.get('password')?.invalid) {
+      this.passwordErrorShown.set(true);
+    }
+  }
+
+  onPasswordInput() {
+    // Resetear el estado de error mostrado cuando el usuario empieza a escribir
+    if (this.loginForm.get('password')?.valid) {
+      this.passwordErrorShown.set(false);
+    }
+  }
+
   async onSubmit() {
+    this.submitted.set(true);
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
+      this.passwordErrorShown.set(true);
+      // Activar shake si el formulario es inválido
+      this.shakeError.set(true);
+      setTimeout(() => this.shakeError.set(false), 500);
       return;
     }
 
     const { email, password } = this.loginForm.value;
+    // Resetear todos los estados antes de iniciar el login
     this.loading.set(true);
     this.error.set(null);
-    this.shakeError.set(false);
+    this.shakeError.set(false); // Resetear shake inmediatamente al iniciar nuevo intento
     this.loginSuccess.set(false);
     this.expanding.set(false);
+    this.leaving.set(false);
 
     try {
       await this.auth.loginWithCredentials(email, password);
@@ -1510,7 +1618,7 @@ export class Login {
           }, 100);
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       // Esperar más tiempo para dar tiempo a todos los retries de syncDomainUser
       // syncDomainUser puede hacer múltiples retries:
       // - Primer retry después de 300ms (si es login manual)
@@ -1522,13 +1630,56 @@ export class Login {
       // Verificar nuevamente si el usuario está autenticado después de los retries
       const user = this.auth.currentUser();
       if (!user) {
-        // Si después de todos los retries aún no hay usuario, mostrar error
-        this.error.set(
-          'No se pudo iniciar sesión.\nVerifica tus credenciales o inténtalo nuevamente.'
-        );
-        // Activar animación de shake
+        // Analizar el tipo de error para mostrar mensajes específicos
+        const errorMessage = err?.message || '';
+        let userFriendlyMessage = '';
+        
+        switch (errorMessage) {
+          case 'EMAIL_NOT_FOUND':
+            userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
+            // Resaltar el campo de email
+            this.loginForm.get('email')?.setErrors({ notFound: true });
+            break;
+            
+          case 'INVALID_PASSWORD':
+            userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
+            // Resaltar el campo de contraseña
+            this.loginForm.get('password')?.setErrors({ incorrect: true });
+            this.passwordErrorShown.set(true);
+            break;
+            
+          case 'EMAIL_NOT_CONFIRMED':
+            userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
+            break;
+            
+          case 'TOO_MANY_ATTEMPTS':
+            userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
+            break;
+            
+          case 'USER_DISABLED':
+            userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
+            break;
+            
+          case 'NETWORK_ERROR':
+            userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
+            break;
+            
+          case 'INVALID_CREDENTIALS':
+          default:
+            userFriendlyMessage = 'Credenciales inválidas.\nVerifica tu correo y contraseña e inténtalo nuevamente.';
+            break;
+        }
+        
+        this.error.set(userFriendlyMessage);
+        // Activar animación de shake y mantener el botón deshabilitado durante la animación
         this.shakeError.set(true);
-        setTimeout(() => this.shakeError.set(false), 500);
+        // Deshabilitar el botón durante la animación de shake (500ms)
+        // Esto evita clicks múltiples durante la animación de error
+        setTimeout(() => {
+          this.shakeError.set(false);
+          // El botón se habilitará automáticamente cuando shakeError sea false
+          // siempre que no esté en otros estados (loading, success, etc.)
+        }, 500);
       } else {
         // Si hay usuario después del retry, el login fue exitoso
         // Mostrar estado de éxito igual que en el caso exitoso normal

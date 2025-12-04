@@ -39,6 +39,10 @@ export class AuthService {
   private readonly _currentUser = signal<AuthUser | null>(this.hydrateUser());
   readonly currentUser = this._currentUser;
 
+  // Signal para indicar si estamos verificando la sesión inicial
+  private readonly _isInitializing = signal(true);
+  readonly isInitializing = this._isInitializing.asReadonly();
+
   // Flag para prevenir múltiples llamadas simultáneas a syncDomainUser
   private isSyncing = false;
   // Flag para prevenir múltiples inicializaciones
@@ -157,8 +161,37 @@ export class AuthService {
 
     // Solo intentar restaurar sesión una vez
     if (!this.isInitialized) {
-      this.tryRestoreSession();
+      // Timeout de seguridad: si la inicialización tarda más de 5 segundos, forzar fin
+      const timeoutId = setTimeout(() => {
+        if (this._isInitializing()) {
+          console.warn('Timeout en inicialización de sesión, forzando fin');
+          this._isInitializing.set(false);
+        }
+      }, 5000);
+      
+      this.tryRestoreSession().then((remainingDelay) => {
+        clearTimeout(timeoutId);
+        // Si la verificación fue muy rápida, esperar el tiempo restante
+        // para asegurar que el spinner se muestre al menos 400ms
+        if (remainingDelay > 0) {
+          setTimeout(() => {
+            this._isInitializing.set(false);
+          }, remainingDelay);
+        } else {
+          // Si ya pasó el tiempo mínimo, ocultar inmediatamente
+          this._isInitializing.set(false);
+        }
+      }).catch(() => {
+        clearTimeout(timeoutId);
+        // En caso de error, ocultar después del delay mínimo
+        setTimeout(() => {
+          this._isInitializing.set(false);
+        }, 400);
+      });
       this.isInitialized = true;
+    } else {
+      // Si ya está inicializado, no estamos verificando
+      this._isInitializing.set(false);
     }
   }
 
@@ -174,7 +207,81 @@ export class AuthService {
 
       if (error || !data.session) {
         this.isManualLogin = false;
-        throw new Error('Credenciales inválidas');
+        
+        // Analizar el tipo de error de Supabase para dar mensajes más específicos
+        // IMPORTANTE: Verificar errores de email PRIMERO antes que errores de contraseña
+        if (error) {
+          const errorMessage = error.message?.toLowerCase() || '';
+          const errorStatus = error.status || 0;
+          
+          // PRIORIDAD 1: Email no encontrado o formato inválido (verificar PRIMERO)
+          if (errorMessage.includes('email') && 
+              (errorMessage.includes('not found') || 
+               errorMessage.includes('does not exist') ||
+               errorMessage.includes('user not found') ||
+               errorMessage.includes('no user found'))) {
+            throw new Error('EMAIL_NOT_FOUND');
+          }
+          
+          // PRIORIDAD 2: Email no confirmado
+          if (errorMessage.includes('email not confirmed') || 
+              errorMessage.includes('not confirmed') ||
+              errorMessage.includes('email_not_confirmed')) {
+            throw new Error('EMAIL_NOT_CONFIRMED');
+          }
+          
+          // PRIORIDAD 3: Si el mensaje menciona específicamente "email" sin mencionar "password",
+          // es más probable que sea un problema de email
+          if (errorMessage.includes('email') && 
+              !errorMessage.includes('password') &&
+              (errorStatus === 400 || errorStatus === 404)) {
+            throw new Error('EMAIL_NOT_FOUND');
+          }
+          
+          // PRIORIDAD 4: Demasiados intentos
+          if (errorMessage.includes('too many requests') || 
+              errorMessage.includes('rate limit') ||
+              errorMessage.includes('rate_limit_exceeded')) {
+            throw new Error('TOO_MANY_ATTEMPTS');
+          }
+          
+          // PRIORIDAD 5: Usuario deshabilitado
+          if (errorMessage.includes('disabled') || 
+              errorMessage.includes('banned') ||
+              errorMessage.includes('user is disabled')) {
+            throw new Error('USER_DISABLED');
+          }
+          
+          // PRIORIDAD 6: Error de red o servidor
+          if (errorMessage.includes('network') || 
+              errorMessage.includes('timeout') ||
+              errorMessage.includes('server error') ||
+              errorMessage.includes('connection')) {
+            throw new Error('NETWORK_ERROR');
+          }
+          
+          // PRIORIDAD 7: Contraseña incorrecta - Solo si NO es un error de email
+          // Supabase generalmente devuelve "Invalid login credentials" para ambos casos,
+          // pero si menciona específicamente "password", es más probable que sea contraseña
+          if (errorMessage.includes('invalid password') ||
+              errorMessage.includes('wrong password') ||
+              (errorMessage.includes('password') && 
+               !errorMessage.includes('email') &&
+               errorStatus === 400)) {
+            throw new Error('INVALID_PASSWORD');
+          }
+          
+          // PRIORIDAD 8: Si el error es 400 y menciona credenciales pero NO menciona email,
+          // probablemente es contraseña incorrecta (el email existe pero la contraseña no)
+          if (errorStatus === 400 && 
+              errorMessage.includes('credentials') &&
+              !errorMessage.includes('email')) {
+            throw new Error('INVALID_PASSWORD');
+          }
+        }
+        
+        // Error genérico como fallback
+        throw new Error('INVALID_CREDENTIALS');
       }
 
       const accessToken = data.session.access_token;
@@ -330,30 +437,88 @@ export class AuthService {
     }
   }
 
-  private async tryRestoreSession(): Promise<void> {
+  private async tryRestoreSession(): Promise<number> {
+    const startTime = Date.now();
+    const MIN_DISPLAY_TIME = 400; // 400ms mínimo para mostrar el spinner y evitar flashes
+    
     try {
-      const { data } = await this.supabase.auth.getSession();
+      const { data, error } = await this.supabase.auth.getSession();
 
-      if (data.session?.access_token) {
-        this.persistToken(data.session.access_token);
-        // Solo sincronizar si no estamos ya sincronizando
-        if (!this.isSyncing) {
-          await this.syncDomainUser();
-        }
-      } else {
-        // Si no hay sesión, limpiar estado local
+      // Si hay error o no hay sesión, limpiar estado local
+      if (error || !data.session?.access_token) {
         this.clearSession();
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+        return remaining;
+      }
+
+      // Validar que el token no esté expirado
+      const token = data.session.access_token;
+      try {
+        // Decodificar el token JWT para verificar expiración (sin verificar firma)
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const now = Math.floor(Date.now() / 1000);
+        
+        // Si el token está expirado, limpiar sesión
+        if (payload.exp && payload.exp < now) {
+          console.log('Token expirado, limpiando sesión');
+          this.clearSession();
+          // Cerrar sesión en Supabase también
+          try {
+            await this.supabase.auth.signOut();
+            this.forceClearSupabaseStorage();
+          } catch (signOutError) {
+            console.error('Error al cerrar sesión expirada:', signOutError);
+          }
+          const elapsed = Date.now() - startTime;
+          const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+          return remaining;
+        }
+      } catch (parseError) {
+        // Si no se puede parsear el token, es inválido
+        console.error('Token inválido, limpiando sesión:', parseError);
+        this.clearSession();
+        const elapsed = Date.now() - startTime;
+        const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+        return remaining;
+      }
+
+      // Si el token es válido, persistirlo y sincronizar
+      this.persistToken(token);
+      // Solo sincronizar si no estamos ya sincronizando
+      if (!this.isSyncing) {
+        await this.syncDomainUser();
       }
     } catch (error) {
       // Si hay error al obtener la sesión, limpiar estado local
       console.error('Error al restaurar sesión:', error);
       this.clearSession();
     }
+    
+    // Calcular tiempo transcurrido y retornar el delay restante necesario
+    // Esto se ejecuta después del try-catch, antes de retornar
+    const elapsed = Date.now() - startTime;
+    const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
+    return remaining;
   }
 
   async logout(): Promise<void> {
-    await this.supabase.auth.signOut();
+    // Primero limpiar el estado local para evitar que otras pestañas restauren la sesión
     this.clearSession();
+    
+    // Luego cerrar sesión en Supabase y esperar a que se complete
+    // Esto asegura que localStorage de Supabase también se limpie
+    try {
+      await this.supabase.auth.signOut();
+    } catch (error) {
+      // Si falla el signOut, forzar limpieza manual de localStorage de Supabase
+      console.error('Error al cerrar sesión en Supabase:', error);
+      this.forceClearSupabaseStorage();
+    }
+    
+    // Asegurar que localStorage de Supabase esté limpio
+    this.forceClearSupabaseStorage();
+    
     await this.router.navigate(['/login']);
   }
 
@@ -405,6 +570,28 @@ export class AuthService {
     sessionStorage.removeItem(this.tokenStorageKey);
     sessionStorage.removeItem(this.userStorageKey);
     this._currentUser.set(null);
+  }
+
+  /**
+   * Fuerza la limpieza de todas las claves de Supabase en localStorage.
+   * Esto asegura que la sesión no se restaure en nuevas pestañas después del logout.
+   */
+  private forceClearSupabaseStorage(): void {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      // Limpiar todas las claves relacionadas con Supabase en localStorage
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('sb-') || key.includes('supabase'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+    } catch (error) {
+      console.error('Error al limpiar localStorage de Supabase:', error);
+    }
   }
 }
 

@@ -5,6 +5,7 @@ Sigue el patrón del proyecto: endpoints delgados que delegan a servicios
 from fastapi import APIRouter, Depends, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from app.utils.auth import get_current_user
+from app.schemas.user import UserInDB
 from app.services import storage_service
 
 router = APIRouter(prefix="/api/storage", tags=["Storage"])
@@ -15,7 +16,7 @@ async def upload_daily_record_image(
     file: UploadFile = File(...),
     chofer_id: int = Form(...),
     fecha: str = Form(...),
-    current_user: dict = Depends(get_current_user)
+    current_user: UserInDB = Depends(get_current_user)
 ):
     """
     Endpoint para subir imágenes de comprobantes de daily records.

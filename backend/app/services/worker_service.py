@@ -1,12 +1,13 @@
 ﻿from datetime import date, datetime
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
+from app.schemas.user import UserInDB
 import calendar
 
 
-async def get_profile(current_user: dict):
+async def get_profile(current_user: UserInDB):
     # 1. Obtener chofer_id
-    chofer_id = current_user.get("chofer_id")
+    chofer_id = current_user.chofer_id
     if not chofer_id:
         raise HTTPException(status_code=400, detail="Usuario sin chofer asignado")
 
@@ -76,7 +77,7 @@ async def get_profile(current_user: dict):
         # --- CORRECCIÓN AQUÍ ---
         # Sacamos el email directamente de la tabla usuarios (current_user)
         # Si por alguna razón no está, usamos "Sin Email" para no romper el Schema.
-        "email": current_user.get("correo") or "Sin Email", 
+        "email": current_user.correo or "Sin Email", 
         
         "maquina_detalle": maquina_str,
         "fecha_ingreso": fecha_fmt,
@@ -86,13 +87,13 @@ async def get_profile(current_user: dict):
         }
     }
 
-async def get_monthly_stats(current_user: dict, mes: int = None, anio: int = None):
+async def get_monthly_stats(current_user: UserInDB, mes: int = None, anio: int = None):
     """
     Calcula días trabajados y total recaudado para un mes específico.
     Si no se envía mes/año, usa los actuales.
     """
     # 1. Validar Chofer
-    chofer_id = current_user.get("chofer_id")
+    chofer_id = current_user.chofer_id
     if not chofer_id:
         raise HTTPException(status_code=400, detail="Usuario sin chofer asignado")
 

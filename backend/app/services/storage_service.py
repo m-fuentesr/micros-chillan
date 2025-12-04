@@ -12,6 +12,7 @@ from PIL import Image, ImageOps  # Pillow para optimización
 from app.db.supabase_client import supabase
 from app.utils.files import create_safe_folder_name, validate_magic_bytes
 from app.core.config import settings
+from app.schemas.user import UserInDB
 
 # Configuración
 ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif']
@@ -92,7 +93,7 @@ async def upload_daily_record_image(
     file: UploadFile,
     chofer_id: int,
     fecha: str,
-    current_user: dict
+    current_user: UserInDB
 ) -> dict:
     """
     Sube una imagen de comprobante de daily record a Supabase Storage.
@@ -119,7 +120,7 @@ async def upload_daily_record_image(
         HTTPException: Si hay errores de validación o al subir el archivo
     """
     # Verificar que el usuario autenticado sea el chofer indicado
-    user_chofer_id = current_user.get("chofer_id")
+    user_chofer_id = current_user.chofer_id
     if not user_chofer_id or user_chofer_id != chofer_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

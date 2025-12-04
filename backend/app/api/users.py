@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.db.supabase_client import supabase
 from app.utils.auth import get_current_user, require_admin
+from app.schemas.user import UserInDB
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
 @router.get("/")
 async def listar_usuarios(
-    current_user=Depends(get_current_user),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     """
     Solo administradores pueden listar usuarios.
@@ -25,7 +26,7 @@ async def listar_usuarios(
 @router.get("/{usuario_id}")
 async def obtener_usuario(
     usuario_id: int,
-    current_user=Depends(get_current_user),
+    current_user: UserInDB = Depends(get_current_user),
 ):
     """
     Solo administradores pueden ver la ficha de cualquier usuario.

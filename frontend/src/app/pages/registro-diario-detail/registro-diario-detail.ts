@@ -33,6 +33,10 @@ interface DailyRecordDetailView extends DailyRecord {
     uploadedAt?: string;
     imageUrl?: string;
   }; // comprobante_diesel
+  comprobanteRegistro?: {  // Comprobante del registro diario
+    imageUrl?: string;
+    uploadedAt?: string;
+  };
   history?: DailyRecordHistoryItem[]; // historial
 }
 
@@ -315,12 +319,110 @@ interface DailyRecordDetailView extends DailyRecord {
 
               <!-- Sidebar (1/3) -->
               <div class="lg:col-span-1 space-y-4 sm:space-y-6">
-                <!-- Comprobante Diésel (Primero) - Solo si NO es día no trabajado -->
+                <!-- Comprobante del Registro Diario (Primero) - Solo si NO es día no trabajado -->
                 @if (!recordForm.get('noWorkDay')?.value) {
                   <div class="card bg-base-100 shadow-sm border border-base-200 order-1">
                   <div class="card-body p-4 sm:p-5">
                     <div class="flex justify-between items-center mb-3 sm:mb-4">
+                      <h3 class="font-bold text-sm sm:text-base">Comprobante del Registro Diario</h3>
+                      @if (hasComprobanteRegistro()) {
+                        <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                          </svg>
+                          <span class="hidden sm:inline">Validado</span>
+                        </span>
+                      }
+                    </div>
+                    
+                    @if (hasComprobanteRegistro() && !isEditMode()) {
+                      <div class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-zoom-in shadow-inner">
+                        @if (canUseNgOptimizedImageRegistro()) {
+                          <img 
+                            [ngSrc]="getRegistroImageUrl()" 
+                            alt="Comprobante registro diario" 
+                            width="400"
+                            height="300"
+                            loading="lazy"
+                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+                        } @else {
+                          <img 
+                            [src]="getRegistroImageUrl()" 
+                            alt="Comprobante registro diario" 
+                            loading="lazy"
+                            class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
+                        }
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
+                          </svg>
+                          <span class="font-bold text-sm">Ver Detalle</span>
+                        </div>
+                      </div>
+                      
+                      <div class="mt-4 p-3 bg-base-200/50 rounded-lg text-xs border border-base-200">
+                        <div class="flex justify-between border-t border-base-300 pt-2 mt-2">
+                          <span class="text-base-content/50">Subido:</span>
+                          <span>{{ record()?.comprobanteRegistro?.uploadedAt || record()?.date }}</span>
+                        </div>
+                      </div>
+                    }
+                    
+                    @if (isEditMode() || !hasComprobanteRegistro()) {
+                      <label class="block w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 hover:bg-base-100 hover:border-primary/50 transition-all cursor-pointer relative overflow-hidden group">
+                        <input 
+                          type="file" 
+                          class="hidden" 
+                          accept="image/*" 
+                          (change)="onRegistroSelected($event)"
+                          [disabled]="!isEditMode()" />
+                        @if (registroPreview() || (hasComprobanteRegistro() && record()?.comprobanteRegistro?.imageUrl)) {
+                          @if (canUseNgOptimizedImagePreviewRegistro()) {
+                            <img 
+                              [ngSrc]="getPreviewRegistroImageUrl()" 
+                              alt="Preview comprobante registro" 
+                              width="400"
+                              height="300"
+                              loading="lazy"
+                              class="object-cover w-full h-full" />
+                          } @else {
+                            <img 
+                              [src]="getPreviewRegistroImageUrl()" 
+                              alt="Preview comprobante registro" 
+                              loading="lazy"
+                              class="object-cover w-full h-full" />
+                          }
+                          @if (isEditMode()) {
+                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
+                              </svg>
+                              <span class="font-bold text-sm">Cambiar foto</span>
+                            </div>
+                          }
+                        } @else {
+                          <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 group-hover:text-primary transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                            </svg>
+                            <span class="text-xs font-bold uppercase">Sube o arrastra el comprobante</span>
+                            <span class="text-[10px] mt-1">JPG, PNG, JFIF (Max 10MB)</span>
+                          </div>
+                        }
+                      </label>
+                    }
+                  </div>
+                </div>
+                }
+
+                <!-- Comprobante Diésel (Segundo) - Solo si NO es día no trabajado -->
+                @if (!recordForm.get('noWorkDay')?.value) {
+                  <div class="card bg-base-100 shadow-sm border border-base-200 order-2">
+                  <div class="card-body p-4 sm:p-5">
+                    <div class="flex justify-between items-center mb-3 sm:mb-4">
                       <h3 class="font-bold text-sm sm:text-base">Comprobante Diésel</h3>
+                      <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
                       @if (hasComprobante()) {
                         <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
@@ -514,6 +616,10 @@ export class RegistroDiarioDetail {
 
   receiptFile = signal<File | null>(null);
   receiptPreview = signal<string | null>(null);
+  
+  // Comprobante del registro diario
+  registroFile = signal<File | null>(null);
+  registroPreview = signal<string | null>(null);
 
   // Computed signals
   // Mapeo de estados: 'INCIDENTE_REPORTADO' -> 'incident', 'COMPLETO' -> 'complete'
@@ -526,6 +632,7 @@ export class RegistroDiarioDetail {
     return estado === 'COMPLETO';
   });
   hasComprobante = computed(() => !!this.record()?.receipt);
+  hasComprobanteRegistro = computed(() => !!this.record()?.comprobanteRegistro?.imageUrl);
   historyItems = computed(() => this.record()?.history ?? []);
 
   // Effect para actualizar validación cuando cambia "Día No Trabajado"
@@ -597,6 +704,9 @@ export class RegistroDiarioDetail {
         if (viewRecord.receipt?.imageUrl) {
           this.receiptPreview.set(viewRecord.receipt.imageUrl);
         }
+        if (viewRecord.comprobanteRegistro?.imageUrl) {
+          this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+        }
         
         this.isLoading.set(false);
       },
@@ -616,13 +726,27 @@ export class RegistroDiarioDetail {
     const date = new Date(record.fecha);
     const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
     
-    // Mapear comprobante
+    // Mapear comprobante de diesel
     const receipt = record.comprobante_diesel ? {
       amount: record.comprobante_diesel.monto,
       uploadedAt: record.comprobante_diesel.subido_en 
         ? new Date(record.comprobante_diesel.subido_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
         : undefined,
       imageUrl: record.comprobante_diesel.imagen_url
+    } : undefined;
+
+    // Mapear comprobante del registro diario (desde imagen_url del backend)
+    // El backend devuelve imagen_url directamente, no en un objeto anidado
+    const comprobanteRegistro = (record as any).imagen_url ? {
+      imageUrl: (record as any).imagen_url,
+      uploadedAt: (record as any).imagen_updated_at 
+        ? new Date((record as any).imagen_updated_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : undefined
+    } : record.comprobante_registro ? {
+      imageUrl: record.comprobante_registro.imagen_url,
+      uploadedAt: record.comprobante_registro.subido_en 
+        ? new Date(record.comprobante_registro.subido_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        : undefined
     } : undefined;
 
     return {
@@ -647,6 +771,7 @@ export class RegistroDiarioDetail {
         amount: record.recaudado * 0.3
       },
       receipt,
+      comprobanteRegistro,
       history: record.historial
     };
   }
@@ -669,6 +794,8 @@ export class RegistroDiarioDetail {
     }
     this.receiptFile.set(null);
     this.receiptPreview.set(this.record()?.receipt?.imageUrl || null);
+    this.registroFile.set(null);
+    this.registroPreview.set(this.record()?.comprobanteRegistro?.imageUrl || null);
     this.isEditMode.set(false);
   }
 
@@ -898,6 +1025,38 @@ export class RegistroDiarioDetail {
     }
   }
 
+  onRegistroSelected(event: Event): void {
+    if (!this.isEditMode()) {
+      return;
+    }
+    
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    
+    if (file) {
+      // Validar tamaño (5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. Máximo 5MB.');
+        return;
+      }
+      
+      // Validar tipo
+      if (!file.type.startsWith('image/')) {
+        alert('Solo se permiten archivos de imagen.');
+        return;
+      }
+      
+      this.registroFile.set(file);
+      
+      // Crear preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        this.registroPreview.set(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
   goBack(): void {
     this.router.navigate(['/bitacora-operaciones']);
   }
@@ -924,5 +1083,29 @@ export class RegistroDiarioDetail {
   // Helper para obtener la URL del preview de forma segura
   getPreviewImageUrl(): string {
     return this.receiptPreview() || this.record()?.receipt?.imageUrl || '';
+  }
+  
+  // Helper para verificar si se puede usar NgOptimizedImage para comprobante del registro
+  canUseNgOptimizedImageRegistro(): boolean {
+    const imageUrl = this.record()?.comprobanteRegistro?.imageUrl;
+    return !!imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('data:');
+  }
+  
+  // Helper para obtener la URL de la imagen del comprobante del registro
+  getRegistroImageUrl(): string {
+    return this.record()?.comprobanteRegistro?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante+Registro';
+  }
+  
+  // Helper para verificar si se puede usar NgOptimizedImage en preview del registro
+  canUseNgOptimizedImagePreviewRegistro(): boolean {
+    const preview = this.registroPreview();
+    const recordUrl = this.record()?.comprobanteRegistro?.imageUrl;
+    const url = preview || recordUrl;
+    return !!url && typeof url === 'string' && !url.startsWith('data:');
+  }
+  
+  // Helper para obtener la URL del preview del comprobante del registro
+  getPreviewRegistroImageUrl(): string {
+    return this.registroPreview() || this.record()?.comprobanteRegistro?.imageUrl || '';
   }
 }

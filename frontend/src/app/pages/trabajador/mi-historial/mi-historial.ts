@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect, afterNextRender, Injector, runInInjectionContext } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DailyRecordService } from '../../../shared/services/daily-record.service';
 import { WorkerService } from '../../../shared/services/worker.service';
@@ -60,8 +60,11 @@ interface WeekGroup {
             </div>
           }
         </div>
-      } @else {
-      <header class="historial-header-enter card bg-primary text-primary-content shadow-lg mb-4">
+      }
+      
+      <!-- Contenido real: siempre renderizado cuando isLoading es false, pero oculto hasta que isContentReady sea true -->
+      @if (!isLoading()) {
+      <header [class.historial-header-enter]="isInitialLoad()" [class.historial-content-ready]="isContentReady()" class="card bg-primary text-primary-content shadow-lg mb-4">
         <div class="card-body p-4">
           <div class="flex justify-between items-center">
             <div>
@@ -75,102 +78,86 @@ interface WeekGroup {
         </div>
       </header>
 
-      <section class="historial-content-enter bg-base-100 rounded-xl shadow border border-base-200 overflow-hidden mb-4">
+      <section [class.historial-content-enter]="isInitialLoad()" [class.historial-content-loaded]="!isInitialLoad()" [class.historial-content-ready]="isContentReady()" class="bg-base-100 rounded-xl shadow border border-base-200 overflow-hidden mb-4">
         <div class="tabs bg-transparent p-0 mb-2 gap-2 px-4 pt-4 flex">
           <button 
-            class="text-xs font-bold transition-all rounded-full px-4 py-2"
-            [class.bg-white]="selectedPeriod() === 'week'"
-            [class.shadow-sm]="selectedPeriod() === 'week'"
-            [class.border]="selectedPeriod() === 'week'"
-            [class.border-base-200]="selectedPeriod() === 'week'"
-            [class.text-primary]="selectedPeriod() === 'week'"
-            [class.text-base-content]="selectedPeriod() !== 'week'"
-            [class.text-base-content/60]="selectedPeriod() !== 'week'"
-            [class.hover:bg-base-200/50]="selectedPeriod() !== 'week'"
-            (click)="selectedPeriod.set('week')">
+            class="tab-button text-xs rounded-full px-4 py-2"
+            [class.tab-active]="selectedPeriod() === 'week'"
+            [class.tab-inactive]="selectedPeriod() !== 'week'"
+            (click)="changeTab('week')">
             Esta Semana ({{ weekCount() }})
           </button>
           <button 
-            class="text-xs transition-all rounded-full px-4 py-2"
-            [class.bg-white]="selectedPeriod() === 'month'"
-            [class.shadow-sm]="selectedPeriod() === 'month'"
-            [class.border]="selectedPeriod() === 'month'"
-            [class.border-base-200]="selectedPeriod() === 'month'"
-            [class.text-primary]="selectedPeriod() === 'month'"
-            [class.text-base-content]="selectedPeriod() !== 'month'"
-            [class.text-base-content/60]="selectedPeriod() !== 'month'"
-            [class.hover:bg-base-200/50]="selectedPeriod() !== 'month'"
-            (click)="selectedPeriod.set('month')">
+            class="tab-button text-xs rounded-full px-4 py-2"
+            [class.tab-active]="selectedPeriod() === 'month'"
+            [class.tab-inactive]="selectedPeriod() !== 'month'"
+            (click)="changeTab('month')">
             Este Mes ({{ monthCount() }})
           </button>
           <button 
-            class="text-xs transition-all rounded-full px-4 py-2"
-            [class.bg-white]="selectedPeriod() === 'previous'"
-            [class.shadow-sm]="selectedPeriod() === 'previous'"
-            [class.border]="selectedPeriod() === 'previous'"
-            [class.border-base-200]="selectedPeriod() === 'previous'"
-            [class.text-primary]="selectedPeriod() === 'previous'"
-            [class.text-base-content]="selectedPeriod() !== 'previous'"
-            [class.text-base-content/60]="selectedPeriod() !== 'previous'"
-            [class.hover:bg-base-200/50]="selectedPeriod() !== 'previous'"
-            (click)="selectedPeriod.set('previous')">
+            class="tab-button text-xs rounded-full px-4 py-2"
+            [class.tab-active]="selectedPeriod() === 'previous'"
+            [class.tab-inactive]="selectedPeriod() !== 'previous'"
+            (click)="changeTab('previous')">
             Mes Anterior ({{ previousCount() }})
           </button>
         </div>
 
-        @if (filteredData().length === 0) {
-          <div class="p-8 text-left pl-4 border-l-4 border-l-primary">
-            <p class="text-base-content/60 italic">No hay reportes en este período</p>
-          </div>
-        } @else {
-          <div class="history-container">
-            @for (week of weekGroups(); track week.title; let weekIndex = $index) {
-              <div class="week-group">
-                <div class="week-header historial-week-header-enter" [style.animation-delay.ms]="200 + (weekIndex * 50)">
-                  <span class="week-header__title font-bold text-sm">{{ week.title }}</span>
-                  <span class="week-header__summary font-bold text-success tabular-nums">{{ week.total | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-                </div>
+        <div class="tab-content-wrapper">
+          @if (filteredData().length === 0) {
+            <div class="tab-content-empty">
+              <p class="text-base-content/60 italic">No hay reportes en este período</p>
+            </div>
+          } @else {
+            <div class="history-container">
+              @for (week of weekGroups(); track week.title; let weekIndex = $index) {
+                <div class="week-group">
+                  <div class="week-header" [class.historial-week-header-enter]="isInitialLoad()" [style.animation-delay.ms]="isInitialLoad() ? (200 + (weekIndex * 50)) : 0">
+                    <span class="week-header__title font-bold text-sm">{{ week.title }}</span>
+                    <span class="week-header__summary font-bold text-success tabular-nums">{{ week.total | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                  </div>
 
-                @for (item of week.items; track item.date; let itemIndex = $index) {
-                  <a class="history-item historial-item-enter" [class.has-incident]="item.incidenteCritico" [style.animation-delay.ms]="300 + (weekIndex * 50) + (itemIndex * 30)">
-                    <div class="history-item__date-block">
-                      <span class="history-item__weekday">{{ getWeekDay(item.date) }}</span>
-                      <span class="history-item__day">{{ getDay(item.date) }}</span>
-                    </div>
-
-                    <div class="history-item__details">
-                      <span class="history-item__machine">{{ item.machine }}</span>
-                      @if (item.dieselLiters > 0) {
-                        <div class="history-item__diesel-badge text-error/80">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
-                          </svg>
-                          <span class="font-normal">-{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }} ({{ item.dieselLiters }}L)</span>
-                        </div>
-                      }
-                      @if (item.incidenteCritico) {
-                        <div class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded mt-1 inline-block">
-                          🚨 Incidente Crítico
-                        </div>
-                      }
-                    </div>
-
-                    <div class="history-item__financials">
-                      <span class="history-item__revenue-value">+{{ item.revenue | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-                    </div>
-
-                    @if (item.observations) {
-                      <div class="history-item__alert">
-                        <span>💬</span>
-                        <span>{{ item.observations }}</span>
+                  @for (item of week.items; track item.date; let itemIndex = $index) {
+                    <a class="history-item" [class.historial-item-enter]="isInitialLoad()" [class.has-incident]="item.incidenteCritico" [style.animation-delay.ms]="isInitialLoad() ? (300 + (weekIndex * 50) + (itemIndex * 30)) : 0">
+                      <div class="history-item__date-block">
+                        <span class="history-item__weekday">{{ getWeekDay(item.date) }}</span>
+                        <span class="history-item__day">{{ getDay(item.date) }}</span>
                       </div>
-                    }
-                  </a>
-                }
-              </div>
-            }
-          </div>
-        }
+
+                      <div class="history-item__details">
+                        <span class="history-item__machine">{{ item.machine }}</span>
+                        @if (item.dieselLiters > 0) {
+                          <div class="history-item__diesel-badge text-error/80">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M19.77 7.23l.01-.01-3.72-3.72L15 4.56l2.11 2.11c-.94.36-1.61 1.26-1.61 2.33 0 1.38 1.12 2.5 2.5 2.5.36 0 .69-.08 1-.21v7.21c0 .55-.45 1-1 1s-1-.45-1-1V14c0-1.1-.9-2-2-2h-1V5c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2v16h10v-7.5h1.5v5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V9c0-.69-.28-1.32-.73-1.77zM12 10H6V5h6v5zm6 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"/>
+                            </svg>
+                            <span class="font-normal">-{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }} ({{ item.dieselLiters }}L)</span>
+                          </div>
+                        }
+                        @if (item.incidenteCritico) {
+                          <div class="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded mt-1 inline-block">
+                            🚨 Incidente Crítico
+                          </div>
+                        }
+                      </div>
+
+                      <div class="history-item__financials">
+                        <span class="history-item__revenue-value">+{{ item.revenue | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                      </div>
+
+                      @if (item.observations) {
+                        <div class="history-item__alert">
+                          <span>💬</span>
+                          <span>{{ item.observations }}</span>
+                        </div>
+                      }
+                    </a>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
       </section>
       }
     </main>
@@ -314,8 +301,73 @@ interface WeekGroup {
     }
 
     /* ============================================
+       ESTILOS DE TABS FLUIDAS
+       ============================================ */
+    .tab-button {
+      transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+      cursor: pointer;
+      position: relative;
+      will-change: background-color, color, box-shadow;
+    }
+
+    .tab-button.tab-active {
+      background-color: white;
+      box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+      border: 1px solid #e2e8f0;
+      color: hsl(var(--p));
+      font-weight: 700;
+    }
+
+    .tab-button.tab-inactive {
+      background-color: transparent;
+      border: 1px solid transparent;
+      color: hsl(var(--bc) / 0.6);
+    }
+
+    .tab-button.tab-inactive:hover {
+      background-color: hsl(var(--b2) / 0.5);
+      color: hsl(var(--bc) / 0.8);
+    }
+
+    /* Contenedor del contenido de tabs con transición suave */
+    .tab-content-wrapper {
+      position: relative;
+      min-height: 100px;
+    }
+
+    .tab-content-empty {
+      padding: 2rem;
+      text-align: left;
+      padding-left: 1rem;
+      border-left: 4px solid hsl(var(--p));
+      animation: tabContentFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .history-container {
+      animation: tabContentFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes tabContentFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Cuando el contenido ya está cargado, usar transiciones más rápidas */
+    .historial-content-loaded .history-container,
+    .historial-content-loaded .tab-content-empty {
+      animation: tabContentFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ============================================
        ANIMACIONES DE ENTRADA ELEGANTES - HISTORIAL
        Transición slide desde la derecha (profundidad/hijo)
+       Solo se aplican en la carga inicial
        ============================================ */
     
     /* Fondo: Fade-in suave */
@@ -323,6 +375,7 @@ interface WeekGroup {
       animation: historialBackgroundEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
       opacity: 0;
       will-change: opacity;
+      animation-fill-mode: both;
     }
     
     @keyframes historialBackgroundEnter {
@@ -340,73 +393,152 @@ interface WeekGroup {
       opacity: 0;
       transform: translateX(50px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
+      visibility: hidden; /* Ocultar hasta que la animación comience para prevenir flash */
+    }
+    
+    /* Cuando el contenido está listo, hacer visible */
+    .historial-header-enter.historial-content-ready {
+      visibility: visible;
+    }
+    
+    /* Ocultar el header completamente hasta que isContentReady sea true (solo si tiene historial-header-enter) */
+    header.card.historial-header-enter:not(.historial-content-ready) {
+      visibility: hidden;
+    }
+
+    /* Cuando no es carga inicial, el header aparece sin animación */
+    header.card:not(.historial-header-enter) {
+      opacity: 1;
+      transform: translateX(0);
+      visibility: visible;
     }
     
     @keyframes historialHeaderEnter {
       0% {
         opacity: 0;
         transform: translateX(50px);
+        visibility: visible; /* Hacer visible cuando la animación comienza */
       }
       100% {
         opacity: 1;
         transform: translateX(0);
+        visibility: visible;
       }
     }
     
-    /* Contenido principal: Slide desde la derecha con delay */
+    /* Contenido principal: Slide desde la derecha con delay (solo en carga inicial) */
     .historial-content-enter {
       animation: historialContentEnter 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 150ms forwards;
       opacity: 0;
       transform: translateX(50px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
+      visibility: hidden; /* Ocultar hasta que la animación comience para prevenir flash */
+    }
+    
+    /* Cuando el contenido está listo, hacer visible */
+    .historial-content-enter.historial-content-ready {
+      visibility: visible;
+    }
+
+    /* Cuando ya está cargado, no aplicar animación de entrada */
+    .historial-content-loaded {
+      opacity: 1;
+      transform: translateX(0);
+      visibility: visible;
+    }
+    
+    /* Ocultar la sección completamente hasta que isContentReady sea true (solo si tiene historial-content-enter) */
+    section.historial-content-enter:not(.historial-content-ready) {
+      visibility: hidden;
+    }
+    
+    /* Cuando no es carga inicial, la sección aparece sin animación */
+    section:not(.historial-content-enter) {
+      visibility: visible;
     }
     
     @keyframes historialContentEnter {
       0% {
         opacity: 0;
         transform: translateX(50px);
+        visibility: visible; /* Hacer visible cuando la animación comienza */
       }
       100% {
         opacity: 1;
         transform: translateX(0);
+        visibility: visible;
       }
     }
     
-    /* Headers de semana: Fade-up con stagger */
+    /* Headers de semana: Fade-up con stagger (solo en carga inicial) */
     .historial-week-header-enter {
       animation: historialWeekHeaderEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
       opacity: 0;
       transform: translateY(15px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
+      visibility: hidden; /* Ocultar hasta que la animación comience para prevenir flash */
+    }
+    
+    /* Cuando el contenido está listo, hacer visible los headers */
+    .historial-content-ready .historial-week-header-enter {
+      visibility: visible;
+    }
+
+    /* Cuando no es carga inicial, el header aparece sin animación */
+    .week-header:not(.historial-week-header-enter) {
+      opacity: 1;
+      transform: translateY(0);
+      visibility: visible;
     }
     
     @keyframes historialWeekHeaderEnter {
       0% {
         opacity: 0;
         transform: translateY(15px);
+        visibility: visible; /* Hacer visible cuando la animación comienza */
       }
       100% {
         opacity: 1;
         transform: translateY(0);
+        visibility: visible;
       }
     }
     
-    /* Items de historial: Slide desde la derecha con stagger individual */
+    /* Items de historial: Slide desde la derecha con stagger individual (solo en carga inicial) */
     .historial-item-enter {
       animation: historialItemEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
       opacity: 0;
       transform: translateX(30px);
       will-change: opacity, transform;
+      animation-fill-mode: both;
+      visibility: hidden; /* Ocultar hasta que la animación comience para prevenir flash */
+    }
+    
+    /* Cuando el contenido está listo, hacer visible los items */
+    .historial-content-ready .historial-item-enter {
+      visibility: visible;
+    }
+
+    /* Cuando no es carga inicial, los items aparecen sin animación */
+    .history-item:not(.historial-item-enter) {
+      opacity: 1;
+      transform: translateX(0);
+      visibility: visible;
     }
     
     @keyframes historialItemEnter {
       0% {
         opacity: 0;
         transform: translateX(30px);
+        visibility: visible; /* Hacer visible cuando la animación comienza */
       }
       100% {
         opacity: 1;
         transform: translateX(0);
+        visibility: visible;
       }
     }
     
@@ -429,10 +561,15 @@ export class MiHistorial implements OnInit {
   private dailyRecordService = inject(DailyRecordService);
   private workerService = inject(WorkerService);
   private loadingStateService = inject(LoadingStateService);
+  private injector = inject(Injector);
 
   selectedPeriod = signal<'week' | 'month' | 'previous'>('week');
   isLoading = signal(true);
   loadingState = this.loadingStateService.createLoadingState();
+  // Controlar si es la carga inicial (para animaciones) o cambio de tab
+  isInitialLoad = signal(true);
+  // Flag para controlar cuándo mostrar el contenido (previene flash antes de animaciones)
+  isContentReady = signal(false);
   
   // Obtener perfil del trabajador para mostrar la máquina asignada
   private workerProfile = toSignal(
@@ -502,10 +639,49 @@ export class MiHistorial implements OnInit {
   private historyEffect = effect(() => {
     // Monitorear cuando el observable emite
     if (this.historyEmitted() && this.loadingState.isLoading()) {
-      this.isLoading.set(false);
       this.loadingState.setDataLoaded();
+      
+      // Si es la carga inicial, usar un enfoque diferente para prevenir flash
+      if (this.isInitialLoad()) {
+        // Primero cambiar isLoading para que el contenido se renderice (pero estará oculto)
+        this.isLoading.set(false);
+        
+        // Usar runInInjectionContext para poder usar afterNextRender dentro del effect
+        runInInjectionContext(this.injector, () => {
+          afterNextRender(() => {
+            // Usar doble requestAnimationFrame para asegurar que las animaciones CSS se hayan aplicado
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                // Ahora hacer visible el contenido
+                this.isContentReady.set(true);
+              });
+            });
+          });
+        });
+      } else {
+        // Si no es carga inicial, mostrar inmediatamente
+        this.isContentReady.set(true);
+        this.isLoading.set(false);
+      }
     }
   });
+
+  // Effect para marcar cuando se completa la carga inicial
+  private initialLoadEffect = effect(() => {
+    if (!this.isLoading() && this.isInitialLoad()) {
+      // Esperar un poco para que las animaciones se completen
+      setTimeout(() => {
+        this.isInitialLoad.set(false);
+      }, 1000);
+    }
+  });
+
+  // Método para cambiar de tab con transición suave
+  changeTab(period: 'week' | 'month' | 'previous'): void {
+    if (this.selectedPeriod() !== period) {
+      this.selectedPeriod.set(period);
+    }
+  }
 
   // Filtrar datos según el período seleccionado (filtrado local)
   private historyData = computed((): DailyRecordHistoryResponse[] => {
@@ -583,6 +759,7 @@ export class MiHistorial implements OnInit {
     // Iniciar estado de carga
     this.loadingState.setLoading(true);
     this.isLoading.set(true);
+    this.isContentReady.set(false);
   }
 
   // Los datos ya vienen filtrados del backend según el rango

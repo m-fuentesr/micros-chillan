@@ -1,4 +1,4 @@
-import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed, effect } from '@angular/core';
+import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed, effect, OnInit, OnDestroy } from '@angular/core';
 import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
 import { Navbar } from './shared/navbar/navbar';
 import { NavbarTrabajador } from './shared/navbar-trabajador/navbar-trabajador';
@@ -12,6 +12,11 @@ import { filter } from 'rxjs';
   selector: 'app-root',
   imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule],
   template: `
+    <!-- Loading overlay durante verificación inicial de sesión -->
+    @if (showInitialLoading()) {
+      <div class="session-verification-overlay"></div>
+    }
+    
     <!-- Overlay de transición según el tipo (admin o worker) -->
     @if (transitionService.isTransitioning()) {
       @if (transitionService.transitionType() === 'admin') {
@@ -180,12 +185,43 @@ import { filter } from 'rxjs';
         pointer-events: none;
       }
     }
+    
+    /* ============================================
+       SESSION VERIFICATION OVERLAY
+       Fondo blanco simple durante verificación
+       ============================================ */
+    .session-verification-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99998;
+      background: rgba(255, 255, 255, 1);
+      animation: sessionVerificationEnter 400ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      will-change: opacity;
+    }
+    
+    @keyframes sessionVerificationEnter {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .session-verification-overlay {
+        animation: none !important;
+      }
+    }
     `
   ],
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class App {
+export class App implements OnInit, OnDestroy {
   private auth = inject(AuthService);
   private router = inject(Router);
   transitionService = inject(TransitionService);
@@ -193,6 +229,14 @@ export class App {
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
+  
+  private zoomFixTimeout: any = null;
+  private resizeHandler = this.handleResize.bind(this);
+  
+  // Computed para mostrar loading durante inicialización de sesión
+  showInitialLoading = computed(() => {
+    return this.auth.isInitializing() && !this.auth.currentUser();
+  });
   
   // Verificar que no estemos en login antes de mostrar el navbar
   shouldShowAdminNav = computed(() => {
@@ -275,5 +319,96 @@ export class App {
 
   onSidebarCollapseChange(collapsed: boolean): void {
     this.sidebarCollapsed.set(collapsed);
+  }
+
+  ngOnInit(): void {
+    // Detectar y corregir problemas de zoom al cambiar entre vista móvil/desktop
+    if (typeof window !== 'undefined') {
+      // Resetear zoom al cargar si detectamos un zoom anormal
+      this.fixZoomOnLoad();
+      
+      // Escuchar cambios de tamaño de ventana (útil cuando cambias de móvil a desktop)
+      window.addEventListener('resize', this.resizeHandler);
+      
+      // También escuchar cambios de orientación en dispositivos móviles
+      window.addEventListener('orientationchange', () => {
+        setTimeout(() => this.checkAndFixZoom(), 300);
+      });
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Limpiar el timeout si existe
+    if (this.zoomFixTimeout) {
+      clearTimeout(this.zoomFixTimeout);
+    }
+    
+    // Remover listeners
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', this.resizeHandler);
+    }
+  }
+
+  private handleResize(): void {
+    // Debounce para evitar llamadas excesivas
+    if (this.zoomFixTimeout) {
+      clearTimeout(this.zoomFixTimeout);
+    }
+    this.zoomFixTimeout = setTimeout(() => {
+      this.checkAndFixZoom();
+    }, 300);
+  }
+
+  private fixZoomOnLoad(): void {
+    // Esperar a que el DOM esté listo
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        setTimeout(() => this.checkAndFixZoom(), 100);
+      });
+    } else {
+      setTimeout(() => this.checkAndFixZoom(), 100);
+    }
+  }
+
+  private checkAndFixZoom(): void {
+    // Verificar si el zoom visual es diferente al esperado
+    const viewport = document.querySelector('meta[name="viewport"]');
+    if (!viewport) return;
+
+    // Obtener el ancho real de la ventana
+    const windowWidth = window.innerWidth;
+    
+    // Si estamos en desktop (ancho > 1024px) y el zoom parece estar aplicado incorrectamente
+    if (windowWidth > 1024) {
+      // Calcular el zoom actual aproximado comparando innerWidth con outerWidth
+      // Nota: outerWidth puede no ser confiable en todos los navegadores, así que usamos otra estrategia
+      
+      // Obtener el ancho del body para comparar
+      const bodyWidth = document.body.offsetWidth;
+      
+      // Si hay una discrepancia significativa, puede ser un problema de zoom
+      // En desktop normal, window.innerWidth debería ser cercano al ancho del viewport
+      const expectedWidth = Math.min(window.screen.width, 1920); // Asumir máximo 1920px para desktop
+      
+      // Si el ancho es significativamente menor que el esperado, puede ser un problema de zoom
+      if (windowWidth < expectedWidth * 0.8 && windowWidth > 400) {
+        // Forzar actualización del viewport para resetear el zoom
+        const currentContent = viewport.getAttribute('content') || '';
+        const newContent = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
+        
+        // Solo actualizar si es diferente
+        if (currentContent !== newContent) {
+          viewport.setAttribute('content', newContent);
+          
+          // Pequeño delay y luego verificar si se corrigió
+          setTimeout(() => {
+            // Si aún hay problema, intentar forzar un reflow
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // Trigger reflow
+            document.body.style.display = '';
+          }, 50);
+        }
+      }
+    }
   }
 }

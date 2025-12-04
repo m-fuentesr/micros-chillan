@@ -50,7 +50,9 @@ async def get_active_machines():
     return items
 
 
-async def get_summary(current_user: dict):
+from app.schemas.user import UserInDB
+
+async def get_summary(current_user: UserInDB):
     """
     Devuelve:
     {

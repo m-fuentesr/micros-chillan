@@ -147,13 +147,22 @@ export class DailyRecordService {
   createDailyRecord(record: CreateDailyRecordDto): Observable<DailyRecord> {
     // El backend espera JSON con estos campos según el schema:
     // maquina_id, fecha, monto_recaudado, litros_diesel, costo_total_diesel, 
-    // imagen_url, observaciones, incidente_critico
+    // imagen_url (comprobante registro diario), imagen_comprobante_diesel_url (opcional),
+    // observaciones, incidente_critico
     
-    // Extraer imagen_url del comprobante_diesel si existe
+    // Extraer imagen_url del comprobante_registro (obligatorio)
     let imagen_url = '';
+    if (record.comprobante_registro?.imagen) {
+      if (typeof record.comprobante_registro.imagen === 'string') {
+        imagen_url = record.comprobante_registro.imagen;
+      }
+    }
+    
+    // Extraer imagen_comprobante_diesel_url del comprobante_diesel (opcional)
+    let imagen_comprobante_diesel_url = '';
     if (record.comprobante_diesel?.imagen) {
       if (typeof record.comprobante_diesel.imagen === 'string') {
-        imagen_url = record.comprobante_diesel.imagen;
+        imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
       }
     }
     
@@ -163,16 +172,21 @@ export class DailyRecordService {
       monto_recaudado: record.recaudado || 0,
       litros_diesel: record.litros_diesel || null,
       costo_total_diesel: record.costo_diesel || null,
-      imagen_url: imagen_url, // URL de la imagen subida a Supabase Storage
+      imagen_url: imagen_url, // Comprobante del registro diario (obligatorio)
+      imagen_comprobante_diesel_url: imagen_comprobante_diesel_url || null, // Comprobante de diesel (opcional)
       observaciones: record.observaciones || null,
       incidente_critico: record.incidente_critico || false
     };
     
-    // Debug: Verificar que la URL se esté pasando
+    // Debug: Verificar que las URLs se estén pasando
     if (imagen_url) {
-      console.log('📸 Enviando imagen_url al backend:', imagen_url);
+      console.log('📸 Enviando imagen_url (comprobante registro) al backend:', imagen_url);
     } else {
-      console.log('⚠️ No hay imagen_url en el payload');
+      console.log('⚠️ No hay imagen_url (comprobante registro) en el payload');
+    }
+    
+    if (imagen_comprobante_diesel_url) {
+      console.log('⛽ Enviando imagen_comprobante_diesel_url al backend:', imagen_comprobante_diesel_url);
     }
 
     return this.http.post<DailyRecord>(`${this.apiUrl}/api/daily-records`, payload)
@@ -191,14 +205,15 @@ export class DailyRecordService {
    * Endpoint: PUT /api/daily-records/:id
    */
   updateDailyRecord(id: string, record: UpdateDailyRecordDto): Observable<DailyRecord> {
-    // Si hay un archivo de imagen, usar FormData
-    const hasFile = record.comprobante_diesel?.imagen instanceof File;
+    // Si hay archivos de imagen, usar FormData
+    const hasFileRegistro = record.comprobante_registro?.imagen instanceof File;
+    const hasFileDiesel = record.comprobante_diesel?.imagen instanceof File;
     
-    if (hasFile) {
+    if (hasFileRegistro || hasFileDiesel) {
       const formData = new FormData();
       Object.keys(record).forEach(key => {
         const value = (record as any)[key];
-        if (value !== undefined && key !== 'comprobante_diesel') {
+        if (value !== undefined && key !== 'comprobante_registro' && key !== 'comprobante_diesel') {
           if (typeof value === 'object') {
             formData.append(key, JSON.stringify(value));
           } else {
@@ -206,8 +221,11 @@ export class DailyRecordService {
           }
         }
       });
+      if (record.comprobante_registro?.imagen instanceof File) {
+        formData.append('comprobante_registro_imagen', record.comprobante_registro.imagen);
+      }
       if (record.comprobante_diesel?.imagen instanceof File) {
-        formData.append('comprobante_imagen', record.comprobante_diesel.imagen);
+        formData.append('comprobante_diesel_imagen', record.comprobante_diesel.imagen);
       }
       
       return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, formData)
@@ -215,7 +233,21 @@ export class DailyRecordService {
           catchError(() => of(this.getMockDailyRecord(id)))
         );
     } else {
-      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, record)
+      // Preparar payload JSON con URLs de imágenes si son strings
+      const payload: any = { ...record };
+      
+      if (record.comprobante_registro?.imagen && typeof record.comprobante_registro.imagen === 'string') {
+        payload.imagen_url = record.comprobante_registro.imagen;
+      }
+      if (record.comprobante_diesel?.imagen && typeof record.comprobante_diesel.imagen === 'string') {
+        payload.imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
+      }
+      
+      // Remover comprobantes del payload ya que se procesaron
+      delete payload.comprobante_registro;
+      delete payload.comprobante_diesel;
+      
+      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, payload)
         .pipe(
           catchError(() => of(this.getMockDailyRecord(id)))
         );

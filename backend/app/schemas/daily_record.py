@@ -8,7 +8,8 @@ class DailyRecordCreate(BaseModel):
     monto_recaudado: int
     litros_diesel: Optional[float] = None
     costo_total_diesel: Optional[int] = None
-    imagen_url: str
+    imagen_url: str  # Comprobante del registro diario (obligatorio)
+    imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel (opcional)
     observaciones: Optional[str] = None
     incidente_critico: bool = False  # El checkbox (True/False)
 
@@ -22,7 +23,8 @@ class DailyRecordResponse(BaseModel):
     monto_recaudado: int
     litros_diesel: Optional[float]
     costo_total_diesel: Optional[float]
-    imagen_url: str
+    imagen_url: str  # Comprobante del registro diario
+    imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
     observaciones: Optional[str]
     estado: str
     #Campo calculado
