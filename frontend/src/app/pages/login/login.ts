@@ -1,9 +1,11 @@
-import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, computed } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../shared/services/auth.service';
 import { TransitionService } from '../../shared/services/transition.service';
+import { TransitionOrchestratorService } from '../../shared/services/transition-orchestrator.service';
+import { SpinnerService } from '../../shared/services/spinner.service';
 
 @Component({
   selector: 'app-login',
@@ -17,8 +19,7 @@ import { TransitionService } from '../../shared/services/transition.service';
       @if (!expanding()) {
       <!-- Header móvil -->
       <div
-        class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0 login-leaving"
-        [class.login-leaving-active]="leaving()"
+        class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
       >
         <!-- Patrón de Grilla Tech (móvil) -->
         <div class="absolute inset-0 bg-grid-pattern z-0 pointer-events-none"></div>
@@ -101,7 +102,7 @@ import { TransitionService } from '../../shared/services/transition.service';
       <!-- Panel formulario -->
       <div class="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 lg:p-16 z-10 relative">
         <div
-          class="w-full max-w-md bg-base-100 rounded-2xl shadow-xl lg:shadow-none p-6 sm:p-8 mt-[180px] sm:mt-[200px] lg:mt-0 animate-entrance-zoom delay-mobile-400 delay-100 login-leaving"
+          class="w-full max-w-md bg-base-100 rounded-2xl shadow-xl lg:shadow-none p-6 sm:p-8 mt-[180px] sm:mt-[200px] lg:mt-0 animate-entrance-zoom delay-mobile-400 delay-100 login-leaving relative"
           [class.login-leaving-active]="leaving()"
         >
           <div class="text-left mb-8 space-y-2 border-l-4 border-l-primary pl-4 animate-entrance-fade-up delay-mobile-500 delay-200">
@@ -212,7 +213,7 @@ import { TransitionService } from '../../shared/services/transition.service';
                 [class.state-loading]="loading() && !loginSuccess() && !expanding()"
                 [class.state-success]="loginSuccess() && !expanding()"
                 [class.state-expanding]="expanding()"
-                [disabled]="isButtonDisabled()"
+                [disabled]="loginForm.invalid || loading() || expanding()"
               >
                 <!-- Capa de profundidad (Neumorphism sutil) -->
                 <div class="button-depth-layer"></div>
@@ -244,15 +245,17 @@ import { TransitionService } from '../../shared/services/transition.service';
               </button>
             </div>
 
+          </form>
+
             <p
               *ngIf="error()"
-              class="mt-4 text-sm font-medium text-error text-center whitespace-pre-line animate-pulse"
+              class="absolute left-0 right-0 text-sm font-medium text-error text-center whitespace-pre-line animate-pulse pointer-events-none"
+              style="top: calc(100% + 1rem);"
             >
               {{ error() }}
             </p>
-          </form>
 
-          <div class="mt-8 text-center animate-entrance-fade-up delay-mobile-1000 delay-700">
+          <div class="text-center animate-entrance-fade-up delay-mobile-1000 delay-700 absolute bottom-0 left-0 right-0 pb-6 sm:pb-8">
             <div
               class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200/50 text-xs text-base-content/60"
             >
@@ -535,6 +538,18 @@ import { TransitionService } from '../../shared/services/transition.service';
       position: relative;
     }
 
+    /* Asegurar que el contenedor principal tenga padding-bottom para el mensaje de error y RRHH */
+    .w-full.max-w-md {
+      padding-bottom: 6rem; /* Espacio para mensaje de error y RRHH */
+      min-height: fit-content;
+    }
+
+    @media (min-width: 640px) {
+      .w-full.max-w-md {
+        padding-bottom: 7rem;
+      }
+    }
+
     /* ============================================
        BOTÓN PREMIUM - Base Arquitectónica
        ============================================ */
@@ -569,7 +584,7 @@ import { TransitionService } from '../../shared/services/transition.service';
     }
 
     /* Estado IDLE - Botón ancho con texto */
-    .button-morph-premium.state-idle:not(:disabled) {
+    .button-morph-premium.state-idle {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
@@ -587,54 +602,17 @@ import { TransitionService } from '../../shared/services/transition.service';
       border-radius: 0.75rem;
     }
 
-    /* Estado DISABLED - Botón gris cuando está deshabilitado (solo en estado idle) */
-    .button-morph-premium.state-idle:disabled {
+    .button-morph-premium:disabled {
       opacity: 1; /* Mantener opacidad completa incluso cuando está disabled */
       cursor: not-allowed;
       transform: none !important;
-      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Gris cuando está deshabilitado */
-      box-shadow: 
-        0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
-      width: 100%;
-      height: 3.5rem;
-      min-width: auto;
-      border-radius: 0.75rem;
-      clip-path: inset(0 round 0.75rem);
-      color: white;
     }
 
-    .button-morph-premium.state-idle:disabled:hover {
+    .button-morph-premium:disabled:hover {
       transform: none !important;
-      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Mantener gris en hover */
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
-    }
-
-    /* Los estados loading y success mantienen sus colores incluso cuando están disabled */
-    .button-morph-premium.state-loading:disabled {
-      opacity: 1;
-      cursor: not-allowed;
-      /* NO aplicar transform: none para permitir animaciones del botón si las hay */
-      /* Mantener el color azul del loading */
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-      box-shadow: 
-        0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
-    }
-
-    .button-morph-premium.state-success:disabled {
-      opacity: 1;
-      cursor: not-allowed;
-      /* NO aplicar transform: none para permitir la animación successPulse */
-      /* Mantener el color verde del success */
-      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
-      box-shadow: 
-        0 0 0 4px rgba(16, 185, 129, 0.18),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.3) !important;
-      /* Mantener la animación de success - esta animación usa transform */
-      animation: successPulse 750ms cubic-bezier(0.22, 0.61, 0.36, 1);
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
     }
 
     .button-morph-premium.state-idle:hover:not(:disabled) {
@@ -1433,8 +1411,11 @@ import { TransitionService } from '../../shared/services/transition.service';
 export class Login {
   private fb = inject(FormBuilder);
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private auth = inject(AuthService);
   private transitionService = inject(TransitionService);
+  private orchestrator = inject(TransitionOrchestratorService);
+  private spinnerService = inject(SpinnerService);
 
   loginForm: FormGroup;
   loading = signal(false);
@@ -1448,59 +1429,17 @@ export class Login {
   submitted = signal(false);
   passwordErrorShown = signal(false);
 
-  // Signal para rastrear si el formulario es válido
-  formValid = signal(false);
-
-  // Computed signal para determinar si el botón debe estar deshabilitado
-  // Considera todos los estados que requieren deshabilitación para evitar interrupciones
-  readonly isButtonDisabled = computed(() => {
-    return (
-      !this.formValid() ||           // Formulario inválido
-      this.loading() ||              // Cargando (petición en curso)
-      this.loginSuccess() ||         // Éxito (mostrando checkmark - evitar clicks múltiples)
-      this.expanding() ||            // Expansión (transición de salida)
-      this.leaving() ||              // Leaving (fade-out antes de navegar)
-      this.shakeError()              // Shake de error (durante animación de error)
-    );
-  });
-
   constructor() {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]],
     });
 
-    // Suscribirse a los cambios del formulario para actualizar formValid
-    // Usar valueChanges y statusChanges para asegurar reactividad completa
-    this.loginForm.valueChanges.subscribe(() => {
-      this.formValid.set(this.loginForm.valid);
-    });
-
-    this.loginForm.statusChanges.subscribe(() => {
-      this.formValid.set(this.loginForm.valid);
-    });
-
-    // Inicializar el estado del formulario
-    this.formValid.set(this.loginForm.valid);
-
     // Si ya hay una sesión activa, redirige automáticamente
     // PERO NO durante la animación de expansión / salida ni durante un login manual en curso
     effect(() => {
-      // NO redirigir si la sesión aún se está inicializando
-      // Esto previene redirecciones prematuras cuando se abre una nueva pestaña
-      if (this.auth.isInitializing()) {
-        return;
-      }
-
       const user = this.auth.currentUser();
       if (!user) {
-        return;
-      }
-
-      // Verificar que el token exista y sea válido antes de redirigir
-      // Esto asegura que la sesión esté completamente validada
-      const token = this.auth.token;
-      if (!token) {
         return;
       }
 
@@ -1539,20 +1478,15 @@ export class Login {
     if (this.loginForm.invalid) {
       this.loginForm.markAllAsTouched();
       this.passwordErrorShown.set(true);
-      // Activar shake si el formulario es inválido
-      this.shakeError.set(true);
-      setTimeout(() => this.shakeError.set(false), 500);
       return;
     }
 
     const { email, password } = this.loginForm.value;
-    // Resetear todos los estados antes de iniciar el login
     this.loading.set(true);
     this.error.set(null);
-    this.shakeError.set(false); // Resetear shake inmediatamente al iniciar nuevo intento
+    this.shakeError.set(false);
     this.loginSuccess.set(false);
     this.expanding.set(false);
-    this.leaving.set(false);
 
     try {
       await this.auth.loginWithCredentials(email, password);
@@ -1587,32 +1521,40 @@ export class Login {
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
         } else {
-          // Transición compleja para admin: expansión blanca
+          // REDISEÑO: Usar orchestrator para transición coordinada admin
+          // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
+          this.spinnerService.show();
+          
+          // Fase 2: Iniciar salida del login
           this.leaving.set(true);
+          
+          // IMPORTANTE: Activar orchestrator ANTES de navegar para que el dashboard se renderice oculto
+          // Esto evita que el main aparezca visible antes de la animación
+          // El orchestrator se ejecutará en background
+          this.orchestrator.transitionFromLoginToDashboard();
+          
           await new Promise(resolve => setTimeout(resolve, 650));
-
-          // Activar expansión ripple y animaciones de salida
+          
+          // Fase 3: Activar expansión y overlay
           this.expanding.set(true);
-          
-          // Activar el overlay de transición global ANTES de navegar
           this.transitionService.startTransition('admin');
-          
-          // Esperar un momento para que el overlay se active
           await new Promise(resolve => setTimeout(resolve, 50));
           
-          // Esperar a que la animación termine completamente (900ms) antes de navegar
-          await new Promise(resolve => setTimeout(resolve, 900));
-          
-          // Navegar después de la animación
+          // Fase 4: Navegar DESPUÉS de activar el orchestrator
+          // El orchestrator ya está en 'login-exiting', así que el dashboard se renderizará oculto
           await this.router.navigate([target]);
           
-          // Esperar a que el dashboard se cargue antes de ocultar el overlay
-          await new Promise(resolve => setTimeout(resolve, 200));
+          // Fase 5: El orchestrator ya está corriendo en background
+          // No necesitamos esperarlo aquí, ya se activó arriba
+          // Solo esperamos a que termine la transición completa
+          const totalTime = this.orchestrator.TIMELINE.loginTotalExit + this.orchestrator.TIMELINE.dashboardTotalEntry;
+          await new Promise(resolve => setTimeout(resolve, totalTime));
           
-          // Ocultar el overlay de transición
+          // Fase 6: Ocultar overlay y spinner después de que el dashboard esté listo
           this.transitionService.endTransition();
+          this.spinnerService.hide();
           
-          // Resetear el estado de expansión después de navegar
+          // Resetear estado de expansión
           setTimeout(() => {
             this.expanding.set(false);
           }, 100);
@@ -1671,15 +1613,9 @@ export class Login {
         }
         
         this.error.set(userFriendlyMessage);
-        // Activar animación de shake y mantener el botón deshabilitado durante la animación
+        // Activar animación de shake
         this.shakeError.set(true);
-        // Deshabilitar el botón durante la animación de shake (500ms)
-        // Esto evita clicks múltiples durante la animación de error
-        setTimeout(() => {
-          this.shakeError.set(false);
-          // El botón se habilitará automáticamente cuando shakeError sea false
-          // siempre que no esté en otros estados (loading, success, etc.)
-        }, 500);
+        setTimeout(() => this.shakeError.set(false), 500);
       } else {
         // Si hay usuario después del retry, el login fue exitoso
         // Mostrar estado de éxito igual que en el caso exitoso normal
@@ -1711,32 +1647,40 @@ export class Login {
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
         } else {
-          // Transición compleja para admin: expansión blanca
+          // REDISEÑO: Usar orchestrator para transición coordinada admin
+          // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
+          this.spinnerService.show();
+          
+          // Fase 2: Iniciar salida del login
           this.leaving.set(true);
+          
+          // IMPORTANTE: Activar orchestrator ANTES de navegar para que el dashboard se renderice oculto
+          // Esto evita que el main aparezca visible antes de la animación
+          // El orchestrator se ejecutará en background
+          this.orchestrator.transitionFromLoginToDashboard();
+          
           await new Promise(resolve => setTimeout(resolve, 650));
-
-          // Activar expansión ripple y animaciones de salida
+          
+          // Fase 3: Activar expansión y overlay
           this.expanding.set(true);
-          
-          // Activar el overlay de transición global ANTES de navegar
           this.transitionService.startTransition('admin');
-          
-          // Esperar un momento para que el overlay se active
           await new Promise(resolve => setTimeout(resolve, 50));
           
-          // Esperar a que la animación termine completamente (900ms) antes de navegar
-          await new Promise(resolve => setTimeout(resolve, 900));
-          
-          // Navegar después de la animación
+          // Fase 4: Navegar DESPUÉS de activar el orchestrator
+          // El orchestrator ya está en 'login-exiting', así que el dashboard se renderizará oculto
           await this.router.navigate([target]);
           
-          // Esperar a que el dashboard se cargue antes de ocultar el overlay
-          await new Promise(resolve => setTimeout(resolve, 200));
+          // Fase 5: El orchestrator ya está corriendo en background
+          // No necesitamos esperarlo aquí, ya se activó arriba
+          // Solo esperamos a que termine la transición completa
+          const totalTime = this.orchestrator.TIMELINE.loginTotalExit + this.orchestrator.TIMELINE.dashboardTotalEntry;
+          await new Promise(resolve => setTimeout(resolve, totalTime));
           
-          // Ocultar el overlay de transición
+          // Fase 6: Ocultar overlay y spinner después de que el dashboard esté listo
           this.transitionService.endTransition();
+          this.spinnerService.hide();
           
-          // Resetear el estado de expansión después de navegar
+          // Resetear estado de expansión
           setTimeout(() => {
             this.expanding.set(false);
           }, 100);

@@ -14,9 +14,9 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
   selector: 'app-maquinas',
   imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6">
       <!-- Header -->
-      <div class="animate-header-enter">
+      <div class="page-entry-header">
         <div class="flex justify-between items-start flex-wrap gap-4">
           <div>
             <h1 class="text-4xl font-bold mb-2">Lista de Máquinas (Microbuses)</h1>
@@ -45,7 +45,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
       }
 
       <!-- Layout Principal: Lista de Máquinas (Full Width) -->
-      <div class="animate-page-enter" style="animation-delay: 200ms; animation-fill-mode: both;">
+      <div class="page-entry-content">
         @if (isLoading() && machines().length === 0) {
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             @for (i of [1,2,3,4,5,6]; track i) {

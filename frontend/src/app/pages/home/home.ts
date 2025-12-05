@@ -16,7 +16,7 @@ import { TransitionService } from '../../shared/services/transition.service';
   template: `
     <div class="space-y-6">
       <!-- Header - Aparece primero -->
-      <div class="dashboard-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
         <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Dashboard del Administrador</h1>
         <p class="text-base-content/70 italic">
           Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
@@ -24,14 +24,15 @@ import { TransitionService } from '../../shared/services/transition.service';
       </div>
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 dashboard-content-enter">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 page-entry-content">
         @if (isLoading()) {
           @for (i of [1,2,3,4]; track i) {
             <app-loading-skeleton type="kpi" />
           }
         } @else {
           <!-- Card 1: Ganancia Neta Total -->
-          <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter group overflow-hidden relative">
+          <!-- CORREGIDO: Usar animate-card-enter-in-context para respetar el contexto de page-entry-content -->
+          <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-success/10 group-hover:text-success/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -45,7 +46,8 @@ import { TransitionService } from '../../shared/services/transition.service';
         </div>
 
         <!-- Card 2: Ingreso Total -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-delay-1 group overflow-hidden relative">
+        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-1 -->
+        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-1 group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-primary/10 group-hover:text-primary/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -59,7 +61,8 @@ import { TransitionService } from '../../shared/services/transition.service';
         </div>
 
         <!-- Card 3: Estado de Flota -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-delay-2 group overflow-hidden relative">
+        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-2 -->
+        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-2 group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-info/10 group-hover:text-info/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -73,7 +76,8 @@ import { TransitionService } from '../../shared/services/transition.service';
         </div>
 
         <!-- Card 4: Resumen de Alertas -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-delay-3 group overflow-hidden relative">
+        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-3 -->
+        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-3 group overflow-hidden relative">
           <div class="absolute -right-4 -bottom-4 text-warning/10 group-hover:text-warning/20 transition-colors duration-300 pointer-events-none">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -110,7 +114,7 @@ import { TransitionService } from '../../shared/services/transition.service';
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6 dashboard-content-enter-delay-1">
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6 page-entry-content-delay-1">
         <!-- Gráfico Financiero (2/3 del ancho) -->
         <div class="xl:col-span-2">
           <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
@@ -127,7 +131,7 @@ import { TransitionService } from '../../shared/services/transition.service';
       </div>
 
       <!-- Zona de Detalle: Tabla Full Width -->
-      <div class="border-t-2 border-t-base-300 pt-6 dashboard-content-enter-delay-2">
+      <div class="border-t-2 border-t-base-300 pt-6 page-entry-content-delay-2">
         @if (isLoading()) {
           <app-loading-skeleton type="table" [count]="5" />
         } @else {
@@ -141,94 +145,8 @@ import { TransitionService } from '../../shared/services/transition.service';
   `,
   styles: [
     `
-    /* ============================================
-       TRANSICIÓN "LA INMERSIÓN FOCAL" - DASHBOARD
-       ============================================ */
-    
-    /* Header aparece primero - Fade up rápido */
-    .dashboard-header-enter {
-      animation: dashboardHeaderEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 260ms forwards;
-      opacity: 0;
-      transform: translateY(-15px);
-    }
-    
-    @keyframes dashboardHeaderEnter {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    /* Contenido principal - Staggered fade-up */
-    .dashboard-content-enter {
-      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 520ms forwards;
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    
-    @keyframes dashboardContentEnter {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    /* Delay para segunda sección */
-    .dashboard-content-enter-delay-1 {
-      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 620ms forwards;
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    
-    /* Delay para tercera sección */
-    .dashboard-content-enter-delay-2 {
-      animation: dashboardContentEnter 850ms cubic-bezier(0.22, 0.61, 0.36, 1) 720ms forwards;
-      opacity: 0;
-      transform: translateY(30px);
-    }
-    
-    /* Cards individuales con stagger adicional */
-    .dashboard-content-enter .card {
-      animation: dashboardCardEnter 650ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-      opacity: 0;
-      transform: translateY(15px);
-    }
-    
-    .dashboard-content-enter .card:nth-child(1) {
-      animation-delay: 260ms;
-    }
-    
-    .dashboard-content-enter .card:nth-child(2) {
-      animation-delay: 320ms;
-    }
-    
-    .dashboard-content-enter .card:nth-child(3) {
-      animation-delay: 380ms;
-    }
-    
-    .dashboard-content-enter .card:nth-child(4) {
-      animation-delay: 440ms;
-    }
-    
-    @keyframes dashboardCardEnter {
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-    
-    /* Accesibilidad - Reduced Motion */
-    @media (prefers-reduced-motion: reduce) {
-      .dashboard-header-enter,
-      .dashboard-content-enter,
-      .dashboard-content-enter-delay-1,
-      .dashboard-content-enter-delay-2,
-      .dashboard-content-enter .card {
-        animation: none;
-        opacity: 1;
-        transform: none;
-      }
-    }
+    /* Las animaciones de entrada ahora se manejan globalmente en styles.css */
+    /* (page-entry-header, page-entry-content, page-entry-content-delay-1, page-entry-content-delay-2) */
     `
   ],
   changeDetection: ChangeDetectionStrategy.OnPush

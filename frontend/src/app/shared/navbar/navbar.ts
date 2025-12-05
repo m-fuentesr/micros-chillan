@@ -34,7 +34,9 @@ import { AuthService } from '../services/auth.service';
 
     <!-- Sidebar Premium -->
     <aside 
-      class="sidebar-container sidebar-enter fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      [class.sidebar-enter]="shouldAnimate()"
+      [class.sidebar-start-hidden]="shouldStartHidden()"
       [class.lg:w-72]="!isCollapsed()"
       [class.lg:w-16]="isCollapsed()"
       [class.collapsed]="isCollapsed()"
@@ -261,10 +263,43 @@ import { AuthService } from '../services/auth.service';
        Entrada desde la izquierda cuando se carga el dashboard
        ============================================ */
     
-    .sidebar-enter {
-      animation: sidebarEnter 700ms cubic-bezier(0.65, 0, 0.35, 1) 100ms forwards;
-      transform: translateX(-30px);
-      opacity: 0;
+    /* Sidebar sin animación - Estado por defecto */
+    .sidebar-container {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    /* Sidebar que debe empezar oculto (evita parpadeo en recarga) */
+    /* Esta clase se aplica ANTES de sidebar-enter para ocultar inmediatamente */
+    /* CORRECCIÓN: Añadir visibility: hidden para asegurar que no sea visible en ningún momento */
+    .sidebar-container.sidebar-start-hidden {
+      opacity: 0 !important;
+      transform: translateX(-30px) !important;
+      visibility: hidden !important; /* Asegurar que no sea visible ni siquiera durante el renderizado inicial */
+      /* Prevenir cualquier transición mientras está oculto */
+      transition: none !important;
+    }
+    
+    /* CRÍTICO: Cuando ambas clases están aplicadas (sidebar-start-hidden + sidebar-enter),
+       priorizar sidebar-enter para permitir que la animación se ejecute */
+    /* Esto ocurre cuando el orchestrator pasa de 'login-exiting' a 'dashboard-entering' */
+    .sidebar-container.sidebar-start-hidden.sidebar-enter {
+      /* Remover las restricciones de sidebar-start-hidden cuando sidebar-enter está presente */
+      transition: none !important; /* Mantener sin transición para que la animación funcione */
+      visibility: visible !important; /* Permitir que la animación sea visible */
+      /* La animación sidebarEnter se ejecutará normalmente */
+      animation: sidebarEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms forwards;
+    }
+    
+    /* Sidebar con animación de entrada - Solo cuando shouldAnimate es true */
+    /* SIEMPRE empieza oculto para evitar parpadeo */
+    /* Aparece PRIMERO (ancla persistente) sin delay para establecer contexto espacial */
+    .sidebar-container.sidebar-enter {
+      opacity: 0 !important;
+      transform: translateX(-30px) !important;
+      /* Animar hacia visible - Primero en la secuencia, sin delay */
+      /* CORREGIDO: Duración ajustada a 600ms para coincidir con el timeline esperado */
+      animation: sidebarEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms forwards;
     }
     
     @keyframes sidebarEnter {
@@ -274,9 +309,10 @@ import { AuthService } from '../services/auth.service';
       }
     }
     
-    /* En móvil, mantener comportamiento original */
+    /* En móvil, mantener comportamiento original - Sin animación */
     @media (max-width: 1023px) {
-      .sidebar-enter {
+      .sidebar-container.sidebar-enter,
+      .sidebar-container.sidebar-start-hidden {
         animation: none;
         transform: none;
         opacity: 1;
@@ -285,7 +321,8 @@ import { AuthService } from '../services/auth.service';
     
     /* Accesibilidad - Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
-      .sidebar-enter {
+      .sidebar-container.sidebar-enter,
+      .sidebar-container.sidebar-start-hidden {
         animation: none;
         transform: translateX(0);
         opacity: 1;
@@ -894,6 +931,10 @@ import { AuthService } from '../services/auth.service';
 export class Navbar implements OnInit {
   // Input para recibir el estado inicial del sidebar desde app.ts
   initialCollapsed = input<boolean>(false);
+  // Input para controlar si debe animarse durante entrada
+  shouldAnimate = input<boolean>(false);
+  // Input para controlar si debe empezar oculto (evita parpadeo en recarga)
+  shouldStartHidden = input<boolean>(false);
   
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();

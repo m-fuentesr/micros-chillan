@@ -45,7 +45,7 @@ interface FaqItem {
     <div class="min-h-screen bg-base-200 pb-16">
       <!-- Hero -->
       <div class="bg-base-100 border-b border-base-200 py-12 px-6 mb-10 shadow-sm">
-        <div class="max-w-4xl mx-auto text-left animate-header-enter space-y-8 pl-4 border-l-4 border-l-primary">
+        <div class="max-w-4xl mx-auto text-left page-entry-header space-y-8 pl-4 border-l-4 border-l-primary">
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.4em] text-primary mb-3">Knowledge Base Pro</p>
             <h1 class="text-4xl lg:text-5xl font-black text-base-content tracking-tight">

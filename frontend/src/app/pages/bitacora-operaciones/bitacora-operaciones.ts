@@ -30,12 +30,12 @@ interface DailyRecordView {
   standalone: true,
   imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay],
   template: `
-    <div class="space-y-6 animate-page-enter relative">
+    <div class="space-y-6 relative">
         <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
         
         <!-- Header -->
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-b-base-300 pb-4 mb-6">
-          <div class="animate-header-enter">
+          <div class="page-entry-header">
             <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Bitácora de Operaciones</h1>
             <p class="text-base-content/60 italic">Auditoría y gestión centralizada de reportes diarios.</p>
           </div>

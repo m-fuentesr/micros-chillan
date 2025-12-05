@@ -12,9 +12,9 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
   selector: 'app-drivers-list',
   imports: [DriverKPIs, DriverList, RouterLink],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6">
       <!-- Header -->
-      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
         <div class="flex justify-between items-start flex-wrap gap-4">
           <div>
             <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Lista de Choferes</h1>
@@ -35,7 +35,7 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
       <app-driver-kpis [kpis]="kpis()" />
 
       <!-- Layout Principal: Lista de Choferes (Full Width) -->
-      <div class="animate-page-enter" style="animation-delay: 200ms; animation-fill-mode: both;">
+      <div class="page-entry-content">
         <app-driver-list
           [drivers]="filteredDrivers()"
           [viewMode]="viewMode()"

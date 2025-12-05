@@ -31,9 +31,9 @@ interface DriverProfit {
   selector: 'app-reportes',
   imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6">
       <!-- Header -->
-      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
         <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Reportes y Estadísticas</h1>
         <p class="text-base-content/60 italic">Análisis financiero y operativo de la flota</p>
       </div>

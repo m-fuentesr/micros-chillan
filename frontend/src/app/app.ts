@@ -1,49 +1,44 @@
-import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, computed, effect, OnInit, OnDestroy } from '@angular/core';
-import { Router, RouterOutlet, NavigationEnd } from '@angular/router';
+import { Component, ViewEncapsulation, signal, inject, ChangeDetectionStrategy, ChangeDetectorRef, computed, effect, OnInit, OnDestroy, afterNextRender } from '@angular/core';
+import { Router, RouterOutlet, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { Navbar } from './shared/navbar/navbar';
 import { NavbarTrabajador } from './shared/navbar-trabajador/navbar-trabajador';
 import { CommonModule } from '@angular/common';
 import { AuthService } from './shared/services/auth.service';
 import { TransitionService } from './shared/services/transition.service';
+import { RouteTransitionService } from './shared/services/route-transition.service';
+import { RouteTransitionOutlet } from './shared/components/route-transition-outlet/route-transition-outlet';
+import { TransitionOrchestratorService } from './shared/services/transition-orchestrator.service';
+import { SpinnerService } from './shared/services/spinner.service';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter } from 'rxjs';
+import { filter, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet],
   template: `
-    <!-- Loading overlay durante verificación inicial de sesión -->
-    @if (showInitialLoading()) {
+    <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
+    <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
+    @if (showReloadSpinner()) {
+      <div class="reload-spinner-overlay">
+        <span class="loading loading-dots loading-lg text-primary"></span>
+      </div>
+    } @else if (showInitialLoading()) {
+      <!-- Loading overlay durante verificación inicial de sesión -->
       <div class="session-verification-overlay"></div>
-    }
-    
-    <!-- Overlay de transición según el tipo (admin o worker) -->
-    @if (transitionService.isTransitioning()) {
-      @if (transitionService.transitionType() === 'admin') {
-        <!-- Overlay blanco para Dashboard (Admin) -->
-        <div 
-          class="transition-overlay-white" 
-          [attr.data-transition-active]="transitionService.isTransitioning()">
-        </div>
-      } @else if (transitionService.transitionType() === 'worker') {
-        <!-- Overlay neutro sutil para Trabajador -->
-        <div 
-          class="transition-overlay-neutral" 
-          [attr.data-transition-active]="transitionService.isTransitioning()">
-        </div>
-      }
     }
     
     @if (shouldShowAdminNav()) {
       <!-- Layout con Sidebar (Administrador) -->
-      <div class="h-dvh">
+      <div class="h-dvh bg-base-200">
         <app-navbar 
           [initialCollapsed]="sidebarCollapsed()"
+          [shouldAnimate]="shouldAnimateSidebar()"
+          [shouldStartHidden]="shouldStartHidden()"
           (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
         <main 
           [attr.class]="adminMainClasses()">
           <div class="p-4 sm:p-6">
-            <router-outlet></router-outlet>
+            <app-route-transition-outlet></app-route-transition-outlet>
           </div>
         </main>
       </div>
@@ -67,122 +62,42 @@ import { filter } from 'rxjs';
       transition: margin-left 500ms cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* ============================================
-       OVERLAY DE TRANSICIÓN BLANCA - NIVEL APP
-       Persiste durante la transición Login -> Dashboard
-       ============================================ */
-    .transition-overlay-white {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 99999;
-      /* Ligero gradiente para que se perciba la transición desde el lado derecho (formulario) */
-      background: radial-gradient(circle at 75% 50%,
-        rgba(148, 163, 184, 0.14) 0%,
-        rgba(248, 250, 252, 1) 55%,
-        rgba(255, 255, 255, 1) 100%);
-      pointer-events: none;
-      overflow: hidden;
-      /* Entrada + salida suaves, sin la animación duplicada anterior */
-      animation: transitionOverlayEnter 1100ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
-                 transitionOverlayExit 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 1300ms forwards;
-    }
-    
-    .transition-overlay-white::before {
-      content: '';
-      position: absolute;
-      top: 50%;
-      right: 22%;
-      width: 0;
-      height: 0;
-      border-radius: 9999px;
-      border: 1px solid rgba(148, 163, 184, 0.35);
-      transform: translate(50%, -50%) scale(0);
-      /* Expansión ligeramente más lenta y muy visible gracias al borde */
-      animation: expandWhiteOverlay 900ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    /* Animación de entrada del main content - Coordinada con sidebar */
+    /* Entra desde la izquierda (no desde la derecha) para mantener continuidad espacial */
+    /* IMPORTANTE: Desactivar transición de margin-left durante entrada para evitar desplazamiento */
+    /* COREOGRAFÍA: Sidebar (600ms, 0ms delay) → Main (500ms, 100ms delay) → Ambos terminan a 600ms */
+    .main-content-enter {
+      transition: none !important; /* Desactivar transición de margin-left durante entrada */
+      opacity: 0 !important; /* Forzar opacidad 0 para evitar flash */
+      transform: translateX(20px) !important;
+      visibility: hidden !important; /* Ocultar completamente durante entrada */
       will-change: transform, opacity;
+      animation: mainContentEnter 500ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms forwards;
     }
     
-    @keyframes transitionOverlayEnter {
-      0% {
-        opacity: 0;
-      }
-      30% {
-        opacity: 1;
-      }
-      100% {
-        opacity: 1;
-      }
-    }
-    
-    @keyframes expandWhiteOverlay {
-      0% {
-        width: 0;
-        height: 0;
-        opacity: 0;
-        transform: translate(50%, -50%) scale(0.5);
-      }
-      35% {
-        opacity: 1;
-      }
-      100% {
-        width: 260vw;
-        height: 260vh;
-        opacity: 0;
-        transform: translate(50%, -50%) scale(1);
-      }
-    }
-    
-    @keyframes transitionOverlayExit {
+    @keyframes mainContentEnter {
       to {
-        opacity: 0;
-        pointer-events: none;
+        opacity: 1;
+        transform: translateX(0);
+        visibility: visible;
       }
     }
     
+    /* En móvil, no animar el main content */
     @media (max-width: 1023px) {
-      .transition-overlay-white::before {
-        right: 50%;
-      }
-    }
-    
-    /* ============================================
-       OVERLAY DE TRANSICIÓN NEUTRA - TRABAJADOR
-       Fade simple y elegante sin expansión llamativa
-       ============================================ */
-    .transition-overlay-neutral {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 99999;
-      background: rgba(248, 250, 252, 1); /* bg-slate-50 */
-      pointer-events: none;
-      overflow: hidden;
-      animation: transitionOverlayNeutralEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
-                 transitionOverlayNeutralExit 400ms cubic-bezier(0.22, 0.61, 0.36, 1) 800ms forwards;
-    }
-    
-    @keyframes transitionOverlayNeutralEnter {
-      0% {
-        opacity: 0;
-      }
-      100% {
+      .main-content-enter {
+        animation: none;
         opacity: 1;
+        transform: none;
       }
     }
     
-    @keyframes transitionOverlayNeutralExit {
-      to {
-        opacity: 0;
-        pointer-events: none;
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .main-content-enter {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
       }
     }
     
@@ -216,6 +131,41 @@ import { filter } from 'rxjs';
         animation: none !important;
       }
     }
+    
+    /* ============================================
+       RELOAD SPINNER OVERLAY
+       Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador
+       NO se muestra en login/redirect
+       ============================================ */
+    .reload-spinner-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      background: rgba(255, 255, 255, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: reloadSpinnerEnter 300ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      will-change: opacity;
+    }
+    
+    @keyframes reloadSpinnerEnter {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .reload-spinner-overlay {
+        animation: none !important;
+      }
+    }
     `
   ],
   encapsulation: ViewEncapsulation.None,
@@ -223,8 +173,13 @@ import { filter } from 'rxjs';
 })
 export class App implements OnInit, OnDestroy {
   private auth = inject(AuthService);
-  private router = inject(Router);
+  private router = inject(Router) as Router;
+  private route = inject(ActivatedRoute);
+  private cdr = inject(ChangeDetectorRef);
   transitionService = inject(TransitionService);
+  private routeTransitionService = inject(RouteTransitionService);
+  private orchestrator = inject(TransitionOrchestratorService);
+  private spinnerService = inject(SpinnerService);
 
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
@@ -233,45 +188,310 @@ export class App implements OnInit, OnDestroy {
   private zoomFixTimeout: any = null;
   private resizeHandler = this.handleResize.bind(this);
   
+  constructor() {
+    // CRÍTICO: Detectar recarga DESPUÉS del primer render usando afterNextRender
+    // Esto asegura que el componente ya está renderizado y podemos forzar detección de cambios
+    afterNextRender(() => {
+      // Esto se ejecuta DESPUÉS del primer render
+      if (typeof window !== 'undefined' && window.performance) {
+        try {
+          const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+          if (navEntries.length > 0) {
+            const navEntry = navEntries[0];
+            const isPageReload = navEntry.type === 'reload';
+            
+            if (isPageReload) {
+              const currentUrl = this.router.url;
+              let user = this.auth.currentUser();
+              
+              // CRÍTICO: Si el usuario no está disponible aún, esperar a que esté disponible
+              // En una recarga, el usuario puede no estar disponible inmediatamente
+              if (!user) {
+                // Esperar a que el usuario esté disponible (máximo 2 segundos)
+                const startTime = Date.now();
+                const checkUser = setInterval(() => {
+                  user = this.auth.currentUser();
+                  if (user || Date.now() - startTime > 2000) {
+                    clearInterval(checkUser);
+                    if (user?.role === 'admin' && this.routeTransitionService.isAdminRoute(currentUrl)) {
+                      this.showSpinnerForReload(currentUrl);
+                    }
+                  }
+                }, 50);
+              } else {
+                const isAdminRoute = user.role === 'admin' && 
+                                    this.routeTransitionService.isAdminRoute(currentUrl);
+                
+                if (isAdminRoute) {
+                  this.showSpinnerForReload(currentUrl);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Si falla, no hacer nada
+        }
+      }
+    });
+  }
+  
+  // Signal reactivo para la URL actual del router
+  currentUrl = toSignal(
+    this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd),
+      map(() => this.router.url),
+      startWith(this.router.url)
+    ),
+    { initialValue: this.router.url }
+  );
+  
   // Computed para mostrar loading durante inicialización de sesión
   showInitialLoading = computed(() => {
     return this.auth.isInitializing() && !this.auth.currentUser();
   });
   
-  // Verificar que no estemos en login antes de mostrar el navbar
+  // Usar el servicio de spinner en lugar de signal local
+  showReloadSpinner = this.spinnerService.isVisible;
+  
+  // REDISEÑO: Usar orchestrator para determinar cuándo mostrar el navbar
+  // CRÍTICO: El navbar DEBE renderizarse incluso cuando el orchestrator está en 'login-exiting'
+  // para que los inputs shouldAnimate y shouldStartHidden se pasen correctamente
+  // La visibilidad se controla con shouldStartHidden, no con shouldShowAdminNav
   shouldShowAdminNav = computed(() => {
-    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
-    return this.isAdmin() && !url.startsWith('/login') && !url.startsWith('/recuperar-clave') && !url.startsWith('/restablecer-clave');
+    const url = this.currentUrl();
+    const orchestratorState = this.orchestrator.state();
+    
+    // No mostrar si estamos en login o rutas públicas
+    if (!url || url.startsWith('/login') || url.startsWith('/recuperar-clave') || url.startsWith('/restablecer-clave')) {
+      return false;
+    }
+    
+    // CRÍTICO: Permitir renderizar el navbar incluso cuando el orchestrator está en 'login-exiting'
+    // Esto asegura que los inputs se pasen correctamente y el navbar pueda aplicar las clases CSS
+    // La visibilidad se controla con shouldStartHidden, que retorna true cuando orchestratorState === 'login-exiting'
+    
+    // Si es admin y está en una ruta admin, mostrar el navbar
+    // El orchestrator puede estar en 'idle', 'login-exiting', 'dashboard-entering' o 'dashboard-ready'
+    // En todos estos casos, el navbar debe renderizarse para que las clases CSS funcionen correctamente
+    return this.isAdmin() && this.routeTransitionService.isAdminRoute(url);
   });
   
   shouldShowWorkerNav = computed(() => {
-    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
-    return this.isWorker() && !url.startsWith('/login') && !url.startsWith('/recuperar-clave') && !url.startsWith('/restablecer-clave');
+    const url = this.currentUrl();
+    return this.isWorker() && url && !url.startsWith('/login') && !url.startsWith('/recuperar-clave') && !url.startsWith('/restablecer-clave');
   });
   
-  adminMainClasses = computed(() => {
-    const base = 'bg-base-200 h-dvh overflow-y-auto main-content-transition pt-16 lg:pt-0 ml-0';
-    return `${base} ${this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72'}`;
+  // REDISEÑO: Usar orchestrator para controlar animación del sidebar
+  // El sidebar siempre empieza oculto si el orchestrator está en 'dashboard-entering'
+  shouldAnimateSidebar = computed(() => {
+    const orchestratorState = this.orchestrator.state();
+    // Solo animar cuando el dashboard está entrando
+    return orchestratorState === 'dashboard-entering';
+  });
+  
+  // REDISEÑO: shouldStartHidden ahora se basa directamente en el estado del orchestrator
+  // Esto garantiza que el navbar esté oculto antes de renderizarse
+  shouldStartHidden = computed(() => {
+    const orchestratorState = this.orchestrator.state();
+    const url = this.currentUrl();
+    const shouldAnimate = this.shouldAnimateSidebar();
+    
+    // CRÍTICO: Si el orchestrator está en 'dashboard-entering' Y shouldAnimate es true,
+    // NO ocultar (permitir que sidebar-enter se ejecute sin conflicto con sidebar-start-hidden)
+    // Esto evita que sidebar-start-hidden bloquee la animación sidebar-enter
+    if (orchestratorState === 'dashboard-entering' && shouldAnimate) {
+      return false;
+    }
+    
+    // IMPORTANTE: También ocultar cuando el login está saliendo
+    // Esto evita que el navbar aparezca antes de que termine la transición del login
+    if (orchestratorState === 'login-exiting') {
+      return true;
+    }
+    
+    // CRÍTICO: Detectar si venimos de login usando el estado del orchestrator
+    // Si el orchestrator está en 'dashboard-entering' pero shouldAnimate es false,
+    // significa que aún no se ha activado la animación, así que ocultar
+    // Usar el estado del orchestrator es más confiable que previousUrl porque:
+    // 1. previousUrl puede no estar actualizado cuando el dashboard se renderiza
+    // 2. El orchestrator solo se activa cuando venimos de login
+    // 3. El estado del orchestrator es reactivo y se actualiza inmediatamente
+    if (orchestratorState === 'dashboard-entering' && !shouldAnimate) {
+      return true;
+    }
+    
+    // Si es una recarga de página y estamos en una ruta admin, empezar oculto
+    // para evitar que el navbar aparezca antes de la animación
+    if (orchestratorState === 'idle' && url && this.routeTransitionService.isAdminRoute(url)) {
+      // Verificar si es recarga usando Performance API
+      if (typeof window !== 'undefined' && window.performance) {
+        try {
+          const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+          if (navEntries.length > 0 && navEntries[0].type === 'reload') {
+            return true; // Es recarga, empezar oculto
+          }
+        } catch (e) {
+          // Si falla, no empezar oculto
+        }
+      }
+    }
+    
+    return false;
   });
 
-  private navigationEnd = toSignal(
-    this.router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)),
-    { initialValue: null }
-  );
+  // REDISEÑO: Simplificar clases del main usando orchestrator
+  adminMainClasses = computed(() => {
+    const base = 'bg-base-200 h-dvh overflow-y-auto pt-16 lg:pt-0';
+    const orchestratorState = this.orchestrator.state();
+    const url = this.currentUrl();
+    const shouldAnimate = orchestratorState === 'dashboard-entering';
+    
+    // IMPORTANTE: Si el orchestrator está en 'login-exiting', también ocultar el main
+    // Esto evita que el main aparezca antes de que termine la transición del login
+    const isLoginExiting = orchestratorState === 'login-exiting';
+    
+    // CRÍTICO: Detectar si venimos de login usando el estado del orchestrator
+    // Si el orchestrator está en 'login-exiting' o acaba de pasar a 'dashboard-entering',
+    // significa que venimos de login (redirect o no)
+    // Usar el estado del orchestrator es más confiable que previousUrl
+    const isComingFromLogin = isLoginExiting || (orchestratorState === 'dashboard-entering' && !shouldAnimate);
+    
+    // Si es recarga de página y estamos en una ruta admin, también animar
+    let shouldAnimateForReload = false;
+    if (orchestratorState === 'idle' && url && this.routeTransitionService.isAdminRoute(url)) {
+      if (typeof window !== 'undefined' && window.performance) {
+        try {
+          const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+          if (navEntries.length > 0 && navEntries[0].type === 'reload') {
+            shouldAnimateForReload = true;
+          }
+        } catch (e) {
+          // Si falla, no animar
+        }
+      }
+    }
+    
+    // Si el login está saliendo O venimos de login (pero no cuando dashboard-entering con animación), ocultar el main
+    const animateClass = (shouldAnimate || shouldAnimateForReload || isComingFromLogin) ? 'main-content-enter' : 'main-content-transition';
+    const marginClass = this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72';
+    return `${base} ${marginClass} ${animateClass}`.trim();
+  });
+
 
   hideWorkerNav = computed(() => {
     if (!this.isWorker()) {
       return false;
     }
-    const url = this.navigationEnd()?.urlAfterRedirects ?? this.router.url;
-    return url.startsWith('/trabajador/reportar');
+    const url = this.currentUrl();
+    return url ? url.startsWith('/trabajador/reportar') : false;
   });
 
-  // Effect para monitorear cambios de navegación y transición (sin logs en producción)
+  // REDISEÑO: Effect simplificado que solo maneja recargas de página y tab-restore
+  // La transición desde login ahora es manejada completamente por el orchestrator en login.ts
   private monitorNavigation = effect(() => {
-    const navEnd = this.navigationEnd();
-    const url = navEnd?.urlAfterRedirects ?? this.router.url;
-    const isTransitioning = this.transitionService.isTransitioning();
+    const url = this.currentUrl();
+    const user = this.auth.currentUser();
+    const orchestratorState = this.orchestrator.state();
+    const previousUrl = this.routeTransitionService.getPreviousUrl();
+    
+    if (!url) return;
+    
+    // Solo aplicar para rutas del dashboard admin
+    const isAdminRoute = this.routeTransitionService.isAdminRoute(url);
+    if (!isAdminRoute) {
+      // Si salimos de una ruta admin, resetear el orchestrator
+      if (orchestratorState !== 'idle') {
+        this.orchestrator.reset();
+      }
+      return;
+    }
+    
+    // IMPORTANTE: Si venimos de login y el orchestrator está en 'idle', activarlo
+    // Esto cubre el caso donde el orchestrator no se activó correctamente desde login
+    // (puede pasar si hay un redirect o si el timing no coincide)
+    // CRÍTICO: Usar previousUrl del RouteTransitionService, pero también verificar router.url
+    // para asegurar que detectamos correctamente cuando venimos de login
+    const routerUrl = this.router.url;
+    const isComingFromLogin = previousUrl?.startsWith('/login') || 
+                              (routerUrl && !routerUrl.startsWith('/login') && orchestratorState === 'idle' && !previousUrl);
+    
+    if (isComingFromLogin && orchestratorState === 'idle') {
+      // Activar el orchestrator manualmente para que las animaciones funcionen
+      queueMicrotask(() => {
+        this.orchestrator.activateDashboardEntry();
+      });
+      return;
+    }
+    
+    // CRÍTICO: Si el orchestrator está en 'login-exiting', esperar a que pase a 'dashboard-entering'
+    // Cuando pase a 'dashboard-entering', el effect se re-ejecutará automáticamente porque orchestratorState cambió
+    // En ese momento, shouldAnimateSidebar y shouldStartHidden se actualizarán automáticamente
+    if (orchestratorState === 'login-exiting') {
+      // No hacer nada, solo esperar a que el orchestrator pase a 'dashboard-entering'
+      // El orchestrator se encargará de pasar a 'dashboard-entering' automáticamente después de 1200ms
+      return;
+    }
+    
+    // CRÍTICO: Si el orchestrator está en 'dashboard-entering', asegurar que las animaciones estén activas
+    // Esto se ejecuta cuando el orchestrator pasa de 'login-exiting' a 'dashboard-entering'
+    if (orchestratorState === 'dashboard-entering') {
+      // Las animaciones ya deberían estar activas porque:
+      // - shouldAnimateSidebar() retorna true cuando orchestratorState === 'dashboard-entering'
+      // - shouldStartHidden() retorna false cuando orchestratorState === 'dashboard-entering' && shouldAnimate === true
+      // - adminMainClasses() aplica 'main-content-enter' cuando orchestratorState === 'dashboard-entering'
+      // No necesitamos hacer nada aquí, solo verificar que todo esté correcto
+      return;
+    }
+    
+    // Detectar recarga de página usando Performance API
+    let isPageReload = false;
+    let isFirstLoad = false;
+    
+    if (typeof window !== 'undefined' && window.performance) {
+      try {
+        const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+        if (navEntries.length > 0) {
+          const navEntry = navEntries[0];
+          // TYPE_RELOAD = recarga (F5)
+          isPageReload = navEntry.type === 'reload';
+          // TYPE_NAVIGATE = nueva pestaña o navegación normal
+          isFirstLoad = navEntry.type === 'navigate' && !previousUrl && !!user && user.role === 'admin';
+        }
+      } catch (e) {
+        // Fallback: si no hay previousUrl y estamos en una ruta admin, probablemente es recarga
+        isPageReload = !previousUrl;
+        isFirstLoad = !previousUrl && !!user && user.role === 'admin';
+      }
+    }
+    
+    // IMPORTANTE: Activar INMEDIATAMENTE si es recarga o primera carga
+    // Esto debe hacerse antes de que Angular renderice el navbar
+    // CRÍTICO: NO mostrar spinner si venimos de login (redirect)
+    const isComingFromLoginInEffect = previousUrl?.startsWith('/login');
+    
+    if ((isPageReload || isFirstLoad) && orchestratorState === 'idle' && !isComingFromLoginInEffect) {
+      // Mostrar spinner de recarga
+      this.spinnerService.show();
+      
+      // Activar animación de entrada para recarga/tab-restore
+      // Usar queueMicrotask para asegurar que se ejecute antes del siguiente ciclo de detección de cambios
+      queueMicrotask(() => {
+        this.triggerEntryAnimationForReload();
+      });
+    }
+    
+    // CRÍTICO: Mostrar spinner cuando viene de login (redirect)
+    // Esto se ejecuta cuando el orchestrator está en 'login-exiting' o cuando detectamos que venimos de login
+    if (isComingFromLoginInEffect && orchestratorState === 'idle' && isAdminRoute) {
+      // Mostrar spinner inmediatamente
+      this.spinnerService.show();
+      this.cdr.markForCheck();
+      
+      // Activar orchestrator para que las animaciones funcionen
+      queueMicrotask(() => {
+        this.orchestrator.activateDashboardEntry();
+      });
+    }
   });
 
   // Effect para monitorear cambios en el estado de transición (sin logs en producción)
@@ -283,37 +503,36 @@ export class App implements OnInit, OnDestroy {
   private resetSidebarOnAuthChange = effect(() => {
     const user = this.auth.currentUser();
     const wasAdmin = this.isAdmin();
-    const navEnd = this.navigationEnd();
-    const url = navEnd?.urlAfterRedirects ?? this.router.url;
+    const url = this.currentUrl();
     
     // Si el usuario no es admin (cerró sesión o cambió de rol), resetear el sidebar
     if (!wasAdmin) {
       this.sidebarCollapsed.set(false);
     }
     
-    // Solo verificar redirección si hay una navegación completa (no en carga inicial)
-    // Esto evita redirecciones incorrectas cuando navigationEnd() es null
-    if (navEnd) {
-      // Si no hay usuario y estamos en una ruta protegida, redirigir al login
-      // Excluir rutas públicas: login, recuperar-clave, restablecer-clave
-      const isPublicRoute = url.startsWith('/login') || 
-                           url.startsWith('/recuperar-clave') || 
-                           url.startsWith('/restablecer-clave');
-      
-      if (!user && !isPublicRoute && url !== '/') {
-        // Usar queueMicrotask para evitar problemas de detección de cambios
-        queueMicrotask(() => {
-          // Verificar nuevamente la URL antes de redirigir (por si cambió durante el microtask)
-          const currentUrl = this.router.url;
-          const stillPublicRoute = currentUrl.startsWith('/login') || 
-                                  currentUrl.startsWith('/recuperar-clave') || 
-                                  currentUrl.startsWith('/restablecer-clave');
-          
-          if (!stillPublicRoute && currentUrl !== '/') {
-            this.router.navigateByUrl('/login', { skipLocationChange: false });
-          }
-        });
-      }
+    // Si no hay usuario y estamos en una ruta protegida, redirigir al login
+    // Excluir rutas públicas: login, recuperar-clave, restablecer-clave
+    if (!url) return;
+    
+    const isPublicRoute = url.startsWith('/login') || 
+                         url.startsWith('/recuperar-clave') || 
+                         url.startsWith('/restablecer-clave');
+    
+    if (!user && !isPublicRoute && url !== '/') {
+      // Usar queueMicrotask para evitar problemas de detección de cambios
+      queueMicrotask(() => {
+        // Verificar nuevamente la URL antes de redirigir (por si cambió durante el microtask)
+        const currentUrl = this.currentUrl();
+        if (!currentUrl) return;
+        
+        const stillPublicRoute = currentUrl.startsWith('/login') || 
+                                currentUrl.startsWith('/recuperar-clave') || 
+                                currentUrl.startsWith('/restablecer-clave');
+        
+        if (!stillPublicRoute && currentUrl !== '/') {
+          this.router.navigateByUrl('/login', { skipLocationChange: false });
+        }
+      });
     }
   });
 
@@ -321,7 +540,71 @@ export class App implements OnInit, OnDestroy {
     this.sidebarCollapsed.set(collapsed);
   }
 
+  /**
+   * REDISEÑO: Función para activar animación de entrada solo para recargas de página
+   * Las transiciones desde login son manejadas por el orchestrator
+   */
+  private triggerEntryAnimationForReload(): void {
+    // Activar estado de entrada en el orchestrator
+    // Esto hará que shouldStartHidden y shouldAnimateSidebar se activen automáticamente
+    this.orchestrator.activateDashboardEntry();
+    this.transitionService.startTransition('admin');
+    
+    // El orchestrator manejará automáticamente el cambio a 'dashboard-ready'
+    // después de dashboardTotalEntry, pero también necesitamos terminar la transición del servicio
+    const timeline = this.orchestrator.TIMELINE;
+    setTimeout(() => {
+      this.transitionService.endTransition();
+      // Ocultar spinner cuando termine la animación
+      this.spinnerService.hide();
+      this.cdr.markForCheck();
+    }, timeline.dashboardTotalEntry);
+  }
+  
+  /**
+   * CRÍTICO: Método centralizado para mostrar spinner de recarga
+   * Verifica si venimos de login y muestra el spinner solo si NO venimos de login
+   */
+  private showSpinnerForReload(currentUrl: string): void {
+    // Verificar si venimos de login usando sessionStorage
+    let isComingFromLogin = false;
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      try {
+        const lastRoute = window.sessionStorage.getItem('lastRoute');
+        isComingFromLogin = lastRoute?.startsWith('/login') || false;
+      } catch (e) {
+        isComingFromLogin = false;
+      }
+    }
+    
+    // Si NO venimos de login, mostrar spinner
+    if (!isComingFromLogin) {
+      // CRÍTICO: Mostrar spinner INMEDIATAMENTE
+      // Usar requestAnimationFrame para asegurar que se ejecute en el siguiente frame
+      requestAnimationFrame(() => {
+        this.spinnerService.show();
+        // Forzar detección de cambios para asegurar que el spinner se renderice
+        this.cdr.markForCheck();
+        
+        // Activar orchestrator y transición
+        this.orchestrator.activateDashboardEntry();
+        this.transitionService.startTransition('admin');
+        
+        // Ocultar spinner cuando termine la animación
+        const timeline = this.orchestrator.TIMELINE;
+        setTimeout(() => {
+          this.transitionService.endTransition();
+          this.spinnerService.hide();
+          this.cdr.markForCheck();
+        }, timeline.dashboardTotalEntry);
+      });
+    }
+  }
+
   ngOnInit(): void {
+    // NOTA: La detección de recarga ahora se hace en el constructor usando afterNextRender
+    // para asegurar que se ejecute después del primer render y podamos forzar detección de cambios
+    
     // Detectar y corregir problemas de zoom al cambiar entre vista móvil/desktop
     if (typeof window !== 'undefined') {
       // Resetear zoom al cargar si detectamos un zoom anormal
@@ -333,6 +616,31 @@ export class App implements OnInit, OnDestroy {
       // También escuchar cambios de orientación en dispositivos móviles
       window.addEventListener('orientationchange', () => {
         setTimeout(() => this.checkAndFixZoom(), 300);
+      });
+      
+      // REDISEÑO: Detectar reapertura de pestaña o volver al navegador usando orchestrator
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && this.auth.currentUser()?.role === 'admin') {
+          const url = this.currentUrl();
+          const previousUrlOnVisibility = this.routeTransitionService.getPreviousUrl();
+          
+          // CRÍTICO: NO mostrar spinner si venimos de login (redirect)
+          const isComingFromLoginOnVisibility = previousUrlOnVisibility?.startsWith('/login');
+          
+          if (url && this.routeTransitionService.isAdminRoute(url) && !isComingFromLoginOnVisibility) {
+            // Solo aplicar si no hay una transición activa
+            if (!this.orchestrator.isTransitioning()) {
+              // Mostrar spinner de recarga
+              this.spinnerService.show();
+              
+              // Usar función simplificada para tab-restore
+              this.triggerEntryAnimationForReload();
+            }
+          }
+        } else if (document.visibilityState === 'hidden') {
+          // Cuando la pestaña se oculta, ocultar el spinner si está visible
+          this.spinnerService.hide();
+        }
       });
     }
   }
