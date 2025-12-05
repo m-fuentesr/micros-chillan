@@ -1,7 +1,8 @@
-﻿from datetime import date, timedelta
-from fastapi import HTTPException
+﻿from fastapi import HTTPException
+from typing import List
+from datetime import date, timedelta
 from app.db.supabase_client import supabase
-from app.schemas.daily_record import DailyRecordCreate
+from app.schemas.daily_record import DailyRecordCreate, DailyRecordListFilters
 from app.schemas.user import UserInDB
 
 async def create_daily_record(payload: DailyRecordCreate, current_user: UserInDB):
@@ -183,3 +184,94 @@ async def get_today_record_status(current_user: UserInDB):
             "can_create_new": True,
             "message": "Puede crear un nuevo reporte"
         }
+
+async def list_daily_records_for_admin(
+    filters: DailyRecordListFilters,
+    current_user: UserInDB,
+):
+    """
+    Lista registros diarios filtrando opcionalmente por máquina, chofer, fecha,
+    estado y búsqueda de texto (máquina/chofer).
+    """
+
+    allowed_sort_fields = {"fecha", "monto_recaudado"}
+    sort_field = filters.sort_by if filters.sort_by in allowed_sort_fields else "fecha"
+    sort_desc = filters.order == "desc"
+
+    query = (
+        supabase.table("registros_diarios")
+        .select(
+            "id, fecha, monto_recaudado, costo_total_diesel, estado, "
+            "choferes(id, primer_nombre, apellido_paterno), "
+            "maquinas(id, numero_interno)"
+        )
+    )
+
+    # Filtro por máquina
+    if filters.maquina_id is not None:
+        query = query.eq("maquina_id", filters.maquina_id)
+
+    # Filtro por chofer
+    if filters.chofer_id:
+        query = query.eq("chofer_id", filters.chofer_id)
+
+    # Filtro por estado
+    if filters.estado:
+        query = query.eq("estado", filters.estado)
+
+    # Filtro por fechas
+    if filters.fecha_inicio:
+        query = query.gte("fecha", filters.fecha_inicio.isoformat())
+
+    if filters.fecha_fin:
+        query = query.lte("fecha", filters.fecha_fin.isoformat())
+
+    # Filtro por búsqueda libre (máquina / chofer)
+    # BÚSQUEDA CLIENT-SIDE: Supabase no soporta LIKE con joins de forma directa
+    # Así que filtraremos después del fetch (post-query)
+    search_text = filters.search.lower() if filters.search else None
+
+    query = query.order(sort_field, desc=sort_desc)
+
+    res = query.execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error listando registros diarios: {res.error}",
+        )
+    
+    data = res.data or []
+    result: List[dict] = []
+
+    for row in data:
+        chofer_raw = row.get("choferes") or {}
+        maquina_raw = row.get("maquinas") or {}
+
+        nombre_chofer = f"{chofer_raw.get('primer_nombre', '')} {chofer_raw.get('apellido_paterno', '')}".strip()
+        numero_maquina = str(maquina_raw.get("numero_interno", ""))
+
+        # FILTRO DE SEARCH (aplicado después del fetch)
+        if search_text:
+            if search_text not in nombre_chofer.lower() and search_text not in numero_maquina.lower():
+                continue
+
+        result.append(
+            {
+                "id": row["id"],
+                "fecha": row["fecha"],
+                "chofer": {
+                    "id": chofer_raw.get("id"),
+                    "nombre": nombre_chofer,
+                },
+                 "maquina": {
+                    "id": maquina_raw.get("id"),
+                    "numero_interno": maquina_raw.get("numero_interno")
+                },
+                "monto_recaudado": row.get("monto_recaudado", 0),
+                "diesel": row.get("costo_total_diesel"),
+                "estado": row.get("estado", "")
+            }
+        )
+
+    return result
