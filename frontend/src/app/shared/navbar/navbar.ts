@@ -7,20 +7,16 @@ import { AuthService } from '../services/auth.service';
   imports: [RouterLink, RouterLinkActive],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-between px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)]">
-      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú">
+    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
+      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors absolute left-4" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-base-content/70">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
       </button>
 
-      <div class="flex flex-col items-center">
-        <span class="font-bold text-lg tracking-tight text-base-content leading-none">NombreApp</span>
-        <span class="text-[10px] text-base-content/40 font-normal tracking-wide">ADMINISTRACIÓN</span>
-      </div>
-
-      <div class="w-10 h-10 rounded-lg bg-base-200/50 flex items-center justify-center text-xs font-bold text-base-content/70 ring-1 ring-base-200">
-        AD
+      <div class="flex flex-col items-center justify-center">
+        <span class="logo-brand text-lg text-primary leading-tight">GESTOR DE FLOTAS</span>
+        <span class="text-[10px] text-base-content/40 font-normal tracking-wide mt-0.5 leading-tight">ADMINISTRACIÓN</span>
       </div>
     </div>
 
@@ -47,10 +43,10 @@ import { AuthService } from '../services/auth.service';
       <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
            [class.lg:justify-center]="isCollapsed()"
            [class.lg:justify-between]="!isCollapsed()">
-        <div class="flex flex-col"
+        <div class="flex flex-col justify-center"
              [class.lg:hidden]="isCollapsed()">
-          <span class="font-bold text-lg tracking-tight text-base-content leading-none">NombreApp</span>
-          <span class="text-[10px] text-base-content/40 font-medium tracking-wide mt-1">ADMINISTRACIÓN</span>
+          <span class="logo-brand text-lg text-primary leading-tight">GESTOR DE FLOTAS</span>
+          <span class="text-[10px] text-base-content/40 font-medium tracking-wide mt-0.5 leading-tight">ADMINISTRACIÓN</span>
         </div>
         <div class="flex items-center gap-2 flex-shrink-0">
           <button 
@@ -83,14 +79,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Dashboard' : null"
+          [attr.data-tip]="isCollapsed() ? 'Panel Principal' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 transition-transform group-hover:scale-110 duration-200">
-            <path fill-rule="evenodd" d="M3 6a3 3 0 013-3h2.25a3 3 0 013 3v2.25a3 3 0 01-3 3H6a3 3 0 01-3-3V6zm9.75 0a3 3 0 013-3H18a3 3 0 013 3v2.25a3 3 0 01-3 3h-2.25a3 3 0 01-3-3V6zM3 15.75a3 3 0 013-3h2.25a3 3 0 013 3V18a3 3 0 01-3 3H6a3 3 0 01-3-3v-2.25zm9.75 0a3 3 0 013-3H18a3 3 0 013 3V18a3 3 0 01-3 3h-2.25a3 3 0 01-3-3v-2.25z" clip-rule="evenodd" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
           </svg>
           <span class="font-bold text-sm tracking-wide"
-                [class.lg:hidden]="isCollapsed()">Dashboard</span>
+                [class.lg:hidden]="isCollapsed()">Panel Principal</span>
         </a>
 
         <!-- Bitácora de Operaciones -->
@@ -99,15 +95,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Bitácora de Operaciones' : null"
+          [attr.data-tip]="isCollapsed() ? 'Registros Diarios' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 transition-transform group-hover:scale-110 duration-200">
-            <circle cx="12" cy="12" r="10"></circle>
-            <polyline points="12 6 12 12 16 14"></polyline>
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           <span class="font-normal text-sm"
-                [class.lg:hidden]="isCollapsed()">Bitácora de Operaciones</span>
+                [class.lg:hidden]="isCollapsed()">Registros Diarios</span>
         </a>
 
         <!-- Separador: Gestión de Flota -->
@@ -125,14 +120,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Máquinas' : null"
+          [attr.data-tip]="isCollapsed() ? 'Flota de Vehículos' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
           </svg>
           <span class="font-medium text-sm"
-                [class.lg:hidden]="isCollapsed()">Máquinas</span>
+                [class.lg:hidden]="isCollapsed()">Flota de Vehículos</span>
         </a>
 
         <!-- Choferes -->
@@ -141,14 +136,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Choferes' : null"
+          [attr.data-tip]="isCollapsed() ? 'Conductores' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
           </svg>
           <span class="font-medium text-sm"
-                [class.lg:hidden]="isCollapsed()">Choferes</span>
+                [class.lg:hidden]="isCollapsed()">Conductores</span>
         </a>
 
         <!-- Separador: Finanzas -->
@@ -166,14 +161,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Contabilidad' : null"
+          [attr.data-tip]="isCollapsed() ? 'Finanzas y Nómina' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
           </svg>
           <span class="font-medium text-sm"
-                [class.lg:hidden]="isCollapsed()">Contabilidad</span>
+                [class.lg:hidden]="isCollapsed()">Finanzas y Nómina</span>
         </a>
 
         <!-- Reportes -->
@@ -182,14 +177,14 @@ import { AuthService } from '../services/auth.service';
           routerLinkActive="active" 
           [routerLinkActiveOptions]="{exact: false}"
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-base-content/60 hover:bg-base-100 hover:text-base-content hover:shadow-sm border border-transparent hover:border-base-200 transition-all duration-200 relative overflow-hidden"
-          [attr.data-tip]="isCollapsed() ? 'Reportes' : null"
+          [attr.data-tip]="isCollapsed() ? 'Análisis y Reportes' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
           </svg>
           <span class="font-medium text-sm"
-                [class.lg:hidden]="isCollapsed()">Reportes</span>
+                [class.lg:hidden]="isCollapsed()">Análisis y Reportes</span>
         </a>
       </nav>
 
@@ -204,9 +199,9 @@ import { AuthService } from '../services/auth.service';
           [attr.data-tip]="isCollapsed() ? 'Configuración' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124a6.57 6.57 0 0 1 .22-.128c.332-.183.582-.495.644-.869l.214-1.281Z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
           </svg>
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Configuración</span>
@@ -221,8 +216,8 @@ import { AuthService } from '../services/auth.service';
           [attr.data-tip]="isCollapsed() ? 'Centro de Ayuda' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
           </svg>
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Centro de Ayuda</span>
@@ -233,8 +228,8 @@ import { AuthService } from '../services/auth.service';
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-error hover:bg-error/10 hover:text-error hover:shadow-sm border border-transparent hover:border-error/20 transition-all duration-200"
           [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null"
           (click)="onLogout($event)">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
           </svg>
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Cerrar Sesión</span>

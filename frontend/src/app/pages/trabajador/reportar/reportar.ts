@@ -195,22 +195,22 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
           </label>
         </div>
 
-        <!-- Comprobante de diesel (opcional) -->
+        <!-- Comprobante de combustible (opcional) -->
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="550">
           <div class="flex items-center gap-2 mb-3">
             <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em]">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
                 <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
               </svg>
-              Foto del comprobante de diesel
+              Foto del comprobante de combustible
             </label>
             <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
           </div>
 
-          <!-- Preview de imagen diesel -->
+          <!-- Preview de imagen combustible -->
           @if (dieselImagePreview()) {
             <div class="mb-4 relative rounded-xl overflow-hidden border-2 border-amber-200">
-              <img [src]="dieselImagePreview()!" alt="Preview comprobante diesel" class="w-full h-48 object-cover" />
+              <img [src]="dieselImagePreview()!" alt="Preview comprobante combustible" class="w-full h-48 object-cover" />
               <button
                 type="button"
                 (click)="removeDieselImage()"
@@ -225,7 +225,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
             </div>
           }
 
-          <!-- Input de archivo diesel -->
+          <!-- Input de archivo combustible -->
           <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
             <input 
               type="file" 

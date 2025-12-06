@@ -19,9 +19,6 @@ import { CommonModule } from '@angular/common';
           formControlName="revision_tecnica"
           class="input input-bordered w-full"
           [class.input-error]="form.get('revision_tecnica')?.invalid && form.get('revision_tecnica')?.touched">
-        <label class="label">
-          <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-        </label>
         @if (form.get('revision_tecnica')?.invalid && form.get('revision_tecnica')?.touched) {
           <label class="label">
             <span class="label-text-alt text-error">Este campo es obligatorio</span>
@@ -41,9 +38,6 @@ import { CommonModule } from '@angular/common';
           formControlName="permiso_circulacion"
           class="input input-bordered w-full"
           [class.input-error]="form.get('permiso_circulacion')?.invalid && form.get('permiso_circulacion')?.touched">
-        <label class="label">
-          <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-        </label>
         @if (form.get('permiso_circulacion')?.invalid && form.get('permiso_circulacion')?.touched) {
           <label class="label">
             <span class="label-text-alt text-error">Este campo es obligatorio</span>
@@ -63,9 +57,6 @@ import { CommonModule } from '@angular/common';
           formControlName="seguro_obligatorio"
           class="input input-bordered w-full"
           [class.input-error]="form.get('seguro_obligatorio')?.invalid && form.get('seguro_obligatorio')?.touched">
-        <label class="label">
-          <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-        </label>
         @if (form.get('seguro_obligatorio')?.invalid && form.get('seguro_obligatorio')?.touched) {
           <label class="label">
             <span class="label-text-alt text-error">Este campo es obligatorio</span>

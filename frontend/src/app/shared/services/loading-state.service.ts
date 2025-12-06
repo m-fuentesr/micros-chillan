@@ -3,6 +3,7 @@ import { Injectable, signal, Signal } from '@angular/core';
 export interface LoadingState {
   isLoading: Signal<boolean>;
   showSkeleton: Signal<boolean>;
+  isSkeletonExiting: Signal<boolean>;
   showFeedback: Signal<boolean>;
   feedbackMessage: Signal<string>;
   setLoading: (value: boolean) => void;
@@ -26,11 +27,13 @@ export class LoadingStateService {
   createLoadingState(): LoadingState {
     const isLoading = signal(true);
     const showSkeleton = signal(false);
+    const isSkeletonExiting = signal(false);
     const showFeedback = signal(false);
     const feedbackMessage = signal('');
     let skeletonTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let feedbackTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let timeoutTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let exitTimeoutId: ReturnType<typeof setTimeout> | null = null;
     const startTime = Date.now();
 
     const clearAllTimeouts = () => {
@@ -45,6 +48,10 @@ export class LoadingStateService {
       if (timeoutTimeoutId) {
         clearTimeout(timeoutTimeoutId);
         timeoutTimeoutId = null;
+      }
+      if (exitTimeoutId) {
+        clearTimeout(exitTimeoutId);
+        exitTimeoutId = null;
       }
     };
 
@@ -93,6 +100,7 @@ export class LoadingStateService {
     return {
       isLoading,
       showSkeleton,
+      isSkeletonExiting,
       showFeedback,
       feedbackMessage,
       setLoading: (value: boolean) => {
@@ -100,12 +108,26 @@ export class LoadingStateService {
         if (!value) {
           // Si los datos cargaron, cancelar todos los timeouts
           clearAllTimeouts();
-          showSkeleton.set(false);
+          
+          // Si el skeleton está visible, iniciar animación de salida
+          if (showSkeleton()) {
+            isSkeletonExiting.set(true);
+            exitTimeoutId = setTimeout(() => {
+              showSkeleton.set(false);
+              isSkeletonExiting.set(false);
+            }, 200);
+          } else {
+            showSkeleton.set(false);
+            isSkeletonExiting.set(false);
+          }
+          
           showFeedback.set(false);
           feedbackMessage.set('');
         } else {
           // Si vuelve a cargar, reiniciar los timeouts
+          clearAllTimeouts();
           showSkeleton.set(false);
+          isSkeletonExiting.set(false);
           showFeedback.set(false);
           feedbackMessage.set('');
           startSkeletonTimeout();
@@ -116,7 +138,19 @@ export class LoadingStateService {
       setDataLoaded: () => {
         isLoading.set(false);
         clearAllTimeouts();
-        showSkeleton.set(false);
+        
+        // Si el skeleton está visible, iniciar animación de salida
+        if (showSkeleton()) {
+          isSkeletonExiting.set(true);
+          exitTimeoutId = setTimeout(() => {
+            showSkeleton.set(false);
+            isSkeletonExiting.set(false);
+          }, 200); // Duración de la animación de salida
+        } else {
+          showSkeleton.set(false);
+          isSkeletonExiting.set(false);
+        }
+        
         showFeedback.set(false);
         feedbackMessage.set('');
       }

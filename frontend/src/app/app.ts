@@ -36,8 +36,9 @@ import { filter, map, startWith } from 'rxjs';
           [shouldStartHidden]="shouldStartHidden()"
           (collapsedChange)="onSidebarCollapseChange($event)"></app-navbar>
         <main 
-          [attr.class]="adminMainClasses()">
-          <div class="p-4 sm:p-6">
+          [attr.class]="adminMainClasses()"
+          class="admin-main-content">
+          <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
             <app-route-transition-outlet></app-route-transition-outlet>
           </div>
         </main>
@@ -58,7 +59,25 @@ import { filter, map, startWith } from 'rxjs';
     }
   `,
   styles: [
-    `.main-content-transition {
+    `
+    @media (max-width: 1023px) {
+      .mobile-pt-adjust {
+        padding-top: 0.75rem !important; 
+      }
+      /* Asegurar que no haya margen o padding adicional en el contenido */
+      .mobile-pt-adjust > div {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+      /* Eliminar cualquier espacio adicional del route-transition-outlet */
+      .mobile-pt-adjust app-route-transition-outlet,
+      .mobile-pt-adjust app-route-transition-outlet > div {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+      }
+    }
+    
+    .main-content-transition {
       transition: margin-left 500ms cubic-bezier(0.4, 0, 0.2, 1);
     }
     
@@ -341,7 +360,7 @@ export class App implements OnInit, OnDestroy {
 
   // REDISEÑO: Simplificar clases del main usando orchestrator
   adminMainClasses = computed(() => {
-    const base = 'bg-base-200 h-dvh overflow-y-auto pt-16 lg:pt-0';
+    const base = 'bg-base-200 h-dvh overflow-y-auto lg:pt-0 mobile-pt-adjust';
     const orchestratorState = this.orchestrator.state();
     const url = this.currentUrl();
     const shouldAnimate = orchestratorState === 'dashboard-entering';

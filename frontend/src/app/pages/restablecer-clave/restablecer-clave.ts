@@ -64,8 +64,8 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         <!-- Contenido con entrada desde la izquierda -->
         <div class="relative z-10 animate-entrance-fade-left delay-100">
           <a routerLink="/login" class="flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity w-fit">
-            <div class="w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center font-black text-xl shadow-lg">GF</div>
-            <span class="text-2xl font-bold tracking-tight">Gestor de Flotas</span>
+            <div class="logo-brand w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center text-xl shadow-lg">GF</div>
+            <span class="logo-brand text-2xl">GESTOR DE FLOTAS</span>
           </a>
           <h2 class="text-4xl font-bold leading-tight max-w-md">
             Crea una contraseña segura.

@@ -24,13 +24,24 @@ body {
 }
 
 /* ============================================
+   TIPOGRAFÍA DE MARCA - BARLOW
+   Recomendación del experto: Barlow ExtraBold para el logo
+   ============================================ */
+.logo-brand {
+  font-family: 'Barlow', sans-serif;
+  font-weight: 800; /* ExtraBold */
+  text-transform: uppercase;
+  letter-spacing: 0.01em; /* +1% tracking para mayúsculas */
+}
+
+/* ============================================
    SISTEMA DE ANIMACIONES - MOTION UI
    ============================================ */
 
 :root {
   /* Timing Functions (Cubic Bezier) */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.2, 0.64, 1); /* Ajustado: 1.56 → 1.2 (rebote más sutil y profesional) */
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -109,7 +120,7 @@ body {
 }
 
 .animate-scale-up {
-  animation: scaleUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: scaleUp 400ms cubic-bezier(0.34, 1.2, 0.64, 1); /* Ajustado: rebote más sutil */
 }
 
 /* Bounce Subtle */
@@ -167,6 +178,18 @@ body {
   }
 }
 
+/* Table Enter (fade + slide suave) */
+@keyframes tableEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 /* ============================================
    CLASES DE ANIMACIÓN UTILITARIAS
    ============================================ */
@@ -188,6 +211,12 @@ body {
 /* Entrada de paneles de pestañas */
 .animate-tab-panel {
   animation: tabEnter var(--duration-normal) var(--ease-in-out);
+  animation-fill-mode: both;
+}
+
+/* Entrada de tabla (más suave) */
+.animate-table-enter {
+  animation: tableEnter var(--duration-slow) var(--ease-out-quart);
   animation-fill-mode: both;
 }
 
@@ -216,32 +245,32 @@ body {
 }
 
 /* Variantes de entrada de cards que respetan el contexto de page-entry-content */
-/* Estas clases deben usarse cuando los cards están dentro de un contenedor con .page-entry-content */
-/* Inician después de que termine la animación de page-entry-content (1050ms) */
+/* OPTIMIZADO: Tiempos reducidos para mejor performance percibida (1050ms → 400ms) */
+/* Inician después de que termine la animación de page-entry-content (200ms + 600ms = 800ms) */
 .animate-card-enter-in-context {
   animation: scaleUp var(--duration-slow) var(--ease-out-back);
-  animation-delay: 1050ms; /* Inicia después de que termine page-entry-content (450ms + 600ms) */
+  animation-delay: 400ms; /* Optimizado: 1050ms → 400ms (2.6x más rápido) */
   animation-fill-mode: both;
   opacity: 0; /* Estado inicial para animation-fill-mode: both */
 }
 
 .animate-card-enter-in-context-delay-1 {
   animation: scaleUp var(--duration-slow) var(--ease-out-back);
-  animation-delay: 1100ms; /* 1050ms + 50ms */
+  animation-delay: 450ms; /* Optimizado: 1100ms → 450ms */
   animation-fill-mode: both;
   opacity: 0;
 }
 
 .animate-card-enter-in-context-delay-2 {
   animation: scaleUp var(--duration-slow) var(--ease-out-back);
-  animation-delay: 1150ms; /* 1050ms + 100ms */
+  animation-delay: 500ms; /* Optimizado: 1150ms → 500ms */
   animation-fill-mode: both;
   opacity: 0;
 }
 
 .animate-card-enter-in-context-delay-3 {
   animation: scaleUp var(--duration-slow) var(--ease-out-back);
-  animation-delay: 1200ms; /* 1050ms + 150ms */
+  animation-delay: 550ms; /* Optimizado: 1200ms → 550ms */
   animation-fill-mode: both;
   opacity: 0;
 }
@@ -657,14 +686,14 @@ body {
 }
 
 /* Contenido de página con fade-up escalonado */
-/* Corregido: transform unificado (translateY + translateZ) y timing ajustado */
+/* OPTIMIZADO: Delays reducidos para mejor performance percibida (450ms → 200ms) */
 .page-entry-content {
   opacity: 0;
   transform: translateY(20px) translateZ(0);
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 450ms forwards;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 200ms forwards; /* Optimizado: 450ms → 200ms */
 }
 
 .page-entry-content-delay-1 {
@@ -673,7 +702,7 @@ body {
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 550ms forwards;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms forwards; /* Optimizado: 550ms → 300ms */
 }
 
 .page-entry-content-delay-2 {
@@ -682,18 +711,18 @@ body {
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 650ms forwards;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 400ms forwards; /* Optimizado: 650ms → 400ms */
 }
 
 /* Header de página con fade-up rápido */
-/* Corregido: translateY reducido de -15px a -10px, timing ajustado, transform unificado */
+/* OPTIMIZADO: Delay reducido de 300ms → 100ms (3x más rápido) */
 .page-entry-header {
   opacity: 0;
   transform: translateY(-10px) translateZ(0);
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  animation: pageEntryHeader 500ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms forwards;
+  animation: pageEntryHeader 500ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms forwards; /* Optimizado: 300ms → 100ms */
 }
 
 @keyframes pageEntryHeader {

@@ -1,48 +1,72 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DriverService } from '../../../shared/services/driver.service';
 import { DriverKPIs } from '../../../shared/drivers/driver-kpis/driver-kpis';
 import { DriverList } from '../../../shared/drivers/driver-list/driver-list';
-import { Driver, DriverKPIs as DriverKPIsType, DriverViewMode, DriverStatusFilter } from '../../../shared/models/driver.models';
+import { Driver, DriverKPIs as DriverKPIsType, DriverViewMode, DriverStatusFilter, LicenseFilter } from '../../../shared/models/driver.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
+import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingStateService } from '../../../shared/services/loading-state.service';
 
 @Component({
   selector: 'app-drivers-list',
-  imports: [DriverKPIs, DriverList, RouterLink],
+  imports: [DriverKPIs, DriverList, RouterLink, LoadingSkeleton],
   template: `
     <div class="space-y-6">
       <!-- Header -->
       <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <div class="flex justify-between items-start flex-wrap gap-4">
-          <div>
-            <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Lista de Choferes</h1>
-            <p class="text-base-content/70 italic">
-              Gestiona todos los choferes registrados en el sistema.
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
+            <h1 class="text-xl md:text-2xl lg:text-4xl font-bold text-base-content tracking-tight">Conductores</h1>
+            <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-md hidden sm:block">
+              Gestión integral de conductores: estado, licencias, asignaciones y liquidaciones.
             </p>
           </div>
-          <a routerLink="/choferes/nuevo" class="btn btn-primary hover-lift">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          <a routerLink="/choferes/nuevo" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-sm border border-primary/20 transition-all active:scale-95 text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Registrar Chofer
+            <span class="sm:hidden">Registrar</span>
+            <span class="hidden sm:inline">Registrar Chofer</span>
           </a>
         </div>
       </div>
 
       <!-- KPIs -->
-      <app-driver-kpis [kpis]="kpis()" />
+      <div class="pl-3 md:pl-4">
+        @if (kpisLoadingState.isLoading()) {
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            @for (i of [1,2,3,4]; track i) {
+              <app-loading-skeleton 
+                type="kpi" 
+                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
+            }
+          </div>
+        } @else {
+          <app-driver-kpis [kpis]="kpis()" />
+        }
+      </div>
 
       <!-- Layout Principal: Lista de Choferes (Full Width) -->
       <div class="page-entry-content">
-        <app-driver-list
-          [drivers]="filteredDrivers()"
-          [viewMode]="viewMode()"
-          [statusFilter]="statusFilter()"
-          [licenseAlerts]="licenseAlerts()"
-          (viewModeChange)="onViewModeChange($event)"
-          (filterChange)="onFilterChange($event)" />
+        @if (driversLoadingState.isLoading()) {
+          <app-loading-skeleton 
+            type="machine-list" 
+            [count]="6"
+            [isExiting]="driversLoadingState.isSkeletonExiting()" />
+        } @else {
+          <app-driver-list
+            [drivers]="drivers()"
+            [viewMode]="viewMode()"
+            [statusFilter]="statusFilter()"
+            [licenseFilter]="licenseFilter()"
+            [licenseAlerts]="licenseAlerts()"
+            (viewModeChange)="onViewModeChange($event)"
+            (filterChange)="onFilterChange($event)"
+            (licenseFilterChange)="onLicenseFilterChange($event)" />
+        }
       </div>
     </div>
   `,
@@ -51,23 +75,60 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 })
 export class DriversList implements OnInit {
   private driverService = inject(DriverService);
+  private loadingStateService = inject(LoadingStateService);
 
   viewMode = signal<DriverViewMode>('cards');
   statusFilter = signal<DriverStatusFilter>('all');
+  licenseFilter = signal<LicenseFilter>('all');
+  
+  // Estados de carga con umbral de 200ms
+  kpisLoadingState = this.loadingStateService.createLoadingState();
+  driversLoadingState = this.loadingStateService.createLoadingState();
+
+  constructor() {
+    // Iniciar estados de carga inmediatamente, antes del primer render
+    this.kpisLoadingState.setLoading(true);
+    this.driversLoadingState.setLoading(true);
+  }
 
   // Cargar choferes
   driversData = toSignal(
     this.driverService.getDrivers().pipe(
       catchError(() => of<Driver[]>(this.getMockDrivers()))
     ),
-    { initialValue: this.getMockDrivers() }
+    { initialValue: [] }
   );
 
   drivers = computed(() => this.driversData() ?? []);
 
-  // Calcular alertas de licencias
+  // Calcular KPIs
+  kpis = computed(() => {
+    const drivers = this.drivers();
+    // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
+    if (drivers.length === 0 && this.kpisLoadingState.isLoading()) {
+      return { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
+    }
+    return this.calculateMockKPIs();
+  });
+
+  // Effects para detectar cuando los datos están listos
+  private driversEffect = effect(() => {
+    const drivers = this.drivers();
+    if (drivers.length > 0 && this.driversLoadingState.isLoading()) {
+      this.driversLoadingState.setDataLoaded();
+    }
+  });
+
+  private kpisEffect = effect(() => {
+    const drivers = this.drivers();
+    if (drivers.length > 0 && this.kpisLoadingState.isLoading()) {
+      this.kpisLoadingState.setDataLoaded();
+    }
+  });
+
+  // Calcular alertas de licencias desde todos los conductores (no filtrados)
   licenseAlerts = computed(() => {
-    const drivers = this.filteredDrivers();
+    const drivers = this.drivers();
     let vencidas = 0;
     let por_vencer = 0;
     let al_dia = 0;
@@ -86,18 +147,7 @@ export class DriversList implements OnInit {
     return { vencidas, por_vencer, al_dia };
   });
 
-  // Choferes filtrados
-  filteredDrivers = computed(() => {
-    const drivers = this.drivers();
-    const filter = this.statusFilter();
-    if (filter === 'all') {
-      return drivers;
-    }
-    return drivers.filter(d => d.estado === filter);
-  });
-
-  // Calcular KPIs
-  kpis = computed(() => {
+  private calculateMockKPIs(): DriverKPIsType {
     const drivers = this.drivers();
     let activos = 0;
     let inactivos = 0;
@@ -122,10 +172,12 @@ export class DriversList implements OnInit {
       con_maquina,
       licencias_por_vencer
     };
-  });
+  }
 
   ngOnInit(): void {
+    // Los estados de carga ya se iniciaron en la inicialización
     // Los datos se cargan automáticamente con toSignal
+    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
   }
 
   onViewModeChange(mode: DriverViewMode): void {
@@ -134,6 +186,10 @@ export class DriversList implements OnInit {
 
   onFilterChange(filter: DriverStatusFilter): void {
     this.statusFilter.set(filter);
+  }
+
+  onLicenseFilterChange(filter: LicenseFilter): void {
+    this.licenseFilter.set(filter);
   }
 
   private getMockDrivers(): Driver[] {

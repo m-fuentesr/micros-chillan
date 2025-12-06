@@ -12,10 +12,12 @@ import { catchError, of, switchMap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
+import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header principal -->
@@ -813,12 +815,18 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
           </div>
         }
       } @else {
-        <div class="card bg-base-100 shadow-sm border border-base-200">
-          <div class="card-body">
-            <span class="loading loading-spinner loading-sm mr-2"></span>
-            Cargando información del chofer...
+        @if (driverLoadingState.showSkeleton() && driverLoadingState.isLoading()) {
+          <app-loading-skeleton 
+            type="card" 
+            [isExiting]="driverLoadingState.isSkeletonExiting()" />
+        } @else {
+          <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body">
+              <span class="loading loading-spinner loading-sm mr-2"></span>
+              Cargando información del chofer...
+            </div>
           </div>
-        </div>
+        }
       }
     </div>
   `,
@@ -884,6 +892,10 @@ export class DriverDetail implements OnInit {
   private machineService = inject(MachineService);
   private dailyRecordService = inject(DailyRecordService);
   private accountingService = inject(AccountingService);
+  private loadingStateService = inject(LoadingStateService);
+  
+  // Estado de carga con umbral de 200ms
+  driverLoadingState = this.loadingStateService.createLoadingState();
 
   isEditingGeneral = signal(false);
   activeTab = signal<'general' | 'records' | 'liquidations'>('general');
@@ -967,7 +979,18 @@ export class DriverDetail implements OnInit {
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general']));
 
+  // Effect para detectar cuando el chofer está cargado
+  private driverEffect = effect(() => {
+    const driver = this.driver();
+    if (driver && this.driverLoadingState.isLoading()) {
+      this.driverLoadingState.setDataLoaded();
+    }
+  });
+
   ngOnInit(): void {
+    // Iniciar estado de carga
+    this.driverLoadingState.setLoading(true);
+    
     // Efecto para cargar datos cuando el chofer cambia
     effect(() => {
       const driver = this.driver();

@@ -21,9 +21,6 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       <div
         class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
       >
-        <!-- Patrón de Grilla Tech (móvil) -->
-        <div class="absolute inset-0 bg-grid-pattern z-0 pointer-events-none"></div>
-
         <!-- Blobs con animación orgánica -->
         <div
           class="absolute -top-20 -left-12 w-48 h-48 bg-white/10 rounded-full blur-2xl animate-blob-1"
@@ -37,11 +34,11 @@ import { SpinnerService } from '../../shared/services/spinner.service';
           class="flex flex-col items-center justify-center h-full pb-3 text-primary-content relative z-10 animate-entrance-fade-up delay-100"
         >
           <div
-            class="w-12 h-12 bg-white text-primary rounded-xl flex items-center justify-center font-black text-xl shadow-lg mb-1 animate-entrance-zoom delay-200"
+            class="logo-brand w-12 h-12 bg-white text-primary rounded-xl flex items-center justify-center text-xl shadow-lg mb-1 animate-entrance-zoom delay-200"
           >
             GF
           </div>
-          <h2 class="text-xl font-bold tracking-tight animate-entrance-fade-up delay-300">Gestor de Flotas</h2>
+          <h2 class="logo-brand text-xl animate-entrance-fade-up delay-300">GESTOR DE FLOTAS</h2>
         </div>
       </div>
 
@@ -65,12 +62,12 @@ import { SpinnerService } from '../../shared/services/spinner.service';
         <div class="relative z-10 animate-entrance-fade-left delay-100">
           <div class="flex items-center gap-3 mb-8">
             <div
-              class="w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center font-black text-xl shadow-lg"
+              class="logo-brand w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center text-xl shadow-lg"
             >
               GF
             </div>
-            <span class="text-2xl font-bold tracking-tight"
-              >Gestor de Flotas</span
+            <span class="logo-brand text-2xl"
+              >GESTOR DE FLOTAS</span
             >
           </div>
           <h2 class="text-4xl font-bold leading-tight max-w-md">
@@ -245,15 +242,16 @@ import { SpinnerService } from '../../shared/services/spinner.service';
               </button>
             </div>
 
-          </form>
+            <!-- Área reservada para mensajes de error - Evita saltos cuando aparecen -->
+            <div class="min-h-[4rem] mt-4 flex items-start justify-center">
+              @if (error()) {
+                <p class="text-sm font-medium text-error text-center whitespace-pre-line animate-pulse">
+                  {{ error() }}
+                </p>
+              }
+            </div>
 
-            <p
-              *ngIf="error()"
-              class="absolute left-0 right-0 text-sm font-medium text-error text-center whitespace-pre-line animate-pulse pointer-events-none"
-              style="top: calc(100% + 1rem);"
-            >
-              {{ error() }}
-            </p>
+          </form>
 
           <div class="text-center animate-entrance-fade-up delay-mobile-1000 delay-700 absolute bottom-0 left-0 right-0 pb-6 sm:pb-8">
             <div
@@ -517,9 +515,11 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       --button-ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       --button-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
       --button-ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+      --button-ease-color: cubic-bezier(0.4, 0, 0.2, 1); /* Easing suave para transiciones de color */
       --button-transition-fast: 200ms;
       --button-transition-normal: 300ms;
       --button-transition-slow: 500ms;
+      --button-transition-color: 600ms; /* Duración más larga y suave para cambios de color */
     }
 
     /* Contenedor del botón */
@@ -538,15 +538,15 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       position: relative;
     }
 
-    /* Asegurar que el contenedor principal tenga padding-bottom para el mensaje de error y RRHH */
+    /* Asegurar que el contenedor principal tenga padding-bottom para RRHH */
     .w-full.max-w-md {
-      padding-bottom: 6rem; /* Espacio para mensaje de error y RRHH */
+      padding-bottom: 5rem; /* Espacio para RRHH */
       min-height: fit-content;
     }
 
     @media (min-width: 640px) {
       .w-full.max-w-md {
-        padding-bottom: 7rem;
+        padding-bottom: 6rem;
       }
     }
 
@@ -572,8 +572,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       transition: 
         width var(--button-transition-slow) var(--button-ease-elastic),
         height var(--button-transition-slow) var(--button-ease-elastic),
-        background var(--button-transition-slow) var(--button-ease-elastic),
-        box-shadow var(--button-transition-slow) var(--button-ease-elastic),
+        background var(--button-transition-color) var(--button-ease-color),
+        box-shadow var(--button-transition-color) var(--button-ease-color),
         transform var(--button-transition-fast) var(--button-ease-premium),
         min-width var(--button-transition-slow) var(--button-ease-elastic),
         clip-path 0ms; /* Cambio instantáneo del clip-path */
@@ -584,7 +584,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
     }
 
     /* Estado IDLE - Botón ancho con texto */
-    .button-morph-premium.state-idle {
+    .button-morph-premium.state-idle:not(:disabled) {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
@@ -602,17 +602,63 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       border-radius: 0.75rem;
     }
 
-    .button-morph-premium:disabled {
+    /* Estado DISABLED - Botón gris cuando está deshabilitado (solo en estado idle) */
+    .button-morph-premium.state-idle:disabled {
       opacity: 1; /* Mantener opacidad completa incluso cuando está disabled */
       cursor: not-allowed;
       transform: none !important;
-    }
-
-    .button-morph-premium:disabled:hover {
-      transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Gris cuando está deshabilitado */
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+      width: 100%;
+      height: 3.5rem;
+      min-width: auto;
+      border-radius: 0.75rem;
+      clip-path: inset(0 round 0.75rem);
+      color: white;
+      /* Asegurar que la transición de color se aplique también cuando está disabled */
+      transition: 
+        width var(--button-transition-slow) var(--button-ease-elastic),
+        height var(--button-transition-slow) var(--button-ease-elastic),
+        background var(--button-transition-color) var(--button-ease-color),
+        box-shadow var(--button-transition-color) var(--button-ease-color),
+        transform var(--button-transition-fast) var(--button-ease-premium),
+        min-width var(--button-transition-slow) var(--button-ease-elastic),
+        clip-path 0ms;
+    }
+
+    .button-morph-premium.state-idle:disabled:hover {
+      transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Mantener gris en hover */
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Los estados loading y success mantienen sus colores incluso cuando están disabled */
+    .button-morph-premium.state-loading:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir animaciones del botón si las hay */
+      /* Mantener el color azul del loading */
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .button-morph-premium.state-success:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir la animación successPulse */
+      /* Mantener el color verde del success */
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      box-shadow: 
+        0 0 0 4px rgba(16, 185, 129, 0.18),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.3) !important;
+      /* Mantener la animación de success - esta animación usa transform */
+      animation: successPulse 750ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
 
     .button-morph-premium.state-idle:hover:not(:disabled) {

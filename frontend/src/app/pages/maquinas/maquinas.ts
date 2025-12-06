@@ -1,14 +1,15 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { MachineService } from '../../shared/services/machine.service';
 import { MachineKPIs } from '../../shared/machines/machine-kpis/machine-kpis';
 import { MachineFilters } from '../../shared/machines/machine-filters/machine-filters';
 import { MachineList } from '../../shared/machines/machine-list/machine-list';
-import { Machine, StatusFilter, ViewMode, MachineKPIs as MachineKPIsType, MachineDocumentAlerts, DocumentStatus } from '../../shared/models/machine.models';
+import { Machine, StatusFilter, DocumentFilter, ViewMode, MachineKPIs as MachineKPIsType, MachineDocumentAlerts, DocumentStatus } from '../../shared/models/machine.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, map } from 'rxjs';
 import { calculateMachineDocumentStatus } from '../../shared/utils/document.utils';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 @Component({
   selector: 'app-maquinas',
@@ -16,51 +17,57 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
   template: `
     <div class="space-y-6">
       <!-- Header -->
-      <div class="page-entry-header">
-        <div class="flex justify-between items-start flex-wrap gap-4">
-          <div>
-            <h1 class="text-4xl font-bold mb-2">Lista de Máquinas (Microbuses)</h1>
-            <p class="text-base-content/70">
-              Gestiona todas las máquinas registradas en el sistema.
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
+            <h1 class="text-xl md:text-2xl lg:text-4xl font-bold text-base-content tracking-tight">Flota de Vehículos</h1>
+            <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-md hidden sm:block">
+              Administración completa de la flota: estado operativo, documentación y asignación de conductores.
             </p>
           </div>
-          <a routerLink="/maquinas/nueva" class="btn btn-primary hover-lift">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+          <a routerLink="/maquinas/nueva" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-sm border border-primary/20 transition-all active:scale-95 text-sm font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
             </svg>
-            Registrar Nueva Máquina
+            <span class="sm:hidden">Registrar</span>
+            <span class="hidden sm:inline">Registrar Máquina</span>
           </a>
         </div>
       </div>
 
       <!-- KPIs -->
-      @if (isLoading()) {
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          @for (i of [1,2,3]; track i) {
-            <app-loading-skeleton type="kpi" />
-          }
-        </div>
-      } @else {
-        <app-machine-kpis [kpis]="kpis()" />
-      }
-
-      <!-- Layout Principal: Lista de Máquinas (Full Width) -->
-      <div class="page-entry-content">
-        @if (isLoading() && machines().length === 0) {
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            @for (i of [1,2,3,4,5,6]; track i) {
-              <app-loading-skeleton type="card" />
+      <div class="pl-3 md:pl-4">
+        @if (kpisLoadingState.isLoading()) {
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+            @for (i of [1,2,3,4]; track i) {
+              <app-loading-skeleton 
+                type="kpi" 
+                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
             }
           </div>
         } @else {
+          <app-machine-kpis [kpis]="kpis()" />
+        }
+      </div>
+
+      <!-- Layout Principal: Lista de Máquinas (Full Width) -->
+      <div class="page-entry-content">
+        @if (machinesLoadingState.isLoading()) {
+          <app-loading-skeleton 
+            type="machine-list" 
+            [count]="6"
+            [isExiting]="machinesLoadingState.isSkeletonExiting()" />
+        } @else {
           <app-machine-list
-          [machines]="filteredMachines()"
+          [machines]="machines()"
           [viewMode]="viewMode()"
           [statusFilter]="statusFilter()"
+          [documentFilter]="documentFilter()"
           [docStatusMap]="docStatusMap()"
           [alerts]="documentAlerts()"
           (viewModeChange)="onViewModeChange($event)"
-          (filterChange)="onFilterChange($event)" />
+          (filterChange)="onFilterChange($event)"
+          (documentFilterChange)="onDocumentFilterChange($event)" />
         }
       </div>
     </div>
@@ -70,10 +77,21 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 })
 export class Maquinas implements OnInit {
   private machineService = inject(MachineService);
+  private loadingStateService = inject(LoadingStateService);
 
   viewMode = signal<ViewMode>('cards');
   statusFilter = signal<StatusFilter>('all');
-  isLoading = signal(true);
+  documentFilter = signal<DocumentFilter>('all');
+  
+  // Estados de carga con umbral de 200ms
+  kpisLoadingState = this.loadingStateService.createLoadingState();
+  machinesLoadingState = this.loadingStateService.createLoadingState();
+
+  constructor() {
+    // Iniciar estados de carga inmediatamente, antes del primer render
+    this.kpisLoadingState.setLoading(true);
+    this.machinesLoadingState.setLoading(true);
+  }
 
   // Cargar máquinas
   machinesData = toSignal(
@@ -93,29 +111,58 @@ export class Maquinas implements OnInit {
     { initialValue: null }
   );
 
-  kpis = computed(() => this.kpisData() ?? this.calculateMockKPIs());
+  kpis = computed(() => {
+    const kpisData = this.kpisData();
+    // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
+    if (kpisData === null && this.kpisLoadingState.isLoading()) {
+      return { operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 };
+    }
+    return kpisData ?? this.calculateMockKPIs();
+  });
 
-  // Calcular alertas de documentación desde las máquinas filtradas
+  // Effects para detectar cuando los datos están listos
+  private machinesEffect = effect(() => {
+    const machines = this.machines();
+    if (machines.length > 0 && this.machinesLoadingState.isLoading()) {
+      this.machinesLoadingState.setDataLoaded();
+    }
+  });
+
+  private kpisEffect = effect(() => {
+    const kpis = this.kpisData();
+    if (kpis !== null && this.kpisLoadingState.isLoading()) {
+      this.kpisLoadingState.setDataLoaded();
+    }
+  });
+
+  // Calcular alertas de documentación desde todas las máquinas (no filtradas)
   documentAlerts = computed(() => {
-    const machines = this.filteredMachines();
+    const machines = this.machines();
+    const docStatusMap = this.docStatusMap();
     let vencidos = 0;
     let por_vencer = 0;
     let al_dia = 0;
 
     machines.forEach(machine => {
-      const status = calculateMachineDocumentStatus(machine);
-      ['revision_tecnica', 'permiso_circulacion', 'seguro_obligatorio'].forEach(key => {
-        const doc = status[key as keyof typeof status];
-        if (doc) {
-          if (doc.estado === 'error') {
-            vencidos++;
-          } else if (doc.estado === 'warning') {
-            por_vencer++;
-          } else {
-            al_dia++;
-          }
-        }
-      });
+      const docStatus = docStatusMap.get(machine.id);
+      if (!docStatus) return;
+
+      const docs = [
+        docStatus.revision_tecnica,
+        docStatus.permiso_circulacion,
+        docStatus.seguro_obligatorio
+      ].filter(Boolean) as DocumentStatus[];
+
+      if (docs.length === 0) return;
+
+      // Una máquina cuenta como vencida si tiene al menos un documento vencido
+      if (docs.some(doc => doc.estado === 'error')) {
+        vencidos++;
+      } else if (docs.some(doc => doc.estado === 'warning')) {
+        por_vencer++;
+      } else if (docs.every(doc => doc.estado === 'ok')) {
+        al_dia++;
+      }
     });
 
     return { vencidos, por_vencer, al_dia };
@@ -134,23 +181,11 @@ export class Maquinas implements OnInit {
     return map;
   });
 
-  // Máquinas filtradas
-  filteredMachines = computed(() => {
-    const machines = this.machines();
-    const filter = this.statusFilter();
-    if (filter === 'all') {
-      return machines;
-    }
-    return machines.filter(m => m.estado_operativo === filter);
-  });
 
   ngOnInit(): void {
+    // Los estados de carga ya se iniciaron en la inicialización
     // Los datos se cargan automáticamente con toSignal
-    setTimeout(() => {
-      if (this.machines().length > 0 || this.kpis()) {
-        this.isLoading.set(false);
-      }
-    }, 500);
+    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
   }
 
   onViewModeChange(mode: ViewMode): void {
@@ -159,6 +194,10 @@ export class Maquinas implements OnInit {
 
   onFilterChange(filter: StatusFilter): void {
     this.statusFilter.set(filter);
+  }
+
+  onDocumentFilterChange(filter: DocumentFilter): void {
+    this.documentFilter.set(filter);
   }
 
   private calculateMockKPIs(): MachineKPIsType {

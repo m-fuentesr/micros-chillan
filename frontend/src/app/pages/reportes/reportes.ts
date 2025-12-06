@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
@@ -7,6 +7,7 @@ import { ReportsService } from '../../shared/services/reports.service';
 import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
+import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 interface MachineProfit {
   rank: number;
@@ -34,8 +35,8 @@ interface DriverProfit {
     <div class="space-y-6">
       <!-- Header -->
       <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Reportes y Estadísticas</h1>
-        <p class="text-base-content/60 italic">Análisis financiero y operativo de la flota</p>
+        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Análisis y Reportes</h1>
+        <p class="text-base-content/60 italic">Análisis detallado de rentabilidad, ingresos y rendimiento operativo de la flota.</p>
       </div>
 
       <!-- Barra de Comandos: Tabs -->
@@ -146,8 +147,11 @@ interface DriverProfit {
 
               <!-- Tabla Financiera Desktop -->
               <div class="hidden lg:block overflow-x-auto">
-                @if (isLoading().profit && machinesData().length === 0) {
-                  <app-loading-skeleton type="table" [count]="5" />
+                @if (profitLoadingState.showSkeleton() && profitLoadingState.isLoading()) {
+                  <app-loading-skeleton 
+                    type="table" 
+                    [count]="5"
+                    [isExiting]="profitLoadingState.isSkeletonExiting()" />
                 } @else {
                   <table class="table w-full data-table">
                   <thead class="bg-base-200">
@@ -186,9 +190,11 @@ interface DriverProfit {
 
               <!-- Tarjetas Móviles -->
               <div class="block lg:hidden space-y-4">
-                @if (isLoading().profit && machinesData().length === 0) {
+                @if (profitLoadingState.showSkeleton() && profitLoadingState.isLoading()) {
                   @for (i of [1,2,3,4,5]; track i) {
-                    <app-loading-skeleton type="card" />
+                    <app-loading-skeleton 
+                      type="card" 
+                      [isExiting]="profitLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
                   @for (item of machinesData(); track item.rank) {
@@ -289,8 +295,11 @@ interface DriverProfit {
 
               <!-- Tabla de Ingresos Desktop -->
               <div class="hidden lg:block overflow-x-auto">
-                @if (isLoading().revenue && revenueRankingData().length === 0) {
-                  <app-loading-skeleton type="table" [count]="5" />
+                @if (revenueLoadingState.showSkeleton() && revenueLoadingState.isLoading()) {
+                  <app-loading-skeleton 
+                    type="table" 
+                    [count]="5"
+                    [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                 } @else {
                   <table class="table w-full data-table">
                   <thead class="bg-base-200">
@@ -315,9 +324,11 @@ interface DriverProfit {
 
               <!-- Tarjetas Móviles -->
               <div class="block lg:hidden space-y-4">
-                @if (isLoading().revenue && revenueRankingData().length === 0) {
+                @if (revenueLoadingState.showSkeleton() && revenueLoadingState.isLoading()) {
                   @for (i of [1,2,3,4,5]; track i) {
-                    <app-loading-skeleton type="card" />
+                    <app-loading-skeleton 
+                      type="card" 
+                      [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
                   @for (item of revenueRankingData(); track item.rank) {
@@ -396,8 +407,11 @@ interface DriverProfit {
 
               <!-- Tabla de Choferes Desktop -->
               <div class="hidden lg:block overflow-x-auto">
-                @if (isLoading().driver && driversData().length === 0) {
-                  <app-loading-skeleton type="table" [count]="5" />
+                @if (driverLoadingState.showSkeleton() && driverLoadingState.isLoading()) {
+                  <app-loading-skeleton 
+                    type="table" 
+                    [count]="5"
+                    [isExiting]="driverLoadingState.isSkeletonExiting()" />
                 } @else {
                   <table class="table w-full data-table">
                   <thead class="bg-base-200">
@@ -428,9 +442,11 @@ interface DriverProfit {
 
               <!-- Tarjetas Móviles -->
               <div class="block lg:hidden space-y-4">
-                @if (isLoading().driver && driversData().length === 0) {
+                @if (driverLoadingState.showSkeleton() && driverLoadingState.isLoading()) {
                   @for (i of [1,2,3,4,5]; track i) {
-                    <app-loading-skeleton type="card" />
+                    <app-loading-skeleton 
+                      type="card" 
+                      [isExiting]="driverLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
                   @for (item of driversData(); track item.rank) {
@@ -536,14 +552,15 @@ interface DriverProfit {
 })
 export class Reportes implements OnInit {
   private reportsService = inject(ReportsService);
+  private loadingStateService = inject(LoadingStateService);
   
   selectedPeriod = signal<string>('Noviembre 2025');
   activeTab = signal<string>('profit');
-  isLoading = signal({
-    profit: true,
-    revenue: true,
-    driver: true
-  } as { profit: boolean; revenue: boolean; driver: boolean });
+  
+  // Estados de carga con umbral de 200ms
+  profitLoadingState = this.loadingStateService.createLoadingState();
+  revenueLoadingState = this.loadingStateService.createLoadingState();
+  driverLoadingState = this.loadingStateService.createLoadingState();
 
   // Cargar datos del servicio
   private machineRankingResponse = toSignal(
@@ -569,16 +586,36 @@ export class Reportes implements OnInit {
     { initialValue: null }
   );
 
+  // Effects para detectar cuando los datos están listos
+  private profitEffect = effect(() => {
+    const machines = this.machinesData();
+    if (machines.length > 0 && this.profitLoadingState.isLoading()) {
+      this.profitLoadingState.setDataLoaded();
+    }
+  });
+
+  private revenueEffect = effect(() => {
+    const revenue = this.revenueRankingData();
+    if (revenue.length > 0 && this.revenueLoadingState.isLoading()) {
+      this.revenueLoadingState.setDataLoaded();
+    }
+  });
+
+  private driverEffect = effect(() => {
+    const drivers = this.driversData();
+    if (drivers.length > 0 && this.driverLoadingState.isLoading()) {
+      this.driverLoadingState.setDataLoaded();
+    }
+  });
+
   ngOnInit(): void {
-    // Desactivar loading después de un tiempo razonable
-    setTimeout(() => {
-      this.isLoading.update(state => ({
-        ...state,
-        profit: false,
-        revenue: false,
-        driver: false
-      }));
-    }, 500);
+    // Iniciar estados de carga
+    this.profitLoadingState.setLoading(true);
+    this.revenueLoadingState.setLoading(true);
+    this.driverLoadingState.setLoading(true);
+    
+    // Los datos se cargan automáticamente con toSignal
+    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
   }
 
   // Mapear datos de máquinas desde el servicio
