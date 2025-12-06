@@ -1,7 +1,404 @@
-﻿from datetime import date, datetime
+﻿from datetime import date, timedelta
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
+
+async def get_summary():
+    """
+    Resumen superior de choferes:
+    - Choferes activos
+    - Choferes inactivos
+    - Con máquina asignada
+    - Sin asignar
+    - Licencias en alerta (vencidas o por vencer en <=30 días)
+    """
+
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
+
+    # ---------------------------------------------------------
+    # 1) Obtener estados (activo / inactivo)
+    # ---------------------------------------------------------
+    estados_raw = (
+        supabase.table("choferes")
+        .select("id, estado, fecha_venc_licencia")
+        .execute()
+    )
+
+    if getattr(estados_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes: {estados_raw.error}")
+
+    activos = 0
+    inactivos = 0
+
+    choferes_ids = []
+    licencias_alerta = 0
+
+    for ch in estados_raw.data:
+        choferes_ids.append(ch["id"])
+
+        # Estado activo/inactivo
+        if ch["estado"] == "activo":
+            activos += 1
+        else:
+            inactivos += 1
+
+        # Evaluación de licencia
+        fecha_str = ch.get("fecha_venc_licencia")
+        if fecha_str:
+            fv = date.fromisoformat(fecha_str)
+
+            if fv < hoy:
+                licencias_alerta += 1
+            elif hoy <= fv <= limite_warning:
+                licencias_alerta += 1
+
+    # ---------------------------------------------------------
+    # 2) Determinar máquinas asignadas
+    #    (asignaciones activas: fecha_termino = NULL)
+    # ---------------------------------------------------------
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("chofer_id")
+        .is_("fecha_termino", None)
+        .execute()
+    )
+
+    if getattr(asign_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo asignaciones: {asign_raw.error}")
+
+    asignados_set = {a["chofer_id"] for a in asign_raw.data}
+    con_maquina = len(asignados_set)
+    sin_maquina = len(choferes_ids) - con_maquina
+
+    # ---------------------------------------------------------
+    # 3) Respuesta final
+    # ---------------------------------------------------------
+    return {
+        "estados": {
+            "activos": activos,
+            "inactivos": inactivos,
+        },
+        "operatividad": {
+            "con_maquina_asignada": con_maquina,
+            "sin_asignar": sin_maquina,
+        },
+        "documentos": {
+            "licencias_con_alerta": licencias_alerta
+        }
+    }
+
+
+async def list_drivers(estado: str | None):
+    """
+    Lista principal de choferes para ADMIN.
+
+    - Aplica filtro por estado (activos / inactivos / todos).
+    - Incluye máquina actual (si la tiene).
+    - Calcula estado de licencia (ok / warning / danger).
+    """
+
+    # ---------------------------------------------------------
+    # 1) Obtener choferes + correo del usuario asociado
+    # ---------------------------------------------------------
+    query = (
+        supabase.table("choferes")
+        .select("*, usuarios:usuarios!inner(correo)")
+    )
+
+    # Filtro por estado (pestañas)
+    if estado == "activos":
+        query = query.eq("estado", "activo")
+    elif estado == "inactivos":
+        query = query.eq("estado", "inactivo")
+    # si viene "todos" o None, no filtramos
+
+    res = query.execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes: {res.error}")
+
+    choferes = res.data
+
+    # ---------------------------------------------------------
+    # 2) Obtener asignaciones activas (fecha_termino = NULL)
+    # ---------------------------------------------------------
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("chofer_id, maquina_id, maquinas(numero_interno)")
+        .is_("fecha_termino", None)
+        .execute()
+    )
+
+    if getattr(asign_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo asignaciones: {asign_raw.error}")
+
+    asign_map: dict[int, dict] = {}
+    for a in asign_raw.data:
+        asign_map[a["chofer_id"]] = {
+            "id": a["maquina_id"],
+            "identificador": f"MÁQUINA {a['maquinas']['numero_interno']}",
+        }
+
+    # ---------------------------------------------------------
+    # 3) Construir salida final
+    # ---------------------------------------------------------
+    hoy = date.today()
+    items = []
+
+    for c in choferes:
+        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+
+        # Licencia
+        fv = date.fromisoformat(c["fecha_venc_licencia"])
+        dias = (fv - hoy).days
+
+        if dias < 0:
+            estado_lic = "danger"
+        elif dias <= 30:
+            estado_lic = "warning"
+        else:
+            estado_lic = "ok"
+
+        items.append({
+            "id": c["id"],
+            "nombre_completo": nombre,
+            "rut": c["rut"],
+            "telefono": c["telefono"],
+            "correo_electronico": c["usuarios"]["correo"],
+            "estado": c["estado"],
+            "maquina_actual": asign_map.get(c["id"]),  # puede ser None
+            "licencia_estado": {
+                "fecha_vencimiento": fv,
+                "estado": estado_lic,
+                "dias_restantes": dias,
+            },
+        })
+
+    return items
+
+
+async def get_driver_detail(driver_id: int):
+    """
+    Obtiene todos los datos necesarios para la vista completa
+    de detalle del chofer (perfil).
+    """
+
+    # ---------------------------------------------------------
+    # 1) Obtener chofer + correo
+    # ---------------------------------------------------------
+    res = (
+        supabase.table("choferes")
+        .select("*, usuarios:usuarios!inner(correo)")
+        .eq("id", driver_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(404, "Chofer no encontrado")
+
+    c = res.data
+
+    # ---------------------------------------------------------
+    # 2) Determinar máquina asignada actual
+    # ---------------------------------------------------------
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("maquina_id, maquinas(numero_interno)")
+        .eq("chofer_id", driver_id)
+        .is_("fecha_termino", None)
+        .maybe_single()
+        .execute()
+    )
+
+    # Si hubo error distinto de "no rows", lo propagamos
+    if asign_raw is not None and getattr(asign_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo asignación: {asign_raw.error}")
+
+    maquina_actual = None
+    if asign_raw is not None and asign_raw.data:
+        data = asign_raw.data
+        maquina_actual = {
+            "id": data["maquina_id"],
+            "identificador": f"MÁQUINA {data['maquinas']['numero_interno']}",
+        }
+
+    # ---------------------------------------------------------
+    # 3) Calcular estado de licencia
+    # ---------------------------------------------------------
+    hoy = date.today()
+    fv = date.fromisoformat(c["fecha_venc_licencia"])
+    dias = (fv - hoy).days
+
+    if dias < 0:
+        estado_lic = "danger"
+    elif dias <= 30:
+        estado_lic = "warning"
+    else:
+        estado_lic = "ok"
+
+    # ---------------------------------------------------------
+    # 4) Construcción de respuesta final
+    # ---------------------------------------------------------
+    nombre_completo = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+
+    return {
+        "id": c["id"],
+        "nombre_completo": nombre_completo,
+        "rut": c["rut"],
+        "estado": c["estado"],
+        "telefono": c["telefono"],
+        "correo_electronico": c["usuarios"]["correo"],
+        "porcentaje_pago": c["porcentaje_pago"],
+
+        "maquina_actual": maquina_actual,
+
+        "licencia": {
+            "fecha_vencimiento": fv,
+            "dias_restantes": dias,
+            "estado": estado_lic
+        }
+    }
+
+
+async def update_driver(driver_id: int, data):
+    """
+    Actualiza:
+    - Información personal
+    - Contacto
+    - Estado
+    - Porcentaje de pago
+    - Correo del usuario
+    - Máquina asignada
+    - Fecha de vencimiento de licencia  (ANTES era otro endpoint, ahora se actualiza aquí)
+    """
+
+    # ---------------------------------------------------------
+    # 1. Verificar existencia del chofer
+    # ---------------------------------------------------------
+    exists = (
+        supabase.table("choferes")
+        .select("id")
+        .eq("id", driver_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(exists, "error", None):
+        raise HTTPException(404, "Chofer no encontrado")
+
+    # ---------------------------------------------------------
+    # 2. Actualizar datos del chofer
+    # ---------------------------------------------------------
+    update_payload = {
+        "primer_nombre": data.primer_nombre,
+        "segundo_nombre": data.segundo_nombre,
+        "apellido_paterno": data.apellido_paterno,
+        "apellido_materno": data.apellido_materno,
+        "rut": data.rut,
+        "telefono": data.telefono,
+        "estado": data.estado,
+        "porcentaje_pago": data.porcentaje_pago,
+        "fecha_venc_licencia": data.fecha_venc_licencia.isoformat()
+    }
+
+    upd = (
+        supabase.table("choferes")
+        .update(update_payload)
+        .eq("id", driver_id)
+        .execute()
+    )
+
+    if getattr(upd, "error", None):
+        raise HTTPException(400, f"Error actualizando chofer: {upd.error}")
+
+    # =====================================================================
+    # 2.1 Actualizar correo en Supabase Auth
+    # =====================================================================
+    usr = (
+        supabase.table("usuarios")
+        .select("id, supabase_uid")
+        .eq("chofer_id", driver_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(usr, "error", None):
+        raise HTTPException(400, "No se pudo obtener el usuario asociado al chofer")
+
+    supabase_uid = usr.data["supabase_uid"]
+
+    try:
+        supabase.auth.admin.update_user_by_id(
+            supabase_uid,
+            {
+                "email": data.correo_electronico,
+                "email_confirm": True
+            }
+        )
+    except Exception as e:
+        raise HTTPException(400, f"Error actualizando correo en Supabase Auth: {e}")
+
+    # =====================================================================
+    # 2.2 Actualizar correo en tabla interna 'usuarios'
+    # =====================================================================
+    upd_user = (
+        supabase.table("usuarios")
+        .update({"correo": data.correo_electronico})
+        .eq("chofer_id", driver_id)
+        .execute()
+    )
+
+    if getattr(upd_user, "error", None):
+        raise HTTPException(400, "Error actualizando correo del usuario")
+
+    # ---------------------------------------------------------
+    # 4. Manejo de asignación de máquina
+    # ---------------------------------------------------------
+    hoy = date.today().isoformat()
+
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("id, maquina_id")
+        .eq("chofer_id", driver_id)
+        .is_("fecha_termino", None)
+        .maybe_single()
+        .execute()
+    )
+
+    asign_actual = asign_raw.data if asign_raw and asign_raw.data else None
+    maquina_actual_id = asign_actual["maquina_id"] if asign_actual else None
+    nueva_maquina = data.maquina_id
+
+    # Caso 1 → No cambia la máquina
+    if nueva_maquina == maquina_actual_id:
+        return {"message": "Chofer actualizado correctamente"}
+
+    # Caso 2 → Tenía máquina y ahora es None
+    if maquina_actual_id is not None and nueva_maquina is None:
+        supabase.table("asignaciones_chofer_maquina").update(
+            {"fecha_termino": hoy}
+        ).eq("id", asign_actual["id"]).execute()
+
+        return {"message": "Chofer actualizado correctamente"}
+
+    # Caso 3 → Cambió a otra máquina
+    if maquina_actual_id is not None and nueva_maquina is not None:
+        supabase.table("asignaciones_chofer_maquina").update(
+            {"fecha_termino": hoy}
+        ).eq("id", asign_actual["id"]).execute()
+
+    # Caso 4 → Crear nueva asignación
+    if nueva_maquina is not None:
+        supabase.table("asignaciones_chofer_maquina").insert({
+            "chofer_id": driver_id,
+            "maquina_id": nueva_maquina,
+            "fecha_inicio": hoy,
+            "fecha_termino": None
+        }).execute()
+
+    return {"message": "Chofer actualizado correctamente"}
 
 
 async def create_driver(data: DriverCreate):
@@ -270,38 +667,3 @@ async def create_driver(data: DriverCreate):
         # supabase.auth.admin.delete_user(supabase_uid)
         # si quieres mantener consistencia total entre Auth y DB.
         raise
-
-
-async def list_drivers():
-    """
-    Lista de choferes.
-    Admin only.
-    """
-
-    res = (
-        supabase.table("choferes")
-        .select("*, usuarios:usuarios!inner(id, correo)")
-        .execute()
-    )
-
-    if getattr(res, "error", None):
-        raise HTTPException(400, f"Error listando choferes: {res.error}")
-
-    items = []
-
-    for c in res.data:
-        usuario = c.get("usuarios")
-
-        if usuario and isinstance(usuario, dict):
-            c["correo_electronico"] = usuario["correo"]
-        else:
-            # Caso raro, debería NO ocurrir ahora
-            c["correo_electronico"] = None
-
-        # eliminar el campo para que coincida con tu schema
-        del c["usuarios"]
-
-        items.append(c)
-
-    return items
-

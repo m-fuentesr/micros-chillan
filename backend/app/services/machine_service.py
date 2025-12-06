@@ -1,7 +1,6 @@
 ﻿from fastapi import HTTPException
 from datetime import date, timedelta
 from app.db.supabase_client import supabase
-from app.utils.auth import require_admin
 from app.schemas.user import UserInDB
 
 async def get_active_machines():
@@ -50,7 +49,7 @@ async def get_active_machines():
     return items
 
 
-async def get_summary(current_user: UserInDB):
+async def get_summary():
     """
     Devuelve:
     {
@@ -64,9 +63,6 @@ async def get_summary(current_user: UserInDB):
         }
     }
     """
-
-    require_admin(current_user)
-
     # ---------------------------------------------------------
     # 1) Contar máquinas por estado
     # ---------------------------------------------------------
