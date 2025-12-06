@@ -1,7 +1,7 @@
 ﻿from fastapi import APIRouter, Query, Depends
 from typing import List
 from app.services import accounting_service
-from app.schemas.accounting import AccountingSummaryResponse, WeekSummary
+from app.schemas.accounting import AccountingSummaryResponse, WeekSummary, DriverWeekDetail
 from app.utils.auth import get_current_user, require_admin 
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting"])
@@ -13,10 +13,6 @@ async def get_accounting_summary(
     # 1. Obtenemos el usuario que hace la petición (Token)
     current_user: dict = Depends(get_current_user) 
 ):
-    """
-    Obtiene el resumen financiero general del mes (KPIs).
-    REQUIERE ROL DE ADMINISTRADOR.
-    """
     # 2. Validamos que sea Admin. Si es chofer, esto lanzará un error 403 Forbidden.
     require_admin(current_user)
 
@@ -30,3 +26,12 @@ async def get_accounting_weeks(
 ):
     require_admin(current_user)
     return await accounting_service.get_weekly_summary(mes, anio)
+
+@router.get("/weeks/detail", response_model=List[DriverWeekDetail])
+async def get_week_detail(
+    fecha_inicio: str = Query(..., description="Formato YYYY-MM-DD"),
+    fecha_fin: str = Query(..., description="Formato YYYY-MM-DD"),
+    current_user: dict = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await accounting_service.get_week_detail_by_date(fecha_inicio, fecha_fin)

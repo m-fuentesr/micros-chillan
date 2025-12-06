@@ -24,3 +24,12 @@ class WeekSummary(BaseModel):
     total_mantenimiento: int
     total_pago_choferes: int
     ganancia_liquida: int
+
+class DriverWeekDetail(BaseModel):
+    chofer_id: int
+    nombre_chofer: str
+    dias_trabajados: int
+    total_recaudado: int
+    costo_diesel: int
+    gastos_mantenimiento: int
+    total_ganado_chofer: int

@@ -157,3 +157,89 @@ async def get_weekly_summary(mes: int, anio: int):
         week_num += 1
 
     return weeks_data
+
+async def get_week_detail_by_date(fecha_inicio: str, fecha_fin: str):
+    """
+    Desglosa la actividad por chofer en un rango de fechas específico.
+    Cruza registros operativos con mantenimientos de la máquina usada ese día.
+    """
+    # 1. TRAER REGISTROS DIARIOS
+    res_regs = (
+        supabase.table("registros_diarios")
+        .select("chofer_id, maquina_id, fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
+        .gte("fecha", fecha_inicio)
+        .lte("fecha", fecha_fin)
+        .execute()
+    )
+    registros = res_regs.data
+
+    # 2. TRAER MANTENIMIENTOS (Repuestos)
+    res_mant = (
+        supabase.table("compras_repuestos")
+        .select("fecha_compra, maquina_id, costo")
+        .gte("fecha_compra", fecha_inicio)
+        .lte("fecha_compra", fecha_fin)
+        .execute()
+    )
+    mantenimientos = res_mant.data
+
+    # 3. TRAER NOMBRES DE CHOFERES (Corrección: Directo de tabla choferes)
+    chofer_ids = list(set(r["chofer_id"] for r in registros))
+    
+    if not chofer_ids:
+        return [] 
+
+    # Consultamos directo las columnas de nombre y apellido
+    res_drivers = (
+        supabase.table("choferes")
+        .select("id, primer_nombre, apellido_paterno") 
+        .in_("id", chofer_ids)
+        .execute()
+    )
+    
+    nombres_map = {}
+    for item in res_drivers.data:
+        # Construimos el nombre completo: "Juan Perez"
+        nombre = item.get("primer_nombre") or ""
+        apellido = item.get("apellido_paterno") or ""
+        full_name = f"{nombre} {apellido}".strip()
+        
+        nombres_map[item["id"]] = full_name
+
+    # 4. PROCESAMIENTO Y CRUCE DE DATOS
+    reporte = {} 
+
+    for r in registros:
+        cid = r["chofer_id"]
+        mid = r["maquina_id"]
+        fecha_reg = r["fecha"]
+
+        # Inicializar chofer si no existe en el reporte
+        if cid not in reporte:
+            reporte[cid] = {
+                "chofer_id": cid,
+                "nombre_chofer": nombres_map.get(cid, "Desconocido"), # Aquí usará el nombre correcto
+                "dias_trabajados": 0,
+                "total_recaudado": 0,
+                "costo_diesel": 0,
+                "gastos_mantenimiento": 0,
+                "total_ganado_chofer": 0
+            }
+
+        # Sumar operativos
+        reporte[cid]["dias_trabajados"] += 1
+        reporte[cid]["total_recaudado"] += (r.get("monto_recaudado") or 0)
+        reporte[cid]["costo_diesel"] += (r.get("costo_total_diesel") or 0)
+        reporte[cid]["total_ganado_chofer"] += (r.get("monto_porcentaje_chofer") or 0)
+
+        # CRUCE CON MANTENIMIENTO
+        # Calculamos el gasto de ese día para esa máquina
+        gastos_dia = sum(
+            (m.get("costo") or 0) for m in mantenimientos 
+            if m["maquina_id"] == mid and m["fecha_compra"] == fecha_reg
+        )
+        
+        reporte[cid]["gastos_mantenimiento"] += gastos_dia
+
+    # 5. CONVERTIR A LISTA
+    return list(reporte.values())
