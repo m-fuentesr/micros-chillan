@@ -1,7 +1,7 @@
 ﻿from fastapi import APIRouter, Query, Depends
+from typing import List
 from app.services import accounting_service
-from app.schemas.accounting import AccountingSummaryResponse
-# Importamos las utilidades de seguridad
+from app.schemas.accounting import AccountingSummaryResponse, WeekSummary
 from app.utils.auth import get_current_user, require_admin 
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting"])
@@ -21,3 +21,12 @@ async def get_accounting_summary(
     require_admin(current_user)
 
     return await accounting_service.get_monthly_summary(mes, anio)
+
+@router.get("/weeks", response_model=List[WeekSummary])
+async def get_accounting_weeks(
+    mes: int = Query(..., ge=1, le=12),
+    anio: int = Query(..., ge=2020),
+    current_user: dict = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await accounting_service.get_weekly_summary(mes, anio)

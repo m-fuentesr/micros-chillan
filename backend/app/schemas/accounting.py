@@ -1,4 +1,5 @@
 ﻿from pydantic import BaseModel
+from typing import List
 
 class PeriodoInfo(BaseModel):
     mes: int
@@ -14,3 +15,12 @@ class TotalesSummary(BaseModel):
 class AccountingSummaryResponse(BaseModel):
     periodo: PeriodoInfo
     totales: TotalesSummary
+
+class WeekSummary(BaseModel):
+    numero_semana: int
+    rango_fechas_texto: str
+    total_recaudado: int
+    total_diesel: int
+    total_mantenimiento: int
+    total_pago_choferes: int
+    ganancia_liquida: int
