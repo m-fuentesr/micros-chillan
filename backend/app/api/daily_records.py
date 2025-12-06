@@ -1,6 +1,7 @@
 ﻿from fastapi import APIRouter, Depends, status, Query
 from typing import List
 from app.utils.auth import get_current_user, require_admin
+from app.core.pagination import PaginatedResponse
 from app.schemas.user import UserInDB
 from app.services import daily_record_service
 from app.schemas.daily_record import (
@@ -12,7 +13,7 @@ from app.schemas.daily_record import (
 
 router = APIRouter(prefix="/api/daily-records", tags=["Daily Records"])
 
-@router.get("", response_model=List[DailyRecordListItem])
+@router.get("", response_model=PaginatedResponse[DailyRecordListItem])
 async def list_daily_records(
     filters: DailyRecordListFilters = Depends(),
     current_user: UserInDB = Depends(get_current_user),

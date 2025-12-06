@@ -363,8 +363,8 @@ async def get_machine_detail(machine_id: int):
     )
 
     chofer_actual_id = None
-    if asign_raw.data:
-        chofer_actual_id = asign_raw.data["chofer_id"]
+    if asign_raw.data and len(asign_raw.data) > 0:
+        chofer_actual_id = asign_raw.data[0]["chofer_id"]
 
     # ----------------------------------------
     # 3. Obtener documentos

@@ -67,3 +67,5 @@ class DailyRecordListFilters(BaseModel):
     search: Optional[str] = None
     sort_by: str = "fecha"
     order: str = "desc"
+    page: int = 1
+    per_page: int = 10
