@@ -15,10 +15,12 @@ import { catchError, of, switchMap } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
+import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink],
+  imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Header principal -->
@@ -501,12 +503,18 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
         }
         }
       } @else {
-        <div class="card bg-base-100 shadow-sm border border-base-200">
-          <div class="card-body">
-            <span class="loading loading-spinner loading-sm mr-2"></span>
-            Cargando información de la máquina...
+        @if (machineLoadingState.showSkeleton() && machineLoadingState.isLoading()) {
+          <app-loading-skeleton 
+            type="card" 
+            [isExiting]="machineLoadingState.isSkeletonExiting()" />
+        } @else {
+          <div class="card bg-base-100 shadow-sm border border-base-200">
+            <div class="card-body">
+              <span class="loading loading-spinner loading-sm mr-2"></span>
+              Cargando información de la máquina...
+            </div>
           </div>
-        </div>
+        }
       }
     </div>
   `,
@@ -519,6 +527,10 @@ export class MachineDetail implements OnInit {
   private machineService = inject(MachineService);
   private driverService = inject(DriverService);
   private dailyRecordService = inject(DailyRecordService);
+  private loadingStateService = inject(LoadingStateService);
+  
+  // Estado de carga con umbral de 200ms
+  machineLoadingState = this.loadingStateService.createLoadingState();
 
   isEditingGeneral = signal(false);
   activeTab = signal<'general' | 'records' | 'assignments' | 'maintenance'>('general');
@@ -596,8 +608,17 @@ export class MachineDetail implements OnInit {
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general'])); // 'general' siempre se carga
 
+  // Effect para detectar cuando la máquina está cargada
+  private machineEffect = effect(() => {
+    const machine = this.machine();
+    if (machine && this.machineLoadingState.isLoading()) {
+      this.machineLoadingState.setDataLoaded();
+    }
+  });
+
   ngOnInit(): void {
-    // Inicialización adicional si es necesaria
+    // Iniciar estado de carga
+    this.machineLoadingState.setLoading(true);
   }
 
   toggleEditGeneral(): void {

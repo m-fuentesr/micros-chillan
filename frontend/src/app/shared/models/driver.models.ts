@@ -68,4 +68,5 @@ export interface DriverLiquidation {
 
 export type DriverViewMode = 'cards' | 'table';
 export type DriverStatusFilter = 'all' | 'activo' | 'inactivo';
+export type LicenseFilter = 'all' | 'vencidas' | 'por_vencer' | 'al_dia';
 

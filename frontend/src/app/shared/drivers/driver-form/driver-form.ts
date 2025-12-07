@@ -29,9 +29,6 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
               placeholder="12.345.678-9"
               maxlength="12"
               [class.input-error]="form.get('rut')?.invalid && form.get('rut')?.touched">
-            <label class="label">
-              <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-            </label>
             @if (form.get('rut')?.invalid && form.get('rut')?.touched) {
               <label class="label">
                 <span class="label-text-alt text-error">Este campo es obligatorio</span>

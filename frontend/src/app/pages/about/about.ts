@@ -5,7 +5,7 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
   imports: [],
   template: `
     <div class="card w-full bg-base-100 shadow-xl border border-gray-200">
-      <div class="card-body">
+      <div class="card-body page-entry-header">
         <h2 class="card-title text-3xl">Acerca de Nosotros</h2>
         <p>Esta aplicación de ejemplo usa las siguientes tecnologías:</p>
         <ul class="list-disc list-inside mt-4 space-y-2">

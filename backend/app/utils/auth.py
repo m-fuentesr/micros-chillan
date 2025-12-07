@@ -138,10 +138,33 @@ async def get_current_user(
             .execute()
         )
     except Exception as e:
+        error_str = str(e)
         logger.error(
-            f"Error al consultar BD para usuario supabase_uid={supabase_uid}: {str(e)}",
+            f"Error al consultar BD para usuario supabase_uid={supabase_uid}: {error_str}",
             exc_info=True
         )
+        
+        # Detectar errores específicos de Cloudflare
+        if "cloudflare" in error_str.lower() or "500 Internal Server Error" in error_str:
+            logger.error(
+                "Cloudflare está bloqueando las peticiones a Supabase. "
+                "Posibles causas: rate limiting, configuración incorrecta, o problema de red."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Servicio de base de datos temporalmente no disponible. Por favor, intente más tarde."
+            )
+        
+        # Detectar errores de JSON inválido (respuesta HTML en lugar de JSON)
+        if "json" in error_str.lower() and "invalid" in error_str.lower():
+            logger.error(
+                "Supabase devolvió HTML en lugar de JSON. Posible bloqueo de Cloudflare o problema de red."
+            )
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Error de comunicación con la base de datos. Por favor, intente más tarde."
+            )
+        
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al consultar la base de datos"

@@ -52,6 +52,7 @@ export interface MachineDocumentAlerts {
 export type MachineStatus = 'Operativa' | 'En Taller' | 'Inactiva';
 export type ViewMode = 'cards' | 'table';
 export type StatusFilter = 'all' | 'Operativa' | 'En Taller' | 'Inactiva';
+export type DocumentFilter = 'all' | 'vencidos' | 'por_vencer' | 'al_dia';
 
 /**
  * Máquina para selector (vista de choferes)

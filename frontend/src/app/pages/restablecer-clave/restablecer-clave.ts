@@ -64,8 +64,8 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         <!-- Contenido con entrada desde la izquierda -->
         <div class="relative z-10 animate-entrance-fade-left delay-100">
           <a routerLink="/login" class="flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity w-fit">
-            <div class="w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center font-black text-xl shadow-lg">GF</div>
-            <span class="text-2xl font-bold tracking-tight">Gestor de Flotas</span>
+            <div class="logo-brand w-10 h-10 bg-white text-primary rounded-xl flex items-center justify-center text-xl shadow-lg">GF</div>
+            <span class="logo-brand text-2xl">GESTOR DE FLOTAS</span>
           </a>
           <h2 class="text-4xl font-bold leading-tight max-w-md">
             Crea una contraseña segura.
@@ -609,9 +609,11 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       --button-ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
       --button-ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
       --button-ease-premium: cubic-bezier(0.4, 0, 0.2, 1);
+      --button-ease-color: cubic-bezier(0.4, 0, 0.2, 1); /* Easing suave para transiciones de color */
       --button-transition-fast: 200ms;
       --button-transition-normal: 300ms;
       --button-transition-slow: 500ms;
+      --button-transition-color: 600ms; /* Duración más larga y suave para cambios de color */
     }
 
     /* Contenedor del botón */
@@ -643,21 +645,24 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       font-size: 1.125rem;
       font-weight: 700;
       letter-spacing: 0.05em;
-      overflow: hidden;
+      overflow: hidden; /* Forzar que el contenido respete el border-radius */
+      /* Transiciones sincronizadas - border-radius sin transición para cambio instantáneo */
       transition: 
         width var(--button-transition-slow) var(--button-ease-elastic),
         height var(--button-transition-slow) var(--button-ease-elastic),
-        background var(--button-transition-slow) var(--button-ease-elastic),
-        box-shadow var(--button-transition-slow) var(--button-ease-elastic),
+        background var(--button-transition-color) var(--button-ease-color),
+        box-shadow var(--button-transition-color) var(--button-ease-color),
         transform var(--button-transition-fast) var(--button-ease-premium),
         min-width var(--button-transition-slow) var(--button-ease-elastic),
-        clip-path 0ms;
+        clip-path 0ms; /* Cambio instantáneo del clip-path */
+      /* Border-radius base - se sobrescribe en estados específicos */
       border-radius: 0.75rem;
+      /* Clip-path como respaldo para forzar la forma durante la transición */
       clip-path: inset(0 round 0.75rem);
     }
 
     /* Estado IDLE - Botón ancho con texto */
-    .button-morph-premium.state-idle {
+    .button-morph-premium.state-idle:not(:disabled) {
       background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
@@ -666,21 +671,72 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       height: 3.5rem;
       min-width: auto;
       border-radius: 0.75rem;
-      clip-path: inset(0 round 0.75rem);
+      clip-path: inset(0 round 0.75rem); /* Forzar forma redondeada */
       color: white;
     }
-
-    .button-morph-premium:disabled {
-      opacity: 1;
-      cursor: not-allowed;
-      transform: none !important;
+    
+    /* Forzar border-radius en el pseudo-elemento también */
+    .button-morph-premium.state-idle::before {
+      border-radius: 0.75rem;
     }
 
-    .button-morph-premium:disabled:hover {
+    /* Estado DISABLED - Botón gris cuando está deshabilitado (solo en estado idle) */
+    .button-morph-premium.state-idle:disabled {
+      opacity: 1; /* Mantener opacidad completa incluso cuando está disabled */
+      cursor: not-allowed;
       transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Gris cuando está deshabilitado */
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
-        inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+      width: 100%;
+      height: 3.5rem;
+      min-width: auto;
+      border-radius: 0.75rem;
+      clip-path: inset(0 round 0.75rem);
+      color: white;
+      /* Asegurar que la transición de color se aplique también cuando está disabled */
+      transition: 
+        width var(--button-transition-slow) var(--button-ease-elastic),
+        height var(--button-transition-slow) var(--button-ease-elastic),
+        background var(--button-transition-color) var(--button-ease-color),
+        box-shadow var(--button-transition-color) var(--button-ease-color),
+        transform var(--button-transition-fast) var(--button-ease-premium),
+        min-width var(--button-transition-slow) var(--button-ease-elastic),
+        clip-path 0ms;
+    }
+
+    .button-morph-premium.state-idle:disabled:hover {
+      transform: none !important;
+      background: linear-gradient(135deg, #9ca3af 0%, #6b7280 100%) !important; /* Mantener gris en hover */
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* Los estados loading y success mantienen sus colores incluso cuando están disabled */
+    .button-morph-premium.state-loading:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir animaciones del botón si las hay */
+      /* Mantener el color azul del loading */
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+      box-shadow: 
+        0 0 0 0 rgba(0, 0, 0, 0),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.2) !important;
+    }
+
+    .button-morph-premium.state-success:disabled {
+      opacity: 1;
+      cursor: not-allowed;
+      /* NO aplicar transform: none para permitir la animación successPulse */
+      /* Mantener el color verde del success */
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+      box-shadow: 
+        0 0 0 4px rgba(16, 185, 129, 0.18),
+        inset 0 1px 0 0 rgba(255, 255, 255, 0.3) !important;
+      /* Mantener la animación de success - esta animación usa transform */
+      animation: successPulse 750ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
 
     .button-morph-premium.state-idle:hover:not(:disabled) {
@@ -703,7 +759,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       height: 3.5rem;
       min-width: 3.5rem;
       border-radius: 50%;
-      clip-path: circle(50% at center);
+      clip-path: circle(50% at center); /* Forzar forma circular */
       box-shadow: 
         0 0 0 0 rgba(0, 0, 0, 0),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.2);
@@ -719,22 +775,27 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       height: 3.5rem;
       min-width: 3.5rem;
       border-radius: 50%;
-      clip-path: circle(50% at center);
+      clip-path: circle(50% at center); /* Forzar forma circular */
       box-shadow: 
-        0 0 0 4px rgba(16, 185, 129, 0.2),
+        0 0 0 4px rgba(16, 185, 129, 0.18),
         inset 0 1px 0 0 rgba(255, 255, 255, 0.3);
       margin-left: auto;
       margin-right: auto;
       padding: 0;
-      animation: successPulse 600ms var(--button-ease-bounce);
+      animation: successPulse 750ms cubic-bezier(0.22, 0.61, 0.36, 1);
     }
 
     @keyframes successPulse {
-      0%, 100% {
-        transform: scale(1);
+      0% {
+        transform: scale(0.92);
+        opacity: 0;
       }
       50% {
-        transform: scale(1.1);
+        transform: scale(1.06);
+      }
+      100% {
+        transform: scale(1);
+        opacity: 1;
       }
     }
 
@@ -801,6 +862,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       opacity: 0.6;
     }
 
+    /* Ocultar texto cuando el botón se encoge - Sin efecto de opacidad */
     .button-morph-premium.state-loading .button-text-premium,
     .button-morph-premium.state-success .button-text-premium {
       display: none;
@@ -892,7 +954,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
       stroke: white;
       stroke-dasharray: 24;
       stroke-dashoffset: 24;
-      animation: checkmarkDraw 500ms var(--button-ease-elastic) 200ms forwards;
+      animation: checkmarkDraw 600ms var(--button-ease-elastic) 100ms forwards;
     }
 
     @keyframes checkmarkDraw {

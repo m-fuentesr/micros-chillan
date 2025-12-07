@@ -11,16 +11,17 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { switchMap } from 'rxjs/operators';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 @Component({
   selector: 'app-contabilidad',
   imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6">
       <!-- Header -->
-      <div class="animate-header-enter border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Contabilidad</h1>
-        <p class="text-base-content/60 italic">Gestión financiera y nómina de conductores.</p>
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
+        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Finanzas y Nómina</h1>
+        <p class="text-base-content/60 italic">Control financiero completo: resúmenes, liquidaciones y gestión de pagos a conductores.</p>
       </div>
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
@@ -143,10 +144,12 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
             <div class="space-y-8 animate-tab-panel">
-              @if (isLoading().summary && !summary()) {
+              @if (summaryLoadingState.showSkeleton() && summaryLoadingState.isLoading()) {
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                   @for (i of [1,2,3,4]; track i) {
-                    <app-loading-skeleton type="kpi" />
+                    <app-loading-skeleton 
+                      type="kpi" 
+                      [isExiting]="summaryLoadingState.isSkeletonExiting()" />
                   }
                 </div>
               } @else {
@@ -166,8 +169,11 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
-            @if (isLoading().weekly && weeklySummaries().length === 0) {
-              <app-loading-skeleton type="table" [count]="5" />
+            @if (weeklyLoadingState.showSkeleton() && weeklyLoadingState.isLoading()) {
+              <app-loading-skeleton 
+                type="table" 
+                [count]="5"
+                [isExiting]="weeklyLoadingState.isSkeletonExiting()" />
             } @else if (weeklySummaries().length > 0) {
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-weekly-summary-table [summaries]="weeklySummaries()" />
@@ -177,8 +183,11 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 
           <!-- Tab: Liquidación de Choferes -->
           @if (activeTab() === 'payroll') {
-            @if (isLoading().payroll && !liquidation()) {
-              <app-loading-skeleton type="table" [count]="8" />
+            @if (payrollLoadingState.showSkeleton() && payrollLoadingState.isLoading()) {
+              <app-loading-skeleton 
+                type="table" 
+                [count]="8"
+                [isExiting]="payrollLoadingState.isSkeletonExiting()" />
             } @else if (liquidation()) {
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-liquidation-table
@@ -194,8 +203,11 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (isLoading().history && liquidationHistory().length === 0) {
-              <app-loading-skeleton type="table" [count]="5" />
+            @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+              <app-loading-skeleton 
+                type="table" 
+                [count]="5"
+                [isExiting]="historyLoadingState.isSkeletonExiting()" />
             } @else if (liquidationHistory().length > 0) {
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-liquidation-history [liquidations]="liquidationHistory()" />
@@ -234,17 +246,18 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 })
 export class Contabilidad implements OnInit {
   private accountingService = inject(AccountingService);
+  private loadingStateService = inject(LoadingStateService);
 
   activeTab = signal<AccountingTab>('summary');
   
   selectedMonth = signal(11); // Noviembre por defecto
   selectedYear = signal(2025);
-  isLoading = signal({
-    summary: true,
-    weekly: true,
-    payroll: true,
-    history: true
-  } as { summary: boolean; weekly: boolean; payroll: boolean; history: boolean });
+  
+  // Estados de carga con umbral de 200ms
+  summaryLoadingState = this.loadingStateService.createLoadingState();
+  weeklyLoadingState = this.loadingStateService.createLoadingState();
+  payrollLoadingState = this.loadingStateService.createLoadingState();
+  historyLoadingState = this.loadingStateService.createLoadingState();
 
   // Datos
   summaryData = signal<AccountingSummary | null>(null);
@@ -331,14 +344,14 @@ export class Contabilidad implements OnInit {
   }
 
   loadSummary(): void {
-    this.isLoading.update(state => ({ ...state, summary: true }));
+    this.summaryLoadingState.setLoading(true);
     this.accountingService.getSummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of(null)))
       .subscribe(summary => {
         if (summary) {
           this.summaryData.set(summary);
         }
-        this.isLoading.update(state => ({ ...state, summary: false }));
+        this.summaryLoadingState.setDataLoaded();
       });
   }
 
@@ -351,17 +364,17 @@ export class Contabilidad implements OnInit {
   }
 
   loadWeeklySummaries(): void {
-    this.isLoading.update(state => ({ ...state, weekly: true }));
+    this.weeklyLoadingState.setLoading(true);
     this.accountingService.getWeeklySummary(this.selectedMonth(), this.selectedYear())
       .pipe(catchError(() => of([])))
       .subscribe(summaries => {
         this.weeklySummaries.set(summaries);
-        this.isLoading.update(state => ({ ...state, weekly: false }));
+        this.weeklyLoadingState.setDataLoaded();
       });
   }
 
   loadLiquidation(): void {
-    this.isLoading.update(state => ({ ...state, payroll: true }));
+    this.payrollLoadingState.setLoading(true);
     const { mes, anio } = this.payrollDate();
     this.accountingService.getLiquidation(mes, anio)
       .pipe(catchError(() => of(null)))
@@ -369,17 +382,17 @@ export class Contabilidad implements OnInit {
         if (liquidation) {
           this.liquidationData.set(liquidation);
         }
-        this.isLoading.update(state => ({ ...state, payroll: false }));
+        this.payrollLoadingState.setDataLoaded();
       });
   }
 
   loadLiquidationHistory(): void {
-    this.isLoading.update(state => ({ ...state, history: true }));
+    this.historyLoadingState.setLoading(true);
     this.accountingService.getLiquidationHistory()
       .pipe(catchError(() => of([])))
       .subscribe(history => {
         this.liquidationHistoryData.set(history);
-        this.isLoading.update(state => ({ ...state, history: false }));
+        this.historyLoadingState.setDataLoaded();
       });
   }
 

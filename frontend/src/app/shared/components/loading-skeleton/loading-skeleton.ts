@@ -23,7 +23,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-loading-skeleton',
   imports: [CommonModule],
   template: `
-    <div [class]="containerClasses()">
+    <div [class]="containerClasses()" [class.skeleton-exiting]="isExiting()">
       @switch (type()) {
         @case ('kpi') {
           <div class="card bg-base-100 shadow-sm border border-base-200">
@@ -183,6 +183,64 @@ import { CommonModule } from '@angular/common';
             </div>
           </div>
         }
+        @case ('machine-list') {
+          <div class="card bg-base-100 shadow-xl">
+            <!-- Header skeleton -->
+            <div class="card-header p-4 sm:p-6 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-4 sm:pb-6">
+              <!-- Título y descripción -->
+              <div class="mb-6 sm:mb-8">
+                <div class="h-8 w-64 skeleton-shimmer rounded mb-3"></div>
+                <div class="h-4 w-96 skeleton-shimmer rounded hidden sm:block"></div>
+              </div>
+              
+              <!-- Filtros skeleton -->
+              <div class="border-t border-base-200/50 pt-4">
+                <div class="flex flex-col lg:flex-row gap-4 sm:gap-6">
+                  <!-- Filtros de estado operativo -->
+                  <div class="flex-1">
+                    <div class="h-4 w-32 skeleton-shimmer rounded mb-3"></div>
+                    <div class="flex flex-wrap gap-2">
+                      @for (i of [1,2,3,4]; track i) {
+                        <div class="h-8 w-20 skeleton-shimmer rounded-full"></div>
+                      }
+                    </div>
+                  </div>
+                  
+                  <!-- Separador -->
+                  <div class="hidden lg:block w-px bg-base-200/50"></div>
+                  
+                  <!-- Filtros de documentos -->
+                  <div class="flex-1">
+                    <div class="h-4 w-36 skeleton-shimmer rounded mb-3"></div>
+                    <div class="flex flex-wrap gap-2">
+                      @for (i of [1,2,3,4]; track i) {
+                        <div class="h-8 w-24 skeleton-shimmer rounded-full"></div>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Body skeleton -->
+            <div class="card-body">
+              <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                @for (i of rows(); track i) {
+                  <div class="card bg-base-100 shadow-sm border border-base-200">
+                    <div class="card-body p-5">
+                      <div class="h-6 w-3/4 skeleton-shimmer rounded mb-4"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-full skeleton-shimmer rounded"></div>
+                        <div class="h-4 w-5/6 skeleton-shimmer rounded"></div>
+                        <div class="h-4 w-4/6 skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
       }
     </div>
   `,
@@ -197,10 +255,26 @@ import { CommonModule } from '@angular/common';
       }
     }
     
+    @keyframes skeletonFadeOut {
+      0% {
+        opacity: 1;
+        transform: scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: scale(0.98);
+      }
+    }
+    
     .skeleton-shimmer {
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
       animation: shimmer 2s infinite;
+    }
+    
+    .skeleton-exiting {
+      animation: skeletonFadeOut 200ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      pointer-events: none;
     }
     `
   ],
@@ -208,10 +282,16 @@ import { CommonModule } from '@angular/common';
 })
 export class LoadingSkeleton {
   /**
-   * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form
+   * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form, machine-list
    * @default 'card'
    */
-  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom' | 'worker-header' | 'worker-timeline' | 'worker-stats' | 'worker-form'>('card');
+  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom' | 'worker-header' | 'worker-timeline' | 'worker-stats' | 'worker-form' | 'machine-list'>('card');
+
+  /**
+   * Indica si el skeleton está en estado de salida (animación fade-out)
+   * @default false
+   */
+  isExiting = input<boolean>(false);
 
   /**
    * Cantidad de elementos a mostrar (para table, list, text)

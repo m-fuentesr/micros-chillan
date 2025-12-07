@@ -4,9 +4,9 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
   selector: 'app-configuracion',
   imports: [],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6">
       <!-- Header -->
-      <div class="card bg-base-100 shadow-xl animate-header-enter">
+      <div class="card bg-base-100 shadow-xl page-entry-header">
         <div class="card-body">
           <h1 class="card-title text-3xl lg:text-4xl">Configuración</h1>
           <p class="text-base-content/70">

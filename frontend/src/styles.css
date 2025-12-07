@@ -24,13 +24,24 @@ body {
 }
 
 /* ============================================
+   TIPOGRAFÍA DE MARCA - BARLOW
+   Recomendación del experto: Barlow ExtraBold para el logo
+   ============================================ */
+.logo-brand {
+  font-family: 'Barlow', sans-serif;
+  font-weight: 800; /* ExtraBold */
+  text-transform: uppercase;
+  letter-spacing: 0.01em; /* +1% tracking para mayúsculas */
+}
+
+/* ============================================
    SISTEMA DE ANIMACIONES - MOTION UI
    ============================================ */
 
 :root {
   /* Timing Functions (Cubic Bezier) */
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
-  --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out-back: cubic-bezier(0.34, 1.2, 0.64, 1); /* Ajustado: 1.56 → 1.2 (rebote más sutil y profesional) */
   --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
   --ease-spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -109,7 +120,7 @@ body {
 }
 
 .animate-scale-up {
-  animation: scaleUp 400ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: scaleUp 400ms cubic-bezier(0.34, 1.2, 0.64, 1); /* Ajustado: rebote más sutil */
 }
 
 /* Bounce Subtle */
@@ -167,6 +178,18 @@ body {
   }
 }
 
+/* Table Enter (fade + slide suave) */
+@keyframes tableEnter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 /* ============================================
    CLASES DE ANIMACIÓN UTILITARIAS
    ============================================ */
@@ -188,6 +211,12 @@ body {
 /* Entrada de paneles de pestañas */
 .animate-tab-panel {
   animation: tabEnter var(--duration-normal) var(--ease-in-out);
+  animation-fill-mode: both;
+}
+
+/* Entrada de tabla (más suave) */
+.animate-table-enter {
+  animation: tableEnter var(--duration-slow) var(--ease-out-quart);
   animation-fill-mode: both;
 }
 
@@ -213,6 +242,37 @@ body {
   animation: scaleUp var(--duration-slow) var(--ease-out-back);
   animation-delay: 150ms;
   animation-fill-mode: both;
+}
+
+/* Variantes de entrada de cards que respetan el contexto de page-entry-content */
+/* OPTIMIZADO: Tiempos reducidos para mejor performance percibida (1050ms → 400ms) */
+/* Inician después de que termine la animación de page-entry-content (200ms + 600ms = 800ms) */
+.animate-card-enter-in-context {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 400ms; /* Optimizado: 1050ms → 400ms (2.6x más rápido) */
+  animation-fill-mode: both;
+  opacity: 0; /* Estado inicial para animation-fill-mode: both */
+}
+
+.animate-card-enter-in-context-delay-1 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 450ms; /* Optimizado: 1100ms → 450ms */
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+.animate-card-enter-in-context-delay-2 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 500ms; /* Optimizado: 1150ms → 500ms */
+  animation-fill-mode: both;
+  opacity: 0;
+}
+
+.animate-card-enter-in-context-delay-3 {
+  animation: scaleUp var(--duration-slow) var(--ease-out-back);
+  animation-delay: 550ms; /* Optimizado: 1200ms → 550ms */
+  animation-fill-mode: both;
+  opacity: 0;
 }
 
 /* Entrada de lista (escalonada) */
@@ -341,6 +401,7 @@ body {
   will-change: transform, opacity, clip-path;
 }
 
+
 /* ============================================
    ACCESIBILIDAD - REDUCED MOTION
    ============================================ */
@@ -389,9 +450,308 @@ body {
   .form-fade-out,
   .sidebar-enter,
   .dashboard-header-enter,
-  .dashboard-content-enter {
+  .dashboard-content-enter,
+  .route-transition-container,
+  .route-transition-lateral,
+  .route-transition-depth-forward,
+  .route-transition-depth-backward,
+  .route-transition-modal,
+  .animate-card-enter,
+  .animate-card-enter-delay-1,
+  .animate-card-enter-delay-2,
+  .animate-card-enter-delay-3,
+  .animate-card-enter-in-context,
+  .animate-card-enter-in-context-delay-1,
+  .animate-card-enter-in-context-delay-2,
+  .animate-card-enter-in-context-delay-3 {
     opacity: 1 !important;
     transform: none !important;
+    animation: none !important;
+  }
+}
+
+/* ============================================
+   ESTILOS DE PERFORMANCE PARA TRANSICIONES
+   ============================================ */
+
+.route-transition-container {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* ============================================
+   ANIMACIONES DE TRANSICIÓN DE PÁGINA (CSS PURO)
+   Variantes móvil/desktop con curvas optimizadas
+   ============================================ */
+
+/* Transición lateral (hermanos): slide horizontal en desktop, vertical en móvil */
+.route-transition-lateral {
+  opacity: 0;
+  transform: translateX(20px);
+  animation: routeTransitionLateralDesktop 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.route-transition-mobile.route-transition-lateral {
+  opacity: 0;
+  transform: translateY(20px);
+  animation: routeTransitionLateralMobile 300ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes routeTransitionLateralDesktop {
+  0% {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes routeTransitionLateralMobile {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Transición hacia profundidad (padre → hijo): scale expansion en desktop, fade+slide en móvil */
+.route-transition-depth-forward {
+  opacity: 0;
+  transform: scale(1.05);
+  animation: routeTransitionDepthForwardDesktop 500ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.route-transition-mobile.route-transition-depth-forward {
+  opacity: 0;
+  transform: translateY(30px);
+  animation: routeTransitionDepthForwardMobile 350ms cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+}
+
+@keyframes routeTransitionDepthForwardDesktop {
+  0% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes routeTransitionDepthForwardMobile {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Transición desde profundidad (hijo → padre): scale contraction en desktop, fade+slide en móvil */
+.route-transition-depth-backward {
+  opacity: 0;
+  transform: scale(0.95);
+  animation: routeTransitionDepthBackwardDesktop 450ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+.route-transition-mobile.route-transition-depth-backward {
+  opacity: 0;
+  transform: translateY(-20px);
+  animation: routeTransitionDepthBackwardMobile 300ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+@keyframes routeTransitionDepthBackwardDesktop {
+  0% {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes routeTransitionDepthBackwardMobile {
+  0% {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Transición modal: fade + scale en desktop, fade simple en móvil */
+.route-transition-modal {
+  opacity: 0;
+  transform: scale(0.9);
+  animation: routeTransitionModalDesktop 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.route-transition-mobile.route-transition-modal {
+  opacity: 0;
+  animation: routeTransitionModalMobile 250ms cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes routeTransitionModalDesktop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes routeTransitionModalMobile {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   MIXINS REUTILIZABLES - ANIMACIÓN DE ENTRADA UNIVERSAL
+   Solo para páginas del dashboard admin
+   ============================================ */
+
+/* Overlay de entrada para Admin (La Inmersión Focal) */
+.page-entry-overlay-admin {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background: radial-gradient(circle at 75% 50%,
+    rgba(148, 163, 184, 0.14) 0%,
+    rgba(248, 250, 252, 1) 55%,
+    rgba(255, 255, 255, 1) 100%);
+  pointer-events: none;
+  overflow: hidden;
+  animation: transitionOverlayEnter 1100ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
+             transitionOverlayExit 650ms cubic-bezier(0.22, 0.61, 0.36, 1) 1300ms forwards;
+}
+
+.page-entry-overlay-admin::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 22%;
+  width: 0;
+  height: 0;
+  border-radius: 9999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  transform: translate(50%, -50%) scale(0);
+  animation: expandWhiteOverlay 900ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+@media (max-width: 1023px) {
+  .page-entry-overlay-admin::before {
+    right: 50%;
+  }
+}
+
+/* Overlay de entrada para Worker (neutro) - mantenido para compatibilidad */
+.page-entry-overlay-worker {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 99999;
+  background: rgba(248, 250, 252, 1);
+  pointer-events: none;
+  overflow: hidden;
+  animation: transitionOverlayNeutralEnter 600ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards,
+             transitionOverlayNeutralExit 400ms cubic-bezier(0.22, 0.61, 0.36, 1) 800ms forwards;
+}
+
+/* Contenido de página con fade-up escalonado */
+/* OPTIMIZADO: Delays reducidos para mejor performance percibida (450ms → 200ms) */
+.page-entry-content {
+  opacity: 0;
+  transform: translateY(20px) translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 200ms forwards; /* Optimizado: 450ms → 200ms */
+}
+
+.page-entry-content-delay-1 {
+  opacity: 0;
+  transform: translateY(20px) translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms forwards; /* Optimizado: 550ms → 300ms */
+}
+
+.page-entry-content-delay-2 {
+  opacity: 0;
+  transform: translateY(20px) translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation: pageEntryContent 600ms cubic-bezier(0.22, 0.61, 0.36, 1) 400ms forwards; /* Optimizado: 650ms → 400ms */
+}
+
+/* Header de página con fade-up rápido */
+/* OPTIMIZADO: Delay reducido de 300ms → 100ms (3x más rápido) */
+.page-entry-header {
+  opacity: 0;
+  transform: translateY(-10px) translateZ(0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  animation: pageEntryHeader 500ms cubic-bezier(0.22, 0.61, 0.36, 1) 100ms forwards; /* Optimizado: 300ms → 100ms */
+}
+
+@keyframes pageEntryHeader {
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+@keyframes pageEntryContent {
+  to {
+    opacity: 1;
+    transform: translateY(0) translateZ(0);
+  }
+}
+
+@keyframes transitionOverlayNeutralEnter {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes transitionOverlayNeutralExit {
+  to {
+    opacity: 0;
+    pointer-events: none;
   }
 }
 

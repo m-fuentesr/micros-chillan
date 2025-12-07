@@ -1,0 +1,31 @@
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
+
+@Component({
+  selector: 'app-bus-icon',
+  imports: [],
+  template: `
+    <svg
+      [class]="class()"
+      viewBox="0 0 980 980"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      [attr.aria-label]="ariaLabel() || 'Bus'"
+    >
+      <path d="M731.1,924.45c0,22.101,17.9,40,40,40H841c22.1,0,40-17.899,40-40V874.55H731.1V924.45z" fill="currentColor"/>
+      <path d="M99,924.45c0,22.101,17.9,40,40,40h69.9c22.1,0,40-17.899,40-40V874.55H99V924.45z" fill="currentColor"/>
+      <path d="M64,402.75V160.65c-9.4-6-20.5-10.7-33.7-13.6c-15.6-3.4-30.3,8.5-30.3,24.4v151.9C0,362.35,27.4,394.85,64,402.75z" fill="currentColor"/>
+      <path d="M949.7,147.05c-13.101,2.9-24.3,7.6-33.7,13.6V402.75c36.6-7.9,64-40.4,64-79.3v-152C980,155.55,965.3,143.65,949.7,147.05z" fill="currentColor"/>
+      <path d="M881,814.55v-410v-205.4V55.55c0-22.1-17.9-40-40-40H139c-22.1,0-40,17.9-40,40v143.6v205.4v410v25h149.9h482.2H881V814.55z M181.8,748.55v-86c119.9,0,149.4,86,149.4,86H181.8z M487.3,505.25c-9.399-9.5-22.2-14.801-35.6-14.801h-270l1-391H797.1v460.8v41.899h-214L487.3,505.25z M647.9,748.55c0,0,29.5-86,149.399-86v86H647.9z" fill="currentColor"/>
+    </svg>
+  `,
+  styles: [],
+  changeDetection: ChangeDetectionStrategy.OnPush
+})
+export class BusIcon {
+  class = input<string>('w-full h-full');
+  ariaLabel = input<string | null>(null);
+}
+
+
+
+
