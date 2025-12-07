@@ -3,100 +3,43 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MachineDailyRecord, MachineDailyRecordFilters } from '../../models/machine-detail.models';
 import { Driver } from '../../models/driver.models';
+import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
+import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
 @Component({
   selector: 'app-machine-daily-records',
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, SearchFilters, DriverIcon],
   template: `
-    <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
-      <!-- Header -->
-      <div class="card-header p-6 border-b border-base-200 bg-base-50">
+    <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
+      <!-- Header Premium con gradiente sutil -->
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 class="card-title text-2xl font-bold border-l-4 border-l-primary pl-3">
+          <div class="flex-1 min-w-0">
+            <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
               Registros Diarios
             </h2>
-            <p class="text-xs sm:text-sm text-base-content/60 mt-1">
+            <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
               Historial de operaciones y rendimiento por jornada.
             </p>
           </div>
           
-          <!-- Badge de conteo -->
-          <div class="flex items-center gap-3">
-            <span class="badge badge-lg badge-outline font-bold">
+          <!-- Badge de conteo mejorado -->
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
               {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
             </span>
           </div>
         </div>
       </div>
 
-      <div class="card-body p-4 sm:p-6">
-        <!-- Filtros Mejorados -->
-        <div class="bg-base-50/50 p-4 rounded-xl border border-base-200 mb-6">
-          <div class="flex flex-wrap items-end gap-3">
-            <div class="form-control flex-1 min-w-[140px]">
-              <label class="label py-1">
-                <span class="label-text text-xs font-semibold text-base-content/60">Chofer</span>
-              </label>
-              <select 
-                class="select select-bordered select-sm w-full"
-                [value]="filters().chofer_id || ''"
-                (change)="onFilterChange('chofer_id', $event)">
-                <option value="">Todos los choferes</option>
-                @for (chofer of choferes(); track chofer.id) {
-                  <option [value]="chofer.id">{{ chofer.nombre_completo }}</option>
-                }
-              </select>
-            </div>
-
-            <div class="form-control flex-1 min-w-[140px]">
-              <label class="label py-1">
-                <span class="label-text text-xs font-semibold text-base-content/60">Desde</span>
-              </label>
-              <input
-                type="date"
-                class="input input-bordered input-sm w-full"
-                [value]="filters().desde || ''"
-                (change)="onFilterChange('desde', $event)">
-            </div>
-
-            <div class="form-control flex-1 min-w-[140px]">
-              <label class="label py-1">
-                <span class="label-text text-xs font-semibold text-base-content/60">Hasta</span>
-              </label>
-              <input
-                type="date"
-                class="input input-bordered input-sm w-full"
-                [value]="filters().hasta || ''"
-                (change)="onFilterChange('hasta', $event)">
-            </div>
-
-            <div class="form-control flex-1 min-w-[140px]">
-              <label class="label py-1">
-                <span class="label-text text-xs font-semibold text-base-content/60">Orden</span>
-              </label>
-              <select 
-                class="select select-bordered select-sm w-full"
-                [value]="filters().orden || 'mas_reciente'"
-                (change)="onFilterChange('orden', $event)">
-                <option value="mas_reciente">Más reciente</option>
-                <option value="mas_antiguo">Más antiguo</option>
-              </select>
-            </div>
-
-            <div class="form-control">
-              <button 
-                class="btn btn-ghost btn-sm gap-2" 
-                (click)="onClearFilters()"
-                [class.btn-disabled]="!hasActiveFilters()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.972.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.591l-4.682 4.683a2.25 2.25 0 00-.659 1.591v4.242a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L4.659 8.591A2.25 2.25 0 014 7V4.341a.75.75 0 01.628-.74z" clip-rule="evenodd" />
-                </svg>
-                Limpiar
-              </button>
-            </div>
-          </div>
-        </div>
+      <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+        <!-- Filtros usando componente reutilizable -->
+        <app-search-filters
+          [fields]="filterFields()"
+          [filters]="filters()"
+          [columns]="4"
+          (filterChange)="onFiltersChange($event)" />
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
@@ -134,9 +77,9 @@ import { Driver } from '../../models/driver.models';
 
                 <!-- Chofer -->
                 <div class="flex items-center gap-3 mb-4 p-3 bg-base-50 rounded-lg border border-base-200">
-                  <div class="avatar placeholder shrink-0">
-                    <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-base-200">
-                      <span class="text-xs font-bold">{{ getInitials(record.chofer) }}</span>
+                  <div class="shrink-0">
+                    <div class="bg-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                      <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -193,17 +136,27 @@ import { Driver } from '../../models/driver.models';
               </div>
             </div>
           } @empty {
-            <div class="text-center py-12 animate-fade-in">
-              <div class="text-4xl opacity-50 mb-3">📋</div>
-              <p class="text-base-content/50 font-medium">No hay registros que coincidan con los filtros</p>
-              <p class="text-sm text-base-content/40 mt-1">Intenta ajustar los filtros para ver más resultados</p>
+            <div class="py-16 sm:py-20">
+              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                  </svg>
+                </div>
+                <div class="space-y-2">
+                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                    Ajusta los filtros para ver más resultados.
+                  </p>
+                </div>
+              </div>
             </div>
           }
         </div>
 
         <!-- Vista Desktop: Tabla -->
         <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-          <table class="table w-full">
+          <table class="table w-full table-min-height">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
                 <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
@@ -212,6 +165,7 @@ import { Driver } from '../../models/driver.models';
                 <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
                 <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
                 <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
                 <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
               </tr>
             </thead>
@@ -239,9 +193,9 @@ import { Driver } from '../../models/driver.models';
                   
                   <td class="py-4">
                     <div class="flex items-center gap-2">
-                      <div class="avatar placeholder shrink-0">
-                        <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-base-200">
-                          <span class="text-[10px] font-bold">{{ getInitials(record.chofer) }}</span>
+                      <div class="shrink-0">
+                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                          <app-driver-icon class="w-4 h-4 text-primary"></app-driver-icon>
                         </div>
                       </div>
                       <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.chofer">
@@ -277,35 +231,64 @@ import { Driver } from '../../models/driver.models';
                     }
                   </td>
                   
-                  <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
-                    <div class="flex items-center justify-end gap-2">
+                  <td class="text-center py-4" (click)="$event.stopPropagation()">
+                    <div class="flex items-center justify-center">
                       @if (record.observaciones) {
-                        <div class="tooltip" [attr.data-tip]="record.observaciones">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-info">
+                        <div class="tooltip tooltip-top" [attr.data-tip]="record.observaciones">
+                          <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
+                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                      } @else {
+                        <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
                             <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
                           </svg>
                         </div>
                       }
-                      <a 
-                        [routerLink]="['/registro-diario', record.id]"
-                        class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                          <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                          <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                        </svg>
-                        Ver
-                      </a>
                     </div>
+                  </td>
+                  
+                  <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
+                    <a 
+                      [routerLink]="['/registro-diario', record.id]"
+                      class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-base-content/70 hover:text-primary bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all duration-200 group">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 group-hover:scale-110 transition-transform">
+                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                      </svg>
+                      <span>Ver</span>
+                    </a>
                   </td>
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="7" class="text-center py-12 animate-fade-in">
-                    <div class="text-4xl opacity-50 mb-3">📋</div>
-                    <p class="text-base-content/50 font-medium">No hay registros que coincidan con los filtros</p>
-                    <p class="text-sm text-base-content/40 mt-1">Intenta ajustar los filtros para ver más resultados</p>
+                  <td colspan="8" class="py-16 sm:py-20">
+                    <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                      <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                        </svg>
+                      </div>
+                      <div class="space-y-2">
+                        <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                        <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                          Ajusta los filtros para ver más resultados.
+                        </p>
+                      </div>
+                    </div>
                   </td>
                 </tr>
+              }
+              <!-- Filas vacías para mantener altura mínima en desktop -->
+              @if (filteredRecords().length > 0 && filteredRecords().length < 5) {
+                @for (i of getEmptyRows(); track i) {
+                  <tr class="empty-row-spacer">
+                    <td colspan="8" class="h-20"></td>
+                  </tr>
+                }
               }
             </tbody>
           </table>
@@ -381,6 +364,72 @@ import { Driver } from '../../models/driver.models';
         transform: none;
       }
     }
+
+    /* Asegurar que los dropdowns se abran hacia abajo */
+    .dropdown.dropdown-bottom {
+      position: relative;
+    }
+
+    .dropdown-content {
+      animation: dropdown-enter 200ms ease-out;
+    }
+
+    @keyframes dropdown-enter {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Estilo para el botón del dropdown que parece un select */
+    .dropdown > div[role="button"] {
+      user-select: none;
+    }
+
+    .dropdown > div[role="button"]:focus {
+      outline: 2px solid hsl(var(--p));
+      outline-offset: 2px;
+    }
+
+    /* Scroll personalizado para el dropdown de choferes */
+    .dropdown-content.menu {
+      scrollbar-width: thin;
+      scrollbar-color: hsl(var(--bc) / 0.2) transparent;
+    }
+
+    .dropdown-content.menu::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .dropdown-content.menu::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .dropdown-content.menu::-webkit-scrollbar-thumb {
+      background-color: hsl(var(--bc) / 0.2);
+      border-radius: 3px;
+    }
+
+    .dropdown-content.menu::-webkit-scrollbar-thumb:hover {
+      background-color: hsl(var(--bc) / 0.3);
+    }
+
+    /* Filas vacías invisibles para mantener altura mínima en desktop */
+    @media (min-width: 1280px) {
+      .empty-row-spacer {
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .empty-row-spacer td {
+        border: none;
+        padding: 0;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -435,6 +484,76 @@ export class MachineDailyRecords {
     return !!(f.chofer_id || f.desde || f.hasta);
   });
 
+  selectedChoferName = computed(() => {
+    const choferId = this.filters().chofer_id;
+    if (!choferId) return 'Todos los choferes';
+    const chofer = this.choferes().find(c => c.id === choferId);
+    return chofer?.nombre_completo || 'Todos los choferes';
+  });
+
+  selectedOrdenText = computed(() => {
+    const orden = this.filters().orden || 'mas_reciente';
+    return orden === 'mas_reciente' ? 'Más reciente' : 'Más antiguo';
+  });
+
+  getEmptyRows(): number[] {
+    const count = this.filteredRecords().length;
+    if (count === 0) return [];
+    const needed = 5 - count;
+    return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
+  }
+
+  filterFields = computed((): FilterField[] => {
+    return [
+      {
+        key: 'chofer_id',
+        label: 'Chofer',
+        type: 'select',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z" /></svg>',
+        options: [
+          { value: '', label: 'Todos los choferes' },
+          ...this.choferes().map(c => ({ value: c.id, label: c.nombre_completo }))
+        ]
+      },
+      {
+        key: 'desde',
+        label: 'Desde',
+        type: 'date',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>',
+        placeholder: 'Seleccionar fecha'
+      },
+      {
+        key: 'hasta',
+        label: 'Hasta',
+        type: 'date',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>',
+        placeholder: 'Seleccionar fecha'
+      },
+      {
+        key: 'orden',
+        label: 'Orden',
+        type: 'select',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2.24 6.8a.75.75 0 001.06-.04l1.95-2.1v8.59a.75.75 0 001.5 0V4.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L2.2 5.74a.75.75 0 00.04 1.06zm8 6.4a.75.75 0 00-.04 1.06l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75a.75.75 0 00-1.5 0v8.59l-1.95-2.1a.75.75 0 00-1.06-.04z" clip-rule="evenodd" /></svg>',
+        options: [
+          { value: 'mas_reciente', label: 'Más reciente' },
+          { value: 'mas_antiguo', label: 'Más antiguo' }
+        ]
+      }
+    ];
+  });
+
+  onFiltersChange(newFilters: Record<string, any>): void {
+    const filters: MachineDailyRecordFilters = {
+      chofer_id: (newFilters['chofer_id'] !== null && newFilters['chofer_id'] !== undefined && newFilters['chofer_id'] !== '') 
+        ? Number(newFilters['chofer_id']) 
+        : null,
+      desde: newFilters['desde'] || null,
+      hasta: newFilters['hasta'] || null,
+      orden: newFilters['orden'] || 'mas_reciente'
+    };
+    this.filterChange.emit(filters);
+  }
+
   onFilterChange(field: keyof MachineDailyRecordFilters, event: Event): void {
     const target = event.target as HTMLInputElement | HTMLSelectElement;
     const value = target.value || null;
@@ -442,6 +561,15 @@ export class MachineDailyRecords {
     const newFilters: MachineDailyRecordFilters = {
       ...this.filters(),
       [field]: field === 'chofer_id' ? (value ? Number(value) : null) : value
+    };
+    
+    this.filterChange.emit(newFilters);
+  }
+
+  onFilterChangeDirect(field: keyof MachineDailyRecordFilters, value: string | number | null): void {
+    const newFilters: MachineDailyRecordFilters = {
+      ...this.filters(),
+      [field]: field === 'chofer_id' ? (value ? Number(value) : null) : (value as string || null)
     };
     
     this.filterChange.emit(newFilters);

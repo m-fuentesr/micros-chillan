@@ -745,29 +745,16 @@ export class App implements OnInit, OnDestroy {
         setTimeout(() => this.checkAndFixZoom(), 300);
       });
       
-      // REDISEÑO: Detectar reapertura de pestaña o volver al navegador usando orchestrator
+      // REDISEÑO: Detectar reapertura de pestaña o volver al navegador
+      // NOTA: Cuando se vuelve al navegador, NO se muestra el spinner ni se reproduce la animación
+      // para evitar molestias al usuario
       document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && this.auth.currentUser()?.role === 'admin') {
-          const url = this.currentUrl();
-          const previousUrlOnVisibility = this.routeTransitionService.getPreviousUrl();
-          
-          // CRÍTICO: NO mostrar spinner si venimos de login (redirect)
-          const isComingFromLoginOnVisibility = previousUrlOnVisibility?.startsWith('/login');
-          
-          if (url && this.routeTransitionService.isAdminRoute(url) && !isComingFromLoginOnVisibility) {
-            // Solo aplicar si no hay una transición activa
-            if (!this.orchestrator.isTransitioning()) {
-              // Mostrar spinner de recarga
-              this.spinnerService.show();
-              
-              // Usar función simplificada para tab-restore
-              this.triggerEntryAnimationForReload();
-            }
-          }
-        } else if (document.visibilityState === 'hidden') {
+        if (document.visibilityState === 'hidden') {
           // Cuando la pestaña se oculta, ocultar el spinner si está visible
           this.spinnerService.hide();
         }
+        // Cuando se vuelve al navegador (visibilityState === 'visible'), 
+        // NO se muestra el spinner ni se activa la animación para evitar molestias
       });
     }
   }
