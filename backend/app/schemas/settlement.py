@@ -34,7 +34,7 @@ class PeriodoInfo(BaseModel):
 class SettlementsSummaryResponse(BaseModel):
     periodo: PeriodoInfo
     count_pendientes: int      
-    total_nomina_pendiente: int 
+    total_nomina_mes: int 
 #Resumen del Periodo
 class HistoryPeriodSummary(BaseModel):
     periodo_texto: str

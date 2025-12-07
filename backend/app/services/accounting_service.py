@@ -255,13 +255,14 @@ async def get_week_detail_by_date(fecha_inicio: str, fecha_fin: str):
 
 async def get_settlements_list(mes: int, anio: int):
     """
-    Lista liquidaciones. Si ya existe en BD la trae. Si no, la calcula en vivo.
+    Lista liquidaciones.
+    Solo muestra choferes 'Pendientes' SI tienen al menos 1 registro en el mes.
     """
     # 1. Traer Choferes Activos
     res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
     choferes = res_choferes.data
 
-    # 2. Traer Liquidaciones YA creadas en este mes
+    # 2. Traer Liquidaciones YA creadas
     res_liqs = (
         supabase.table("liquidaciones")
         .select("*")
@@ -269,25 +270,22 @@ async def get_settlements_list(mes: int, anio: int):
         .eq("anio", anio)
         .execute()
     )
-    # Convertimos a diccionario para búsqueda rápida por chofer_id
     liquidaciones_map = {l["chofer_id"]: l for l in res_liqs.data}
 
     resultados = []
     
-    # 3. Calcular rango de fechas del mes (para los pendientes)
+    # 3. Rango de fechas
     _, last_day = calendar.monthrange(anio, mes)
     f_inicio = date(anio, mes, 1).isoformat()
     f_fin = date(anio, mes, last_day).isoformat()
 
-    # 4. Iterar por cada chofer
     for c in choferes:
         cid = c["id"]
-        # Construir nombre completo
         nombre = c.get('primer_nombre') or ""
         apellido = c.get('apellido_paterno') or ""
         nombre_completo = f"{nombre} {apellido}".strip()
 
-        # CASO A: YA PAGADO/GUARDADO
+        # CASO A: YA PAGADO (Aquí no filtramos, si está pagado se muestra sí o sí)
         if cid in liquidaciones_map:
             liq = liquidaciones_map[cid]
             resultados.append({
@@ -305,7 +303,6 @@ async def get_settlements_list(mes: int, anio: int):
         
         # CASO B: PENDIENTE (Calculamos al vuelo)
         else:
-            # Sumar lo ganado en registros_diarios
             res_regs = (
                 supabase.table("registros_diarios")
                 .select("monto_porcentaje_chofer")
@@ -315,9 +312,15 @@ async def get_settlements_list(mes: int, anio: int):
                 .execute()
             )
             
+            # --- NUEVA LÓGICA DE FILTRADO ---
+            # Si no hay registros (lista vacía), saltamos este chofer.
+            # No trabajó => No hay liquidación pendiente.
+            if not res_regs.data:
+                continue 
+            
+            # Si pasó el filtro, calculamos normalmente
             suma_ganado = sum((r.get("monto_porcentaje_chofer") or 0) for r in res_regs.data)
             
-            # Calcular Bono Garantía
             bono = 0
             monto_final = int(suma_ganado)
             
@@ -334,7 +337,7 @@ async def get_settlements_list(mes: int, anio: int):
                 "sueldo_minimo": SUELDO_GARANTIZADO,
                 "monto_faltante": int(bono),
                 "total_final": monto_final,
-                "estado_pago": "pendiente", # Esto no viene de BD, es visual
+                "estado_pago": "pendiente",
                 "id_liquidacion": None
             })
 
@@ -396,26 +399,29 @@ async def confirm_payment(chofer_id: int, mes: int, anio: int, payload: PaymentC
 
 async def get_settlements_summary_banner(mes: int, anio: int):
     """
-    Calcula los totales para el banner superior de liquidaciones.
+    Calcula los totales para el banner.
+    - total_nomina_mes: Suma de TODO lo que se debe pagar en el mes (Pagado + Pendiente).
+    - count_pendientes: Cantidad de choferes que faltan por pagar.
     """
     # 1. Obtenemos la lista completa
     lista_completa = await get_settlements_list(mes, anio)
 
     count_pend = 0
-    total_monto_pend = 0
+    total_acumulado = 0 # Este sumará todo
 
-    # 2. Iteramos y filtramos en memoria
+    # 2. Iteramos
     for item in lista_completa:
-        # CORRECCIÓN AQUÍ: Usamos .lower() para comparar
-        # Así "Pendiente" y "pendiente" cuentan igual.
+        # A) Sumamos el monto SIEMPRE (Sea pagado o pendiente)
+        total_acumulado += item["total_final"]
+
+        # B) Contamos SOLO si está pendiente
         if item["estado_pago"].lower() == "pendiente":
             count_pend += 1
-            total_monto_pend += item["total_final"]
 
     return {
         "periodo": {"mes": mes, "anio": anio},
         "count_pendientes": count_pend,
-        "total_nomina_pendiente": total_monto_pend
+        "total_nomina_mes": total_acumulado # Devolvemos la suma total
     }
 
 async def get_history_periods():
