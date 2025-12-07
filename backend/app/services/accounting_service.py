@@ -1,5 +1,6 @@
 ﻿from fastapi import HTTPException
 from app.db.supabase_client import supabase
+from app.schemas.settlement import PaymentConfirmRequest
 from datetime import date, timedelta
 import calendar
 
@@ -243,3 +244,146 @@ async def get_week_detail_by_date(fecha_inicio: str, fecha_fin: str):
 
     # 5. CONVERTIR A LISTA
     return list(reporte.values())
+
+SUELDO_GARANTIZADO = 750000
+
+async def get_settlements_list(mes: int, anio: int):
+    """
+    Lista liquidaciones. Si ya existe en BD la trae. Si no, la calcula en vivo.
+    """
+    # 1. Traer Choferes Activos
+    res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
+    choferes = res_choferes.data
+
+    # 2. Traer Liquidaciones YA creadas en este mes
+    res_liqs = (
+        supabase.table("liquidaciones")
+        .select("*")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    # Convertimos a diccionario para búsqueda rápida por chofer_id
+    liquidaciones_map = {l["chofer_id"]: l for l in res_liqs.data}
+
+    resultados = []
+    
+    # 3. Calcular rango de fechas del mes (para los pendientes)
+    _, last_day = calendar.monthrange(anio, mes)
+    f_inicio = date(anio, mes, 1).isoformat()
+    f_fin = date(anio, mes, last_day).isoformat()
+
+    # 4. Iterar por cada chofer
+    for c in choferes:
+        cid = c["id"]
+        # Construir nombre completo
+        nombre = c.get('primer_nombre') or ""
+        apellido = c.get('apellido_paterno') or ""
+        nombre_completo = f"{nombre} {apellido}".strip()
+
+        # CASO A: YA PAGADO/GUARDADO
+        if cid in liquidaciones_map:
+            liq = liquidaciones_map[cid]
+            resultados.append({
+                "chofer_id": cid,
+                "nombre_chofer": nombre_completo,
+                "mes": mes,
+                "anio": anio,
+                "porcentaje_ganado": liq["porcentaje_ganado"],
+                "sueldo_minimo": liq["sueldo_minimo"],
+                "monto_faltante": liq["monto_faltante"],
+                "total_final": liq["total_final"],
+                "estado_pago": liq["estado_pago"],
+                "id_liquidacion": liq["id"]
+            })
+        
+        # CASO B: PENDIENTE (Calculamos al vuelo)
+        else:
+            # Sumar lo ganado en registros_diarios
+            res_regs = (
+                supabase.table("registros_diarios")
+                .select("monto_porcentaje_chofer")
+                .eq("chofer_id", cid)
+                .gte("fecha", f_inicio)
+                .lte("fecha", f_fin)
+                .execute()
+            )
+            
+            suma_ganado = sum((r.get("monto_porcentaje_chofer") or 0) for r in res_regs.data)
+            
+            # Calcular Bono Garantía
+            bono = 0
+            monto_final = int(suma_ganado)
+            
+            if suma_ganado < SUELDO_GARANTIZADO:
+                bono = SUELDO_GARANTIZADO - suma_ganado
+                monto_final = int(SUELDO_GARANTIZADO)
+
+            resultados.append({
+                "chofer_id": cid,
+                "nombre_chofer": nombre_completo,
+                "mes": mes,
+                "anio": anio,
+                "porcentaje_ganado": int(suma_ganado),
+                "sueldo_minimo": SUELDO_GARANTIZADO,
+                "monto_faltante": int(bono),
+                "total_final": monto_final,
+                "estado_pago": "Pendiente", # Esto no viene de BD, es visual
+                "id_liquidacion": None
+            })
+
+    return resultados
+
+async def confirm_payment(chofer_id: int, mes: int, anio: int, payload: PaymentConfirmRequest):
+    """
+    Guarda la liquidación en la tabla con estado 'Pagado'.
+    """
+    # 1. Recalcular montos por seguridad
+    _, last_day = calendar.monthrange(anio, mes)
+    f_inicio = date(anio, mes, 1).isoformat()
+    f_fin = date(anio, mes, last_day).isoformat()
+
+    res_regs = (
+        supabase.table("registros_diarios")
+        .select("monto_porcentaje_chofer")
+        .eq("chofer_id", chofer_id)
+        .gte("fecha", f_inicio)
+        .lte("fecha", f_fin)
+        .execute()
+    )
+    base_ganado = sum((r.get("monto_porcentaje_chofer") or 0) for r in res_regs.data)
+    
+    bono = 0
+    if base_ganado < SUELDO_GARANTIZADO:
+        bono = SUELDO_GARANTIZADO - base_ganado
+
+    # 2. Preparar Objeto para BD (Nombres exactos de tu imagen)
+    nuevo_pago = {
+        "chofer_id": chofer_id,
+        "mes": mes,
+        "anio": anio,
+        "sueldo_minimo": SUELDO_GARANTIZADO,
+        "porcentaje_ganado": base_ganado,
+        "monto_faltante": bono,
+        "total_final": payload.monto_final_pagado,
+        
+        "estado_pago": "pagado", # Debe coincidir con tu ENUM
+        "metodo_pago": payload.metodo_pago, # Debe coincidir con tu ENUM
+        "fecha_pago": payload.fecha_pago.isoformat(),
+        "codigo_transferencia": payload.codigo_transferencia
+        # 'observaciones' no lo vi en tu imagen de liquidaciones, si existe agrégalo
+    }
+
+    # Upsert: Inserta o actualiza si ya existía
+    res = supabase.table("liquidaciones").upsert(nuevo_pago).execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error BD: {res.error.message}")
+        
+    data = res.data[0]
+    
+    return {
+        "message": "Pago confirmado exitosamente.",
+        "liquidacion_id": data["id"],
+        "estado_pago": "Pagado"
+    }
