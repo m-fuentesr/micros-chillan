@@ -2,7 +2,7 @@
 from typing import List
 from app.services import accounting_service
 from app.schemas.accounting import AccountingSummaryResponse, WeekSummary, DriverWeekDetail
-from app.schemas.settlement import SettlementResponse, PaymentConfirmRequest, PaymentConfirmResponse 
+from app.schemas.settlement import SettlementResponse, PaymentConfirmRequest, PaymentConfirmResponse, SettlementsSummaryResponse 
 from app.utils.auth import get_current_user, require_admin 
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting"])
@@ -64,3 +64,16 @@ async def confirm_driver_payment(
     """
     require_admin(current_user)
     return await accounting_service.confirm_payment(chofer_id, mes, anio, payload)
+
+@router.get("/settlements/summary", response_model=SettlementsSummaryResponse)
+async def get_settlements_banner_data(
+    mes: int = Query(..., ge=1, le=12),
+    anio: int = Query(..., ge=2020),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene los totales (cantidad y monto) de pagos PENDIENTES para el banner.
+    REQUIERE ADMIN.
+    """
+    require_admin(current_user)
+    return await accounting_service.get_settlements_summary_banner(mes, anio)

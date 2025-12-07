@@ -26,3 +26,11 @@ class PaymentConfirmResponse(BaseModel):
     message: str
     liquidacion_id: int
     estado_pago: str
+class PeriodoInfo(BaseModel):
+    mes: int
+    anio: int
+
+class SettlementsSummaryResponse(BaseModel):
+    periodo: PeriodoInfo
+    count_pendientes: int      
+    total_nomina_pendiente: int 

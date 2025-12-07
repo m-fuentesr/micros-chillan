@@ -328,7 +328,7 @@ async def get_settlements_list(mes: int, anio: int):
                 "sueldo_minimo": SUELDO_GARANTIZADO,
                 "monto_faltante": int(bono),
                 "total_final": monto_final,
-                "estado_pago": "Pendiente", # Esto no viene de BD, es visual
+                "estado_pago": "pendiente", # Esto no viene de BD, es visual
                 "id_liquidacion": None
             })
 
@@ -386,4 +386,28 @@ async def confirm_payment(chofer_id: int, mes: int, anio: int, payload: PaymentC
         "message": "Pago confirmado exitosamente.",
         "liquidacion_id": data["id"],
         "estado_pago": "Pagado"
+    }
+
+async def get_settlements_summary_banner(mes: int, anio: int):
+    """
+    Calcula los totales para el banner superior de liquidaciones.
+    """
+    # 1. Obtenemos la lista completa
+    lista_completa = await get_settlements_list(mes, anio)
+
+    count_pend = 0
+    total_monto_pend = 0
+
+    # 2. Iteramos y filtramos en memoria
+    for item in lista_completa:
+        # CORRECCIÓN AQUÍ: Usamos .lower() para comparar
+        # Así "Pendiente" y "pendiente" cuentan igual.
+        if item["estado_pago"].lower() == "pendiente":
+            count_pend += 1
+            total_monto_pend += item["total_final"]
+
+    return {
+        "periodo": {"mes": mes, "anio": anio},
+        "count_pendientes": count_pend,
+        "total_nomina_pendiente": total_monto_pend
     }
