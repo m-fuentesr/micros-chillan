@@ -35,20 +35,26 @@ interface DailyRecordView {
     <div class="space-y-6 relative">
         <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
         
-        <!-- Header -->
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b-2 border-b-base-300 pb-4 mb-6">
-          <div class="page-entry-header">
-            <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Registros Diarios</h1>
-            <p class="text-base-content/60 italic">Gestión y auditoría centralizada de todos los reportes operativos diarios.</p>
+        <!-- Hero Section Premium -->
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
+              <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+                Registros Diarios
+              </h1>
+              <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+                Gestión y auditoría centralizada de todos los reportes operativos diarios.
+              </p>
+            </div>
+            <button 
+              (click)="openNewRecordModal()"
+              class="btn btn-primary gap-2 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
+              </svg>
+              Nuevo Registro
+            </button>
           </div>
-          <button 
-            (click)="openNewRecordModal()"
-            class="btn btn-primary gap-2 shadow-lg shadow-primary/20">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
-            </svg>
-            Nuevo Registro
-          </button>
         </div>
 
         <!-- KPIs -->

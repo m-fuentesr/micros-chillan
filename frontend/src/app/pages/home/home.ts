@@ -9,28 +9,29 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
-import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 @Component({
   selector: 'app-home',
   imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
   template: `
     <div class="space-y-6">
-      <!-- Header - Aparece primero -->
-      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Panel Principal</h1>
-        <p class="text-base-content/70 italic">
-          Vista general del estado operativo, alertas críticas y rendimiento financiero de la flota.
-        </p>
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
+          <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+            Dashboard del Administrador
+          </h1>
+          <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+            Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
+          </p>
+        </div>
       </div>
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 page-entry-content">
-        @if (kpisLoadingState.showSkeleton() && kpisLoadingState.isLoading()) {
+        @if (isLoading()) {
           @for (i of [1,2,3,4]; track i) {
-            <app-loading-skeleton 
-              type="kpi" 
-              [isExiting]="kpisLoadingState.isSkeletonExiting()" />
+            <app-loading-skeleton type="kpi" />
           }
         } @else {
           <!-- Card 1: Ganancia Neta Total -->
@@ -135,11 +136,8 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
 
       <!-- Zona de Detalle: Tabla Full Width -->
       <div class="border-t-2 border-t-base-300 pt-6 page-entry-content-delay-2">
-        @if (recordsLoadingState.showSkeleton() && recordsLoadingState.isLoading()) {
-          <app-loading-skeleton 
-            type="table" 
-            [count]="5"
-            [isExiting]="recordsLoadingState.isSkeletonExiting()" />
+        @if (isLoading()) {
+          <app-loading-skeleton type="table" [count]="5" />
         } @else {
           <app-daily-records-table
             [records]="dailyRecords()"
@@ -161,7 +159,6 @@ export class Home implements OnInit {
   private alertService = inject(AlertService);
   private dashboardService = inject(DashboardService);
   private transitionService = inject(TransitionService);
-  private loadingStateService = inject(LoadingStateService);
 
   constructor() {
     // Monitorear cuando el componente se monta
@@ -172,12 +169,9 @@ export class Home implements OnInit {
 
   showOnlyPending = signal(false);
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
+  isLoading = signal(true);
   isDeletingAlert = signal(false);
   isDeletingAllAlerts = signal(false);
-  
-  // Estados de carga con umbral de 200ms
-  kpisLoadingState = this.loadingStateService.createLoadingState();
-  recordsLoadingState = this.loadingStateService.createLoadingState();
   
   // Cargar alertas - usar signal mutable para Optimistic UI
   alertsData = toSignal(
@@ -237,30 +231,14 @@ export class Home implements OnInit {
     const records = this.dailyRecordsData() ?? [];
     // Si tenemos datos del servicio, usarlos
     if (records.length > 0) {
+      if (this.isLoading()) {
+        setTimeout(() => this.isLoading.set(false), 100);
+      }
       return records;
     }
     // Si no hay datos, usar mocks como fallback para desarrollo
     // Esto asegura que siempre haya datos para mostrar
     return this.getMockDailyRecords();
-  });
-
-  // Effects para detectar cuando los datos están listos
-  private kpisEffect = effect(() => {
-    // Los KPIs se calculan de financialData (sincrónico)
-    // Marcar como cargado después de un microtask para permitir que el componente se inicialice
-    queueMicrotask(() => {
-      if (this.kpisLoadingState.isLoading()) {
-        this.kpisLoadingState.setDataLoaded();
-      }
-    });
-  });
-
-  private recordsEffect = effect(() => {
-    const records = this.dailyRecords();
-    // Si hay registros (ya sea del servicio o mocks), marcar como cargado
-    if (records.length > 0 && this.recordsLoadingState.isLoading()) {
-      this.recordsLoadingState.setDataLoaded();
-    }
   });
 
   // Datos financieros (mismos que usa financial-summary)
@@ -306,12 +284,13 @@ export class Home implements OnInit {
   });
 
   ngOnInit(): void {
-    // Iniciar estados de carga
-    this.kpisLoadingState.setLoading(true);
-    this.recordsLoadingState.setLoading(true);
-    
     // Los datos se cargan automáticamente con toSignal
-    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
+    // La inicialización de alerts se maneja en el effect
+    
+    // Desactivar loading después de un tiempo razonable
+    setTimeout(() => {
+      this.isLoading.set(false);
+    }, 500);
   }
 
   onMetricChange(metric: FinancialMetric): void {

@@ -20,25 +20,30 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
   imports: [CommonModule, RouterLink, FormsModule, LoadingSkeleton],
   template: `
     <div class="space-y-6 animate-page-enter">
-      <!-- Header principal -->
-      <div class="flex justify-between items-start flex-wrap gap-4 animate-header-enter">
-        <div>
-          <h1 class="text-4xl font-bold mb-2 border-l-4 border-l-primary pl-4">
-            Detalle del Chofer
-          </h1>
-          <p class="text-base-content/70">
-            Información general, registros diarios e historial de liquidaciones del chofer.
-          </p>
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="relative">
+          <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 pr-12 sm:pr-0 mb-4">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+              Detalle del Chofer
+            </h1>
+            <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+              Información general, registros diarios e historial de liquidaciones del chofer.
+            </p>
+          </div>
+          
+          <!-- Botón Volver - Esquina superior derecha en mobile, normal en desktop -->
+          <button
+            type="button"
+            class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto btn btn-ghost btn-sm gap-2 hover:bg-base-200/50 transition-all shrink-0 z-10"
+            aria-label="Volver a la lista de choferes"
+            (click)="onBack()">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+            <span class="hidden sm:inline">Volver</span>
+          </button>
         </div>
-        <button
-          type="button"
-          class="btn btn-circle btn-ghost"
-          aria-label="Volver a la lista de choferes"
-          (click)="onBack()">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
-        </button>
       </div>
 
       @if (driver()) {

@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
@@ -96,9 +96,20 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                   </td>
 
                   <td class="text-left">
-                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
-                      Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                    </span>
+                    <div class="flex flex-col gap-2">
+                      <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                        Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                      </span>
+                      <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          class="toggle toggle-sm toggle-primary"
+                          [checked]="chofer.aplicar_garantizado"
+                          [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                          (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
+                        <span class="text-xs text-base-content/60">Aplicar</span>
+                      </label>
+                    </div>
                   </td>
 
                   <td class="text-left">
@@ -107,7 +118,7 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                       <input
                         type="number"
                         [value]="chofer.monto_a_completar"
-                        [disabled]="chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                        [disabled]="!chofer.aplicar_garantizado || chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
                         (input)="onMissingAmountChange(chofer.chofer_id, $event)"
                         class="input input-sm input-ghost w-24 text-right tabular-nums font-bold focus:bg-base-100 focus:border-primary border border-transparent hover:border-base-300 transition-all rounded-lg p-0 pr-2"
                         [class.text-base-content/30]="chofer.monto_a_completar === 0"
@@ -117,7 +128,7 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                   </td>
 
                   <td class="text-left bg-base-50/50 font-bold text-base-content tabular-nums text-lg border-l border-base-200 font-mono">
-                    {{ chofer.pago_final | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                    {{ calculatePagoFinal(chofer) | currency:'CLP':'symbol-narrow':'1.0-0' }}
                   </td>
 
                   <td class="pr-6 bg-base-50/50 border-r border-base-200 text-center">
@@ -182,11 +193,28 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                   <span class="tabular-nums font-medium">{{ chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                 </div>
                 <div class="flex justify-between items-center">
+                  <span class="text-base-content/60">Garantizado</span>
+                  <div class="flex items-center gap-2">
+                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                      Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                    </span>
+                    <label class="flex items-center gap-1 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        class="toggle toggle-sm toggle-primary"
+                        [checked]="chofer.aplicar_garantizado"
+                        [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                        (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
+                      <span class="text-xs text-base-content/60">Aplicar</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="flex justify-between items-center">
                   <span class="text-base-content/60">Ajuste / Bono</span>
                   <input
                     type="number"
                     [value]="chofer.monto_a_completar"
-                    [disabled]="chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                    [disabled]="!chofer.aplicar_garantizado || chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
                     (input)="onMissingAmountChange(chofer.chofer_id, $event)"
                     class="input input-xs input-bordered w-24 text-right tabular-nums"
                     [class.input-primary]="chofer.monto_a_completar > 0"
@@ -195,7 +223,7 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                 <div class="border-t border-base-200 my-2"></div>
                 <div class="flex justify-between items-center">
                   <span class="font-bold text-base-content">A Pagar</span>
-                  <span class="font-black text-xl text-primary tabular-nums">{{ chofer.pago_final | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
+                  <span class="font-black text-xl text-primary tabular-nums">{{ calculatePagoFinal(chofer) | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                 </div>
               </div>
 
@@ -241,12 +269,16 @@ export class LiquidationTable {
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();
+  aplicarGarantizadoChange = output<{ choferId: number; aplicar: boolean }>();
   closePeriod = output<void>();
   payrollPeriodChange = output<'current' | 'previous'>();
 
+  // Signal para rastrear choferes en estado "confirmado" temporalmente
+  confirmedChoferes = signal<Set<number>>(new Set());
+
   // Computed: Total de Nómina
   calculateTotalPayroll = computed(() => {
-    return this.liquidation().choferes.reduce((acc, c) => acc + c.pago_final, 0);
+    return this.liquidation().choferes.reduce((acc, c) => acc + this.calculatePagoFinal(c), 0);
   });
 
   // Computed: Cantidad de Pendientes
@@ -263,6 +295,21 @@ export class LiquidationTable {
     const input = event.target as HTMLInputElement;
     const monto = Math.max(0, Number(input.value) || 0);
     this.missingAmountChange.emit({ choferId, monto });
+  }
+
+  onAplicarGarantizadoChange(choferId: number, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    this.aplicarGarantizadoChange.emit({ choferId, aplicar: checkbox.checked });
+  }
+
+  calculatePagoFinal(chofer: LiquidationDriver): number {
+    const aplicarGarantizado = chofer.aplicar_garantizado;
+    
+    if (aplicarGarantizado && chofer.total_ganado < chofer.minimo_garantizado) {
+      return chofer.total_ganado + chofer.monto_a_completar;
+    }
+    
+    return chofer.total_ganado;
   }
 
   onPayrollPeriodChange(event: Event): void {

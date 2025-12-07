@@ -18,10 +18,16 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
   imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Finanzas y Nómina</h1>
-        <p class="text-base-content/60 italic">Control financiero completo: resúmenes, liquidaciones y gestión de pagos a conductores.</p>
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
+          <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+            Finanzas y Nómina
+          </h1>
+          <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+            Control financiero completo: resúmenes, liquidaciones y gestión de pagos a conductores.
+          </p>
+        </div>
       </div>
 
       <!-- Barra de Comandos: Tabs + Filtros Globales -->
@@ -196,6 +202,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
                   (payrollPeriodChange)="onPayrollPeriodChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
+                  (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
                   (closePeriod)="onClosePeriod()" />
               </div>
             }
@@ -380,6 +387,14 @@ export class Contabilidad implements OnInit {
       .pipe(catchError(() => of(null)))
       .subscribe(liquidation => {
         if (liquidation) {
+          // Inicializar aplicar_garantizado con true por defecto si no existe
+          liquidation.choferes.forEach(chofer => {
+            if (chofer.aplicar_garantizado === undefined) {
+              chofer.aplicar_garantizado = true;
+            }
+            // Recalcular pago_final con la lógica actualizada
+            this.recalculatePagoFinal(chofer);
+          });
           this.liquidationData.set(liquidation);
         }
         this.payrollLoadingState.setDataLoaded();
@@ -412,16 +427,37 @@ export class Contabilidad implements OnInit {
     const choferId = this.pendingPaymentChoferId();
     if (!choferId) return;
 
-    const { mes, anio } = this.payrollDate();
-    this.accountingService.confirmPayment(choferId, mes, anio, data)
-      .pipe(catchError(() => of(void 0)))
-      .subscribe(() => {
-        // Recargar liquidación
-        this.loadLiquidation();
-        this.paymentModalOpen.set(false);
-        this.selectedDriver.set(null);
-        this.pendingPaymentChoferId.set(null);
-      });
+    const liquidation = this.liquidation();
+    if (!liquidation) return;
+
+    // Actualizar estado localmente sin backend
+    const chofer = liquidation.choferes.find(c => c.chofer_id === choferId);
+    if (chofer) {
+      chofer.estado_pago = 'pagado';
+      chofer.metodo_pago = data.metodo_pago;
+      chofer.codigo_transferencia = data.codigo_transferencia || null;
+      chofer.fecha_pago = new Date().toISOString();
+      
+      // Actualizar la liquidación con el estado modificado
+      this.liquidationData.set({ ...liquidation });
+    }
+
+    // Cerrar modal
+    this.paymentModalOpen.set(false);
+    this.selectedDriver.set(null);
+    this.pendingPaymentChoferId.set(null);
+
+    // TODO: Cuando el backend esté listo, descomentar esto y eliminar la lógica local
+    // const { mes, anio } = this.payrollDate();
+    // this.accountingService.confirmPayment(choferId, mes, anio, data)
+    //   .pipe(catchError(() => of(void 0)))
+    //   .subscribe(() => {
+    //     // Recargar liquidación
+    //     this.loadLiquidation();
+    //     this.paymentModalOpen.set(false);
+    //     this.selectedDriver.set(null);
+    //     this.pendingPaymentChoferId.set(null);
+    //   });
   }
 
   onPaymentCancel(): void {
@@ -437,16 +473,30 @@ export class Contabilidad implements OnInit {
     const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
     if (chofer) {
       chofer.monto_a_completar = event.monto;
-      const minGuaranteed = chofer.minimo_garantizado;
-      const totalEarned = chofer.total_ganado;
-      
-      if (totalEarned >= minGuaranteed) {
-        chofer.pago_final = totalEarned;
-      } else {
-        chofer.pago_final = totalEarned + event.monto;
-      }
-      
+      this.recalculatePagoFinal(chofer);
       this.liquidationData.set({ ...liquidation });
+    }
+  }
+
+  onAplicarGarantizadoChange(event: { choferId: number; aplicar: boolean }): void {
+    const liquidation = this.liquidation();
+    if (!liquidation) return;
+
+    const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
+    if (chofer) {
+      chofer.aplicar_garantizado = event.aplicar;
+      this.recalculatePagoFinal(chofer);
+      this.liquidationData.set({ ...liquidation });
+    }
+  }
+
+  private recalculatePagoFinal(chofer: LiquidationDriver): void {
+    const aplicarGarantizado = chofer.aplicar_garantizado ?? true;
+    
+    if (aplicarGarantizado && chofer.total_ganado < chofer.minimo_garantizado) {
+      chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
+    } else {
+      chofer.pago_final = chofer.total_ganado;
     }
   }
 
