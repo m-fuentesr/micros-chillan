@@ -1,6 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, Query, status
 from typing import Literal
-from app.schemas.driver import DriverCreate, DriverListItem, DriverDetail, DriverUpdate
+from app.schemas.driver import DriverCreate, DriverListItem, DriverDetail, DriverSelect, DriverUpdate
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
 from app.services import driver_service
@@ -31,6 +31,18 @@ async def list_drivers(
     """
     require_admin(current_user)
     return await driver_service.list_drivers(estado)
+
+
+@router.get("/active", response_model=list[DriverSelect])
+async def list_active_drivers(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Retorna todos los choferes activos.
+    Se usa en:
+      - Crear Máquina
+      - Editar Máquina
+    """
+    require_admin(current_user)
+    return await driver_service.list_active_drivers()
 
 
 @router.get("/{driver_id}", response_model=DriverDetail)

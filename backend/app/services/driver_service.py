@@ -178,6 +178,35 @@ async def list_drivers(estado: str | None):
     return items
 
 
+async def list_active_drivers():
+    """
+    Retorna todos los choferes activos.
+    Útil para mostrar en los selectores de creación/edición de máquinas.
+    """
+    res = (
+        supabase.table("choferes")
+        .select("id, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, estado")
+        .eq("estado", "activo")
+        .order("primer_nombre", desc=False)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes activos: {res.error}")
+
+    items = []
+
+    for c in res.data:
+        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+
+        items.append({
+            "id": c["id"],
+            "nombre_completo": nombre
+        })
+
+    return items
+
+
 async def get_driver_detail(driver_id: int):
     """
     Obtiene todos los datos necesarios para la vista completa

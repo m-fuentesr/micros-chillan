@@ -60,6 +60,11 @@ class DriverDetail(BaseModel):
     licencia: DriverLicenseState
 
 
+class DriverSelect(BaseModel):
+    id: int
+    nombre_completo: str
+
+
 class DriverUpdate(BaseModel):
     primer_nombre: str
     segundo_nombre: Optional[str]
