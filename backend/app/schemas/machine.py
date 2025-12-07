@@ -13,7 +13,6 @@ class MachineSelect(BaseModel): # Para vista de choferes (selector)
     display_name: str  # Campo extra útil para mostrar "105 - Volvo" en el dropdown
 
 
-
 class DocumentoMaquina(BaseModel): 
     fecha_vencimiento: date
     estado: Literal["vencido", "por_vencer", "ok"]

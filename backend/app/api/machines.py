@@ -35,6 +35,7 @@ async def get_machines_summary(current_user: UserInDB = Depends(get_current_user
     - Cantidad por estado (operativas, en taller, inactivas)
     - Máquinas con alertas documentales
     """
+    require_admin(current_user)
     return await machine_service.get_summary(current_user)
 
 
