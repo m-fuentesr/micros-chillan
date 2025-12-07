@@ -33,10 +33,16 @@ interface DriverProfit {
   imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 tracking-tight text-base-content border-l-4 border-l-primary pl-4">Análisis y Reportes</h1>
-        <p class="text-base-content/60 italic">Análisis detallado de rentabilidad, ingresos y rendimiento operativo de la flota.</p>
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
+          <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+            Análisis y Reportes
+          </h1>
+          <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+            Análisis detallado de rentabilidad, ingresos y rendimiento operativo de la flota.
+          </p>
+        </div>
       </div>
 
       <!-- Barra de Comandos: Tabs -->

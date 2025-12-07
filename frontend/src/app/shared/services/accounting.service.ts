@@ -158,6 +158,7 @@ export class AccountingService {
               minimo_garantizado: 400000,
               monto_a_completar: 0,
               pago_final: 450000,
+              aplicar_garantizado: true,
               estado_pago: 'pendiente' as const
             },
             {
@@ -167,6 +168,7 @@ export class AccountingService {
               minimo_garantizado: 400000,
               monto_a_completar: 20000,
               pago_final: 400000,
+              aplicar_garantizado: true,
               estado_pago: 'pendiente' as const
             },
             {
@@ -176,6 +178,7 @@ export class AccountingService {
               minimo_garantizado: 400000,
               monto_a_completar: 50000,
               pago_final: 400000,
+              aplicar_garantizado: true,
               estado_pago: 'pendiente' as const
             }
           ]
@@ -206,9 +209,10 @@ export class AccountingService {
   // GET /api/accounting/liquidation/history - Historial de liquidaciones
   getLiquidationHistory(): Observable<ClosedLiquidation[]> {
     return this.http.get<ClosedLiquidation[]>(`${this.apiUrl}/accounting/liquidation/history`).pipe(
+      map(data => data || []),
       catchError(() => {
         // Mock data
-        return of<ClosedLiquidation[]>([
+        const mockData: ClosedLiquidation[] = [
           {
             id: 1,
             periodo: 'Octubre 2025',
@@ -225,6 +229,7 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 0,
                 pago_final: 420000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-10001'
@@ -236,6 +241,7 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 20000,
                 pago_final: 400000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'efectivo' as const
               },
@@ -246,6 +252,7 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 50000,
                 pago_final: 400000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-10002'
@@ -268,6 +275,7 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 0,
                 pago_final: 415000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-09001'
@@ -279,6 +287,7 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 10000,
                 pago_final: 400000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-09002'
@@ -290,12 +299,14 @@ export class AccountingService {
                 minimo_garantizado: 400000,
                 monto_a_completar: 40000,
                 pago_final: 415000,
+                aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'efectivo' as const
               }
             ]
           }
-        ]);
+        ];
+        return of(mockData);
       })
     );
   }

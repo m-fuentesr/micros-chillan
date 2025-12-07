@@ -5,11 +5,13 @@ import { Component, ChangeDetectionStrategy } from '@angular/core';
   imports: [],
   template: `
     <div class="space-y-6">
-      <!-- Header -->
-      <div class="card bg-base-100 shadow-xl page-entry-header">
-        <div class="card-body">
-          <h1 class="card-title text-3xl lg:text-4xl">Configuración</h1>
-          <p class="text-base-content/70">
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
+          <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+            Configuración
+          </h1>
+          <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
             Administra la identidad de la aplicación, notificaciones y parámetros globales.
           </p>
         </div>

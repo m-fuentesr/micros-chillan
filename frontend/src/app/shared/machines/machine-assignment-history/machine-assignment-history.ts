@@ -6,7 +6,7 @@ import { MachineAssignment } from '../../models/machine-detail.models';
   selector: 'app-machine-assignment-history',
   imports: [CommonModule],
   template: `
-    <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
+    <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header -->
       <div class="card-header p-6 border-b border-base-200 bg-base-50">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -310,6 +310,21 @@ import { MachineAssignment } from '../../models/machine-detail.models';
     </div>
   `,
   styles: [`
+    @keyframes componentEnter {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-component-enter {
+      animation: componentEnter 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
     @keyframes card-enter {
       from {
         opacity: 0;
@@ -354,6 +369,7 @@ import { MachineAssignment } from '../../models/machine-detail.models';
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .animate-component-enter,
       .animate-card-enter,
       .animate-table-row-enter,
       .animate-fade-in {

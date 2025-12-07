@@ -53,7 +53,8 @@ export interface LiquidationDriver {
   minimo_garantizado: number; // RF-023
   monto_a_completar: number; // RF-024
   pago_final: number; // RF-025
-  estado_pago: 'pendiente' | 'pagado';
+  aplicar_garantizado: boolean; // Indica si se aplica el mínimo garantizado
+  estado_pago: 'pendiente' | 'confirmado' | 'pagado';
   metodo_pago?: 'transferencia' | 'efectivo' | null;
   codigo_transferencia?: string | null;
   fecha_pago?: string | null;
