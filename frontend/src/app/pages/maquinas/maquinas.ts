@@ -37,7 +37,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
 
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
-        @if (kpisLoadingState.isLoading()) {
+        @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             @for (i of [1,2,3,4]; track i) {
               <app-loading-skeleton 
@@ -45,34 +45,120 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
                 [isExiting]="kpisLoadingState.isSkeletonExiting()" />
             }
           </div>
+        } @else if (sequentialState.kpisError()) {
+          <div class="card bg-error/10 border border-error/20 rounded-xl p-4 mb-4">
+            <div class="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
+                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
+              </div>
+            </div>
+          </div>
+          <div 
+            [class.opacity-0]="!sequentialState.canShowKPIs()" 
+            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+            <app-machine-kpis [kpis]="kpis()" />
+          </div>
         } @else {
-          <app-machine-kpis [kpis]="kpis()" />
+          <div 
+            [class.opacity-0]="!sequentialState.canShowKPIs()" 
+            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+            <app-machine-kpis [kpis]="kpis()" />
+          </div>
         }
       </div>
 
       <!-- Layout Principal: Lista de Máquinas (Full Width) -->
       <div class="page-entry-content">
-        @if (machinesLoadingState.isLoading()) {
-          <app-loading-skeleton 
-            type="machine-list" 
-            [count]="6"
-            [isExiting]="machinesLoadingState.isSkeletonExiting()" />
+        @if (!sequentialState.canShowContent()) {
+          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
+          @if (machinesLoadingState.isLoading() && !sequentialState.contentError()) {
+            <app-loading-skeleton 
+              type="machine-list" 
+              [count]="6"
+              [isExiting]="machinesLoadingState.isSkeletonExiting()" />
+          } @else if (sequentialState.contentError()) {
+            <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="flex flex-col items-center gap-4 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
+                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
+                  <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- Mantener skeleton visible hasta que canShowContent sea true -->
+            <app-loading-skeleton 
+              type="machine-list" 
+              [count]="6" />
+          }
         } @else {
-          <app-machine-list
-          [machines]="machines()"
-          [viewMode]="viewMode()"
-          [statusFilter]="statusFilter()"
-          [documentFilter]="documentFilter()"
-          [docStatusMap]="docStatusMap()"
-          [alerts]="documentAlerts()"
-          (viewModeChange)="onViewModeChange($event)"
-          (filterChange)="onFilterChange($event)"
-          (documentFilterChange)="onDocumentFilterChange($event)" />
+          <!-- Solo renderizar el componente cuando canShowContent es true -->
+          <div 
+            [class.animate-fade-in]="sequentialState.canShowContent()" 
+            [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
+            [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
+            @if (sequentialState.contentError()) {
+              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                <div class="flex flex-col items-center gap-4 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
+                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
+                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <app-machine-list
+                [machines]="machines()"
+                [viewMode]="viewMode()"
+                [statusFilter]="statusFilter()"
+                [documentFilter]="documentFilter()"
+                [docStatusMap]="docStatusMap()"
+                [alerts]="documentAlerts()"
+                (viewModeChange)="onViewModeChange($event)"
+                (filterChange)="onFilterChange($event)"
+                (documentFilterChange)="onDocumentFilterChange($event)" />
+            }
+          </div>
         }
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in {
+      animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class Maquinas implements OnInit {
@@ -86,6 +172,13 @@ export class Maquinas implements OnInit {
   // Estados de carga con umbral de 200ms
   kpisLoadingState = this.loadingStateService.createLoadingState();
   machinesLoadingState = this.loadingStateService.createLoadingState();
+  
+  // Estado de carga secuencial coordinado
+  sequentialState = this.loadingStateService.createSequentialLoadingState({
+    kpisDelay: 100,
+    contentDelay: 300,
+    maxWaitTime: 2000
+  });
 
   constructor() {
     // Iniciar estados de carga inmediatamente, antes del primer render
@@ -93,26 +186,44 @@ export class Maquinas implements OnInit {
     this.machinesLoadingState.setLoading(true);
   }
 
-  // Cargar máquinas
+  // Cargar máquinas con manejo de errores
   machinesData = toSignal(
     this.machineService.getMachines().pipe(
-      catchError(() => of<Machine[]>(this.getMockMachines()))
+      catchError((error) => {
+        console.error('Error cargando máquinas:', error);
+        this.sequentialState.setContentReady(true); // Marcar error
+        setTimeout(() => {
+          this.machinesLoadingState.setDataLoaded();
+        }, 100);
+        return of<Machine[]>(this.getMockMachines());
+      })
     ),
     { initialValue: [] }
   );
 
   machines = computed(() => this.machinesData() ?? []);
 
-  // Cargar KPIs
+  // Cargar KPIs con manejo de errores
   kpisData = toSignal(
     this.machineService.getKPIs().pipe(
-      catchError(() => of<MachineKPIsType>(this.calculateMockKPIs()))
+      catchError((error) => {
+        console.error('Error cargando KPIs:', error);
+        this.sequentialState.setKPIsReady(true); // Marcar error
+        setTimeout(() => {
+          this.kpisLoadingState.setDataLoaded();
+        }, 100);
+        return of<MachineKPIsType>(this.calculateMockKPIs());
+      })
     ),
     { initialValue: null }
   );
 
   kpis = computed(() => {
     const kpisData = this.kpisData();
+    // Si hay error, usar datos calculados localmente
+    if (this.sequentialState.kpisError()) {
+      return this.calculateMockKPIs();
+    }
     // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
     if (kpisData === null && this.kpisLoadingState.isLoading()) {
       return { operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 };
@@ -120,20 +231,56 @@ export class Maquinas implements OnInit {
     return kpisData ?? this.calculateMockKPIs();
   });
 
-  // Effects para detectar cuando los datos están listos
+  // Effects para detectar cuando los datos están listos y coordinar la aparición
   private machinesEffect = effect(() => {
     const machines = this.machines();
-    if (machines.length > 0 && this.machinesLoadingState.isLoading()) {
+    const isLoading = this.machinesLoadingState.isLoading();
+    
+    if (machines.length > 0 && isLoading && !this.sequentialState.contentError()) {
+      this.machinesLoadingState.setDataLoaded();
+      setTimeout(() => {
+        this.sequentialState.setContentReady(false);
+      }, 50);
+    } else if (this.sequentialState.contentError() && isLoading) {
       this.machinesLoadingState.setDataLoaded();
     }
   });
 
   private kpisEffect = effect(() => {
     const kpis = this.kpisData();
-    if (kpis !== null && this.kpisLoadingState.isLoading()) {
+    const isLoading = this.kpisLoadingState.isLoading();
+    
+    if (kpis !== null && isLoading && !this.sequentialState.kpisError()) {
+      this.kpisLoadingState.setDataLoaded();
+      setTimeout(() => {
+        this.sequentialState.setKPIsReady(false);
+      }, 50);
+    } else if (this.sequentialState.kpisError() && isLoading) {
       this.kpisLoadingState.setDataLoaded();
     }
   });
+
+  // Función para reintentar carga
+  retryLoad(): void {
+    this.sequentialState.resetErrors();
+    this.sequentialState.reset();
+    this.machinesLoadingState.setLoading(true);
+    
+    // Recargar máquinas
+    this.machinesData = toSignal(
+      this.machineService.getMachines().pipe(
+        catchError((error) => {
+          console.error('Error cargando máquinas:', error);
+          this.sequentialState.setContentReady(true);
+          setTimeout(() => {
+            this.machinesLoadingState.setDataLoaded();
+          }, 100);
+          return of<Machine[]>(this.getMockMachines());
+        })
+      ),
+      { initialValue: [] }
+    );
+  }
 
   // Calcular alertas de documentación desde todas las máquinas (no filtradas)
   documentAlerts = computed(() => {

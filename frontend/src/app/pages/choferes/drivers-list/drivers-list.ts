@@ -36,7 +36,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
 
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
-        @if (kpisLoadingState.isLoading()) {
+        @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             @for (i of [1,2,3,4]; track i) {
               <app-loading-skeleton 
@@ -44,33 +44,119 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
                 [isExiting]="kpisLoadingState.isSkeletonExiting()" />
             }
           </div>
+        } @else if (sequentialState.kpisError()) {
+          <div class="card bg-error/10 border border-error/20 rounded-xl p-4 mb-4">
+            <div class="flex items-center gap-3">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
+                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
+              </div>
+            </div>
+          </div>
+          <div 
+            [class.opacity-0]="!sequentialState.canShowKPIs()" 
+            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+            <app-driver-kpis [kpis]="kpis()" />
+          </div>
         } @else {
-          <app-driver-kpis [kpis]="kpis()" />
+          <div 
+            [class.opacity-0]="!sequentialState.canShowKPIs()" 
+            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+            <app-driver-kpis [kpis]="kpis()" />
+          </div>
         }
       </div>
 
       <!-- Layout Principal: Lista de Choferes (Full Width) -->
       <div class="page-entry-content">
-        @if (driversLoadingState.isLoading()) {
-          <app-loading-skeleton 
-            type="machine-list" 
-            [count]="6"
-            [isExiting]="driversLoadingState.isSkeletonExiting()" />
+        @if (!sequentialState.canShowContent()) {
+          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
+          @if (driversLoadingState.isLoading() && !sequentialState.contentError()) {
+            <app-loading-skeleton 
+              type="machine-list" 
+              [count]="6"
+              [isExiting]="driversLoadingState.isSkeletonExiting()" />
+          } @else if (sequentialState.contentError()) {
+            <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="flex flex-col items-center gap-4 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar conductores</h3>
+                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar los conductores desde el servidor.</p>
+                  <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            </div>
+          } @else {
+            <!-- Mantener skeleton visible hasta que canShowContent sea true -->
+            <app-loading-skeleton 
+              type="machine-list" 
+              [count]="6" />
+          }
         } @else {
-          <app-driver-list
-            [drivers]="drivers()"
-            [viewMode]="viewMode()"
-            [statusFilter]="statusFilter()"
-            [licenseFilter]="licenseFilter()"
-            [licenseAlerts]="licenseAlerts()"
-            (viewModeChange)="onViewModeChange($event)"
-            (filterChange)="onFilterChange($event)"
-            (licenseFilterChange)="onLicenseFilterChange($event)" />
+          <!-- Solo renderizar el componente cuando canShowContent es true -->
+          <div 
+            [class.animate-fade-in]="sequentialState.canShowContent()" 
+            [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
+            [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
+            @if (sequentialState.contentError()) {
+              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                <div class="flex flex-col items-center gap-4 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar conductores</h3>
+                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los conductores desde el servidor.</p>
+                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <app-driver-list
+                [drivers]="drivers()"
+                [viewMode]="viewMode()"
+                [statusFilter]="statusFilter()"
+                [licenseFilter]="licenseFilter()"
+                [licenseAlerts]="licenseAlerts()"
+                (viewModeChange)="onViewModeChange($event)"
+                (filterChange)="onFilterChange($event)"
+                (licenseFilterChange)="onLicenseFilterChange($event)" />
+            }
+          </div>
         }
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in {
+      animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DriversList implements OnInit {
@@ -84,6 +170,13 @@ export class DriversList implements OnInit {
   // Estados de carga con umbral de 200ms
   kpisLoadingState = this.loadingStateService.createLoadingState();
   driversLoadingState = this.loadingStateService.createLoadingState();
+  
+  // Estado de carga secuencial coordinado
+  sequentialState = this.loadingStateService.createSequentialLoadingState({
+    kpisDelay: 100,
+    contentDelay: 300,
+    maxWaitTime: 2000
+  });
 
   constructor() {
     // Iniciar estados de carga inmediatamente, antes del primer render
@@ -91,10 +184,17 @@ export class DriversList implements OnInit {
     this.driversLoadingState.setLoading(true);
   }
 
-  // Cargar choferes
+  // Cargar choferes con manejo de errores
   driversData = toSignal(
     this.driverService.getDrivers().pipe(
-      catchError(() => of<Driver[]>(this.getMockDrivers()))
+      catchError((error) => {
+        console.error('Error cargando conductores:', error);
+        this.sequentialState.setContentReady(true); // Marcar error
+        setTimeout(() => {
+          this.driversLoadingState.setDataLoaded();
+        }, 100);
+        return of<Driver[]>(this.getMockDrivers());
+      })
     ),
     { initialValue: [] }
   );
@@ -104,6 +204,10 @@ export class DriversList implements OnInit {
   // Calcular KPIs
   kpis = computed(() => {
     const drivers = this.drivers();
+    // Si hay error, usar datos calculados localmente
+    if (this.sequentialState.kpisError()) {
+      return this.calculateMockKPIs();
+    }
     // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
     if (drivers.length === 0 && this.kpisLoadingState.isLoading()) {
       return { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
@@ -111,20 +215,57 @@ export class DriversList implements OnInit {
     return this.calculateMockKPIs();
   });
 
-  // Effects para detectar cuando los datos están listos
+  // Effects para detectar cuando los datos están listos y coordinar la aparición
   private driversEffect = effect(() => {
     const drivers = this.drivers();
-    if (drivers.length > 0 && this.driversLoadingState.isLoading()) {
+    const isLoading = this.driversLoadingState.isLoading();
+    
+    if (drivers.length > 0 && isLoading && !this.sequentialState.contentError()) {
+      this.driversLoadingState.setDataLoaded();
+      setTimeout(() => {
+        this.sequentialState.setContentReady(false);
+      }, 50);
+    } else if (this.sequentialState.contentError() && isLoading) {
       this.driversLoadingState.setDataLoaded();
     }
   });
 
   private kpisEffect = effect(() => {
     const drivers = this.drivers();
-    if (drivers.length > 0 && this.kpisLoadingState.isLoading()) {
+    const isLoading = this.kpisLoadingState.isLoading();
+    
+    // Los KPIs se calculan desde los drivers, así que cuando los drivers están listos, los KPIs también
+    if (drivers.length > 0 && isLoading && !this.sequentialState.kpisError()) {
+      this.kpisLoadingState.setDataLoaded();
+      setTimeout(() => {
+        this.sequentialState.setKPIsReady(false);
+      }, 50);
+    } else if (this.sequentialState.kpisError() && isLoading) {
       this.kpisLoadingState.setDataLoaded();
     }
   });
+
+  // Función para reintentar carga
+  retryLoad(): void {
+    this.sequentialState.resetErrors();
+    this.sequentialState.reset();
+    this.driversLoadingState.setLoading(true);
+    
+    // Recargar conductores
+    this.driversData = toSignal(
+      this.driverService.getDrivers().pipe(
+        catchError((error) => {
+          console.error('Error cargando conductores:', error);
+          this.sequentialState.setContentReady(true);
+          setTimeout(() => {
+            this.driversLoadingState.setDataLoaded();
+          }, 100);
+          return of<Driver[]>(this.getMockDrivers());
+        })
+      ),
+      { initialValue: [] }
+    );
+  }
 
   // Calcular alertas de licencias desde todos los conductores (no filtrados)
   licenseAlerts = computed(() => {

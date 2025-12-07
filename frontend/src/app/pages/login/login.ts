@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, signal, computed } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -20,6 +20,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       <!-- Header móvil -->
       <div
         class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
+        [class.login-panel-hidden]="isLogoutTransition()"
+        [class.login-panel-enter]="showLoginPanel()"
       >
         <!-- Blobs con animación orgánica -->
         <div
@@ -46,6 +48,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       <div
         class="hidden lg:flex w-1/2 bg-primary text-primary-content relative flex-col justify-between p-16 overflow-hidden transition-transform duration-[600ms] ease-[cubic-bezier(0.65,0,0.35,1)] login-leaving"
         [class.login-leaving-active]="leaving()"
+        [class.login-panel-hidden]="isLogoutTransition()"
+        [class.login-panel-enter]="showLoginPanel()"
       >
         <!-- Patrón de Grilla Tech -->
         <div class="absolute inset-0 bg-grid-pattern z-0 pointer-events-none"></div>
@@ -1410,6 +1414,45 @@ import { SpinnerService } from '../../shared/services/spinner.service';
         transform: scale(0.95);
       }
     }
+    
+    /* ============================================
+       LOGIN PANEL HIDDEN - Ocultar panel azul durante logout
+       ============================================ */
+    .login-panel-hidden {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      transition: opacity 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                  visibility 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .login-panel-enter {
+      opacity: 1 !important;
+      visibility: visible !important;
+      animation: loginPanelEnter 500ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    }
+    
+    @keyframes loginPanelEnter {
+      from {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .login-panel-hidden,
+      .login-panel-enter {
+        transition: none !important;
+        animation: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+      }
+    }
 
     /* Accesibilidad - Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
@@ -1474,6 +1517,10 @@ export class Login {
   expanding = signal(false);
   submitted = signal(false);
   passwordErrorShown = signal(false);
+  // Estado para controlar la visibilidad del panel azul durante logout
+  // Inicialmente true para que se muestre normalmente
+  private _showLoginPanel = signal(true);
+  private logoutTransitionTimeout: any = null;
 
   constructor() {
     this.loginForm = this.fb.group({
@@ -1504,7 +1551,47 @@ export class Login {
         queueMicrotask(() => this.router.navigate([target]));
       }
     });
+
+    // Effect para detectar cuando estamos en transición de logout
+    // Ocultar el panel azul mientras el spinner está visible
+    effect(() => {
+      const spinnerVisible = this.spinnerService.isVisible();
+      const url = this.router.url;
+      
+      // Si el spinner está visible y estamos en login, es una transición de logout
+      if (spinnerVisible && url?.startsWith('/login')) {
+        // Ocultar panel azul
+        this._showLoginPanel.set(false);
+        
+        // Limpiar timeout anterior si existe
+        if (this.logoutTransitionTimeout) {
+          clearTimeout(this.logoutTransitionTimeout);
+        }
+        
+        // Mostrar panel azul después de que el spinner se oculte
+        // Usar un pequeño delay para que la transición sea suave
+        this.logoutTransitionTimeout = setTimeout(() => {
+          this._showLoginPanel.set(true);
+        }, 350); // 300ms (ocultar spinner) + 50ms (delay suave)
+      } else if (!spinnerVisible && url?.startsWith('/login')) {
+        // Si el spinner se ocultó y estamos en login, mostrar el panel
+        if (this.logoutTransitionTimeout) {
+          clearTimeout(this.logoutTransitionTimeout);
+        }
+        this._showLoginPanel.set(true);
+      }
+    });
   }
+  
+  // Computed para detectar si estamos en transición de logout
+  isLogoutTransition = computed(() => {
+    const spinnerVisible = this.spinnerService.isVisible();
+    const url = this.router.url;
+    return spinnerVisible && url?.startsWith('/login') && !this._showLoginPanel();
+  });
+  
+  // Getter para mostrar el panel (para usar en el template)
+  showLoginPanel = computed(() => this._showLoginPanel());
 
   onPasswordBlur() {
     if (this.loginForm.get('password')?.invalid) {
@@ -1607,13 +1694,19 @@ export class Login {
         }
       }
     } catch (err: any) {
-      // Esperar más tiempo para dar tiempo a todos los retries de syncDomainUser
+      // Verificar si el error es de sincronización (puede resolverse con retry)
+      // Si el mensaje indica un error de validación de sesión, esperar más tiempo
+      const isSyncError = err?.message?.includes('validar la sesión') || 
+                         err?.message?.includes('No se pudo obtener la información del usuario');
+      
+      // Si es un error de sincronización, esperar más tiempo para dar oportunidad a los retries
       // syncDomainUser puede hacer múltiples retries:
-      // - Primer retry después de 300ms (si es login manual)
-      // - Segundo retry después de 200ms adicionales (si intenta refrescar token)
+      // - Primer retry después de 400ms (si es login manual)
+      // - Segundo retry después de 500ms adicionales (si el primero falla)
       // - Más el tiempo de las peticiones HTTP
-      // Total puede ser más de 800ms, así que esperamos 1200ms para estar seguros
-      await new Promise(resolve => setTimeout(resolve, 1200));
+      // Total puede ser más de 1500ms, así que esperamos 1800ms para estar seguros
+      const waitTime = isSyncError ? 1800 : 1200;
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       
       // Verificar nuevamente si el usuario está autenticado después de los retries
       const user = this.auth.currentUser();

@@ -10,3 +10,4 @@ COMMENT ON COLUMN registros_diarios.imagen_comprobante_diesel_url IS 'URL de la 
 
 
 
+

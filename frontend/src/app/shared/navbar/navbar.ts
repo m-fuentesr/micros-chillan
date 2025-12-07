@@ -1,10 +1,11 @@
 import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnInit, OnDestroy, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, ConfirmDialog],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
     <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
@@ -43,7 +44,7 @@ import { AuthService } from '../services/auth.service';
       <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
            [class.lg:justify-center]="isCollapsed()"
            [class.lg:justify-between]="!isCollapsed()">
-        <div class="flex flex-col justify-center"
+        <div class="flex flex-col justify-center sidebar-brand-text"
              [class.lg:hidden]="isCollapsed()">
           <span class="logo-brand text-lg text-primary leading-tight">GESTOR DE FLOTAS</span>
           <span class="text-[10px] text-base-content/40 font-medium tracking-wide mt-0.5 leading-tight">ADMINISTRACIÓN</span>
@@ -227,7 +228,7 @@ import { AuthService } from '../services/auth.service';
         <a 
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-error hover:bg-error/10 hover:text-error hover:shadow-sm border border-transparent hover:border-error/20 transition-all duration-200"
           [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null"
-          (click)="onLogout($event)">
+          (click)="openLogoutConfirm($event)">
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
           </svg>
@@ -236,6 +237,17 @@ import { AuthService } from '../services/auth.service';
         </a>
       </div>
     </aside>
+
+    <!-- Modal de confirmación de cierre de sesión -->
+    <app-confirm-dialog
+      [isOpen]="showLogoutConfirm()"
+      title="Cerrar Sesión"
+      message="¿Estás seguro de que deseas cerrar sesión? Deberás iniciar sesión nuevamente para acceder a la aplicación."
+      confirmLabel="Sí, cerrar sesión"
+      type="destructive"
+      (confirm)="onLogout()"
+      (cancel)="closeLogoutConfirm()">
+    </app-confirm-dialog>
   `,
   styles: [
     `    /* ============================================
@@ -251,6 +263,51 @@ import { AuthService } from '../services/auth.service';
       --easing-collapse: cubic-bezier(0.4, 0, 0.6, 1); /* Material Design ease-in-out inverso */
       --delay-fast: 0ms;
       --delay-medium: 100ms;
+    }
+    
+    /* ============================================
+       BRAND TEXT - Animación de izquierda a derecha sincronizada con expansión
+       ============================================ */
+    
+    /* Estado inicial: oculto y desplazado a la izquierda */
+    @media (min-width: 1024px) {
+      :host ::ng-deep .sidebar-brand-text {
+        opacity: 0;
+        transform: translateX(-20px);
+        overflow: hidden;
+        white-space: nowrap;
+        transition: opacity 0ms ease 0ms,
+                    transform 0ms ease 0ms;
+      }
+      
+      /* Ocultar el texto cuando está colapsado */
+      :host ::ng-deep .sidebar-container.collapsed .sidebar-brand-text,
+      :host ::ng-deep .sidebar-container[class*="w-16"] .sidebar-brand-text {
+        opacity: 0;
+        transform: translateX(-20px);
+        transition: opacity var(--duration-collapse) var(--easing-collapse) var(--delay-fast),
+                    transform var(--duration-collapse) var(--easing-collapse) var(--delay-fast);
+      }
+      
+      /* Mostrar el texto con animación de izquierda a derecha cuando se expande */
+      /* Sincronizado con la expansión del navbar (300ms según transition-all duration-300) */
+      :host ::ng-deep .sidebar-container:not(.collapsed):not([class*="w-16"]) .sidebar-brand-text {
+        opacity: 1;
+        transform: translateX(0);
+        /* Animación sincronizada: empieza al mismo tiempo que la expansión (0ms delay) */
+        /* Duración de 300ms para coincidir con transition-all duration-300 del sidebar */
+        transition: opacity 300ms var(--easing-expand) 0ms,
+                    transform 300ms var(--easing-expand) 0ms;
+      }
+    }
+    
+    /* Asegurar que en móvil siempre esté visible (no hay colapso en móvil) */
+    @media (max-width: 1023px) {
+      :host ::ng-deep .sidebar-brand-text {
+        opacity: 1 !important;
+        transform: translateX(0) !important;
+        transition: none !important;
+      }
     }
     
     /* ============================================
@@ -934,6 +991,7 @@ export class Navbar implements OnInit {
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);
+  showLogoutConfirm = signal(false);
   private readonly auth = inject(AuthService);
   private initialized = false;
 
@@ -961,9 +1019,18 @@ export class Navbar implements OnInit {
     this.isMobileMenuOpen.set(false);
   }
 
-  onLogout(event: Event): void {
+  openLogoutConfirm(event: Event): void {
     event.preventDefault();
-    this.auth.logout();
+    this.showLogoutConfirm.set(true);
     this.closeMobileMenu();
+  }
+
+  closeLogoutConfirm(): void {
+    this.showLogoutConfirm.set(false);
+  }
+
+  onLogout(): void {
+    this.closeLogoutConfirm();
+    this.auth.logout();
   }
 }

@@ -22,14 +22,19 @@ import { filter, map, startWith } from 'rxjs';
       <div class="reload-spinner-overlay">
         <span class="loading loading-dots loading-lg text-primary"></span>
       </div>
+    } @else if (showLogoutSpinner()) {
+      <!-- Spinner de logout con animación de salida -->
+      <div class="logout-exit-overlay">
+        <span class="loading loading-dots loading-lg text-primary"></span>
+      </div>
     } @else if (showInitialLoading()) {
       <!-- Loading overlay durante verificación inicial de sesión -->
       <div class="session-verification-overlay"></div>
     }
     
-    @if (shouldShowAdminNav()) {
+    @if (shouldShowAdminNav() || (isLoggingOut() && showLogoutSpinner())) {
       <!-- Layout con Sidebar (Administrador) -->
-      <div class="h-dvh bg-base-200">
+      <div class="h-dvh bg-base-200" [class.dashboard-exiting]="isLoggingOut() && showLogoutSpinner()">
         <app-navbar 
           [initialCollapsed]="sidebarCollapsed()"
           [shouldAnimate]="shouldAnimateSidebar()"
@@ -185,6 +190,61 @@ import { filter, map, startWith } from 'rxjs';
         animation: none !important;
       }
     }
+    
+    /* ============================================
+       LOGOUT EXIT ANIMATION
+       Animación de salida suave al cerrar sesión
+       ============================================ */
+    .logout-exit-overlay {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 99999;
+      background: rgba(255, 255, 255, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: logoutExitEnter 400ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+      will-change: opacity;
+    }
+    
+    @keyframes logoutExitEnter {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    /* Animación de salida del contenido del dashboard */
+    .dashboard-exiting {
+      animation: dashboardExit 500ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+      will-change: opacity, transform;
+    }
+    
+    @keyframes dashboardExit {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(-20px);
+      }
+    }
+    
+    /* Accesibilidad - Reduced Motion */
+    @media (prefers-reduced-motion: reduce) {
+      .logout-exit-overlay {
+        animation: none !important;
+      }
+      
+      .dashboard-exiting {
+        animation: none !important;
+      }
+    }
     `
   ],
   encapsulation: ViewEncapsulation.None,
@@ -203,6 +263,9 @@ export class App implements OnInit, OnDestroy {
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
+  
+  // Signal para rastrear si estamos en proceso de logout
+  isLoggingOut = signal(false);
   
   private zoomFixTimeout: any = null;
   private resizeHandler = this.handleResize.bind(this);
@@ -271,6 +334,51 @@ export class App implements OnInit, OnDestroy {
   
   // Usar el servicio de spinner en lugar de signal local
   showReloadSpinner = this.spinnerService.isVisible;
+  
+  // Signal para detectar cuando se está cerrando sesión (logout)
+  showLogoutSpinner = computed(() => {
+    const spinnerVisible = this.spinnerService.isVisible();
+    const url = this.currentUrl();
+    const user = this.auth.currentUser();
+    const loggingOut = this.isLoggingOut();
+    
+    // Mostrar spinner de logout si:
+    // 1. El spinner está visible
+    // 2. Estamos en proceso de logout
+    // 3. No estamos en login
+    // 4. No hay usuario (se cerró sesión) o estamos marcados como logout
+    if (!spinnerVisible) return false;
+    if (!loggingOut && user) return false; // Si hay usuario y no estamos en logout, no mostrar
+    if (url?.startsWith('/login')) return false;
+    
+    // Verificar si estábamos en una ruta protegida
+    const wasAdminRoute = url ? this.routeTransitionService.isAdminRoute(url) : false;
+    const wasWorkerRoute = url ? url.startsWith('/trabajador') : false;
+    
+    return (wasAdminRoute || wasWorkerRoute) && (loggingOut || !user);
+  });
+  
+  // Effect para detectar cuando comienza el logout
+  private monitorLogout = effect(() => {
+    const spinnerVisible = this.spinnerService.isVisible();
+    const url = this.currentUrl();
+    const user = this.auth.currentUser();
+    
+    // Si el spinner está visible, no hay usuario, y estamos en una ruta protegida, es logout
+    if (spinnerVisible && !user && url && !url.startsWith('/login')) {
+      const isAdminRoute = this.routeTransitionService.isAdminRoute(url);
+      const isWorkerRoute = url.startsWith('/trabajador');
+      
+      if (isAdminRoute || isWorkerRoute) {
+        this.isLoggingOut.set(true);
+        
+        // Resetear después de que termine la animación
+        setTimeout(() => {
+          this.isLoggingOut.set(false);
+        }, 1000);
+      }
+    }
+  });
   
   // REDISEÑO: Usar orchestrator para determinar cuándo mostrar el navbar
   // CRÍTICO: El navbar DEBE renderizarse incluso cuando el orchestrator está en 'login-exiting'

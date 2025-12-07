@@ -4,11 +4,13 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
+import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -51,11 +53,37 @@ interface DailyRecordView {
 
         <!-- KPIs -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          @if (isLoading()) {
+          @if (kpisLoading() && !sequentialState.kpisError()) {
             @for (i of [1,2,3]; track i) {
               <app-loading-skeleton type="kpi" />
             }
+          } @else if (sequentialState.kpisError()) {
+            <div class="col-span-full card bg-error/10 border border-error/20 rounded-xl p-4 mb-4">
+              <div class="flex items-center gap-3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
+                  <p class="text-xs text-error/70">No se pudieron cargar los indicadores</p>
+                </div>
+              </div>
+            </div>
+            <div 
+              class="col-span-full"
+              [class.opacity-0]="!sequentialState.canShowKPIs()" 
+              [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+              [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+              [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+              <!-- KPIs con error pero mostrando datos -->
+            </div>
           } @else {
+            <div 
+              class="grid grid-cols-1 md:grid-cols-3 gap-4 col-span-full"
+              [class.opacity-0]="!sequentialState.canShowKPIs()" 
+              [class.animate-fade-in]="sequentialState.canShowKPIs()" 
+              [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+              [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
             <div class="card bg-base-100 shadow-sm border border-base-200 relative overflow-hidden hover-lift animate-card-enter group">
               <div class="card-body p-5 relative z-10">
                 <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Recaudación (Periodo)</span>
@@ -93,11 +121,44 @@ interface DailyRecordView {
                 </svg>
               </div>
             </div>
+            </div>
           }
         </div>
 
         <!-- Filtros y Búsqueda -->
-        <div class="card bg-base-100 shadow-xl border border-base-200 animate-card-enter">
+        @if (!sequentialState.canShowContent()) {
+          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
+          <div class="card bg-base-100 shadow-xl border border-base-200">
+            @if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
+              <app-loading-skeleton type="table" [count]="10" />
+            } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
+              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                <div class="flex flex-col items-center gap-4 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
+                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
+                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            } @else {
+              <!-- Mantener skeleton visible hasta que canShowContent sea true -->
+              <app-loading-skeleton type="table" [count]="10" />
+            }
+          </div>
+        } @else {
+          <!-- Solo renderizar el contenido cuando canShowContent es true -->
+          <div 
+            class="card bg-base-100 shadow-xl border border-base-200 animate-card-enter"
+            [class.animate-fade-in]="sequentialState.canShowContent()" 
+            [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+            [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
+            [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
           <!-- Barra de Búsqueda Principal (VIP - Zona Superior) -->
           <div class="p-4 sm:p-5 border-b border-base-200">
             <div class="relative w-full max-w-2xl">
@@ -148,8 +209,23 @@ interface DailyRecordView {
               <div class="flex justify-center items-center py-12">
                 <app-loading-spinner size="md" text="Cargando registros..." />
               </div>
-            } @else if (isLoading() && paginatedRecords().length === 0) {
+            } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
               <app-loading-skeleton type="table" [count]="10" />
+            } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
+              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                <div class="flex flex-col items-center gap-4 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
+                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
+                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
+              </div>
             } @else {
               <table class="table w-full">
               <thead class="bg-base-200/50 text-xs uppercase text-base-content/60">
@@ -239,10 +315,25 @@ interface DailyRecordView {
               <div class="flex justify-start items-center py-12 pl-4 border-l-4 border-l-primary">
                 <app-loading-spinner size="md" text="Cargando registros..." />
               </div>
-            } @else if (isLoading() && paginatedRecords().length === 0) {
+            } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
               @for (i of [1,2,3,4,5]; track i) {
                 <app-loading-skeleton type="card" />
               }
+            } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
+              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                <div class="flex flex-col items-center gap-4 text-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div>
+                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
+                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
+                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
+                      Reintentar
+                    </button>
+                  </div>
+                </div>
+              </div>
             } @else {
               @for (record of paginatedRecords(); track record.id) {
               <div 
@@ -422,7 +513,8 @@ interface DailyRecordView {
               </button>
             </div>
           </div>
-        </div>
+          </div>
+        }
 
       <!-- Modal Nuevo Registro -->
       @if (showNewRecordModal()) {
@@ -635,6 +727,19 @@ interface DailyRecordView {
     .animate-scale-up {
       animation: scale-up 0.2s ease-out;
     }
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .animate-fade-in {
+      animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -643,6 +748,7 @@ export class BitacoraOperaciones implements OnInit {
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
   private destroyRef = inject(DestroyRef);
+  private loadingStateService = inject(LoadingStateService);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -666,13 +772,35 @@ export class BitacoraOperaciones implements OnInit {
 
   // KPIs del servicio
   private kpisResponse = toSignal(
-    this.dailyRecordService.getDailyRecordsKPIs(),
+    this.dailyRecordService.getDailyRecordsKPIs().pipe(
+      catchError((error) => {
+        console.error('Error cargando KPIs:', error);
+        this.sequentialState.setKPIsReady(true); // Marcar error
+        setTimeout(() => {
+          this.kpisLoading.set(false);
+        }, 100);
+        return of(null);
+      })
+    ),
     { initialValue: null }
   );
 
   totalRevenue = computed(() => this.kpisResponse()?.recaudacion_periodo || 0);
   missingRecords = computed(() => this.kpisResponse()?.registros_faltantes || 0);
   recordsWithIncidents = computed(() => this.kpisResponse()?.registros_con_incidentes || 0);
+  
+  // Effect para detectar cuando los KPIs están listos
+  private kpisEffect = effect(() => {
+    const kpis = this.kpisResponse();
+    if (kpis !== null && this.kpisLoading() && !this.sequentialState.kpisError()) {
+      this.kpisLoading.set(false);
+      setTimeout(() => {
+        this.sequentialState.setKPIsReady(false);
+      }, 50);
+    } else if (this.sequentialState.kpisError() && this.kpisLoading()) {
+      this.kpisLoading.set(false);
+    }
+  });
 
   searchQuery = signal('');
   statusFilter = signal('all');
@@ -683,6 +811,16 @@ export class BitacoraOperaciones implements OnInit {
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
+  
+  // Estado de carga secuencial coordinado
+  sequentialState = this.loadingStateService.createSequentialLoadingState({
+    kpisDelay: 100,
+    contentDelay: 300,
+    maxWaitTime: 2000
+  });
+  
+  // Estado de carga para KPIs
+  kpisLoading = signal(true);
   
   // Cargar datos cuando cambian los filtros o la página
   private loadRecords(): void {
@@ -717,6 +855,13 @@ export class BitacoraOperaciones implements OnInit {
             this.isLoading.set(false);
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
+            
+            // Si es la primera carga, marcar contenido como listo
+            if (this.currentPage() === 1 && response.datos.length > 0 && !this.sequentialState.contentError()) {
+              setTimeout(() => {
+                this.sequentialState.setContentReady(false);
+              }, 50);
+            }
           });
         },
         error: (error) => {
@@ -725,6 +870,11 @@ export class BitacoraOperaciones implements OnInit {
             this.isLoading.set(false);
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
+            
+            // Si es la primera carga y hay error, marcar error
+            if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
+              this.sequentialState.setContentReady(true);
+            }
           });
         }
       });
@@ -867,6 +1017,15 @@ export class BitacoraOperaciones implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente mediante loadRecords() en constructor
+  }
+
+  // Función para reintentar carga
+  retryLoad(): void {
+    this.sequentialState.resetErrors();
+    this.sequentialState.reset();
+    this.isLoading.set(true);
+    this.currentPage.set(1);
+    this.loadRecords();
   }
 
   onSubmitNewRecord(): void {

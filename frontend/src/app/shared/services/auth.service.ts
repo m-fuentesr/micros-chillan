@@ -10,6 +10,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { AuthUser, UserRole } from '../models/auth.models';
 import { environment } from '../../../environments/environment.development';
+import { SpinnerService } from './spinner.service';
 
 const SUPABASE_URL = environment.supabaseUrl;
 const SUPABASE_ANON_KEY = environment.supabaseAnonKey;
@@ -33,6 +34,7 @@ export class AuthService {
 
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
+  private readonly spinnerService = inject(SpinnerService);
 
   private supabase: SupabaseClient;
 
@@ -292,7 +294,29 @@ export class AuthService {
       await new Promise(resolve => setTimeout(resolve, 150));
       
       // Sincronizar con el backend (el evento SIGNED_IN ya actualizó el token)
-      await this.syncDomainUser();
+      // syncDomainUser tiene retry automático para errores 401, así que esperamos
+      // un poco más después de la sincronización para dar tiempo a los retries
+      try {
+        await this.syncDomainUser();
+      } catch (syncError: any) {
+        // Si es un error 401 durante login manual, dar tiempo adicional para retry
+        // El retry se ejecuta dentro de syncDomainUser, pero puede tardar
+        if (syncError?.status === 401 && this.isManualLogin) {
+          // Esperar tiempo suficiente para que el retry se complete (300ms + tiempo de petición)
+          await new Promise(resolve => setTimeout(resolve, 600));
+          // Verificar nuevamente si ahora hay usuario (el retry pudo haber funcionado)
+          const userAfterRetry = this.currentUser();
+          if (userAfterRetry) {
+            // El retry fue exitoso, no lanzar error
+            return;
+          }
+        }
+        // Si no es un 401 o el retry no funcionó, lanzar el error
+        throw syncError;
+      }
+
+      // Dar un pequeño tiempo adicional para asegurar que el usuario se haya persistido
+      await new Promise(resolve => setTimeout(resolve, 100));
 
       const user = this.currentUser();
       if (!user) {
@@ -346,7 +370,8 @@ export class AuthService {
         // (puede haber un delay en la propagación del token al backend)
         if (this.isManualLogin && retryCount === 0) {
           this.isSyncing = false;
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Esperar un poco más para dar tiempo a que el token se propague completamente
+          await new Promise(resolve => setTimeout(resolve, 400));
           // Reintentar - si el retry es exitoso, no lanzar error
           try {
             await this.syncDomainUser(1);
@@ -354,9 +379,26 @@ export class AuthService {
             this.isSyncing = false;
             return;
           } catch (retryError: any) {
-            // Si el retry también falla, continuar con el manejo de error
-            // pero solo si realmente falló (no es un 401 que se resolvió)
-            if (retryError?.status === 401) {
+            // Si el retry también falla con 401, intentar un segundo retry con más tiempo
+            if (retryError?.status === 401 && retryCount === 0) {
+              this.isSyncing = false;
+              await new Promise(resolve => setTimeout(resolve, 500));
+              try {
+                await this.syncDomainUser(2);
+                // Si el segundo retry fue exitoso, salir sin error
+                this.isSyncing = false;
+                return;
+              } catch (secondRetryError: any) {
+                // Si el segundo retry también falla, continuar con el manejo de error
+                if (secondRetryError?.status === 401) {
+                  error = secondRetryError;
+                } else {
+                  // Si es otro tipo de error, lanzarlo
+                  this.isSyncing = false;
+                  throw secondRetryError;
+                }
+              }
+            } else if (retryError?.status === 401) {
               error = retryError;
             } else {
               // Si es otro tipo de error, lanzarlo
@@ -503,6 +545,12 @@ export class AuthService {
   }
 
   async logout(): Promise<void> {
+    // Mostrar spinner inmediatamente para la animación de salida
+    this.spinnerService.show();
+    
+    // Pequeño delay para que el spinner aparezca suavemente
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     // Primero limpiar el estado local para evitar que otras pestañas restauren la sesión
     this.clearSession();
     
@@ -519,7 +567,16 @@ export class AuthService {
     // Asegurar que localStorage de Supabase esté limpio
     this.forceClearSupabaseStorage();
     
+    // Esperar un poco para que la animación de salida se complete
+    await new Promise(resolve => setTimeout(resolve, 400));
+    
+    // Navegar al login (el login tiene sus propias animaciones de entrada)
     await this.router.navigate(['/login']);
+    
+    // Ocultar spinner después de que el login comience a aparecer
+    setTimeout(() => {
+      this.spinnerService.hide();
+    }, 300);
   }
 
   get token(): string | null {
