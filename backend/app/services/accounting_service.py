@@ -4,6 +4,14 @@ from app.schemas.settlement import PaymentConfirmRequest
 from datetime import date, timedelta
 import calendar
 
+#SUELDO GARANTIZADO MODIFICABLE
+SUELDO_GARANTIZADO = 750000
+#DICCIONARIO MESES ESPAÑOL
+MESES_ES = {
+    1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
+    7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
+}
+
 async def get_monthly_summary(mes: int, anio: int):
     """
     Calcula los KPIs financieros del mes usando 'registros_diarios' y 'compras_repuestos'.
@@ -245,8 +253,6 @@ async def get_week_detail_by_date(fecha_inicio: str, fecha_fin: str):
     # 5. CONVERTIR A LISTA
     return list(reporte.values())
 
-SUELDO_GARANTIZADO = 750000
-
 async def get_settlements_list(mes: int, anio: int):
     """
     Lista liquidaciones. Si ya existe en BD la trae. Si no, la calcula en vivo.
@@ -411,3 +417,96 @@ async def get_settlements_summary_banner(mes: int, anio: int):
         "count_pendientes": count_pend,
         "total_nomina_pendiente": total_monto_pend
     }
+
+async def get_history_periods():
+    """
+    Obtiene el historial de periodos cerrados.
+    Agrupa todos los registros 'pagados' por Mes/Año y suma los totales.
+    """
+    # 1. Traer todas las liquidaciones PAGADAS
+    # Ordenamos por año y mes descendente para ver lo más reciente primero
+    res = (
+        supabase.table("liquidaciones")
+        .select("mes, anio, total_final, fecha_pago")
+        .eq("estado_pago", "pagado") # Solo lo que ya se cerró
+        .order("anio", desc=True)
+        .order("mes", desc=True)
+        .execute()
+    )
+    
+    data = res.data
+    
+    # 2. Agrupar en memoria (Python)
+    # Usamos un diccionario donde la clave es la tupla (mes, anio)
+    grupos = {}
+
+    for item in data:
+        clave = (item["mes"], item["anio"])
+        
+        if clave not in grupos:
+            grupos[clave] = {
+                "total": 0,
+                # Asumimos fecha de cierre el último día de ese mes
+                "fecha_cierre": None 
+            }
+        
+        grupos[clave]["total"] += item["total_final"]
+
+    # 3. Formatear la respuesta
+    resultado = []
+    for (mes, anio), info in grupos.items():
+        # Calcular último día del mes para 'fecha_cierre'
+        _, ultimo_dia = calendar.monthrange(anio, mes)
+        fecha_fin_mes = date(anio, mes, ultimo_dia)
+        
+        nombre_mes = MESES_ES.get(mes, str(mes))
+        
+        resultado.append({
+            "periodo_texto": f"{nombre_mes} {anio}",
+            "mes": mes,
+            "anio": anio,
+            "total_pagado_mes": info["total"],
+            "fecha_cierre": fecha_fin_mes,
+            "estado": "Cerrado"
+        })
+    
+    return resultado
+
+async def get_history_detail(mes: int, anio: int):
+    """
+    Muestra el detalle de a quién se le pagó en un mes específico.
+    Hace JOIN con la tabla choferes para obtener Nombre y RUT.
+    """
+    # 1. Consultar liquidaciones con datos del chofer
+    # Usamos la sintaxis de Supabase para joins: choferes(...)
+    res = (
+        supabase.table("liquidaciones")
+        .select("*, choferes(primer_nombre, apellido_paterno, rut)")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .eq("estado_pago", "pagado")
+        .execute()
+    )
+    
+    filas = res.data
+    detalles = []
+
+    for item in filas:
+        # Extraer datos del chofer anidado
+        driver_data = item.get("choferes") or {}
+        nombre = driver_data.get("primer_nombre") or ""
+        apellido = driver_data.get("apellido_paterno") or ""
+        rut = driver_data.get("rut") or ""
+        
+        detalles.append({
+            "chofer_id": item["chofer_id"],
+            "nombre_completo": f"{nombre} {apellido}".strip(),
+            "rut": rut,
+            # La fecha real del pago guardada en BD
+            "fecha_pago": item["fecha_pago"], 
+            "total_pagado": item["total_final"],
+            "metodo_pago": item.get("metodo_pago"),
+            "codigo_transferencia": item.get("codigo_transferencia")
+        })
+
+    return detalles

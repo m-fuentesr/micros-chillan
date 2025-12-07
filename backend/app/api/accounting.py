@@ -2,7 +2,7 @@
 from typing import List
 from app.services import accounting_service
 from app.schemas.accounting import AccountingSummaryResponse, WeekSummary, DriverWeekDetail
-from app.schemas.settlement import SettlementResponse, PaymentConfirmRequest, PaymentConfirmResponse, SettlementsSummaryResponse 
+from app.schemas.settlement import SettlementResponse, PaymentConfirmRequest, PaymentConfirmResponse, SettlementsSummaryResponse, HistoryPeriodSummary, HistoryMonthDetail
 from app.utils.auth import get_current_user, require_admin 
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting"])
@@ -77,3 +77,25 @@ async def get_settlements_banner_data(
     """
     require_admin(current_user)
     return await accounting_service.get_settlements_summary_banner(mes, anio)
+# 4. HISTORIAL DE LIQUIDACIONES
+
+@router.get("/history/periods", response_model=List[HistoryPeriodSummary])
+async def get_settlement_history_periods(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene la lista de meses cerrados (Agrupados por mes/año).
+    """
+    require_admin(current_user)
+    return await accounting_service.get_history_periods()
+@router.get("/history/detail", response_model=List[HistoryMonthDetail])
+async def get_settlement_history_detail(
+    mes: int = Query(...),
+    anio: int = Query(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene el detalle de pagos de un mes específico seleccionado en el historial.
+    """
+    require_admin(current_user)
+    return await accounting_service.get_history_detail(mes, anio)
