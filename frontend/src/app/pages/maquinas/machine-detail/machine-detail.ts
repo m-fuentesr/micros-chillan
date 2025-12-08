@@ -17,10 +17,11 @@ import { map } from 'rxjs/operators';
 import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink, LoadingSkeleton],
+  imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink, LoadingSkeleton, BusIcon],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
@@ -57,9 +58,7 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
                   <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                    </svg>
+                    <app-bus-icon class="w-6 h-6" />
                   </div>
                   <div class="min-w-0">
                     <h2 class="text-xl md:text-2xl font-bold text-base-content">
@@ -283,12 +282,6 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
                   </svg>
                   Documentación
                 </h3>
-                <a
-                  [routerLink]="['/maquinas', machine()?.id, 'editar']"
-                  [queryParams]="{ section: 'docs' }" 
-                  class="btn btn-xs btn-ghost text-base-content/50 hover:text-primary">
-                  Editar
-                </a>
               </div>
 
               <div class="p-4 space-y-3">

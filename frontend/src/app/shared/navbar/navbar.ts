@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnI
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
+import { BusIcon } from '../components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, RouterLinkActive, ConfirmDialog],
+  imports: [RouterLink, RouterLinkActive, ConfirmDialog, BusIcon],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
     <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
@@ -124,9 +125,7 @@ import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
           [attr.data-tip]="isCollapsed() ? 'Flota de Vehículos' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-          </svg>
+          <app-bus-icon class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Flota de Vehículos</span>
         </a>

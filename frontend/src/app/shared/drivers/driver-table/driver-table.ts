@@ -28,7 +28,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <div class="flex gap-3 items-center">
                     <!-- Avatar del chofer -->
                     <div class="w-12 h-12 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center">
-                      <app-driver-icon class="w-full h-full p-1.5 text-base-content/60" />
+                      <app-driver-icon class="w-full h-full p-1.5 text-primary" />
                     </div>
                     <!-- Datos: Nombre y Correo -->
                     <div class="flex flex-col gap-1 flex-grow min-w-0">

@@ -14,10 +14,11 @@ import { map } from 'rxjs/operators';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule, LoadingSkeleton],
+  imports: [CommonModule, RouterLink, FormsModule, LoadingSkeleton, BusIcon],
   template: `
     <div class="space-y-6 animate-page-enter">
       <!-- Hero Section Premium -->
@@ -388,9 +389,7 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
               <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                 @if (driver()!.maquina_actual) {
                   <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                    </svg>
+                    <app-bus-icon class="w-8 h-8" />
                   </div>
 
                   <h4 class="text-xl font-bold text-base-content">
@@ -430,10 +429,8 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
 
                   <div class="w-full mt-auto"></div>
                 } @else {
-                  <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center text-base-content/20 mb-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                    </svg>
+                  <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center text-primary mb-4">
+                    <app-bus-icon class="w-8 h-8" />
                   </div>
                   <h4 class="text-lg font-bold text-base-content/70">
                     Sin Asignar
@@ -1289,7 +1286,18 @@ export class DriverDetail implements OnInit {
           next: (history) => {
             // Filtrar liquidaciones del chofer
             history.forEach((item) => {
-              const driverItem = item.choferes.find(c => c.chofer_id === driverId);
+              // Buscar en semanas primero (nueva estructura), luego en choferes (legacy)
+              let driverItem = null;
+              
+              if (item.semanas && item.semanas.length > 0) {
+                // Buscar en la última semana (donde se aplica el garantizado)
+                const lastWeek = item.semanas.find(w => w.es_ultima_semana) || item.semanas[item.semanas.length - 1];
+                driverItem = lastWeek.choferes.find(c => c.chofer_id === driverId);
+              } else if (item.choferes) {
+                // Fallback a estructura legacy
+                driverItem = item.choferes.find(c => c.chofer_id === driverId);
+              }
+              
               if (driverItem) {
                 liquidations.push({
                   id: driverItem.chofer_id,

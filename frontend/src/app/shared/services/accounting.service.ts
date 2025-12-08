@@ -122,7 +122,91 @@ export class AccountingService {
     );
   }
 
-  // GET /api/accounting/liquidation - Liquidación de choferes (RF-022)
+  // GET /api/accounting/weekly-liquidation - Liquidación semanal de choferes
+  getWeeklyLiquidation(semana: number, mes: number, anio: number, choferId?: number): Observable<LiquidationPeriod> {
+    const cacheKey = choferId ? `${semana}-${mes}-${anio}-${choferId}` : `${semana}-${mes}-${anio}`;
+    
+    // Verificar caché
+    const cached = this.liquidationCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
+      return of(cached.data);
+    }
+    
+    const params = new HttpParams()
+      .set('semana', semana.toString())
+      .set('mes', mes.toString())
+      .set('anio', anio.toString());
+    if (choferId) {
+      params.set('chofer_id', choferId.toString());
+    }
+    
+    return this.http.get<LiquidationPeriod>(`${this.apiUrl}/accounting/weekly-liquidation`, { params }).pipe(
+      map(data => {
+        this.liquidationCache.set(cacheKey, { data, timestamp: Date.now() });
+        return data;
+      }),
+      catchError(() => {
+        // Mock data - calcular si es última semana
+        const daysInMonth = new Date(anio, mes, 0).getDate();
+        const firstDay = new Date(anio, mes - 1, 1).getDay();
+        const weeksInMonth = Math.ceil((daysInMonth + firstDay) / 7);
+        const esUltimaSemana = semana === weeksInMonth;
+        
+        // Calcular fechas de la semana
+        const fechaInicio = new Date(anio, mes - 1, 1 + (semana - 1) * 7);
+        const fechaFin = new Date(anio, mes - 1, Math.min(1 + (semana - 1) * 7 + 6, daysInMonth));
+        
+        const mock: LiquidationPeriod = {
+          semana,
+          mes,
+          anio,
+          fecha_inicio: fechaInicio.toISOString().split('T')[0],
+          fecha_fin: fechaFin.toISOString().split('T')[0],
+          es_ultima_semana: esUltimaSemana,
+          estado: 'abierto' as const,
+          choferes: [
+            {
+              chofer_id: 1,
+              chofer_nombre: 'Juan Pérez',
+              total_ganado: esUltimaSemana ? 50000 : 120000, // Menos en última semana para ejemplo
+              acumulado_mensual: esUltimaSemana ? 380000 : undefined, // Solo en última semana
+              minimo_garantizado: 400000,
+              monto_a_completar: esUltimaSemana ? 20000 : 0,
+              pago_final: esUltimaSemana ? 70000 : 120000,
+              aplicar_garantizado: esUltimaSemana,
+              estado_pago: 'pendiente' as const
+            },
+            {
+              chofer_id: 2,
+              chofer_nombre: 'Pedro López',
+              total_ganado: esUltimaSemana ? 45000 : 100000,
+              acumulado_mensual: esUltimaSemana ? 350000 : undefined,
+              minimo_garantizado: 400000,
+              monto_a_completar: esUltimaSemana ? 50000 : 0,
+              pago_final: esUltimaSemana ? 95000 : 100000,
+              aplicar_garantizado: esUltimaSemana,
+              estado_pago: 'pendiente' as const
+            },
+            {
+              chofer_id: 3,
+              chofer_nombre: 'María Gómez',
+              total_ganado: esUltimaSemana ? 60000 : 110000,
+              acumulado_mensual: esUltimaSemana ? 420000 : undefined, // Ya alcanzó el mínimo
+              minimo_garantizado: 400000,
+              monto_a_completar: 0,
+              pago_final: esUltimaSemana ? 60000 : 110000,
+              aplicar_garantizado: false,
+              estado_pago: 'pendiente' as const
+            }
+          ]
+        };
+        this.liquidationCache.set(cacheKey, { data: mock, timestamp: Date.now() });
+        return of(mock);
+      })
+    );
+  }
+
+  // GET /api/accounting/liquidation - Liquidación de choferes (RF-022) - DEPRECATED: usar getWeeklyLiquidation
   getLiquidation(mes: number, anio: number, choferId?: number): Observable<LiquidationPeriod> {
     const cacheKey = choferId ? `${mes}-${anio}-${choferId}` : `${mes}-${anio}`;
     
@@ -145,16 +229,27 @@ export class AccountingService {
         return data;
       }),
       catchError(() => {
-        // Mock data
+        // Mock data - método deprecated, usar getWeeklyLiquidation
+        const daysInMonth = new Date(anio, mes, 0).getDate();
+        const firstDay = new Date(anio, mes - 1, 1).getDay();
+        const weeksInMonth = Math.ceil((daysInMonth + firstDay) / 7);
+        const fechaInicio = new Date(anio, mes - 1, 1);
+        const fechaFin = new Date(anio, mes - 1, daysInMonth);
+        
         const mock: LiquidationPeriod = {
+          semana: weeksInMonth, // Por defecto última semana
           mes,
           anio,
+          fecha_inicio: fechaInicio.toISOString().split('T')[0],
+          fecha_fin: fechaFin.toISOString().split('T')[0],
+          es_ultima_semana: true,
           estado: 'abierto' as const,
           choferes: [
             {
               chofer_id: 1,
               chofer_nombre: 'Juan Pérez',
               total_ganado: 450000,
+              acumulado_mensual: 450000,
               minimo_garantizado: 400000,
               monto_a_completar: 0,
               pago_final: 450000,
@@ -165,6 +260,7 @@ export class AccountingService {
               chofer_id: 2,
               chofer_nombre: 'Pedro López',
               total_ganado: 380000,
+              acumulado_mensual: 380000,
               minimo_garantizado: 400000,
               monto_a_completar: 20000,
               pago_final: 400000,
@@ -175,6 +271,7 @@ export class AccountingService {
               chofer_id: 3,
               chofer_nombre: 'María Gómez',
               total_ganado: 350000,
+              acumulado_mensual: 350000,
               minimo_garantizado: 400000,
               monto_a_completar: 50000,
               pago_final: 400000,
@@ -211,7 +308,7 @@ export class AccountingService {
     return this.http.get<ClosedLiquidation[]>(`${this.apiUrl}/accounting/liquidation/history`).pipe(
       map(data => data || []),
       catchError(() => {
-        // Mock data
+        // Mock data con semanas
         const mockData: ClosedLiquidation[] = [
           {
             id: 1,
@@ -221,14 +318,196 @@ export class AccountingService {
             fecha_cierre: '2025-11-01',
             total_pagado: 1250000,
             cerrado_por: 'admin@demo.com',
+            semanas: [
+              {
+                semana: 1,
+                fecha_inicio: '2025-10-01',
+                fecha_fin: '2025-10-07',
+                es_ultima_semana: false,
+                total_pagado: 370000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 120000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 120000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10001'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 100000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 100000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 150000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 150000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10002'
+                  }
+                ]
+              },
+              {
+                semana: 2,
+                fecha_inicio: '2025-10-08',
+                fecha_fin: '2025-10-14',
+                es_ultima_semana: false,
+                total_pagado: 320000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 110000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 110000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10003'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 95000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 95000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 115000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 115000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10004'
+                  }
+                ]
+              },
+              {
+                semana: 3,
+                fecha_inicio: '2025-10-15',
+                fecha_fin: '2025-10-21',
+                es_ultima_semana: false,
+                total_pagado: 330000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 115000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 115000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10005'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 100000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 100000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 115000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 115000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10006'
+                  }
+                ]
+              },
+              {
+                semana: 4,
+                fecha_inicio: '2025-10-22',
+                fecha_fin: '2025-10-31',
+                es_ultima_semana: true,
+                total_pagado: 230000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 50000,
+                    acumulado_mensual: 395000, // 120+110+115+50
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 5000,
+                    pago_final: 55000, // 50k + 5k ajuste
+                    aplicar_garantizado: true,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10007'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 45000,
+                    acumulado_mensual: 340000, // 100+95+100+45
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 60000,
+                    pago_final: 105000, // 45k + 60k ajuste
+                    aplicar_garantizado: true,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 60000,
+                    acumulado_mensual: 440000, // 150+115+115+60 (ya alcanzó el mínimo)
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 60000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-10008'
+                  }
+                ]
+              }
+            ],
+            // Mantener choferes para compatibilidad (suma de todas las semanas)
             choferes: [
               {
                 chofer_id: 1,
                 chofer_nombre: 'Juan Pérez',
-                total_ganado: 450000,
+                total_ganado: 395000,
                 minimo_garantizado: 400000,
-                monto_a_completar: 0,
-                pago_final: 420000,
+                monto_a_completar: 5000,
+                pago_final: 400000,
                 aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
@@ -237,9 +516,9 @@ export class AccountingService {
               {
                 chofer_id: 2,
                 chofer_nombre: 'Pedro López',
-                total_ganado: 380000,
+                total_ganado: 340000,
                 minimo_garantizado: 400000,
-                monto_a_completar: 20000,
+                monto_a_completar: 60000,
                 pago_final: 400000,
                 aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
@@ -248,11 +527,11 @@ export class AccountingService {
               {
                 chofer_id: 3,
                 chofer_nombre: 'María Gómez',
-                total_ganado: 350000,
+                total_ganado: 440000,
                 minimo_garantizado: 400000,
-                monto_a_completar: 50000,
-                pago_final: 400000,
-                aplicar_garantizado: true,
+                monto_a_completar: 0,
+                pago_final: 440000,
+                aplicar_garantizado: false,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-10002'
@@ -267,6 +546,188 @@ export class AccountingService {
             fecha_cierre: '2025-10-01',
             total_pagado: 1230000,
             cerrado_por: 'admin@demo.com',
+            semanas: [
+              {
+                semana: 1,
+                fecha_inicio: '2025-09-01',
+                fecha_fin: '2025-09-07',
+                es_ultima_semana: false,
+                total_pagado: 360000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 115000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 115000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09001'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 95000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 95000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 150000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 150000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09002'
+                  }
+                ]
+              },
+              {
+                semana: 2,
+                fecha_inicio: '2025-09-08',
+                fecha_fin: '2025-09-14',
+                es_ultima_semana: false,
+                total_pagado: 310000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 105000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 105000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09003'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 90000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 90000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 115000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 115000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09004'
+                  }
+                ]
+              },
+              {
+                semana: 3,
+                fecha_inicio: '2025-09-15',
+                fecha_fin: '2025-09-21',
+                es_ultima_semana: false,
+                total_pagado: 320000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 110000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 110000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09005'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 100000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 100000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 110000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 110000,
+                    aplicar_garantizado: false,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09006'
+                  }
+                ]
+              },
+              {
+                semana: 4,
+                fecha_inicio: '2025-09-22',
+                fecha_fin: '2025-09-30',
+                es_ultima_semana: true,
+                total_pagado: 240000,
+                choferes: [
+                  {
+                    chofer_id: 1,
+                    chofer_nombre: 'Juan Pérez',
+                    total_ganado: 430000, // Acumulado: 115+105+110+100
+                    acumulado_mensual: 430000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 0,
+                    pago_final: 100000, // Solo lo de esta semana
+                    aplicar_garantizado: false, // Ya alcanzó el mínimo
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09007'
+                  },
+                  {
+                    chofer_id: 2,
+                    chofer_nombre: 'Pedro López',
+                    total_ganado: 385000, // Acumulado: 95+90+100+100
+                    acumulado_mensual: 385000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 15000,
+                    pago_final: 115000, // 100k + 15k ajuste
+                    aplicar_garantizado: true,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'efectivo' as const
+                  },
+                  {
+                    chofer_id: 3,
+                    chofer_nombre: 'María Gómez',
+                    total_ganado: 375000, // Acumulado: 150+115+110+0 (solo 3 semanas)
+                    acumulado_mensual: 375000,
+                    minimo_garantizado: 400000,
+                    monto_a_completar: 25000,
+                    pago_final: 25000, // Solo el ajuste (no trabajó esta semana)
+                    aplicar_garantizado: true,
+                    estado_pago: 'pagado' as const,
+                    metodo_pago: 'transferencia' as const,
+                    codigo_transferencia: 'TRF-2025-09008'
+                  }
+                ]
+              }
+            ],
+            // Mantener choferes para compatibilidad
             choferes: [
               {
                 chofer_id: 1,
@@ -274,8 +735,8 @@ export class AccountingService {
                 total_ganado: 430000,
                 minimo_garantizado: 400000,
                 monto_a_completar: 0,
-                pago_final: 415000,
-                aplicar_garantizado: true,
+                pago_final: 430000,
+                aplicar_garantizado: false,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-09001'
@@ -283,25 +744,25 @@ export class AccountingService {
               {
                 chofer_id: 2,
                 chofer_nombre: 'Pedro López',
-                total_ganado: 390000,
+                total_ganado: 385000,
                 minimo_garantizado: 400000,
-                monto_a_completar: 10000,
+                monto_a_completar: 15000,
+                pago_final: 400000,
+                aplicar_garantizado: true,
+                estado_pago: 'pagado' as const,
+                metodo_pago: 'efectivo' as const
+              },
+              {
+                chofer_id: 3,
+                chofer_nombre: 'María Gómez',
+                total_ganado: 375000,
+                minimo_garantizado: 400000,
+                monto_a_completar: 25000,
                 pago_final: 400000,
                 aplicar_garantizado: true,
                 estado_pago: 'pagado' as const,
                 metodo_pago: 'transferencia' as const,
                 codigo_transferencia: 'TRF-2025-09002'
-              },
-              {
-                chofer_id: 3,
-                chofer_nombre: 'María Gómez',
-                total_ganado: 360000,
-                minimo_garantizado: 400000,
-                monto_a_completar: 40000,
-                pago_final: 415000,
-                aplicar_garantizado: true,
-                estado_pago: 'pagado' as const,
-                metodo_pago: 'efectivo' as const
               }
             ]
           }

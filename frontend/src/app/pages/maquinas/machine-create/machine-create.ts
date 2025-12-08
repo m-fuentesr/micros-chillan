@@ -8,10 +8,11 @@ import { MachineCreateSummary } from '../../../shared/machines/machine-create-su
 import { Machine } from '../../../shared/models/machine.models';
 import { catchError, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-machine-create',
-  imports: [MachineForm, MachineDocumentationForm, MachineCreateSummary, RouterLink],
+  imports: [MachineForm, MachineDocumentationForm, MachineCreateSummary, RouterLink, BusIcon],
   template: `
     <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
     <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
@@ -53,9 +54,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-primary">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 00-10.026 0 1.106 1.106 0 00-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12" />
-                  </svg>
+                  <app-bus-icon class="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <h2 class="text-xl sm:text-2xl font-bold text-base-content">Datos de la Máquina</h2>

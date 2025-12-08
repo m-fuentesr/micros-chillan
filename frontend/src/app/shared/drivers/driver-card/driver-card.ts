@@ -56,7 +56,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
           <div class="flex gap-4 flex-grow min-h-0">
             <!-- Avatar (80x80 = w-20 h-20) -->
             <div class="w-20 h-20 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
-              <app-driver-icon class="w-full h-full p-2" />
+              <app-driver-icon class="w-full h-full p-2 text-primary" />
             </div>
 
             <!-- Datos: Especificaciones -->
