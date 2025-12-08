@@ -200,7 +200,9 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
                   [liquidation]="liquidation()!"
                   [availableWeeks]="availableWeeks()"
                   [selectedWeek]="selectedWeek()"
+                  [payrollPeriod]="payrollPeriod()"
                   (weekChange)="onWeekChange($event)"
+                  (payrollPeriodChange)="onPayrollPeriodChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
@@ -282,9 +284,19 @@ export class Contabilidad implements OnInit {
   // Selector de semana para liquidación
   selectedWeek = signal<number>(1);
   
+  // Selector de período para liquidación (mes actual / mes anterior)
+  payrollPeriod = signal<'current' | 'previous'>('current');
+
   // Calcular semanas disponibles del mes
   availableWeeks = computed(() => {
     const { mes, anio } = this.payrollDate();
+    
+    // Si es mes anterior, siempre mostrar 4 semanas
+    if (this.payrollPeriod() === 'previous') {
+      return [1, 2, 3, 4];
+    }
+    
+    // Para mes actual, calcular según el mes
     const daysInMonth = new Date(anio, mes, 0).getDate();
     const firstDay = new Date(anio, mes - 1, 1).getDay(); // 0 = domingo, 1 = lunes, etc.
     
@@ -295,7 +307,16 @@ export class Contabilidad implements OnInit {
 
   payrollDate = computed(() => {
     const now = new Date();
-    return { mes: now.getMonth() + 1, anio: now.getFullYear() };
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    if (this.payrollPeriod() === 'current') {
+      return { mes: currentMonth, anio: currentYear };
+    }
+
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    return { mes: prevMonth, anio: prevYear };
   });
 
   months = computed(() => {
@@ -502,6 +523,12 @@ export class Contabilidad implements OnInit {
   onWeekChange(week: number): void {
     this.selectedWeek.set(week);
     this.loadLiquidation(); // Recargar liquidación con la nueva semana
+  }
+
+  onPayrollPeriodChange(period: 'current' | 'previous'): void {
+    this.payrollPeriod.set(period);
+    this.selectedWeek.set(1); // Resetear a semana 1 al cambiar de mes
+    this.loadLiquidation(); // Recargar liquidación con el nuevo período
   }
 
   private recalculatePagoFinal(chofer: LiquidationDriver, esUltimaSemana: boolean): void {

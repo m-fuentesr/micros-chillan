@@ -150,7 +150,9 @@ export class AccountingService {
         const daysInMonth = new Date(anio, mes, 0).getDate();
         const firstDay = new Date(anio, mes - 1, 1).getDay();
         const weeksInMonth = Math.ceil((daysInMonth + firstDay) / 7);
-        const esUltimaSemana = semana === weeksInMonth;
+        // Si la semana es 4, siempre es última (mes anterior tiene 4 semanas)
+        // O si la semana coincide con el total de semanas del mes (mes actual)
+        const esUltimaSemana = semana === 4 || semana === weeksInMonth;
         
         // Calcular fechas de la semana
         const fechaInicio = new Date(anio, mes - 1, 1 + (semana - 1) * 7);
