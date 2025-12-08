@@ -198,8 +198,9 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-liquidation-table
                   [liquidation]="liquidation()!"
-                  [payrollPeriod]="payrollPeriod()"
-                  (payrollPeriodChange)="onPayrollPeriodChange($event)"
+                  [availableWeeks]="availableWeeks()"
+                  [selectedWeek]="selectedWeek()"
+                  (weekChange)="onWeekChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
@@ -278,21 +279,23 @@ export class Contabilidad implements OnInit {
   selectedDriver = signal<LiquidationDriver | null>(null);
   pendingPaymentChoferId = signal<number | null>(null);
 
-  // Selector propio solo para la pestaña de Liquidación (payroll)
-  payrollPeriod = signal<'current' | 'previous'>('current');
+  // Selector de semana para liquidación
+  selectedWeek = signal<number>(1);
+  
+  // Calcular semanas disponibles del mes
+  availableWeeks = computed(() => {
+    const { mes, anio } = this.payrollDate();
+    const daysInMonth = new Date(anio, mes, 0).getDate();
+    const firstDay = new Date(anio, mes - 1, 1).getDay(); // 0 = domingo, 1 = lunes, etc.
+    
+    // Calcular cuántas semanas tiene el mes
+    const weeks = Math.ceil((daysInMonth + firstDay) / 7);
+    return Array.from({ length: weeks }, (_, i) => i + 1);
+  });
 
   payrollDate = computed(() => {
     const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
-
-    if (this.payrollPeriod() === 'current') {
-      return { mes: currentMonth, anio: currentYear };
-    }
-
-    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
-    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
-    return { mes: prevMonth, anio: prevYear };
+    return { mes: now.getMonth() + 1, anio: now.getFullYear() };
   });
 
   months = computed(() => {
@@ -383,17 +386,23 @@ export class Contabilidad implements OnInit {
   loadLiquidation(): void {
     this.payrollLoadingState.setLoading(true);
     const { mes, anio } = this.payrollDate();
-    this.accountingService.getLiquidation(mes, anio)
+    const semana = this.selectedWeek();
+    this.accountingService.getWeeklyLiquidation(semana, mes, anio)
       .pipe(catchError(() => of(null)))
       .subscribe(liquidation => {
         if (liquidation) {
-          // Inicializar aplicar_garantizado con true por defecto si no existe
+          // Inicializar aplicar_garantizado solo si es última semana
           liquidation.choferes.forEach(chofer => {
-            if (chofer.aplicar_garantizado === undefined) {
-              chofer.aplicar_garantizado = true;
+            if (liquidation.es_ultima_semana) {
+              if (chofer.aplicar_garantizado === undefined) {
+                const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
+                chofer.aplicar_garantizado = acumulado < chofer.minimo_garantizado;
+              }
+            } else {
+              chofer.aplicar_garantizado = false;
             }
             // Recalcular pago_final con la lógica actualizada
-            this.recalculatePagoFinal(chofer);
+            this.recalculatePagoFinal(chofer, liquidation.es_ultima_semana);
           });
           this.liquidationData.set(liquidation);
         }
@@ -473,7 +482,7 @@ export class Contabilidad implements OnInit {
     const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
     if (chofer) {
       chofer.monto_a_completar = event.monto;
-      this.recalculatePagoFinal(chofer);
+      this.recalculatePagoFinal(chofer, liquidation.es_ultima_semana);
       this.liquidationData.set({ ...liquidation });
     }
   }
@@ -485,16 +494,24 @@ export class Contabilidad implements OnInit {
     const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
     if (chofer) {
       chofer.aplicar_garantizado = event.aplicar;
-      this.recalculatePagoFinal(chofer);
+      this.recalculatePagoFinal(chofer, liquidation.es_ultima_semana);
       this.liquidationData.set({ ...liquidation });
     }
   }
 
-  private recalculatePagoFinal(chofer: LiquidationDriver): void {
-    const aplicarGarantizado = chofer.aplicar_garantizado ?? true;
-    
-    if (aplicarGarantizado && chofer.total_ganado < chofer.minimo_garantizado) {
-      chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
+  onWeekChange(week: number): void {
+    this.selectedWeek.set(week);
+    this.loadLiquidation(); // Recargar liquidación con la nueva semana
+  }
+
+  private recalculatePagoFinal(chofer: LiquidationDriver, esUltimaSemana: boolean): void {
+    if (esUltimaSemana && chofer.aplicar_garantizado) {
+      const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
+      if (acumulado < chofer.minimo_garantizado) {
+        chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
+      } else {
+        chofer.pago_final = chofer.total_ganado;
+      }
     } else {
       chofer.pago_final = chofer.total_ganado;
     }
@@ -509,10 +526,5 @@ export class Contabilidad implements OnInit {
         this.loadLiquidation();
         alert('Período cerrado y finalizado exitosamente.');
       });
-  }
-
-  onPayrollPeriodChange(period: 'current' | 'previous'): void {
-    this.payrollPeriod.set(period);
-    this.loadLiquidation(); // recargar liquidación con el nuevo período
   }
 }

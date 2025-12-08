@@ -19,23 +19,22 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
             <p class="text-sm text-base-content/60">Ajusta los montos garantizados y confirma los pagos.</p>
           </div>
 
-          <!-- Selector de período (Mes actual / Mes anterior) -->
+          <!-- Botones de Semanas -->
           <div class="w-full md:w-auto">
-            <div class="bg-white p-1.5 rounded-xl border border-base-200 shadow-sm w-full md:w-auto">
-              <div class="relative w-full">
-                <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
-                  [value]="payrollPeriod()" 
-                  (change)="onPayrollPeriodChange($event)">
-                  <option value="current">Mes actual</option>
-                  <option value="previous">Mes anterior</option>
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
-                </div>
-              </div>
+            <div class="flex gap-2 flex-wrap">
+              @for (week of availableWeeks(); track week) {
+                <button
+                  class="btn btn-sm px-4 rounded-lg transition-all font-bold"
+                  [class.btn-primary]="selectedWeek() === week"
+                  [class.btn-outline]="selectedWeek() !== week"
+                  [class.btn-ghost]="selectedWeek() !== week"
+                  (click)="onWeekChange(week)">
+                  Semana {{ week }}
+                  @if (week === availableWeeks()[availableWeeks().length - 1]) {
+                    <span class="badge badge-xs badge-warning ml-1">Última</span>
+                  }
+                </button>
+              }
             </div>
           </div>
 
@@ -96,35 +95,77 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                   </td>
 
                   <td class="text-left">
-                    <div class="flex flex-col gap-2">
-                      <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
-                        Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                      </span>
-                      <label class="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          class="toggle toggle-sm toggle-primary"
-                          [checked]="chofer.aplicar_garantizado"
-                          [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
-                          (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                        <span class="text-xs text-base-content/60">Aplicar</span>
-                      </label>
-                    </div>
+                    @if (liquidation().es_ultima_semana) {
+                      <!-- Última semana: mostrar acumulado mensual -->
+                      <div class="flex flex-col gap-2">
+                        <div class="flex flex-col gap-1">
+                          <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                            Acumulado mes: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                          </span>
+                          <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                            Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                          </span>
+                        </div>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            [checked]="chofer.aplicar_garantizado"
+                            [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
+                            (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
+                          <span class="text-xs text-base-content/60">Aplicar</span>
+                        </label>
+                      </div>
+                    } @else {
+                      <!-- Semanas normales: garantizado deshabilitado -->
+                      <div class="flex flex-col gap-2">
+                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/30 font-mono">
+                          No aplica
+                        </span>
+                        <label class="flex items-center gap-2 cursor-not-allowed opacity-50">
+                          <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            [checked]="false"
+                            disabled>
+                          <span class="text-xs text-base-content/40">Aplicar</span>
+                        </label>
+                      </div>
+                    }
                   </td>
 
                   <td class="text-left">
-                    <div class="relative flex items-center justify-end">
-                      <span class="absolute right-24 text-base-content/30 text-xs mr-2 group-hover:opacity-100 opacity-0 transition-opacity">+</span>
-                      <input
-                        type="number"
-                        [value]="chofer.monto_a_completar"
-                        [disabled]="!chofer.aplicar_garantizado || chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
-                        (input)="onMissingAmountChange(chofer.chofer_id, $event)"
-                        class="input input-sm input-ghost w-24 text-right tabular-nums font-bold focus:bg-base-100 focus:border-primary border border-transparent hover:border-base-300 transition-all rounded-lg p-0 pr-2"
-                        [class.text-base-content/30]="chofer.monto_a_completar === 0"
-                        [class.text-primary]="chofer.monto_a_completar > 0"
-                        min="0">
-                    </div>
+                    @if (liquidation().es_ultima_semana) {
+                      <!-- Última semana: ajuste habilitado si aplica garantizado -->
+                      @if (chofer.aplicar_garantizado) {
+                        <div class="relative flex items-center justify-end">
+                          <span class="absolute right-24 text-base-content/30 text-xs mr-2 group-hover:opacity-100 opacity-0 transition-opacity">+</span>
+                          <input
+                            type="number"
+                            [value]="chofer.monto_a_completar"
+                            [disabled]="(chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                            (input)="onMissingAmountChange(chofer.chofer_id, $event)"
+                            class="input input-sm input-ghost w-24 text-right tabular-nums font-bold focus:bg-base-100 focus:border-primary border border-transparent hover:border-base-300 transition-all rounded-lg p-0 pr-2"
+                            [class.text-base-content/30]="chofer.monto_a_completar === 0"
+                            [class.text-primary]="chofer.monto_a_completar > 0"
+                            min="0">
+                        </div>
+                      } @else {
+                        <!-- Toggle desactivado: mostrar 0 deshabilitado -->
+                        <div class="relative flex items-center justify-end">
+                          <input
+                            type="number"
+                            value="0"
+                            disabled
+                            class="input input-sm input-ghost w-24 text-right tabular-nums font-bold text-base-content/30 border border-transparent rounded-lg p-0 pr-2">
+                        </div>
+                      }
+                    } @else {
+                      <!-- Semanas normales: mostrar badge "No aplica" -->
+                      <div class="flex items-center justify-end">
+                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/30 font-mono">No aplica</span>
+                      </div>
+                    }
                   </td>
 
                   <td class="text-left bg-base-50/50 font-bold text-base-content tabular-nums text-lg border-l border-base-200 font-mono">
@@ -195,30 +236,66 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                 <div class="flex justify-between items-center">
                   <span class="text-base-content/60">Garantizado</span>
                   <div class="flex items-center gap-2">
-                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
-                      Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                    </span>
-                    <label class="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        class="toggle toggle-sm toggle-primary"
-                        [checked]="chofer.aplicar_garantizado"
-                        [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
-                        (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                      <span class="text-xs text-base-content/60">Aplicar</span>
-                    </label>
+                    @if (liquidation().es_ultima_semana) {
+                      <!-- Última semana: mostrar acumulado mensual -->
+                      <div class="flex flex-col items-end gap-1">
+                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                          Acum: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                        </span>
+                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                          Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                        </span>
+                        <label class="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            [checked]="chofer.aplicar_garantizado"
+                            [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
+                            (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
+                          <span class="text-xs text-base-content/60">Aplicar</span>
+                        </label>
+                      </div>
+                    } @else {
+                      <!-- Semanas normales: deshabilitado -->
+                      <div class="flex flex-col items-end gap-1 opacity-50">
+                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/30 font-mono">
+                          No aplica
+                        </span>
+                        <label class="flex items-center gap-1 cursor-not-allowed">
+                          <input
+                            type="checkbox"
+                            class="toggle toggle-sm toggle-primary"
+                            [checked]="false"
+                            disabled>
+                          <span class="text-xs text-base-content/40">Aplicar</span>
+                        </label>
+                      </div>
+                    }
                   </div>
                 </div>
                 <div class="flex justify-between items-center">
                   <span class="text-base-content/60">Ajuste / Bono</span>
-                  <input
-                    type="number"
-                    [value]="chofer.monto_a_completar"
-                    [disabled]="!chofer.aplicar_garantizado || chofer.total_ganado >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
-                    (input)="onMissingAmountChange(chofer.chofer_id, $event)"
-                    class="input input-xs input-bordered w-24 text-right tabular-nums"
-                    [class.input-primary]="chofer.monto_a_completar > 0"
-                    min="0">
+                  @if (liquidation().es_ultima_semana) {
+                    @if (chofer.aplicar_garantizado) {
+                      <input
+                        type="number"
+                        [value]="chofer.monto_a_completar"
+                        [disabled]="(chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                        (input)="onMissingAmountChange(chofer.chofer_id, $event)"
+                        class="input input-xs input-bordered w-24 text-right tabular-nums"
+                        [class.input-primary]="chofer.monto_a_completar > 0"
+                        [class.text-base-content/30]="chofer.monto_a_completar === 0"
+                        min="0">
+                    } @else {
+                      <input
+                        type="number"
+                        value="0"
+                        disabled
+                        class="input input-xs input-bordered w-24 text-right tabular-nums text-base-content/30">
+                    }
+                  } @else {
+                    <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/30 font-mono">No aplica</span>
+                  }
                 </div>
                 <div class="border-t border-base-200 my-2"></div>
                 <div class="flex justify-between items-center">
@@ -265,13 +342,14 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
 })
 export class LiquidationTable {
   liquidation = input.required<LiquidationPeriod>();
-  payrollPeriod = input<'current' | 'previous'>('current');
+  availableWeeks = input<number[]>([]); // Array de semanas disponibles (ej: [1,2,3,4] o [1,2,3,4,5])
+  selectedWeek = input<number>(1);
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();
   aplicarGarantizadoChange = output<{ choferId: number; aplicar: boolean }>();
   closePeriod = output<void>();
-  payrollPeriodChange = output<'current' | 'previous'>();
+  weekChange = output<number>(); // Emite cuando cambia la semana seleccionada
 
   // Signal para rastrear choferes en estado "confirmado" temporalmente
   confirmedChoferes = signal<Set<number>>(new Set());
@@ -303,18 +381,21 @@ export class LiquidationTable {
   }
 
   calculatePagoFinal(chofer: LiquidationDriver): number {
-    const aplicarGarantizado = chofer.aplicar_garantizado;
-    
-    if (aplicarGarantizado && chofer.total_ganado < chofer.minimo_garantizado) {
-      return chofer.total_ganado + chofer.monto_a_completar;
+    // Si es última semana y se aplica garantizado
+    if (this.liquidation().es_ultima_semana && chofer.aplicar_garantizado) {
+      const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
+      if (acumulado < chofer.minimo_garantizado) {
+        // El pago de la semana es lo ganado + el ajuste para completar el mínimo mensual
+        return chofer.total_ganado + chofer.monto_a_completar;
+      }
     }
     
+    // En semanas normales o si no aplica garantizado, solo se paga lo ganado
     return chofer.total_ganado;
   }
 
-  onPayrollPeriodChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    this.payrollPeriodChange.emit(select.value as 'current' | 'previous');
+  onWeekChange(week: number): void {
+    this.weekChange.emit(week);
   }
 
   onConfirmPayment(chofer: LiquidationDriver): void {

@@ -1,6 +1,6 @@
 import { Component, ChangeDetectionStrategy, input, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ClosedLiquidation } from '../../models/accounting.models';
+import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accounting.models';
 
 @Component({
   selector: 'app-liquidation-history',
@@ -132,7 +132,7 @@ import { ClosedLiquidation } from '../../models/accounting.models';
       <div class="w-full bg-base-100 rounded-xl border border-base-200 shadow-sm overflow-hidden">
         
         <div class="bg-base-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-base-200 flex justify-between items-center">
-          <div class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-base-content/50">Comprobante de Nómina</div>
+          <div class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-base-content/50">Comprobante de Nómina - {{ liquidation.periodo }}</div>
           <button class="btn btn-xs btn-ghost gap-1 text-primary">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
               <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -165,54 +165,109 @@ import { ClosedLiquidation } from '../../models/accounting.models';
           </div>
         </div>
 
-        @if (!isMobile) {
-          <!-- Vista Desktop: Tabla de Choferes -->
-          <table class="table table-sm w-full">
-            <thead class="text-base-content/40 border-b border-base-100">
-              <tr>
-                <th class="pl-6 font-normal">Beneficiario</th>
-                <th class="text-left font-bold font-mono tabular-nums">Base</th>
-                <th class="text-left font-bold font-mono tabular-nums">Ajuste</th>
-                <th class="text-right font-normal">Total</th>
-                <th class="pl-8 font-normal">Método</th>
-                <th class="font-normal">Ref</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (chofer of getChoferes(liquidation); track chofer.chofer_id) {
-                <tr class="hover:bg-base-50/50">
-                  <td class="pl-6 font-medium py-2.5">{{ chofer.chofer_nombre }}</td>
-                  <td class="text-right tabular-nums text-xs text-base-content/60">{{ formatCurrency(chofer.total_ganado) }}</td>
-                  <td class="text-right tabular-nums text-xs text-base-content/60">{{ formatCurrency(chofer.pago_final - chofer.total_ganado) }}</td>
-                  <td class="text-right tabular-nums text-sm font-bold text-base-content">{{ formatCurrency(chofer.pago_final) }}</td>
-                  <td class="pl-8">
-                    <div class="badge badge-xs badge-ghost uppercase">{{ chofer.metodo_pago || '—' }}</div>
-                  </td>
-                  <td class="font-mono text-[10px] text-base-content/50">{{ chofer.codigo_transferencia || '—' }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        } @else {
-          <!-- Vista Móvil: Lista Vertical de Choferes -->
-          <div class="divide-y divide-base-100">
-            @for (chofer of getChoferes(liquidation); track chofer.chofer_id) {
-              <div class="p-4 flex justify-between items-center">
-                <div>
-                  <div class="font-bold text-sm">{{ chofer.chofer_nombre }}</div>
-                  <div class="text-[10px] text-base-content/50 mt-1 flex gap-2">
-                    <span class="uppercase badge badge-xs badge-ghost">{{ chofer.metodo_pago || '—' }}</span>
-                    <span class="font-mono">{{ chofer.codigo_transferencia || '—' }}</span>
+        <!-- Lista de Semanas -->
+        <div class="px-4 py-4">
+          <div class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-base-content/50 mb-3">Desglose por Semanas</div>
+          
+          <div class="weeks-container space-y-3">
+            @for (week of liquidation.semanas || []; track week.semana) {
+            <div class="border border-base-200 rounded-lg overflow-hidden bg-base-50/30">
+              <!-- Header de Semana -->
+              <div 
+                class="p-3 flex justify-between items-center cursor-pointer hover:bg-base-100/50 transition-colors"
+                (click)="toggleWeek(liquidation.id, week.semana)">
+                <div class="flex items-center gap-3">
+                  <div class="bg-primary/10 p-1.5 rounded text-primary">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-base-content">Semana {{ week.semana }}</span>
+                      @if (week.es_ultima_semana) {
+                        <span class="badge badge-xs badge-warning text-white">Última</span>
+                      }
+                    </div>
+                    <div class="text-xs text-base-content/50">{{ formatDateRange(week.fecha_inicio, week.fecha_fin) }}</div>
                   </div>
                 </div>
-                <div class="text-right">
-                  <div class="font-bold text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
-                  <div class="text-[10px] text-base-content/50">Base: {{ formatCurrency(chofer.total_ganado) }}</div>
+                <div class="flex items-center gap-3">
+                  <div class="text-right">
+                    <div class="text-xs text-base-content/50">Total</div>
+                    <div class="font-bold tabular-nums">{{ formatCurrency(week.total_pagado) }}</div>
+                  </div>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform duration-300 text-base-content/40" 
+                      [class.rotate-180]="isWeekExpanded(liquidation.id, week.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
                 </div>
               </div>
-            }
+
+              <!-- Detalle de Choferes (expandible) -->
+              @if (isWeekExpanded(liquidation.id, week.semana)) {
+                <div class="border-t border-base-200 bg-base-100">
+                  @if (!isMobile) {
+                    <!-- Vista Desktop: Tabla de Choferes -->
+                    <table class="table table-sm w-full">
+                      <thead class="text-base-content/40 border-b border-base-100 bg-base-50">
+                        <tr>
+                          <th class="pl-6 font-normal">Beneficiario</th>
+                          <th class="text-left font-bold font-mono tabular-nums">Base</th>
+                          <th class="text-left font-bold font-mono tabular-nums">Ajuste</th>
+                          <th class="text-right font-normal">Total</th>
+                          <th class="pl-8 font-normal">Método</th>
+                          <th class="font-normal">Ref</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (chofer of week.choferes; track chofer.chofer_id) {
+                          <tr class="hover:bg-base-50/50">
+                            <td class="pl-6 font-medium py-2.5">{{ chofer.chofer_nombre }}</td>
+                            <td class="text-right tabular-nums text-xs text-base-content/60">{{ formatCurrency(chofer.total_ganado) }}</td>
+                            <td class="text-right tabular-nums text-xs" 
+                                [class.text-primary]="chofer.monto_a_completar > 0"
+                                [class.text-base-content/60]="chofer.monto_a_completar === 0">
+                              {{ formatCurrency(chofer.pago_final - chofer.total_ganado) }}
+                            </td>
+                            <td class="text-right tabular-nums text-sm font-bold text-base-content">{{ formatCurrency(chofer.pago_final) }}</td>
+                            <td class="pl-8">
+                              <div class="badge badge-xs badge-ghost uppercase">{{ chofer.metodo_pago || '—' }}</div>
+                            </td>
+                            <td class="font-mono text-[10px] text-base-content/50">{{ chofer.codigo_transferencia || '—' }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  } @else {
+                    <!-- Vista Móvil: Lista Vertical de Choferes -->
+                    <div class="divide-y divide-base-100 p-3">
+                      @for (chofer of week.choferes; track chofer.chofer_id) {
+                        <div class="p-3 flex justify-between items-center">
+                          <div>
+                            <div class="font-bold text-sm">{{ chofer.chofer_nombre }}</div>
+                            <div class="text-[10px] text-base-content/50 mt-1 flex gap-2">
+                              <span class="uppercase badge badge-xs badge-ghost">{{ chofer.metodo_pago || '—' }}</span>
+                              <span class="font-mono">{{ chofer.codigo_transferencia || '—' }}</span>
+                            </div>
+                          </div>
+                          <div class="text-right">
+                            <div class="font-bold text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
+                            <div class="text-[10px] text-base-content/50">Base: {{ formatCurrency(chofer.total_ganado) }}</div>
+                            @if (chofer.monto_a_completar > 0) {
+                              <div class="text-[10px] text-primary">Ajuste: {{ formatCurrency(chofer.monto_a_completar) }}</div>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
           </div>
-        }
+        </div>
         
         <div class="bg-base-50/50 p-3 text-center border-t border-base-100 text-[10px] text-base-content/40 uppercase tracking-widest">
           Cerrado por: {{ liquidation.cerrado_por }}
@@ -249,7 +304,31 @@ import { ClosedLiquidation } from '../../models/accounting.models';
 
     .collapse-anim.collapse-expanded,
     .collapse-anim-mobile.collapse-expanded {
-      max-height: 800px;
+      max-height: 2000px; /* Aumentado para permitir múltiples semanas expandidas */
+    }
+    
+    /* Scroll interno para el contenedor de semanas cuando hay muchas expandidas */
+    .weeks-container {
+      max-height: 1200px;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .weeks-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .weeks-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .weeks-container::-webkit-scrollbar-thumb {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+    }
+    
+    .weeks-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 0, 0, 0.3);
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -272,6 +351,11 @@ export class LiquidationHistory {
    * Permite múltiples períodos abiertos en paralelo para comparar cierres.
    */
   expandedIds = signal<Set<number>>(new Set());
+  /**
+   * Permite múltiples semanas expandidas dentro de un mes.
+   * Key: "liquidationId-weekNumber"
+   */
+  expandedWeeks = signal<Set<string>>(new Set());
 
   toggleDetail(id: number): void {
     const current = this.expandedIds();
@@ -287,15 +371,58 @@ export class LiquidationHistory {
     this.expandedIds.set(next);
   }
 
+  toggleWeek(liquidationId: number, weekNumber: number): void {
+    const key = `${liquidationId}-${weekNumber}`;
+    const current = this.expandedWeeks();
+    const isExpanded = current.has(key);
+
+    const next = new Set(current);
+    if (isExpanded) {
+      next.delete(key);
+    } else {
+      next.add(key);
+    }
+
+    this.expandedWeeks.set(next);
+  }
+
+  isWeekExpanded(liquidationId: number, weekNumber: number): boolean {
+    return this.expandedWeeks().has(`${liquidationId}-${weekNumber}`);
+  }
+
+  formatDateRange(start: string, end: string): string {
+    try {
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const startStr = startDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
+      const endStr = endDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+      return `${startStr} - ${endStr}`;
+    } catch {
+      return `${start} - ${end}`;
+    }
+  }
+
   getInitials(name: string): string {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   }
 
   getChoferesCount(liquidation: ClosedLiquidation): number {
+    // Contar choferes únicos de todas las semanas
+    if (liquidation.semanas && liquidation.semanas.length > 0) {
+      const choferIds = new Set<number>();
+      liquidation.semanas.forEach(week => {
+        week.choferes.forEach(chofer => {
+          choferIds.add(chofer.chofer_id);
+        });
+      });
+      return choferIds.size;
+    }
+    // Fallback a choferes legacy
     return liquidation.choferes?.length || 0;
   }
 
   getChoferes(liquidation: ClosedLiquidation): any[] {
+    // Retornar choferes consolidados (para compatibilidad)
     return liquidation.choferes || [];
   }
 

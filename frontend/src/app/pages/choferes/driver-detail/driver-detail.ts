@@ -1286,7 +1286,18 @@ export class DriverDetail implements OnInit {
           next: (history) => {
             // Filtrar liquidaciones del chofer
             history.forEach((item) => {
-              const driverItem = item.choferes.find(c => c.chofer_id === driverId);
+              // Buscar en semanas primero (nueva estructura), luego en choferes (legacy)
+              let driverItem = null;
+              
+              if (item.semanas && item.semanas.length > 0) {
+                // Buscar en la última semana (donde se aplica el garantizado)
+                const lastWeek = item.semanas.find(w => w.es_ultima_semana) || item.semanas[item.semanas.length - 1];
+                driverItem = lastWeek.choferes.find(c => c.chofer_id === driverId);
+              } else if (item.choferes) {
+                // Fallback a estructura legacy
+                driverItem = item.choferes.find(c => c.chofer_id === driverId);
+              }
+              
               if (driverItem) {
                 liquidations.push({
                   id: driverItem.chofer_id,
