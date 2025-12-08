@@ -23,7 +23,10 @@ export class DriverService {
       params = params.set('search', filters.search);
     }
     if (filters?.estado) {
-      params = params.set('estado', filters.estado);
+      // Backend espera "activos" / "inactivos"
+      const estadoMap: Record<string, string> = { activo: 'activos', inactivo: 'inactivos' };
+      const mapped = estadoMap[filters.estado] || filters.estado;
+      params = params.set('estado', mapped);
     }
     
     // El backend retorna {items: BackendDriver[]}, necesitamos mapear a Driver[]
@@ -44,14 +47,15 @@ export class DriverService {
       // El backend no retorna maquina_actual en el listado, se obtiene de otra consulta
     }
     
-    interface BackendDriverResponse {
-      items: BackendDriver[];
-    }
-    
-    return this.http.get<BackendDriverResponse>(`${this.apiUrl}/api/drivers`, { params }).pipe(
+    return this.http.get<any>(`${this.apiUrl}/api/drivers`, { params }).pipe(
       map((response) => {
+        // El backend responde con un array o con { items: [] } según el endpoint
+        const backendItems: BackendDriver[] = Array.isArray(response)
+          ? response
+          : (response?.items || []);
+
         // Transformar los datos del backend al formato del frontend
-        let drivers: Driver[] = (response.items || []).map((backendDriver): Driver => {
+        let drivers: Driver[] = backendItems.map((backendDriver): Driver => {
           // Construir nombre_completo
           const nombreCompleto = [
             backendDriver.primer_nombre,
@@ -115,6 +119,15 @@ export class DriverService {
         }
         return of(drivers);
       })
+    );
+  }
+
+  // GET /api/drivers/active - Lista choferes activos para selects
+  getActiveDrivers(): Observable<Array<{ id: number; nombre_completo: string }>> {
+    return this.http.get<Array<{ id: number; nombre_completo: string }>>(
+      `${this.apiUrl}/api/drivers/active`
+    ).pipe(
+      catchError(() => of([]))
     );
   }
 

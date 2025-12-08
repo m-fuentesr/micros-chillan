@@ -6,7 +6,7 @@ import { MachineForm } from '../../../shared/machines/machine-form/machine-form'
 import { MachineDocumentationForm } from '../../../shared/machines/machine-documentation-form/machine-documentation-form';
 import { MachineCreateSummary } from '../../../shared/machines/machine-create-summary/machine-create-summary';
 import { Machine } from '../../../shared/models/machine.models';
-import { catchError, of } from 'rxjs';
+import { catchError, finalize, of, take } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
@@ -63,13 +63,36 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                   </p>
                 </div>
               </div>
+          
+          @if (feedback()) {
+            <div
+              class="alert shadow-md border border-base-200/70 rounded-xl mb-4 animate-fade-in-fast"
+              [class.alert-success]="feedback()?.type === 'success'"
+              [class.alert-error]="feedback()?.type === 'error'"
+              role="status"
+              aria-live="polite">
+              <div>
+                <h3 class="font-semibold text-base-content">{{ feedback()?.title }}</h3>
+                <p class="text-sm text-base-content/70">{{ feedback()?.message }}</p>
+              </div>
+              @if (feedback()?.type === 'error') {
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs text-error"
+                  (click)="onSave()"
+                  [disabled]="saving()">
+                  Reintentar
+                </button>
+              }
+            </div>
+          }
               
               <app-machine-form
                 [showYear]="true"
                 [showDriver]="true"
                 [showStatus]="true"
-                [showInitialKm]="false"
                 [choferes]="choferes()"
+            [disabled]="saving()"
                 (formChange)="onFormChange($event)"
                 (formValid)="onFormValid($event)" />
             </div>
@@ -110,12 +133,17 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 </a>
                 <button
                   class="btn btn-primary w-full sm:w-auto order-1 sm:order-2 shadow-lg"
-                  [disabled]="!canSave()"
+              [disabled]="!canSave() || saving()"
                   (click)="onSave()">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  Guardar Máquina
+              @if (saving()) {
+                <span class="loading loading-spinner loading-sm mr-2"></span>
+                Guardando…
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                Guardar Máquina
+              }
                 </button>
               </div>
             </div>
@@ -169,6 +197,28 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
         transition: none;
       }
     }
+
+    /* Feedback inline */
+    .animate-fade-in-fast {
+      animation: fadeInFast 220ms cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    @keyframes fadeInFast {
+      from {
+        opacity: 0;
+        transform: translateY(-4px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .animate-fade-in-fast {
+        animation: none !important;
+      }
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -186,10 +236,12 @@ export class MachineCreate {
     seguro_obligatorio?: string | null;
   }>({});
   documentationValid = signal(false);
+  saving = signal(false);
+  feedback = signal<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
 
   // Choferes para el select
   choferesData = toSignal(
-    this.driverService.getDrivers({ estado: 'activo' }).pipe(
+    this.driverService.getActiveDrivers().pipe(
       catchError(() => of<Array<{ id: number; nombre_completo: string }>>([]))
     ),
     { initialValue: [] }
@@ -260,28 +312,31 @@ export class MachineCreate {
       return;
     }
 
-    // Validación adicional antes de enviar
+    this.saving.set(true);
+    this.feedback.set(null);
+
     const formData = this.formData();
     const docs = this.documentationData();
 
-    // Validar que los campos básicos estén presentes
+    // Validaciones front sutiles (sin romper UX)
     if (!formData.numero || !formData.patente || !formData.marca) {
-      alert('Por favor complete todos los campos obligatorios de la máquina');
+      this.setFeedback('error', 'Faltan campos obligatorios', 'Completa Número, Marca y Patente para continuar.');
+      this.saving.set(false);
       return;
     }
 
-    // Validar que todas las fechas de documentación estén presentes
     if (!docs.revision_tecnica || !docs.permiso_circulacion || !docs.seguro_obligatorio) {
-      alert('Por favor complete todas las fechas de documentación');
+      this.setFeedback('error', 'Documentación incompleta', 'Añade las tres fechas (RT, Permiso y Seguro).');
+      this.saving.set(false);
       return;
     }
 
-    // Validar formato de fechas
     const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!fechaRegex.test(docs.revision_tecnica) ||
         !fechaRegex.test(docs.permiso_circulacion) ||
         !fechaRegex.test(docs.seguro_obligatorio)) {
-      alert('Las fechas deben estar en formato válido (YYYY-MM-DD)');
+      this.setFeedback('error', 'Formato de fecha inválido', 'Usa formato YYYY-MM-DD en la documentación.');
+      this.saving.set(false);
       return;
     }
 
@@ -296,47 +351,45 @@ export class MachineCreate {
 
     this.machineService.createMachine(machineData)
       .pipe(
+        take(1),
         catchError((error) => {
-          console.error('Error al crear máquina:', error);
-          
-          // Extraer mensaje de error del backend
-          let errorMessage = 'Error al crear la máquina. Por favor, intente nuevamente.';
-          
-          if (error.error) {
-            // Error de validación de FastAPI/Pydantic
-            if (error.error.detail) {
-              if (Array.isArray(error.error.detail)) {
-                // Errores de validación múltiples
-                const validationErrors = error.error.detail
-                  .map((err: any) => `${err.loc?.join('.')}: ${err.msg}`)
-                  .join('\n');
-                errorMessage = `Error de validación:\n${validationErrors}`;
-              } else if (typeof error.error.detail === 'string') {
-                errorMessage = error.error.detail;
-              } else {
-                errorMessage = JSON.stringify(error.error.detail);
-              }
-            } else if (error.error.message) {
-              errorMessage = error.error.message;
-            }
-          } else if (error.message) {
-            // Error del cliente (validación previa)
-            errorMessage = error.message;
-          }
-          
-          // Mostrar error al usuario
-          alert(errorMessage);
+          const message = this.extractErrorMessage(error);
+          this.setFeedback('error', 'No se pudo crear la máquina', message);
           return of(null);
-        })
+        }),
+        finalize(() => this.saving.set(false))
       )
       .subscribe((machine) => {
         if (machine) {
-          // Mostrar mensaje de éxito
-          alert('Máquina creada exitosamente');
-          // Redirigir al detalle de la máquina creada
-          this.router.navigate(['/maquinas', machine.id]);
+          this.setFeedback('success', 'Máquina guardada', `Se registró la máquina ${formData.numero ?? ''} (${formData.patente ?? ''}).`);
+          setTimeout(() => {
+            this.router.navigate(['/maquinas', machine.id]);
+          }, 450);
         }
       });
+  }
+
+  private setFeedback(type: 'success' | 'error', title: string, message: string): void {
+    this.feedback.set({ type, title, message });
+  }
+
+  private extractErrorMessage(error: any): string {
+    if (error?.error?.detail) {
+      if (Array.isArray(error.error.detail)) {
+        return error.error.detail.map((err: any) => `${err.loc?.join('.')}: ${err.msg}`).join(' · ');
+      }
+      if (typeof error.error.detail === 'string') {
+        return error.error.detail;
+      }
+      return JSON.stringify(error.error.detail);
+    }
+    if (error?.error?.message) {
+      return error.error.message;
+    }
+    if (error?.message) {
+      return error.message;
+    }
+    return 'Intenta nuevamente en unos segundos.';
   }
 }
 

@@ -122,11 +122,50 @@ export class MachineService {
 
   // GET /api/machines/{id} - Obtener detalle de máquina
   getMachineById(id: number): Observable<Machine> {
-    return this.http.get<Machine>(`${this.apiUrl}/api/machines/${id}`).pipe(
-      catchError(() => {
-        // Mock data para desarrollo
+    interface BackendMachineDetail {
+      id: number;
+      numero_interno: number;
+      patente: string;
+      marca: string;
+      anio_fabricacion: number;
+      estado_operativo: 'operativa' | 'en_taller' | 'inactiva';
+      chofer_actual_id: number | null;
+      documentos: {
+        fecha_venc_revision_tecnica: string | null;
+        fecha_venc_permiso_circulacion: string | null;
+        fecha_venc_seguro_obligatorio: string | null;
+      };
+    }
+
+    const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
+      operativa: 'Operativa',
+      en_taller: 'En Taller',
+      inactiva: 'Inactiva'
+    };
+
+    return this.http.get<BackendMachineDetail>(`${this.apiUrl}/api/machines/${id}`).pipe(
+      map((m): Machine => {
+        return {
+          id: m.id,
+          numero: String(m.numero_interno),
+          marca: m.marca,
+          patente: m.patente || '',
+          año: m.anio_fabricacion,
+          estado_operativo: estadoMap[m.estado_operativo] || 'Operativa',
+          chofer_id: m.chofer_actual_id,
+          // El backend no retorna nombre del chofer; dejamos null para evitar datos falsos
+          chofer_actual: null,
+          documentos: {
+            revision_tecnica: m.documentos?.fecha_venc_revision_tecnica || undefined,
+            permiso_circulacion: m.documentos?.fecha_venc_permiso_circulacion || undefined,
+            seguro_obligatorio: m.documentos?.fecha_venc_seguro_obligatorio || undefined
+          }
+        };
+      }),
+      catchError((error) => {
+        console.error('Error obteniendo detalle de máquina:', error);
         const mockMachine = this.getMockMachineById(id);
-        return mockMachine ? of(mockMachine) : of(null as any);
+        return mockMachine ? of(mockMachine) : throwError(() => error);
       })
     );
   }

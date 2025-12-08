@@ -705,24 +705,33 @@ export class MachineDetail implements OnInit {
 
   machineId = computed(() => this.machineIdParam());
 
-  // COMENTADO: Cargar máquina desde backend - deshabilitado para trabajar en UI
-  // machineData = toSignal(
-  //   this.route.params.pipe(
-  //     switchMap(params => {
-  //       const id = params['id'] ? Number(params['id']) : null;
-  //       if (!id) {
-  //         return of<Machine | null>(null);
-  //       }
-  //       return this.machineService.getMachineById(id).pipe(
-  //         catchError(() => of<Machine | null>(null))
-  //       );
-  //     })
-  //   ),
-  //   { initialValue: null }
-  // );
-  
-  // Usar datos mock directamente para desarrollo UI
-  machineData = signal<Machine | null>(this.getMockMachine());
+  // Cargar máquina desde backend (con fallback a mock si falla)
+  private machineDataSource = toSignal(
+    this.route.params.pipe(
+      switchMap(params => {
+        const id = params['id'] ? Number(params['id']) : null;
+        if (!id) {
+          return of<Machine | null>(null);
+        }
+        this.machineLoadingState.setLoading(true);
+        return this.machineService.getMachineById(id).pipe(
+          catchError((error) => {
+            console.error('Error cargando detalle de máquina:', error);
+            // Fallback a mock solo para no romper la UI en caso de error
+            return of<Machine | null>(this.getMockMachine());
+          })
+        );
+      })
+    ),
+    { initialValue: null }
+  );
+
+  // Señal editable (permite mutar localmente tras guardado)
+  machineData = signal<Machine | null>(null);
+
+  private syncMachineDataEffect = effect(() => {
+    this.machineData.set(this.machineDataSource());
+  });
 
   machine = computed(() => this.machineData());
 
