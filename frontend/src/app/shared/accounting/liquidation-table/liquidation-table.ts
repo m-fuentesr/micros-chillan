@@ -12,44 +12,72 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
       <div class="card-body p-4 sm:p-6">
         
         <!-- Header con Resumen Activo -->
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-          <!-- Título y descripción -->
-          <div class="flex-1">
-            <h2 class="text-xl font-bold">Procesar Liquidación</h2>
-            <p class="text-sm text-base-content/60">Ajusta los montos garantizados y confirma los pagos.</p>
+        <div class="space-y-4 mb-6">
+          <!-- Primera fila: Título, Selector de Período y Resumen de Nómina -->
+          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div class="flex-1">
+              <h2 class="text-xl font-bold">Procesar Liquidación</h2>
+              <p class="text-sm text-base-content/60">Ajusta los montos garantizados y confirma los pagos.</p>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
+              <!-- Selector de Período (Mes actual / Mes anterior) -->
+              <div class="w-full sm:w-auto">
+                <div class="bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                  <div class="relative w-full sm:w-auto min-w-[180px]">
+                    <select 
+                      class="appearance-none w-full bg-transparent pl-3 pr-8 py-2 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                      [value]="payrollPeriod()" 
+                      (change)="onPayrollPeriodChange($event)">
+                      <option value="current">Mes actual</option>
+                      <option value="previous">Mes anterior</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                      <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
+                        <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Resumen Total Nómina -->
+              <div class="bg-primary/5 border border-primary/20 px-4 py-3 rounded-xl flex items-center gap-4 shadow-sm w-full sm:w-auto">
+                <div class="flex flex-col">
+                  <span class="text-[10px] uppercase font-bold tracking-widest text-primary/70">Total Nómina</span>
+                  <span class="text-xl font-black text-primary tabular-nums tracking-tight">
+                    {{ calculateTotalPayroll() | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                  </span>
+                </div>
+                <div class="h-10 w-px bg-primary/20"></div>
+                <div class="flex flex-col items-end">
+                  <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/50">Pendientes</span>
+                  <span class="text-sm font-bold text-base-content">{{ getPendingCount() }} / {{ liquidation().choferes.length }}</span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <!-- Botones de Semanas -->
-          <div class="w-full md:w-auto">
+          <!-- Segunda fila: Botones de Semanas -->
+          <div class="flex flex-col gap-3">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-bold uppercase tracking-widest text-base-content/50">Seleccionar Semana:</span>
+            </div>
             <div class="flex gap-2 flex-wrap">
               @for (week of availableWeeks(); track week) {
                 <button
-                  class="btn btn-sm px-4 rounded-lg transition-all font-bold"
+                  class="btn btn-sm px-4 rounded-lg transition-all font-bold shadow-sm hover:shadow-md"
                   [class.btn-primary]="selectedWeek() === week"
                   [class.btn-outline]="selectedWeek() !== week"
                   [class.btn-ghost]="selectedWeek() !== week"
+                  [class.border-primary/30]="selectedWeek() === week"
                   (click)="onWeekChange(week)">
-                  Semana {{ week }}
+                  <span>Semana {{ week }}</span>
                   @if (week === availableWeeks()[availableWeeks().length - 1]) {
-                    <span class="badge badge-xs badge-warning ml-1">Última</span>
+                    <span class="badge badge-xs badge-warning ml-1.5 text-white">Última</span>
                   }
                 </button>
               }
-            </div>
-          </div>
-
-          <!-- Resumen Total Nómina -->
-          <div class="bg-primary/5 border border-primary/20 px-4 py-2 rounded-xl flex items-center gap-4">
-            <div class="flex flex-col">
-              <span class="text-[10px] uppercase font-bold tracking-widest text-primary/70">Total Nómina</span>
-              <span class="text-xl font-black text-primary tabular-nums tracking-tight">
-                {{ calculateTotalPayroll() | currency:'CLP':'symbol-narrow':'1.0-0' }}
-              </span>
-            </div>
-            <div class="h-8 w-px bg-primary/20"></div>
-            <div class="flex flex-col items-end">
-              <span class="text-[10px] uppercase font-bold tracking-widest text-base-content/50">Pendientes</span>
-              <span class="text-sm font-bold text-base-content">{{ getPendingCount() }} / {{ liquidation().choferes.length }}</span>
             </div>
           </div>
         </div>
@@ -316,16 +344,30 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
         </div>
 
         <!-- Footer: Acciones Globales -->
-        @if (liquidation().estado === 'abierto') {
-          <div class="border-t border-base-200 mt-6 pt-6 flex justify-end">
-            <button class="btn btn-primary px-8" (click)="onClosePeriod()">
+        @if (liquidation().es_ultima_semana && liquidation().estado === 'abierto') {
+          <div class="border-t border-base-200 mt-6 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            @if (!allChoferesPaid()) {
+              <div class="text-xs text-base-content/50 flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 text-warning">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span>Todos los colaboradores deben estar pagados para finalizar el mes</span>
+              </div>
+            } @else {
+              <div></div>
+            }
+            <button 
+              class="btn btn-primary px-8"
+              [class.btn-disabled]="!allChoferesPaid()"
+              [disabled]="!allChoferesPaid()"
+              (click)="onClosePeriod()">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
               </svg>
-              Cerrar y Finalizar Mes
+              Finalizar Mes
             </button>
           </div>
-        } @else {
+        } @else if (liquidation().estado === 'cerrado') {
           <div class="border-t border-base-200 mt-6 pt-6">
             <div class="alert alert-warning">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
@@ -344,12 +386,14 @@ export class LiquidationTable {
   liquidation = input.required<LiquidationPeriod>();
   availableWeeks = input<number[]>([]); // Array de semanas disponibles (ej: [1,2,3,4] o [1,2,3,4,5])
   selectedWeek = input<number>(1);
+  payrollPeriod = input<'current' | 'previous'>('current');
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();
   aplicarGarantizadoChange = output<{ choferId: number; aplicar: boolean }>();
   closePeriod = output<void>();
   weekChange = output<number>(); // Emite cuando cambia la semana seleccionada
+  payrollPeriodChange = output<'current' | 'previous'>(); // Emite cuando cambia el período
 
   // Signal para rastrear choferes en estado "confirmado" temporalmente
   confirmedChoferes = signal<Set<number>>(new Set());
@@ -362,6 +406,11 @@ export class LiquidationTable {
   // Computed: Cantidad de Pendientes
   getPendingCount = computed(() => {
     return this.liquidation().choferes.filter(c => c.estado_pago !== 'pagado').length;
+  });
+
+  // Computed: Verificar si todos los choferes están pagados
+  allChoferesPaid = computed(() => {
+    return this.liquidation().choferes.every(c => c.estado_pago === 'pagado');
   });
 
   // Helper: Obtener Iniciales
@@ -396,6 +445,11 @@ export class LiquidationTable {
 
   onWeekChange(week: number): void {
     this.weekChange.emit(week);
+  }
+
+  onPayrollPeriodChange(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.payrollPeriodChange.emit(select.value as 'current' | 'previous');
   }
 
   onConfirmPayment(chofer: LiquidationDriver): void {
