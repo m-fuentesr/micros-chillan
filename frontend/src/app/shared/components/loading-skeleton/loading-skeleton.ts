@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -23,7 +23,7 @@ import { CommonModule } from '@angular/common';
   selector: 'app-loading-skeleton',
   imports: [CommonModule],
   template: `
-    <div [class]="containerClasses()" [class.skeleton-exiting]="isExiting()">
+    <div [class]="containerClasses()" [class.skeleton-exiting]="isExiting()" [class.skeleton-entering]="!isExiting() && showEntering()">
       @switch (type()) {
         @case ('kpi') {
           <div class="card bg-base-100 shadow-sm border border-base-200">
@@ -255,6 +255,17 @@ import { CommonModule } from '@angular/common';
       }
     }
     
+    @keyframes skeletonFadeIn {
+      0% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+    
     @keyframes skeletonFadeOut {
       0% {
         opacity: 1;
@@ -270,6 +281,10 @@ import { CommonModule } from '@angular/common';
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
       animation: shimmer 2s infinite;
+    }
+    
+    .skeleton-entering {
+      animation: skeletonFadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     
     .skeleton-exiting {
@@ -292,6 +307,26 @@ export class LoadingSkeleton {
    * @default false
    */
   isExiting = input<boolean>(false);
+  
+  /**
+   * Indica si el skeleton ya ha entrado (para controlar la animación de entrada)
+   */
+  private hasEntered = signal<boolean>(false);
+  
+  /**
+   * Determina si debe mostrarse la animación de entrada
+   */
+  showEntering = computed(() => {
+    if (this.isExiting()) {
+      this.hasEntered.set(false);
+      return false;
+    }
+    if (!this.hasEntered()) {
+      this.hasEntered.set(true);
+      return true;
+    }
+    return false;
+  });
 
   /**
    * Cantidad de elementos a mostrar (para table, list, text)

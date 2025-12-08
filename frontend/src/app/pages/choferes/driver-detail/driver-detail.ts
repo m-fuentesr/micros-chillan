@@ -13,16 +13,21 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
-import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
+import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule, LoadingSkeleton, BusIcon],
+  imports: [CommonModule, RouterLink, FormsModule, BusIcon, DriverIcon, SearchFilters],
   template: `
-    <div class="space-y-6 animate-page-enter">
+    <div class="space-y-6 lg:space-y-8">
+      @if (driver()) {
       <!-- Hero Section Premium -->
       <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+          <div class="flex flex-col gap-6">
+            <!-- Header con Botón Volver -->
         <div class="relative">
           <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 pr-12 sm:pr-0 mb-4">
             <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -44,34 +49,21 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
             </svg>
             <span class="hidden sm:inline">Volver</span>
           </button>
-        </div>
       </div>
 
-      @if (driver()) {
-        <!-- Tarjeta principal con info de chofer y acciones -->
-        <div class="card bg-base-100 shadow-sm border border-base-200">
-          <div class="card-body flex flex-col gap-4">
-            <div class="flex flex-col lg:flex-row gap-4 justify-between items-start">
-              <div class="flex items-start gap-4">
-                <div class="avatar shrink-0">
-                  <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/10 border border-primary/10 flex items-center justify-center text-primary">
-                    <span class="text-2xl font-bold">{{ getInitials(driver()!.nombre_completo) }}</span>
+            <!-- Información destacada del chofer en el hero con botones -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+              <!-- Información del chofer -->
+              <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                <div class="flex items-center gap-3 shrink-0">
+                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <app-driver-icon class="w-6 h-6" />
                   </div>
-                </div>
-                <div class="space-y-1">
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <h2 class="text-2xl font-bold text-base-content">
+                  <div class="min-w-0">
+                    <h2 class="text-xl md:text-2xl font-bold text-base-content">
                       {{ driver()!.nombre_completo }}
                     </h2>
-                    <span 
-                      class="badge gap-1 text-white font-medium shadow-sm"
-                      [class.badge-success]="driver()!.estado === 'activo'"
-                      [class.badge-error]="driver()!.estado === 'inactivo'">
-                      <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
-                      {{ driver()!.estado === 'activo' ? 'Activo' : 'Inactivo' }}
-                    </span>
-                  </div>
-                  <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-base-content/70">
+                    <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-base-content/70 mt-0.5">
                     <span class="font-mono font-semibold">{{ driver()!.rut }}</span>
                     <span class="w-1 h-1 bg-base-content/30 rounded-full"></span>
                     <span class="truncate tooltip" [attr.data-tip]="driver()!.correo">{{ driver()!.correo }}</span>
@@ -79,86 +71,105 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     <span>{{ driver()!.telefono }}</span>
                   </div>
                 </div>
+                </div>
+                <span 
+                  class="badge gap-1.5 text-white font-medium shadow-sm px-3 py-2 shrink-0"
+                  [class.badge-success]="driver()!.estado === 'activo'"
+                  [class.badge-error]="driver()!.estado === 'inactivo'">
+                  <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
+                  {{ driver()!.estado === 'activo' ? 'Activo' : 'Inactivo' }}
+                </span>
               </div>
 
-              <div class="flex gap-2 w-full lg:w-auto">
+              <!-- Botones de Acción Premium -->
+              <div class="flex flex-wrap items-center gap-2 shrink-0">
                 @if (!isEditingGeneral()) {
                   <button 
-                    class="btn btn-outline btn-error btn-sm flex-1 lg:flex-none gap-2 hover:text-white"
+                    type="button"
+                    class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
                     </svg>
-                    Eliminar
+                    <span class="whitespace-nowrap">Eliminar</span>
                   </button>
                   <button
                     type="button"
-                    class="btn btn-primary btn-sm flex-1 lg:flex-none gap-2 shadow-lg shadow-primary/20"
+                    class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="toggleEditGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
                       <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
                     </svg>
-                    Editar Chofer
+                    <span class="whitespace-nowrap">Editar</span>
                   </button>
                 } @else {
                   <button
                     type="button"
-                    class="btn btn-outline btn-sm flex-1 lg:flex-none gap-2"
+                    class="btn-action-cancel group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-base-content/70 border border-base-300 bg-base-100 hover:bg-base-200 hover:text-base-content transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="toggleEditGeneral()">
-                    Cancelar
+                    <span class="whitespace-nowrap">Cancelar</span>
                   </button>
                   <button
                     type="button"
-                    class="btn btn-primary btn-sm flex-1 lg:flex-none gap-2 shadow-lg shadow-primary/20"
+                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v5.5a.75.75 0 0 0 1.5 0v-5.5ZM10.75 15.25a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0v-1.5ZM3.5 10a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 3.5 10ZM16.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1-.75-.75ZM2.22 7.22a.75.75 0 0 1 1.06 0l1.25 1.25a.75.75 0 0 1-1.06 1.06L2.22 8.28a.75.75 0 0 1 0-1.06ZM18.47 7.22a.75.75 0 0 1 0 1.06l-1.25 1.25a.75.75 0 1 1-1.06-1.06l1.25-1.25a.75.75 0 0 1 1.06 0ZM2.22 12.78a.75.75 0 0 1 0-1.06l1.25-1.25a.75.75 0 0 1 1.06 1.06L3.28 13.84a.75.75 0 0 1-1.06 0ZM18.47 12.78a.75.75 0 0 1-1.06 0l-1.25-1.25a.75.75 0 0 1 1.06-1.06l1.25 1.25a.75.75 0 0 1 0 1.06Z" />
                     </svg>
-                    Guardar Cambios
+                    <span class="whitespace-nowrap">Guardar</span>
                   </button>
                 }
               </div>
             </div>
+              </div>
+            </div>
 
-            <!-- Tabs -->
-            <div class="border-t border-base-200 pt-3">
-              <div class="tabs -mb-[1px]">
+        <!-- Sección de Tabs (separada del card principal) -->
+        <div class="bg-base-50/50 rounded-2xl p-4 border border-base-200/50 animate-fade-in-up" [style.animation-delay]="'200ms'">
+          <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1">
                 <button
-                  class="tab tab-bordered px-6 h-10 font-medium"
+              class="tab px-6 h-10 font-medium transition-all rounded-lg"
                   [class.tab-active]="activeTab() === 'general'"
+              [class.bg-primary]="activeTab() === 'general'"
+              [class.text-primary-content]="activeTab() === 'general'"
                   [class.btn-disabled]="isEditingGeneral() && activeTab() !== 'general'"
                   [attr.disabled]="isEditingGeneral() && activeTab() !== 'general' ? '' : null"
                   (click)="setActiveTab('general')">
                   General
                 </button>
                 <button
-                  class="tab tab-bordered px-6 h-10 font-medium"
+              class="tab px-6 h-10 font-medium transition-all rounded-lg"
                   [class.tab-active]="activeTab() === 'records'"
+              [class.bg-primary]="activeTab() === 'records'"
+              [class.text-primary-content]="activeTab() === 'records'"
                   [class.btn-disabled]="isEditingGeneral()"
                   [attr.disabled]="isEditingGeneral() ? '' : null"
                   (click)="setActiveTab('records')">
                   Registros Diarios
                 </button>
                 <button
-                  class="tab tab-bordered px-6 h-10 font-medium"
+              class="tab px-6 h-10 font-medium transition-all rounded-lg"
                   [class.tab-active]="activeTab() === 'liquidations'"
+              [class.bg-primary]="activeTab() === 'liquidations'"
+              [class.text-primary-content]="activeTab() === 'liquidations'"
                   [class.btn-disabled]="isEditingGeneral()"
                   [attr.disabled]="isEditingGeneral() ? '' : null"
                   (click)="setActiveTab('liquidations')">
                   Liquidaciones
                 </button>
-              </div>
-            </div>
           </div>
         </div>
 
+        <!-- Contenido de Tabs con animaciones -->
+        <div class="tab-content-wrapper">
+
         <!-- Contenido pestaña General -->
         @if (activeTab() === 'general') {
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 animate-fade-in-up">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 animate-tab-enter">
             
             <!-- Información Personal -->
-            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-1 h-full order-1">
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
               <div class="card-body p-6">
                 <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -314,8 +325,10 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               </div>
             </div>
 
+              <!-- Contenedor Bento Grid: Licencia y Máquina Asignada -->
+              <div class="flex flex-col gap-6 lg:gap-8 animate-card-stagger" [style.animation-delay]="'100ms'">
             <!-- Licencia -->
-            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-2 xl:col-span-1 order-2 xl:order-3 h-full">
+                <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl">
               <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
                 <h3 class="font-bold text-lg flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
@@ -325,7 +338,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 </h3>
               </div>
 
-              <div class="p-4 space-y-3">
+                  <div class="p-4">
                 <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 hover:border-primary/30 transition-colors bg-base-50/30"
                   [class.border-error/50]="licenseStatus().estado === 'error'"
                   [class.bg-error/5]="licenseStatus().estado === 'error'"
@@ -383,7 +396,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
             </div>
 
             <!-- Máquina Asignada -->
-            <div class="card bg-base-100 shadow-sm border border-base-200 md:col-span-1 h-full order-3 xl:order-2 overflow-hidden">
+                <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
               <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
 
               <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
@@ -465,38 +478,55 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     </button>
                   }
                 }
+                  </div>
               </div>
             </div>
           </div>
         }
 
-        <!-- Registros Diarios -->
+          <!-- Registros diarios -->
         @if (activeTab() === 'records' && loadedTabs().has('records')) {
-          <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
-            <div class="card-header p-6 border-b border-base-200 bg-base-50">
+            <div class="animate-tab-enter">
+              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
+                <!-- Header Premium con gradiente sutil -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 class="card-title text-2xl font-bold border-l-4 border-l-primary pl-3">
+                    <div class="flex-1 min-w-0">
+                      <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
                     Registros Diarios
                   </h2>
-                  <p class="text-xs sm:text-sm text-base-content/60 mt-1">
+                      <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
                     Historial de operaciones y rendimiento por jornada.
                   </p>
                 </div>
-                <span class="badge badge-lg badge-outline font-bold">
-                  {{ dailyRecords().length }} {{ dailyRecords().length === 1 ? 'registro' : 'registros' }}
+                    
+                    <!-- Badge de conteo mejorado -->
+                    <div class="flex items-center gap-3 shrink-0">
+                      <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+                        <span class="w-2 h-2 rounded-full bg-primary"></span>
+                        {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
                 </span>
               </div>
             </div>
-            <div class="card-body p-4 sm:p-6">
+                </div>
+
+                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+                  <!-- Filtros usando componente reutilizable -->
+                  <app-search-filters
+                    [fields]="filterFields()"
+                    [filters]="recordFilters()"
+                    [columns]="3"
+                    (filterChange)="onRecordFilterChange($event)" />
+
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
-                @for (record of dailyRecords(); track record.id; let i = $index) {
+                    @for (record of filteredRecords(); track record.id; let i = $index) {
                   <div 
                     class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                     [style.animation-delay.ms]="i * 50"
                     [style.animation-fill-mode]="'both'">
                     <div class="card-body p-5">
+                          <!-- Header: Fecha y Estado -->
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
@@ -509,6 +539,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                             <p class="text-xs text-base-content/50 font-mono">{{ formatDateFull(record.fecha) }}</p>
                           </div>
                         </div>
+                            
                         <div class="badge badge-sm gap-1"
                           [class.badge-success]="record.estado === 'completo'"
                           [class.badge-warning]="record.estado === 'pendiente_trabajador'"
@@ -518,7 +549,11 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           {{ formatEstado(record.estado) }}
                         </div>
                       </div>
-                      <div class="divider my-3 opacity-30"></div>
+
+                          <!-- Divider -->
+                          <div class="divider my-2 opacity-30"></div>
+
+                          <!-- Información Financiera -->
                       <div class="grid grid-cols-2 gap-4">
                         <div>
                           <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Recaudado</div>
@@ -533,6 +568,8 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           </div>
                         </div>
                       </div>
+
+                          <!-- Observaciones -->
                       @if (record.observaciones) {
                         <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
                           <div class="flex items-start gap-2">
@@ -543,6 +580,8 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           </div>
                         </div>
                       }
+
+                          <!-- Botón de Acción -->
                       <div class="mt-4">
                         <a 
                           [routerLink]="['/registro-diario', record.id]"
@@ -557,45 +596,72 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     </div>
                   </div>
                 } @empty {
-                  <div class="text-center py-12 animate-fade-in">
-                    <div class="text-4xl opacity-50 mb-3">📋</div>
-                    <p class="text-base-content/50 font-medium">No hay registros disponibles</p>
+                      <div class="py-16 sm:py-20">
+                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                            </svg>
+                          </div>
+                          <div class="space-y-2">
+                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                              Ajusta los filtros para ver más resultados.
+                            </p>
+                          </div>
+                        </div>
                   </div>
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                <table class="table w-full">
+                    <table class="table w-full table-min-height">
                   <thead class="bg-base-50 border-b border-base-200">
                     <tr>
                       <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
-                      <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
+                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
                       <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
-                    @for (record of dailyRecords(); track record.id; let i = $index) {
+                        @for (record of filteredRecords(); track record.id; let i = $index) {
                       <tr 
-                        class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
+                            class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
                         [style.animation-delay.ms]="i * 30"
-                        [style.animation-fill-mode]="'both'">
+                            [style.animation-fill-mode]="'both'"
+                            (click)="onViewRecordDetail(record)">
+                            
                         <td class="pl-6 py-4">
-                          <div class="flex items-center gap-2">
-                            <div class="bg-primary/10 p-1.5 rounded text-primary shrink-0">
+                              <div class="flex items-center gap-3">
+                                <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                               </svg>
                             </div>
                             <div>
-                              <div class="font-semibold text-base-content">{{ formatDate(record.fecha) }}</div>
+                                  <div class="font-bold text-base-content">{{ formatDate(record.fecha) }}</div>
                               <div class="text-xs text-base-content/50 font-mono">{{ formatDateFull(record.fecha) }}</div>
                             </div>
                           </div>
                         </td>
+                            
+                            <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
+                              {{ formatCurrency(record.recaudado) }}
+                            </td>
+                            
+                            <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                              {{ formatCurrency(record.diesel) }}
+                            </td>
+                            
+                            <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm">
+                              {{ formatCurrency(record.recaudado - record.diesel) }}
+                            </td>
+                            
                         <td class="text-center py-4">
                           <div class="badge badge-sm gap-1"
                             [class.badge-success]="record.estado === 'completo'"
@@ -606,46 +672,69 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                             {{ formatEstado(record.estado) }}
                           </div>
                         </td>
-                        <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
-                          {{ formatCurrency(record.recaudado) }}
-                        </td>
-                        <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
-                          {{ formatCurrency(record.diesel) }}
-                        </td>
-                        <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm">
-                          {{ formatCurrency(record.recaudado - record.diesel) }}
-                        </td>
-                        <td class="pr-6 text-right py-4">
-                          <div class="flex items-center justify-end gap-2">
+                            
+                            <td class="text-center py-4" (click)="$event.stopPropagation()">
+                              <div class="flex items-center justify-center">
                             @if (record.observaciones) {
-                              <div class="tooltip" [attr.data-tip]="record.observaciones">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-info">
+                                  <div class="tooltip tooltip-top" [attr.data-tip]="record.observaciones">
+                                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
+                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
+                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                                      </svg>
+                                    </div>
+                                  </div>
+                                } @else {
+                                  <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
                                   <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
                                 </svg>
                               </div>
                             }
+                              </div>
+                            </td>
+                            
+                            <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all gap-1.5">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-base-content/70 hover:text-primary bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all duration-200 group">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 group-hover:scale-110 transition-transform">
                                 <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                                 <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
                               </svg>
-                              Ver
+                                <span>Ver</span>
                             </a>
-                          </div>
                         </td>
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="6" class="text-center py-12 animate-fade-in">
-                          <div class="text-4xl opacity-50 mb-3">📋</div>
-                          <p class="text-base-content/50 font-medium">No hay registros disponibles</p>
+                            <td colspan="7" class="py-16 sm:py-20">
+                              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                                  </svg>
+                                </div>
+                                <div class="space-y-2">
+                                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                                    Ajusta los filtros para ver más resultados.
+                                  </p>
+                                </div>
+                              </div>
                         </td>
                       </tr>
                     }
+                        <!-- Filas vacías para mantener altura mínima en desktop -->
+                        @if (filteredRecords().length > 0 && filteredRecords().length < 5) {
+                          @for (i of getEmptyRows(); track i) {
+                            <tr class="empty-row-spacer">
+                              <td colspan="7" class="h-20"></td>
+                            </tr>
+                          }
+                    }
                   </tbody>
                 </table>
+                  </div>
               </div>
             </div>
           </div>
@@ -653,23 +742,31 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
         <!-- Liquidaciones -->
         @if (activeTab() === 'liquidations' && loadedTabs().has('liquidations')) {
-          <div class="card bg-base-100 shadow-xl border border-base-200 overflow-hidden">
-            <div class="card-header p-6 border-b border-base-200 bg-base-50">
+            <div class="animate-tab-enter">
+              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
+                <!-- Header Premium con gradiente sutil -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <h2 class="card-title text-2xl font-bold border-l-4 border-l-primary pl-3">
+                    <div class="flex-1 min-w-0">
+                      <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
                     Liquidaciones
                   </h2>
-                  <p class="text-xs sm:text-sm text-base-content/60 mt-1">
-                    Historial de pagos y liquidaciones mensuales.
+                      <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
+                        Historial de pagos y liquidaciones mensuales del chofer.
                   </p>
                 </div>
-                <span class="badge badge-lg badge-outline font-bold">
+                    
+                    <!-- Badge de conteo mejorado -->
+                    <div class="flex items-center gap-3 shrink-0">
+                      <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+                        <span class="w-2 h-2 rounded-full bg-primary"></span>
                   {{ liquidations().length }} {{ liquidations().length === 1 ? 'liquidación' : 'liquidaciones' }}
                 </span>
               </div>
             </div>
-            <div class="card-body p-4 sm:p-6">
+                </div>
+
+                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
                 @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
@@ -678,6 +775,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     [style.animation-delay.ms]="i * 50"
                     [style.animation-fill-mode]="'both'">
                     <div class="card-body p-5">
+                          <!-- Header: Período y Estado -->
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
@@ -687,7 +785,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           </div>
                           <div>
                             <h3 class="font-bold text-base text-base-content">Período {{ liquidation.fecha }}</h3>
-                            <p class="text-xs text-base-content/50">Liquidación mensual</p>
+                                <p class="text-xs text-base-content/50 font-mono">Liquidación mensual</p>
                           </div>
                         </div>
                         <div class="badge badge-sm gap-1"
@@ -697,8 +795,12 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           {{ liquidation.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente' }}
                         </div>
                       </div>
-                      <div class="divider my-3 opacity-30"></div>
-                      <div class="grid grid-cols-2 gap-4">
+
+                          <!-- Divider -->
+                          <div class="divider my-2 opacity-30"></div>
+
+                          <!-- Información Financiera -->
+                          <div class="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Total Ganado</div>
                           <div class="font-bold text-base tabular-nums text-base-content">
@@ -712,21 +814,25 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           </div>
                         </div>
                       </div>
-                      <div class="mt-3 p-3 bg-base-50 rounded-lg border border-base-200">
+
+                          <!-- Detalles -->
+                          <div class="p-3 bg-base-50 rounded-lg border border-base-200">
                         <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-2">Detalles</div>
-                        <div class="space-y-1 text-xs">
-                          <div class="flex justify-between">
+                            <div class="space-y-2 text-xs">
+                              <div class="flex justify-between items-center">
                             <span class="text-base-content/60">Mínimo Garantizado:</span>
-                            <span class="font-semibold">{{ formatCurrency(liquidation.minimo_garantizado) }}</span>
+                                <span class="font-semibold tabular-nums">{{ formatCurrency(liquidation.minimo_garantizado) }}</span>
                           </div>
-                          <div class="flex justify-between">
-                            <span class="text-base-content/60">Método:</span>
-                            <span class="font-semibold uppercase">{{ liquidation.metodo_pago || '—' }}</span>
+                              <div class="flex justify-between items-center">
+                                <span class="text-base-content/60">Método de Pago:</span>
+                                <span class="badge badge-xs badge-ghost uppercase">
+                                  {{ liquidation.metodo_pago || '—' }}
+                                </span>
                           </div>
                           @if (liquidation.codigo_transferencia) {
-                            <div class="flex justify-between">
-                              <span class="text-base-content/60">Código:</span>
-                              <span class="font-mono font-semibold">{{ liquidation.codigo_transferencia }}</span>
+                                <div class="flex justify-between items-center">
+                                  <span class="text-base-content/60">Código/Ref.:</span>
+                                  <span class="font-mono font-semibold text-xs">{{ liquidation.codigo_transferencia }}</span>
                             </div>
                           }
                         </div>
@@ -734,24 +840,35 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     </div>
                   </div>
                 } @empty {
-                  <div class="text-center py-12 animate-fade-in">
-                    <div class="text-4xl opacity-50 mb-3">💰</div>
-                    <p class="text-base-content/50 font-medium">No hay liquidaciones disponibles</p>
+                      <div class="py-16 sm:py-20">
+                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
+                            </svg>
+                          </div>
+                          <div class="space-y-2">
+                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                              El chofer aún no tiene liquidaciones registradas.
+                            </p>
+                          </div>
+                        </div>
                   </div>
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                <table class="table w-full">
+                    <table class="table w-full table-min-height">
                   <thead class="bg-base-50 border-b border-base-200">
                     <tr>
-                      <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Período</th>
+                          <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Período</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Total Ganado</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Mínimo Garantizado</th>
                       <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Pago Final</th>
                       <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Método</th>
-                      <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Código/Ref.</th>
+                          <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Código/Ref.</th>
                       <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                     </tr>
                   </thead>
@@ -762,15 +879,15 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                         [style.animation-delay.ms]="i * 30"
                         [style.animation-fill-mode]="'both'">
                         <td class="pl-6 py-4">
-                          <div class="flex items-center gap-2">
-                            <div class="bg-primary/10 p-1.5 rounded text-primary shrink-0">
+                              <div class="flex items-center gap-3">
+                                <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
                               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
                               </svg>
                             </div>
                             <div>
-                              <div class="font-semibold text-base-content">{{ liquidation.fecha }}</div>
-                              <div class="text-xs text-base-content/50">Liquidación mensual</div>
+                                  <div class="font-bold text-base-content">{{ liquidation.fecha }}</div>
+                                  <div class="text-xs text-base-content/50 font-mono">Liquidación mensual</div>
                             </div>
                           </div>
                         </td>
@@ -804,28 +921,161 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                       </tr>
                     } @empty {
                       <tr>
-                        <td colspan="7" class="text-center py-12 animate-fade-in">
-                          <div class="text-4xl opacity-50 mb-3">💰</div>
-                          <p class="text-base-content/50 font-medium">No hay liquidaciones disponibles</p>
+                            <td colspan="7" class="py-16 sm:py-20">
+                              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
+                                  </svg>
+                                </div>
+                                <div class="space-y-2">
+                                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                                    El chofer aún no tiene liquidaciones registradas.
+                                  </p>
+                                </div>
+                              </div>
                         </td>
                       </tr>
                     }
+                        <!-- Filas vacías para mantener altura mínima en desktop -->
+                        @if (liquidations().length > 0 && liquidations().length < 5) {
+                          @for (i of getEmptyLiquidationRows(); track i) {
+                            <tr class="empty-row-spacer">
+                              <td colspan="7" class="h-20"></td>
+                            </tr>
+                          }
+                    }
                   </tbody>
                 </table>
+                  </div>
               </div>
             </div>
           </div>
         }
+        </div>
       } @else {
-        @if (driverLoadingState.showSkeleton() && driverLoadingState.isLoading()) {
-          <app-loading-skeleton 
-            type="card" 
-            [isExiting]="driverLoadingState.isSkeletonExiting()" />
-        } @else {
-          <div class="card bg-base-100 shadow-sm border border-base-200">
-            <div class="card-body">
-              <span class="loading loading-spinner loading-sm mr-2"></span>
-              Cargando información del chofer...
+        @if (driverLoadingState.isLoading()) {
+          <!-- Skeleton completo de la estructura de detalle del chofer -->
+          <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
+          <div class="space-y-6 lg:space-y-8 animate-fade-in">
+            <!-- Hero Section Skeleton -->
+            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
+              <div class="flex flex-col gap-6">
+                <!-- Header con Botón Volver -->
+                <div class="relative">
+                  <div class="border-l-4 border-l-primary pl-3 md:pl-4 pr-12 sm:pr-0 mb-4">
+                    <div class="h-8 w-64 skeleton-shimmer rounded mb-3"></div>
+                    <div class="h-4 w-96 skeleton-shimmer rounded hidden sm:block"></div>
+                  </div>
+                  <div class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto">
+                    <div class="h-9 w-20 skeleton-shimmer rounded"></div>
+                  </div>
+                </div>
+                
+                <!-- Información destacada del chofer -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                  <!-- Información del chofer -->
+                  <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                    <div class="flex items-center gap-3 shrink-0">
+                      <div class="w-12 h-12 skeleton-shimmer rounded-xl"></div>
+                      <div class="min-w-0">
+                        <div class="h-7 w-48 skeleton-shimmer rounded mb-2"></div>
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                          <div class="w-1 h-1 skeleton-shimmer rounded-full"></div>
+                          <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                          <div class="w-1 h-1 skeleton-shimmer rounded-full"></div>
+                          <div class="h-4 w-24 skeleton-shimmer rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="h-8 w-20 skeleton-shimmer rounded-full"></div>
+                  </div>
+                  
+                  <!-- Botones de Acción -->
+                  <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <div class="h-10 w-24 skeleton-shimmer rounded-xl"></div>
+                    <div class="h-10 w-20 skeleton-shimmer rounded-xl"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección de Tabs Skeleton -->
+            <div class="bg-base-50/50 rounded-2xl p-4 border border-base-200/50">
+              <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1">
+                <div class="h-10 w-24 skeleton-shimmer rounded-lg"></div>
+                <div class="h-10 w-32 skeleton-shimmer rounded-lg"></div>
+                <div class="h-10 w-28 skeleton-shimmer rounded-lg"></div>
+              </div>
+            </div>
+
+            <!-- Contenido de Tabs Skeleton -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              <!-- Información Personal Skeleton -->
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full">
+                <div class="card-body p-6">
+                  <div class="h-6 w-40 skeleton-shimmer rounded mb-4"></div>
+                  <div class="grid grid-cols-1 gap-4">
+                    <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                      <div class="h-3 w-32 skeleton-shimmer rounded mb-2"></div>
+                      <div class="h-6 w-full skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                        <div class="h-3 w-16 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-full skeleton-shimmer rounded"></div>
+                      </div>
+                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                        <div class="h-3 w-16 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-full skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                    <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                      <div class="h-3 w-24 skeleton-shimmer rounded mb-2"></div>
+                      <div class="space-y-2">
+                        <div class="h-4 w-20 skeleton-shimmer rounded"></div>
+                        <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                    <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                      <div class="h-3 w-36 skeleton-shimmer rounded mb-2"></div>
+                      <div class="h-6 w-20 skeleton-shimmer rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Contenedor Bento Grid: Licencia y Máquina Asignada Skeleton -->
+              <div class="flex flex-col gap-6 lg:gap-8">
+                <!-- Licencia Skeleton -->
+                <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl">
+                  <div class="card-header px-6 py-4 border-b border-base-200 bg-base-50 rounded-t-2xl">
+                    <div class="h-6 w-48 skeleton-shimmer rounded"></div>
+                  </div>
+                  <div class="p-4">
+                    <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 bg-base-50/30">
+                      <div class="w-10 h-10 skeleton-shimmer rounded-lg"></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="h-3 w-40 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-32 skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Máquina Asignada Skeleton -->
+                <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
+                  <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                  <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
+                    <div class="w-16 h-16 skeleton-shimmer rounded-2xl mb-4"></div>
+                    <div class="h-6 w-32 skeleton-shimmer rounded mb-2"></div>
+                    <div class="h-4 w-40 skeleton-shimmer rounded mb-6"></div>
+                    <div class="h-10 w-full max-w-xs skeleton-shimmer rounded"></div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         }
@@ -833,6 +1083,50 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
     </div>
   `,
   styles: [`
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes tabEnter {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes cardStagger {
+      from {
+        opacity: 0;
+        transform: translateY(16px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
     @keyframes card-enter {
       from {
         opacity: 0;
@@ -863,6 +1157,37 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
         opacity: 1;
       }
     }
+    
+    @keyframes componentEnter {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-component-enter {
+      animation: componentEnter 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .animate-fade-in-down {
+      animation: fadeInDown 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+    
+    .animate-fade-in-up {
+      animation: fadeInUp 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+    
+    .animate-tab-enter {
+      animation: tabEnter 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .animate-card-stagger {
+      animation: cardStagger 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
 
     .animate-card-enter {
       animation: card-enter 400ms cubic-bezier(0.22, 0.8, 0.35, 1) both;
@@ -877,11 +1202,132 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
     }
 
     @media (prefers-reduced-motion: reduce) {
+      .animate-fade-in-down,
+      .animate-fade-in-up,
+      .animate-tab-enter,
+      .animate-card-stagger,
+      .animate-component-enter,
       .animate-card-enter,
       .animate-table-row-enter,
       .animate-fade-in {
         animation: none;
         transform: none;
+      }
+    }
+    
+    /* Filas vacías invisibles para mantener altura mínima en desktop */
+    @media (min-width: 1280px) {
+      .empty-row-spacer {
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .empty-row-spacer td {
+        border: none;
+        padding: 0;
+      }
+    }
+    
+    .hero-section {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(var(--p) / 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    .tab-content-wrapper {
+      min-height: 200px;
+    }
+    
+    /* Botones Premium */
+    .btn-action-edit,
+    .btn-action-save {
+      position: relative;
+    }
+    
+    .btn-action-edit::before,
+    .btn-action-save::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+      transition: left 0.5s;
+    }
+    
+    .btn-action-edit:hover::before,
+    .btn-action-save:hover::before {
+      left: 100%;
+    }
+    
+    .btn-action-delete {
+      position: relative;
+    }
+    
+    .btn-action-delete::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+      transition: left 0.5s;
+    }
+    
+    .btn-action-delete:hover::before {
+      left: 100%;
+    }
+    
+    .btn-action-cancel {
+      position: relative;
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    
+    .animate-fade-in {
+      animation: fade-in 400ms ease-out both;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer {
+        animation: none;
+      }
+      .animate-fade-in {
+        animation: none;
       }
     }
   `],
@@ -895,6 +1341,7 @@ export class DriverDetail implements OnInit {
   private dailyRecordService = inject(DailyRecordService);
   private accountingService = inject(AccountingService);
   private loadingStateService = inject(LoadingStateService);
+  private confirmModalService = inject(ConfirmModalService);
   
   // Estado de carga con umbral de 200ms
   driverLoadingState = this.loadingStateService.createLoadingState();
@@ -974,6 +1421,95 @@ export class DriverDetail implements OnInit {
 
   // Registros diarios
   dailyRecords = signal<DriverDailyRecord[]>([]);
+  recordFilters = signal<{ desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
+  
+  // Registros filtrados
+  filteredRecords = computed(() => {
+    let filtered = [...this.dailyRecords()];
+    const filters = this.recordFilters();
+
+    // Filtrar por fecha desde
+    if (filters.desde) {
+      const desde = new Date(filters.desde);
+      filtered = filtered.filter(r => {
+        const fecha = new Date(r.fecha);
+        return fecha >= desde;
+      });
+    }
+
+    // Filtrar por fecha hasta
+    if (filters.hasta) {
+      const hasta = new Date(filters.hasta);
+      hasta.setHours(23, 59, 59, 999);
+      filtered = filtered.filter(r => {
+        const fecha = new Date(r.fecha);
+        return fecha <= hasta;
+      });
+    }
+
+    // Ordenar
+    if (filters.orden === 'mas_antiguo') {
+      filtered.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+    } else {
+      // Por defecto: más reciente primero
+      filtered.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+    }
+
+    return filtered;
+  });
+  
+  // Campos de filtro
+  filterFields = computed((): FilterField[] => {
+    return [
+      {
+        key: 'desde',
+        label: 'Desde',
+        type: 'date',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>',
+        placeholder: 'Seleccionar fecha'
+      },
+      {
+        key: 'hasta',
+        label: 'Hasta',
+        type: 'date',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" /></svg>',
+        placeholder: 'Seleccionar fecha'
+      },
+      {
+        key: 'orden',
+        label: 'Orden',
+        type: 'select',
+        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2.24 6.8a.75.75 0 001.06-.04l1.95-2.1v8.59a.75.75 0 001.5 0V4.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0L2.2 5.74a.75.75 0 00.04 1.06zm8 6.4a.75.75 0 00-.04 1.06l3.25 3.5a.75.75 0 001.1 0l3.25-3.5a.75.75 0 10-1.1-1.02l-1.95 2.1V6.75a.75.75 0 00-1.5 0v8.59l-1.95-2.1a.75.75 0 00-1.06-.04z" clip-rule="evenodd" /></svg>',
+        options: [
+          { value: 'mas_reciente', label: 'Más reciente' },
+          { value: 'mas_antiguo', label: 'Más antiguo' }
+        ]
+      }
+    ];
+  });
+  
+  onRecordFilterChange(newFilters: Record<string, any>): void {
+    const filters = {
+      desde: newFilters['desde'] || null,
+      hasta: newFilters['hasta'] || null,
+      orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+    };
+    this.recordFilters.set(filters);
+  }
+  
+  getEmptyRows(): number[] {
+    const count = this.filteredRecords().length;
+    if (count === 0) return [];
+    const needed = 5 - count;
+    return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
+  }
+
+  getEmptyLiquidationRows(): number[] {
+    const count = this.liquidations().length;
+    if (count === 0) return [];
+    const needed = 5 - count;
+    return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
+  }
 
   // Liquidaciones
   liquidations = signal<DriverLiquidation[]>([]);
@@ -991,10 +1527,13 @@ export class DriverDetail implements OnInit {
 
   ngOnInit(): void {
     // Iniciar estado de carga
+    // Esto debe ejecutarse después de que el efecto esté definido
+    // para que el skeleton pueda mostrarse antes de que el efecto detecte el driver
     this.driverLoadingState.setLoading(true);
+  }
     
     // Efecto para cargar datos cuando el chofer cambia
-    effect(() => {
+  private driverDataEffect = effect(() => {
       const driver = this.driver();
       const driverId = this.driverId();
       
@@ -1011,7 +1550,6 @@ export class DriverDetail implements OnInit {
         this.loadLiquidations();
       }
     });
-  }
 
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
@@ -1127,8 +1665,15 @@ export class DriverDetail implements OnInit {
     }
   }
 
-  onDelete(): void {
-    if (!confirm('¿Estás seguro de que deseas eliminar este chofer?')) {
+  async onDelete(): Promise<void> {
+    const confirmed = await this.confirmModalService.open({
+      title: 'Eliminar Chofer',
+      message: `¿Estás seguro de que deseas eliminar a ${this.driver()?.nombre_completo || 'este chofer'}? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
@@ -1159,7 +1704,11 @@ export class DriverDetail implements OnInit {
     if (!date) return 'Sin fecha';
     try {
       const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' });
+      return d.toLocaleDateString('es-CL', { 
+        day: '2-digit', 
+        month: 'short',
+        year: 'numeric'
+      });
     } catch {
       return date;
     }
@@ -1196,6 +1745,11 @@ export class DriverDetail implements OnInit {
       'no_trabajado': 'No Trabajado'
     };
     return estados[estado] || estado;
+  }
+
+  onViewRecordDetail(record: DriverDailyRecord): void {
+    // Navegar al detalle del registro
+    this.router.navigate(['/registro-diario', record.id]);
   }
 
   private loadDailyRecords(): void {
