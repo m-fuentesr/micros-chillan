@@ -1,4 +1,4 @@
-﻿from datetime import date, timedelta
+from datetime import date, timedelta
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.daily_record import DailyRecordCreate

@@ -5,7 +5,6 @@ import { AccountingChart } from '../../shared/accounting/accounting-chart/accoun
 import { WeeklySummaryTable } from '../../shared/accounting/weekly-summary-table/weekly-summary-table';
 import { LiquidationTable } from '../../shared/accounting/liquidation-table/liquidation-table';
 import { LiquidationHistory } from '../../shared/accounting/liquidation-history/liquidation-history';
-import { PaymentModal } from '../../shared/accounting/payment-modal/payment-modal';
 import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation, LiquidationDriver } from '../../shared/models/accounting.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
@@ -15,7 +14,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, PaymentModal, LoadingSkeleton],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationHistory, LoadingSkeleton],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -203,7 +202,6 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
                   [payrollPeriod]="payrollPeriod()"
                   (weekChange)="onWeekChange($event)"
                   (payrollPeriodChange)="onPayrollPeriodChange($event)"
-                  (confirmPayment)="onConfirmPayment($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
                   (closePeriod)="onClosePeriod()" />
@@ -226,13 +224,6 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
           }
         </div>
       </div>
-
-      <!-- Modal de Confirmación de Pago -->
-      <app-payment-modal
-        [isOpen]="paymentModalOpen()"
-        [driver]="selectedDriver()"
-        (confirm)="onPaymentConfirm($event)"
-        (cancel)="onPaymentCancel()" />
     </div>
   `,
   styles: [`
@@ -276,10 +267,6 @@ export class Contabilidad implements OnInit {
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
 
-  // Modal de pago
-  paymentModalOpen = signal(false);
-  selectedDriver = signal<LiquidationDriver | null>(null);
-  pendingPaymentChoferId = signal<number | null>(null);
 
   // Selector de semana para liquidación
   selectedWeek = signal<number>(1);
@@ -441,60 +428,6 @@ export class Contabilidad implements OnInit {
       });
   }
 
-  onConfirmPayment(event: { choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }): void {
-    const liquidation = this.liquidation();
-    if (!liquidation) return;
-
-    const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
-    if (chofer) {
-      this.selectedDriver.set(chofer);
-      this.pendingPaymentChoferId.set(event.choferId);
-      this.paymentModalOpen.set(true);
-    }
-  }
-
-  onPaymentConfirm(data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string }): void {
-    const choferId = this.pendingPaymentChoferId();
-    if (!choferId) return;
-
-    const liquidation = this.liquidation();
-    if (!liquidation) return;
-
-    // Actualizar estado localmente sin backend
-    const chofer = liquidation.choferes.find(c => c.chofer_id === choferId);
-    if (chofer) {
-      chofer.estado_pago = 'pagado';
-      chofer.metodo_pago = data.metodo_pago;
-      chofer.codigo_transferencia = data.codigo_transferencia || null;
-      chofer.fecha_pago = new Date().toISOString();
-      
-      // Actualizar la liquidación con el estado modificado
-      this.liquidationData.set({ ...liquidation });
-    }
-
-    // Cerrar modal
-    this.paymentModalOpen.set(false);
-    this.selectedDriver.set(null);
-    this.pendingPaymentChoferId.set(null);
-
-    // TODO: Cuando el backend esté listo, descomentar esto y eliminar la lógica local
-    // const { mes, anio } = this.payrollDate();
-    // this.accountingService.confirmPayment(choferId, mes, anio, data)
-    //   .pipe(catchError(() => of(void 0)))
-    //   .subscribe(() => {
-    //     // Recargar liquidación
-    //     this.loadLiquidation();
-    //     this.paymentModalOpen.set(false);
-    //     this.selectedDriver.set(null);
-    //     this.pendingPaymentChoferId.set(null);
-    //   });
-  }
-
-  onPaymentCancel(): void {
-    this.paymentModalOpen.set(false);
-    this.selectedDriver.set(null);
-    this.pendingPaymentChoferId.set(null);
-  }
 
   onMissingAmountChange(event: { choferId: number; monto: number }): void {
     const liquidation = this.liquidation();

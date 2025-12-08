@@ -260,12 +260,37 @@ export class MachineCreate {
       return;
     }
 
+    // Validación adicional antes de enviar
+    const formData = this.formData();
+    const docs = this.documentationData();
+
+    // Validar que los campos básicos estén presentes
+    if (!formData.numero || !formData.patente || !formData.marca) {
+      alert('Por favor complete todos los campos obligatorios de la máquina');
+      return;
+    }
+
+    // Validar que todas las fechas de documentación estén presentes
+    if (!docs.revision_tecnica || !docs.permiso_circulacion || !docs.seguro_obligatorio) {
+      alert('Por favor complete todas las fechas de documentación');
+      return;
+    }
+
+    // Validar formato de fechas
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!fechaRegex.test(docs.revision_tecnica) ||
+        !fechaRegex.test(docs.permiso_circulacion) ||
+        !fechaRegex.test(docs.seguro_obligatorio)) {
+      alert('Las fechas deben estar en formato válido (YYYY-MM-DD)');
+      return;
+    }
+
     const machineData: Partial<Machine> = {
-      ...this.formData(),
+      ...formData,
       documentos: {
-        revision_tecnica: this.documentationData().revision_tecnica || undefined,
-        permiso_circulacion: this.documentationData().permiso_circulacion || undefined,
-        seguro_obligatorio: this.documentationData().seguro_obligatorio || undefined
+        revision_tecnica: docs.revision_tecnica,
+        permiso_circulacion: docs.permiso_circulacion,
+        seguro_obligatorio: docs.seguro_obligatorio
       }
     };
 
@@ -273,12 +298,41 @@ export class MachineCreate {
       .pipe(
         catchError((error) => {
           console.error('Error al crear máquina:', error);
-          // Aquí podrías mostrar un toast o alert
+          
+          // Extraer mensaje de error del backend
+          let errorMessage = 'Error al crear la máquina. Por favor, intente nuevamente.';
+          
+          if (error.error) {
+            // Error de validación de FastAPI/Pydantic
+            if (error.error.detail) {
+              if (Array.isArray(error.error.detail)) {
+                // Errores de validación múltiples
+                const validationErrors = error.error.detail
+                  .map((err: any) => `${err.loc?.join('.')}: ${err.msg}`)
+                  .join('\n');
+                errorMessage = `Error de validación:\n${validationErrors}`;
+              } else if (typeof error.error.detail === 'string') {
+                errorMessage = error.error.detail;
+              } else {
+                errorMessage = JSON.stringify(error.error.detail);
+              }
+            } else if (error.error.message) {
+              errorMessage = error.error.message;
+            }
+          } else if (error.message) {
+            // Error del cliente (validación previa)
+            errorMessage = error.message;
+          }
+          
+          // Mostrar error al usuario
+          alert(errorMessage);
           return of(null);
         })
       )
       .subscribe((machine) => {
         if (machine) {
+          // Mostrar mensaje de éxito
+          alert('Máquina creada exitosamente');
           // Redirigir al detalle de la máquina creada
           this.router.navigate(['/maquinas', machine.id]);
         }

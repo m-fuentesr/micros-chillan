@@ -1,27 +1,29 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MachineAssignment } from '../../models/machine-detail.models';
+import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
 @Component({
   selector: 'app-machine-assignment-history',
-  imports: [CommonModule],
+  imports: [CommonModule, DriverIcon],
   template: `
     <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header -->
-      <div class="card-header p-6 border-b border-base-200 bg-base-50">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h2 class="card-title text-2xl font-bold border-l-4 border-l-primary pl-3">
+          <div class="flex-1 min-w-0">
+            <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
               Historial de Asignaciones
             </h2>
-            <p class="text-xs sm:text-sm text-base-content/60 mt-1">
+            <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
               Trazabilidad completa de choferes asignados a esta máquina.
             </p>
           </div>
           
           <!-- Badge de conteo -->
-          <div class="flex items-center gap-3">
-            <span class="badge badge-lg badge-outline font-bold">
+          <div class="flex items-center gap-3 shrink-0">
+            <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
               {{ filteredAssignments().length }} {{ filteredAssignments().length === 1 ? 'asignación' : 'asignaciones' }}
             </span>
           </div>
@@ -30,47 +32,50 @@ import { MachineAssignment } from '../../models/machine-detail.models';
 
       <div class="card-body p-4 sm:p-6">
         <!-- Filtros Mejorados -->
-        <div class="bg-base-50/50 p-3 rounded-xl border border-base-200 mb-6">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="text-xs font-semibold text-base-content/60 mr-2">Filtrar por estado:</span>
-            <div class="join">
-              <button
-                class="btn join-item btn-sm transition-all"
-                [class.btn-active]="activeFilter() === 'all'"
-                [class.bg-white]="activeFilter() === 'all'"
-                [class.shadow-sm]="activeFilter() === 'all'"
-                (click)="onFilterChange('all')"
-                type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M7 2a1 1 0 011 1v1h3a1 1 0 110 2H9.578a18.87 18.87 0 01-1.724 4.78c.29.354.596.696.914 1.026a1 1 0 11-1.44 1.389c-.188-.196-.373-.396-.554-.6a19.098 19.098 0 01-3.107 3.567 1 1 0 01-1.334-1.49 17.087 17.087 0 003.13-3.733 18.992 18.992 0 01-1.487-2.494 1 1 0 111.79-.89c.234.47.489.928.764 1.372.417-.934.752-1.913.997-2.927H3a1 1 0 110-2h3V3a1 1 0 011-1zm6 6a1 1 0 01.894.553l2.991 5.982a.869.869 0 01.02.037l.99 1.98a1 1 0 11-1.79.895L15.383 16h-4.764l-.724 1.447a1 1 0 11-1.788-.894l.99-1.98.019-.038 2.99-5.982A1 1 0 0113 8zm-1.382 6h2.764L13 11.236 11.618 14z" />
-                </svg>
-                Todas
-              </button>
-              <button
-                class="btn join-item btn-sm transition-all"
-                [class.btn-active]="activeFilter() === 'activa'"
-                [class.bg-white]="activeFilter() === 'activa'"
-                [class.shadow-sm]="activeFilter() === 'activa'"
-                (click)="onFilterChange('activa')"
-                type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
-                </svg>
-                Activas
-              </button>
-              <button
-                class="btn join-item btn-sm transition-all"
-                [class.btn-active]="activeFilter() === 'cerrada'"
-                [class.bg-white]="activeFilter() === 'cerrada'"
-                [class.shadow-sm]="activeFilter() === 'cerrada'"
-                (click)="onFilterChange('cerrada')"
-                type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                </svg>
-                Cerradas
-              </button>
-            </div>
+        <div class="bg-base-50/50 px-5 sm:px-6 py-1 sm:py-4 rounded-xl border border-base-200/50 mb-6">
+          <div class="flex items-center gap-2 mb-2 sm:mb-3">
+            <div class="w-1 h-4 rounded-full bg-primary"></div>
+            <p class="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
+              Estado
+            </p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              [class.bg-primary]="activeFilter() === 'all'"
+              [class.text-primary-content]="activeFilter() === 'all'"
+              [class.text-base-content]="activeFilter() === 'all'"
+              [class.bg-base-200/60]="activeFilter() !== 'all'"
+              [class.text-base-content/70]="activeFilter() !== 'all'"
+              [class.hover:bg-base-200]="activeFilter() !== 'all'"
+              (click)="onFilterChange('all')"
+              type="button">
+              Todas
+            </button>
+            <button
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              [class.bg-success]="activeFilter() === 'activa'"
+              [class.text-success-content]="activeFilter() === 'activa'"
+              [class.text-base-content]="activeFilter() === 'activa'"
+              [class.bg-base-200/60]="activeFilter() !== 'activa'"
+              [class.text-base-content/70]="activeFilter() !== 'activa'"
+              [class.hover:bg-base-200]="activeFilter() !== 'activa'"
+              (click)="onFilterChange('activa')"
+              type="button">
+              Activas
+            </button>
+            <button
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              [class.bg-base-content/60]="activeFilter() === 'cerrada'"
+              [class.text-base-100]="activeFilter() === 'cerrada'"
+              [class.text-base-content]="activeFilter() === 'cerrada'"
+              [class.bg-base-200/60]="activeFilter() !== 'cerrada'"
+              [class.text-base-content/70]="activeFilter() !== 'cerrada'"
+              [class.hover:bg-base-200]="activeFilter() !== 'cerrada'"
+              (click)="onFilterChange('cerrada')"
+              type="button">
+              Cerradas
+            </button>
           </div>
         </div>
 
@@ -88,16 +93,13 @@ import { MachineAssignment } from '../../models/machine-detail.models';
                 <!-- Header: Chofer y Estado -->
                 <div class="flex items-start justify-between gap-4 mb-4">
                   <div class="flex items-center gap-3 flex-1 min-w-0">
-                    <div class="avatar placeholder shrink-0">
-                      <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-12 h-12 rounded-full text-primary flex items-center justify-center border border-base-200">
-                        <span class="text-sm font-bold">{{ getInitials(assignment.chofer.nombre_completo) }}</span>
-                      </div>
+                    <div class="w-10 h-10 shrink-0 flex items-center justify-center">
+                      <app-driver-icon class="w-full h-full p-2 text-primary"></app-driver-icon>
                     </div>
                     <div class="flex-1 min-w-0">
                       <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
                         {{ assignment.chofer.nombre_completo }}
                       </h3>
-                      <p class="text-xs text-base-content/50">Conductor asignado</p>
                     </div>
                   </div>
                   
@@ -163,7 +165,11 @@ import { MachineAssignment } from '../../models/machine-detail.models';
                 </div>
 
                 <!-- Duración -->
-                <div class="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                <div 
+                  class="mt-4 p-3 rounded-lg"
+                  [class.bg-primary/5]="assignment.estado === 'activa'"
+                  [class.border]="assignment.estado === 'activa'"
+                  [class.border-primary/20]="assignment.estado === 'activa'">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary">
@@ -210,18 +216,15 @@ import { MachineAssignment } from '../../models/machine-detail.models';
                   [style.animation-fill-mode]="'both'">
                   
                   <td class="pl-6 py-4">
-                    <div class="flex items-center gap-3">
-                      <div class="avatar placeholder shrink-0">
-                        <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-base-200">
-                          <span class="text-xs font-bold">{{ getInitials(assignment.chofer.nombre_completo) }}</span>
+                    <div class="flex items-center gap-2">
+                      <div class="shrink-0">
+                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                          <app-driver-icon class="w-4 h-4 text-primary"></app-driver-icon>
                         </div>
                       </div>
-                      <div>
-                        <div class="font-bold text-base-content truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
-                          {{ assignment.chofer.nombre_completo }}
-                        </div>
-                        <div class="text-xs text-base-content/50">ID: {{ assignment.chofer.id }}</div>
-                      </div>
+                      <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
+                        {{ assignment.chofer.nombre_completo }}
+                      </span>
                     </div>
                   </td>
                   
@@ -268,11 +271,15 @@ import { MachineAssignment } from '../../models/machine-detail.models';
                   </td>
                   
                   <td class="text-center py-4">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-lg border border-primary/20">
+                    <div 
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg tabular-nums"
+                      [class.bg-primary/5]="assignment.estado === 'activa'"
+                      [class.border]="assignment.estado === 'activa'"
+                      [class.border-primary/20]="assignment.estado === 'activa'">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                       </svg>
-                      <span class="font-bold text-primary tabular-nums">
+                      <span class="font-bold text-primary">
                         {{ assignment.duracion_dias }} {{ assignment.duracion_dias === 1 ? 'día' : 'días' }}
                       </span>
                     </div>

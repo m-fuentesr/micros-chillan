@@ -1,9 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import { Driver } from '../models/driver.models';
 import { environment } from '../../../environments/environment.development';
+import { calculateLicenseStatus } from '../utils/license.utils';
 
 @Injectable({
   providedIn: 'root'
@@ -25,7 +26,80 @@ export class DriverService {
       params = params.set('estado', filters.estado);
     }
     
-    return this.http.get<Driver[]>(`${this.apiUrl}/drivers`, { params }).pipe(
+    // El backend retorna {items: BackendDriver[]}, necesitamos mapear a Driver[]
+    interface BackendDriver {
+      id: number;
+      rut: string;
+      primer_nombre: string;
+      segundo_nombre?: string | null;
+      apellido_paterno: string;
+      apellido_materno: string;
+      telefono: string;
+      correo_electronico: string;
+      fecha_venc_licencia: string; // ISO date string
+      estado: 'activo' | 'inactivo';
+      porcentaje_pago: number;
+      created_at?: string;
+      updated_at?: string;
+      // El backend no retorna maquina_actual en el listado, se obtiene de otra consulta
+    }
+    
+    interface BackendDriverResponse {
+      items: BackendDriver[];
+    }
+    
+    return this.http.get<BackendDriverResponse>(`${this.apiUrl}/api/drivers`, { params }).pipe(
+      map((response) => {
+        // Transformar los datos del backend al formato del frontend
+        let drivers: Driver[] = (response.items || []).map((backendDriver): Driver => {
+          // Construir nombre_completo
+          const nombreCompleto = [
+            backendDriver.primer_nombre,
+            backendDriver.segundo_nombre,
+            backendDriver.apellido_paterno,
+            backendDriver.apellido_materno
+          ]
+            .filter(Boolean)
+            .join(' ');
+          
+          // Calcular alerta de licencia
+          const licenseStatus = calculateLicenseStatus(backendDriver.fecha_venc_licencia, 30);
+          const alertaLicencia = licenseStatus.estado === 'error' || licenseStatus.estado === 'warning';
+          
+          return {
+            id: backendDriver.id,
+            nombre_completo: nombreCompleto,
+            rut: backendDriver.rut,
+            telefono: backendDriver.telefono,
+            correo: backendDriver.correo_electronico,
+            porcentaje_pago: backendDriver.porcentaje_pago,
+            fecha_venc_licencia: backendDriver.fecha_venc_licencia,
+            alerta_licencia: alertaLicencia,
+            estado: backendDriver.estado,
+            maquina_actual: null, // El backend no retorna esto en el listado, se puede obtener de otra consulta si es necesario
+            nombre: backendDriver.primer_nombre,
+            segundo_nombre: backendDriver.segundo_nombre || undefined,
+            apellido: backendDriver.apellido_paterno,
+            segundo_apellido: backendDriver.apellido_materno,
+            created_at: backendDriver.created_at,
+            updated_at: backendDriver.updated_at
+          };
+        });
+        
+        // Aplicar filtros en el frontend si el backend no los soporta
+        if (filters?.estado) {
+          drivers = drivers.filter(d => d.estado === filters.estado);
+        }
+        if (filters?.search) {
+          const search = filters.search.toLowerCase();
+          drivers = drivers.filter(d => 
+            d.nombre_completo?.toLowerCase().includes(search) ||
+            d.rut?.includes(search)
+          );
+        }
+        
+        return drivers;
+      }),
       catchError(() => {
         // Mock data para desarrollo
         let drivers = this.getMockDrivers();
@@ -46,7 +120,7 @@ export class DriverService {
 
   // GET /api/drivers/{id} - Obtener detalle de chofer
   getDriverById(id: number): Observable<Driver> {
-    return this.http.get<Driver>(`${this.apiUrl}/drivers/${id}`).pipe(
+    return this.http.get<Driver>(`${this.apiUrl}/api/drivers/${id}`).pipe(
       catchError(() => {
         // Mock data para desarrollo
         const mockDriver = this.getMockDriverById(id);
@@ -154,17 +228,17 @@ export class DriverService {
 
   // POST /api/drivers - Crear nuevo chofer
   createDriver(driver: Partial<Driver>): Observable<Driver> {
-    return this.http.post<Driver>(`${this.apiUrl}/drivers`, driver);
+    return this.http.post<Driver>(`${this.apiUrl}/api/drivers`, driver);
   }
 
   // PUT /api/drivers/{id} - Actualizar chofer
   updateDriver(id: number, driver: Partial<Driver>): Observable<Driver> {
-    return this.http.put<Driver>(`${this.apiUrl}/drivers/${id}`, driver);
+    return this.http.put<Driver>(`${this.apiUrl}/api/drivers/${id}`, driver);
   }
 
   // DELETE /api/drivers/{id} - Desactivar chofer (soft delete)
   deleteDriver(id: number): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/drivers/${id}`);
+    return this.http.delete<void>(`${this.apiUrl}/api/drivers/${id}`);
   }
 }
 

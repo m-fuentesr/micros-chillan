@@ -18,6 +18,7 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 
 @Component({
   selector: 'app-machine-detail',
@@ -90,7 +91,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 @if (!isEditingGeneral()) {
                   <button 
                     type="button"
-                    class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
@@ -99,7 +100,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                   </button>
                   <button
                     type="button"
-                    class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="toggleEditGeneral()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
@@ -110,13 +111,13 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 } @else {
                   <button
                     type="button"
-                    class="btn-action-cancel group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-base-content/70 border border-base-300 bg-base-100 hover:bg-base-200 hover:text-base-content transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-cancel group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-base-content/70 border border-base-300 bg-base-100 hover:bg-base-200 hover:text-base-content transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="toggleEditGeneral()">
                     <span class="whitespace-nowrap">Cancelar</span>
                   </button>
                   <button
                     type="button"
-                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onSaveGeneral()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v5.5a.75.75 0 0 0 1.5 0v-5.5ZM10.75 15.25a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0v-1.5ZM3.5 10a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 3.5 10ZM16.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1-.75-.75ZM2.22 7.22a.75.75 0 0 1 1.06 0l1.25 1.25a.75.75 0 0 1-1.06 1.06L2.22 8.28a.75.75 0 0 1 0-1.06ZM18.47 7.22a.75.75 0 0 1 0 1.06l-1.25 1.25a.75.75 0 1 1-1.06-1.06l1.25-1.25a.75.75 0 0 1 1.06 0ZM2.22 12.78a.75.75 0 0 1 0-1.06l1.25-1.25a.75.75 0 0 1 1.06 1.06L3.28 13.84a.75.75 0 0 1-1.06 0ZM18.47 12.78a.75.75 0 0 1-1.06 0l-1.25-1.25a.75.75 0 0 1 1.06-1.06l1.25 1.25a.75.75 0 0 1 0 1.06Z" />
@@ -672,6 +673,7 @@ export class MachineDetail implements OnInit {
   private driverService = inject(DriverService);
   private dailyRecordService = inject(DailyRecordService);
   private loadingStateService = inject(LoadingStateService);
+  private confirmModal = inject(ConfirmModalService);
   
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
@@ -909,27 +911,38 @@ export class MachineDetail implements OnInit {
   }
 
   onDelete(): void {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta máquina?')) {
-      return;
-    }
-
-    // COMENTADO: Eliminar máquina en backend - deshabilitado para trabajar en UI
-    // if (this.machineId()) {
-    //   this.machineService.deleteMachine(this.machineId()!)
-    //     .pipe(
-    //       catchError((error) => {
-    //         console.error('Error al eliminar máquina:', error);
-    //         return of(null);
-    //       })
-    //     )
-    //     .subscribe(() => {
-    //       this.router.navigate(['/maquinas']);
-    //     });
-    // }
+    const machine = this.machine();
+    const machineInfo = machine ? `Máquina ${machine.numero || ''} ${machine.patente ? `(${machine.patente})` : ''}`.trim() : 'esta máquina';
     
-    // Simular eliminación para desarrollo UI
-    alert('Eliminación simulada (modo desarrollo - no se eliminó en backend).');
-    // this.router.navigate(['/maquinas']);
+    this.confirmModal.open({
+      title: 'Confirmar Eliminación',
+      message: `¿Estás seguro de que deseas eliminar ${machineInfo}? Esta acción no se puede deshacer y se eliminarán todos los registros asociados.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error hover:!text-white'
+    }).then((confirmed) => {
+      if (!confirmed) {
+        return;
+      }
+
+      // COMENTADO: Eliminar máquina en backend - deshabilitado para trabajar en UI
+      // if (this.machineId()) {
+      //   this.machineService.deleteMachine(this.machineId()!)
+      //     .pipe(
+      //       catchError((error) => {
+      //         console.error('Error al eliminar máquina:', error);
+      //         return of(null);
+      //       })
+      //     )
+      //     .subscribe(() => {
+      //       this.router.navigate(['/maquinas']);
+      //     });
+      // }
+      
+      // Simular eliminación para desarrollo UI
+      alert('Eliminación simulada (modo desarrollo - no se eliminó en backend).');
+      // this.router.navigate(['/maquinas']);
+    });
   }
 
   onRecordFilterChange(filters: MachineDailyRecordFilters): void {

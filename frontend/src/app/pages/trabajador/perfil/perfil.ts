@@ -8,11 +8,10 @@ import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loa
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
-import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-perfil',
-  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, ConfirmDialog],
+  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective],
   template: `
     <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
       @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
@@ -142,15 +141,6 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
     </div>
 
     <!-- Modal de confirmación de cierre de sesión -->
-    <app-confirm-dialog
-      [isOpen]="showLogoutConfirm()"
-      title="Cerrar Sesión"
-      message="¿Estás seguro de que deseas cerrar sesión? Deberás iniciar sesión nuevamente para acceder a la aplicación."
-      confirmLabel="Sí, cerrar sesión"
-      type="destructive"
-      (confirm)="onLogout()"
-      (cancel)="closeLogoutConfirm()">
-    </app-confirm-dialog>
   `,
   styles: [
     `
@@ -349,18 +339,7 @@ export class Perfil implements OnInit {
   });
 
   // Signal para controlar el modal de confirmación
-  showLogoutConfirm = signal(false);
-
   openLogoutConfirm(): void {
-    this.showLogoutConfirm.set(true);
-  }
-
-  closeLogoutConfirm(): void {
-    this.showLogoutConfirm.set(false);
-  }
-
-  onLogout(): void {
-    this.closeLogoutConfirm();
     this.auth.logout();
   }
 }
