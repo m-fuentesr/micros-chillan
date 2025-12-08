@@ -1,8 +1,7 @@
 ﻿from fastapi import HTTPException
 from datetime import date, timedelta
 from app.db.supabase_client import supabase
-from app.utils.auth import require_admin
-
+from app.schemas.user import UserInDB
 
 async def get_active_machines():
     """
@@ -50,9 +49,7 @@ async def get_active_machines():
     return items
 
 
-from app.schemas.user import UserInDB
-
-async def get_summary(current_user: UserInDB):
+async def get_summary():
     """
     Devuelve:
     {
@@ -66,9 +63,6 @@ async def get_summary(current_user: UserInDB):
         }
     }
     """
-
-    require_admin(current_user)
-
     # ---------------------------------------------------------
     # 1) Contar máquinas por estado
     # ---------------------------------------------------------
@@ -313,26 +307,48 @@ async def create_machine(data):
     # 3. Asignación inicial del chofer (opcional)
     # ----------------------------------------
     if data.chofer_id:
+        chofer_id = data.chofer_id
+
+        # Verificar si el chofer ya tiene una asignación activa
+        asign_raw = (
+            supabase.table("asignaciones_chofer_maquina")
+            .select("id, maquina_id")
+            .eq("chofer_id", chofer_id)
+            .is_("fecha_termino", None)
+            .maybe_single()
+            .execute()
+        )
+
+        hoy = date.today().isoformat()
+
+        # Si tiene asignación activa → cerrar la asignación anterior
+        if asign_raw and asign_raw.data:
+            supabase.table("asignaciones_chofer_maquina").update(
+                {"fecha_termino": hoy}
+            ).eq("id", asign_raw.data["id"]).execute()
+
+        # Crear nueva asignación para esta máquina
         asign_res = (
             supabase.table("asignaciones_chofer_maquina")
             .insert(
                 {
                     "maquina_id": maquina_id,
-                    "chofer_id": data.chofer_id,
-                    "fecha_inicio": date.today().isoformat(),
+                    "chofer_id": chofer_id,
+                    "fecha_inicio": hoy,
                     "fecha_termino": None,
                 }
             )
             .execute()
         )
 
-        if getattr(asign_res, "error", None):
-            raise HTTPException(
-                400,
-                f"Máquina creada, pero error asignando chofer: {asign_res.error}",
-            )
+    if getattr(asign_res, "error", None):
+        raise HTTPException(
+            400,
+            f"Máquina creada pero ocurrió un error asignando el chofer: {asign_res.error}",
+        )
 
     return {"id": maquina_id, "message": "Máquina creada correctamente"}
+
 
 async def get_machine_detail(machine_id: int):
     # ----------------------------------------
@@ -359,13 +375,13 @@ async def get_machine_detail(machine_id: int):
         .select("chofer_id")
         .eq("maquina_id", machine_id)
         .is_("fecha_termino", None)
-        .single()
+        .limit(1)
         .execute()
     )
 
     chofer_actual_id = None
-    if asign_raw.data:
-        chofer_actual_id = asign_raw.data["chofer_id"]
+    if asign_raw.data and len(asign_raw.data) > 0:
+        chofer_actual_id = asign_raw.data[0]["chofer_id"]
 
     # ----------------------------------------
     # 3. Obtener documentos
@@ -476,7 +492,7 @@ async def update_machine(machine_id: int, data):
         .select("id, chofer_id")
         .eq("maquina_id", machine_id)
         .is_("fecha_termino", None)
-        .single()
+        .maybe_single()
         .execute()
     )
 

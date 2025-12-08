@@ -2,9 +2,6 @@
 from typing import Literal, Optional
 from datetime import date
 
-# -------------------------
-# Esquemas base
-# -------------------------
 
 class DriverBase(BaseModel):
     rut: str = Field(..., description="RUT del chofer")
@@ -27,10 +24,65 @@ class DriverBase(BaseModel):
     )
 
 
+class DriverLicenseState(BaseModel):
+    fecha_vencimiento: date
+    estado: Literal["ok", "warning", "danger"]
+    dias_restantes: int
 
-# -------------------------
-# Crear chofer (entrada)
-# -------------------------
+
+class DriverMachine(BaseModel):
+    id: int
+    identificador: str
+
+
+class DriverListItem(BaseModel):
+    id: int
+    nombre_completo: str
+    rut: str
+    telefono: str
+    correo_electronico: str
+    estado: Literal["activo", "inactivo"]
+
+    maquina_actual: Optional[DriverMachine]
+    licencia_estado: DriverLicenseState
+
+
+class DriverDetail(BaseModel):
+    id: int
+    nombre_completo: str
+    rut: str
+    estado: Literal["activo", "inactivo"]
+    telefono: str
+    correo_electronico: str
+    porcentaje_pago: float
+
+    maquina_actual: Optional[DriverMachine]
+    licencia: DriverLicenseState
+
+
+class DriverSelect(BaseModel):
+    id: int
+    nombre_completo: str
+
+
+class DriverUpdate(BaseModel):
+    primer_nombre: str
+    segundo_nombre: Optional[str]
+    apellido_paterno: str
+    apellido_materno: str
+    rut: str
+
+    telefono: str
+    correo_electronico: EmailStr
+
+    estado: Literal["activo", "inactivo"]
+    porcentaje_pago: float
+
+    # Máquina asignada (dropdown). Puede ser None = "Sin asignar"
+    maquina_id: Optional[int] = None
+
+    fecha_venc_licencia: date
+
 
 class DriverCreate(DriverBase):
     """
@@ -42,44 +94,3 @@ class DriverCreate(DriverBase):
         description="ID de la máquina a asignar"
     )
 
-
-
-# -------------------------
-# Leer chofer (salida)
-# -------------------------
-
-class DriverRead(DriverBase):
-    """
-    Esquema usado para devolver un chofer desde la BD.
-    """
-    id: int = Field(..., description="ID del chofer en la base de datos")
-    porcentaje_pago: float = Field(..., description="Porcentaje asignado al chofer")
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
-
-
-# -------------------------
-# Respuesta en listados
-# -------------------------
-
-class DriverListItem(DriverRead):
-    """
-    Representación simple para listados de choferes.
-    """
-    pass
-
-
-# -------------------------
-# Respuesta de lista
-# -------------------------
-
-class DriverListResponse(BaseModel):
-    """
-    Respuesta estándar para list_drivers.
-    """
-    items: list[DriverListItem]
-
-
-
-
-    

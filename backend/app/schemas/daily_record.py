@@ -13,9 +13,11 @@ class DailyRecordCreate(BaseModel):
     observaciones: Optional[str] = None
     incidente_critico: bool = False  # El checkbox (True/False)
 
+
 class MaquinaInfo(BaseModel):
     numero_interno: int
     marca: str
+
 
 class DailyRecordResponse(BaseModel):
     id: int
@@ -34,3 +36,36 @@ class DailyRecordResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class DailyRecordListDriver(BaseModel):
+    id: int
+    nombre: str
+    
+
+class DailyRecordListMachine(BaseModel):
+    id: int
+    numero_interno: int
+
+
+class DailyRecordListItem(BaseModel):
+    id: int
+    fecha: date
+    chofer: DailyRecordListDriver
+    maquina: DailyRecordListMachine
+    monto_recaudado: int
+    diesel: Optional[float] = None # Corresponde al costo_total_diesel
+    estado: str
+
+
+class DailyRecordListFilters(BaseModel):
+    maquina_id: Optional[int] = None
+    chofer_id: Optional[int] = None
+    fecha_inicio: Optional[date] = None
+    fecha_fin: Optional[date] = None
+    estado: Optional[str] = None
+    search: Optional[str] = None
+    sort_by: str = "fecha"
+    order: str = "desc"
+    page: int = 1
+    per_page: int = 10
