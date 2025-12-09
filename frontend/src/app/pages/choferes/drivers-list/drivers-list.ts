@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { DriverService } from '../../../shared/services/driver.service';
 import { DriverKPIs } from '../../../shared/drivers/driver-kpis/driver-kpis';
 import { DriverList } from '../../../shared/drivers/driver-list/driver-list';
@@ -39,6 +40,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
         @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
+          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             @for (i of [1,2,3,4]; track i) {
               <app-loading-skeleton 
@@ -81,6 +83,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
         @if (!sequentialState.canShowContent()) {
           <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
           @if (driversLoadingState.isLoading() && !sequentialState.contentError()) {
+            <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
             <app-loading-skeleton 
               type="machine-list" 
               [count]="6"
@@ -104,7 +107,8 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
             <!-- Mantener skeleton visible hasta que canShowContent sea true -->
             <app-loading-skeleton 
               type="machine-list" 
-              [count]="6" />
+              [count]="6"
+              [isExiting]="driversLoadingState.isSkeletonExiting()" />
           }
         } @else {
           <!-- Solo renderizar el componente cuando canShowContent es true -->
@@ -161,24 +165,36 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class DriversList implements OnInit {
+export class DriversList implements OnInit, OnDestroy {
   private driverService = inject(DriverService);
   private loadingStateService = inject(LoadingStateService);
+  private router = inject(Router);
+  private navigationSubscription?: Subscription;
 
   viewMode = signal<DriverViewMode>('cards');
   statusFilter = signal<DriverStatusFilter>('all');
   licenseFilter = signal<LicenseFilter>('all');
   
-  // Estados de carga con umbral de 200ms
+  // Estados de carga simplificados (siguiendo patrón de driver-detail)
   kpisLoadingState = this.loadingStateService.createLoadingState();
   driversLoadingState = this.loadingStateService.createLoadingState();
   
-  // Estado de carga secuencial coordinado
+  // Estado de carga secuencial coordinado (para animaciones suaves)
   sequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // Flags para prevenir múltiples ejecuciones de effects
+  // private driversEffectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  // private kpisEffectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  // private driversDataProcessed = signal(false);
+  // private kpisDataProcessed = signal(false);
+  // ============================================
 
   constructor() {
     // Iniciar estados de carga inmediatamente, antes del primer render
@@ -217,13 +233,16 @@ export class DriversList implements OnInit {
     return this.calculateMockKPIs();
   });
 
-  // Effects para detectar cuando los datos están listos y coordinar la aparición
+  // Effects simplificados (siguiendo patrón de driver-detail)
+  // Directos y sin delays artificiales - más simple y confiable
   private driversEffect = effect(() => {
     const drivers = this.drivers();
     const isLoading = this.driversLoadingState.isLoading();
     
+    // Cuando hay datos y está cargando, marcar como cargado directamente
     if (drivers.length > 0 && isLoading && !this.sequentialState.contentError()) {
       this.driversLoadingState.setDataLoaded();
+      // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
         this.sequentialState.setContentReady(false);
       }, 50);
@@ -239,6 +258,7 @@ export class DriversList implements OnInit {
     // Los KPIs se calculan desde los drivers, así que cuando los drivers están listos, los KPIs también
     if (drivers.length > 0 && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
+      // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
         this.sequentialState.setKPIsReady(false);
       }, 50);
@@ -246,6 +266,67 @@ export class DriversList implements OnInit {
       this.kpisLoadingState.setDataLoaded();
     }
   });
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // Effects con flags y timeouts complejos
+  // private driversEffect = effect(() => {
+  //   const drivers = this.drivers();
+  //   const isLoading = this.driversLoadingState.isLoading();
+  //   const alreadyProcessed = this.driversDataProcessed();
+  //   
+  //   if (drivers.length > 0 && isLoading && !this.sequentialState.contentError() && !alreadyProcessed) {
+  //     if (this.driversEffectTimeoutId) {
+  //       clearTimeout(this.driversEffectTimeoutId);
+  //     }
+  //     this.driversDataProcessed.set(true);
+  //     this.driversEffectTimeoutId = setTimeout(() => {
+  //       this.driversLoadingState.setDataLoaded();
+  //       setTimeout(() => {
+  //         this.sequentialState.setContentReady(false);
+  //       }, 50);
+  //       this.driversEffectTimeoutId = null;
+  //     }, 300);
+  //   } else if (this.sequentialState.contentError() && isLoading && !alreadyProcessed) {
+  //     this.driversDataProcessed.set(true);
+  //     this.driversLoadingState.setDataLoaded();
+  //   }
+  // });
+  //
+  // private kpisEffect = effect(() => {
+  //   const drivers = this.drivers();
+  //   const isLoading = this.kpisLoadingState.isLoading();
+  //   const alreadyProcessed = this.kpisDataProcessed();
+  //   
+  //   if (drivers.length > 0 && isLoading && !this.sequentialState.kpisError() && !alreadyProcessed) {
+  //     if (this.kpisEffectTimeoutId) {
+  //       clearTimeout(this.kpisEffectTimeoutId);
+  //     }
+  //     this.kpisDataProcessed.set(true);
+  //     this.kpisEffectTimeoutId = setTimeout(() => {
+  //       this.kpisLoadingState.setDataLoaded();
+  //       setTimeout(() => {
+  //         this.sequentialState.setKPIsReady(false);
+  //       }, 50);
+  //       this.kpisEffectTimeoutId = null;
+  //     }, 300);
+  //   } else if (this.sequentialState.kpisError() && isLoading && !alreadyProcessed) {
+  //     this.kpisDataProcessed.set(true);
+  //     this.kpisLoadingState.setDataLoaded();
+  //   }
+  // });
+  //
+  // private skeletonContentSyncEffect = effect(() => {
+  //   const canShowContent = this.sequentialState.canShowContent();
+  //   const showSkeleton = this.driversLoadingState.showSkeleton();
+  //   const isSkeletonExiting = this.driversLoadingState.isSkeletonExiting();
+  //   
+  //   if (canShowContent && showSkeleton && !isSkeletonExiting) {
+  //     // Lógica de sincronización
+  //   }
+  // });
+  // ============================================
 
   // Función para reintentar carga
   retryLoad(): void {
@@ -317,11 +398,71 @@ export class DriversList implements OnInit {
     };
   }
 
+  private isFirstLoad = true;
+
   ngOnInit(): void {
-    // Los estados de carga ya se iniciaron en la inicialización
-    // Los datos se cargan automáticamente con toSignal
-    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
+    // Suscribirse a eventos de navegación para resetear estados cuando se vuelve a la página
+    this.navigationSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        // Si la URL es la de conductores y no es la primera carga, resetear estados de carga
+        const isDriversRoute = event.url === '/choferes' || event.url.startsWith('/choferes');
+        if (isDriversRoute && !this.isFirstLoad) {
+          this.resetLoadingStates();
+        }
+        this.isFirstLoad = false;
+      });
   }
+
+  ngOnDestroy(): void {
+    if (this.navigationSubscription) {
+      this.navigationSubscription.unsubscribe();
+    }
+  }
+
+  private resetLoadingStates(): void {
+    // Resetear estados de carga secuencial
+    this.sequentialState.reset();
+    this.sequentialState.resetErrors();
+    
+    // Reiniciar estados de carga - esto activará los skeletons
+    // Simple y directo, como en driver-detail
+    this.kpisLoadingState.setLoading(true);
+    this.driversLoadingState.setLoading(true);
+  }
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // private resetLoadingStates(): void {
+  //   // Cancelar timeouts pendientes
+  //   if (this.driversEffectTimeoutId) {
+  //     clearTimeout(this.driversEffectTimeoutId);
+  //     this.driversEffectTimeoutId = null;
+  //   }
+  //   if (this.kpisEffectTimeoutId) {
+  //     clearTimeout(this.kpisEffectTimeoutId);
+  //     this.kpisEffectTimeoutId = null;
+  //   }
+  //   
+  //   // Resetear flags de procesamiento
+  //   this.driversDataProcessed.set(false);
+  //   this.kpisDataProcessed.set(false);
+  //   
+  //   // Resetear estados de carga secuencial primero
+  //   this.sequentialState.reset();
+  //   this.sequentialState.resetErrors();
+  //   
+  //   // Reiniciar estados de carga con delays complejos
+  //   setTimeout(() => {
+  //     this.kpisLoadingState.setLoading(true);
+  //     this.driversLoadingState.setLoading(true);
+  //     setTimeout(() => {
+  //       // Lógica compleja innecesaria
+  //     }, 100);
+  //   }, 0);
+  // }
+  // ============================================
 
   onViewModeChange(mode: DriverViewMode): void {
     this.viewMode.set(mode);

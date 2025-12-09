@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, computed, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed, signal, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -295,7 +295,7 @@ import { CommonModule } from '@angular/common';
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LoadingSkeleton {
+export class LoadingSkeleton implements OnInit {
   /**
    * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form, machine-list
    * @default 'card'
@@ -327,6 +327,11 @@ export class LoadingSkeleton {
     }
     return false;
   });
+
+  ngOnInit(): void {
+    // Resetear hasEntered cuando el componente se inicializa para asegurar que la animación se muestre
+    this.hasEntered.set(false);
+  }
 
   /**
    * Cantidad de elementos a mostrar (para table, list, text)

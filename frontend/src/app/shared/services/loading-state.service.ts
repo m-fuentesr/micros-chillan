@@ -266,17 +266,26 @@ export class LoadingStateService {
             checkIntervalId = null;
           }
           
+          // Limpiar timeout de contenido previo si existe
+          if (contentTimeoutId) {
+            clearTimeout(contentTimeoutId);
+            contentTimeoutId = null;
+          }
+          
           checkIntervalId = setInterval(() => {
             if (canShowKPIs()) {
+              // Limpiar interval cuando los KPIs estén listos
               if (checkIntervalId) {
                 clearInterval(checkIntervalId);
                 checkIntervalId = null;
               }
+              
               // Limpiar timeout de seguridad si existe
               if (maxWaitTimeoutId) {
                 clearTimeout(maxWaitTimeoutId);
                 maxWaitTimeoutId = null;
               }
+              
               // Mostrar contenido después de que los KPIs sean visibles
               if (contentTimeoutId) {
                 clearTimeout(contentTimeoutId);
@@ -286,6 +295,8 @@ export class LoadingStateService {
                   canShowContent.set(true);
                   config?.onContentReady?.();
                 }
+                // Limpiar timeout después de ejecutarse
+                contentTimeoutId = null;
               }, contentDelay);
             }
           }, 50);
@@ -294,14 +305,25 @@ export class LoadingStateService {
           // Solo crear si no existe ya
           if (!maxWaitTimeoutId) {
             maxWaitTimeoutId = setTimeout(() => {
+              // Limpiar interval si aún está activo
               if (checkIntervalId) {
                 clearInterval(checkIntervalId);
                 checkIntervalId = null;
               }
+              
+              // Limpiar timeout de contenido si existe
+              if (contentTimeoutId) {
+                clearTimeout(contentTimeoutId);
+                contentTimeoutId = null;
+              }
+              
               if (!canShowContent()) {
                 canShowContent.set(true);
                 config?.onContentReady?.();
               }
+              
+              // Limpiar timeout de seguridad después de ejecutarse
+              maxWaitTimeoutId = null;
             }, maxWaitTime);
           }
         } else {
@@ -311,11 +333,20 @@ export class LoadingStateService {
             clearTimeout(contentTimeoutId);
             contentTimeoutId = null;
           }
+          
+          // Limpiar interval si existe (no debería, pero por seguridad)
+          if (checkIntervalId) {
+            clearInterval(checkIntervalId);
+            checkIntervalId = null;
+          }
+          
           contentTimeoutId = setTimeout(() => {
             if (!canShowContent()) {
               canShowContent.set(true);
               config?.onContentReady?.();
             }
+            // Limpiar timeout después de ejecutarse
+            contentTimeoutId = null;
           }, contentDelay);
         }
       }

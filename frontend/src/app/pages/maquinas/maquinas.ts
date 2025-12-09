@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Router, RouterLink, NavigationEnd } from '@angular/router';
+import { filter, Subscription } from 'rxjs';
 import { MachineService } from '../../shared/services/machine.service';
 import { MachineKPIs } from '../../shared/machines/machine-kpis/machine-kpis';
 import { MachineFilters } from '../../shared/machines/machine-filters/machine-filters';
@@ -40,6 +41,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
         @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
+          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
           <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
             @for (i of [1,2,3,4]; track i) {
               <app-loading-skeleton 
@@ -82,6 +84,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
         @if (!sequentialState.canShowContent()) {
           <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
           @if (machinesLoadingState.isLoading() && !sequentialState.contentError()) {
+            <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
             <app-loading-skeleton 
               type="machine-list" 
               [count]="6"
@@ -105,7 +108,8 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
             <!-- Mantener skeleton visible hasta que canShowContent sea true -->
             <app-loading-skeleton 
               type="machine-list" 
-              [count]="6" />
+              [count]="6"
+              [isExiting]="machinesLoadingState.isSkeletonExiting()" />
           }
         } @else {
           <!-- Solo renderizar el componente cuando canShowContent es true -->
@@ -163,24 +167,36 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class Maquinas implements OnInit {
+export class Maquinas implements OnInit, OnDestroy {
   private machineService = inject(MachineService);
   private loadingStateService = inject(LoadingStateService);
+  private router = inject(Router);
+  private navigationSubscription?: Subscription;
 
   viewMode = signal<ViewMode>('cards');
   statusFilter = signal<StatusFilter>('all');
   documentFilter = signal<DocumentFilter>('all');
   
-  // Estados de carga con umbral de 200ms
+  // Estados de carga simplificados (siguiendo patrón de driver-detail)
   kpisLoadingState = this.loadingStateService.createLoadingState();
   machinesLoadingState = this.loadingStateService.createLoadingState();
   
-  // Estado de carga secuencial coordinado
+  // Estado de carga secuencial coordinado (para animaciones suaves)
   sequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // Flags para prevenir múltiples ejecuciones de effects
+  // private machinesEffectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  // private kpisEffectTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  // private machinesDataProcessed = signal(false);
+  // private kpisDataProcessed = signal(false);
+  // ============================================
 
   constructor() {
     // Iniciar estados de carga inmediatamente, antes del primer render
@@ -233,13 +249,16 @@ export class Maquinas implements OnInit {
     return kpisData ?? this.calculateMockKPIs();
   });
 
-  // Effects para detectar cuando los datos están listos y coordinar la aparición
+  // Effects simplificados (siguiendo patrón de driver-detail)
+  // Directos y sin delays artificiales - más simple y confiable
   private machinesEffect = effect(() => {
     const machines = this.machines();
     const isLoading = this.machinesLoadingState.isLoading();
     
+    // Cuando hay datos y está cargando, marcar como cargado directamente
     if (machines.length > 0 && isLoading && !this.sequentialState.contentError()) {
       this.machinesLoadingState.setDataLoaded();
+      // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
         this.sequentialState.setContentReady(false);
       }, 50);
@@ -252,8 +271,10 @@ export class Maquinas implements OnInit {
     const kpis = this.kpisData();
     const isLoading = this.kpisLoadingState.isLoading();
     
+    // Cuando hay datos y está cargando, marcar como cargado directamente
     if (kpis !== null && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
+      // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
         this.sequentialState.setKPIsReady(false);
       }, 50);
@@ -261,6 +282,67 @@ export class Maquinas implements OnInit {
       this.kpisLoadingState.setDataLoaded();
     }
   });
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // Effects con flags y timeouts complejos
+  // private machinesEffect = effect(() => {
+  //   const machines = this.machines();
+  //   const isLoading = this.machinesLoadingState.isLoading();
+  //   const alreadyProcessed = this.machinesDataProcessed();
+  //   
+  //   if (machines.length > 0 && isLoading && !this.sequentialState.contentError() && !alreadyProcessed) {
+  //     if (this.machinesEffectTimeoutId) {
+  //       clearTimeout(this.machinesEffectTimeoutId);
+  //     }
+  //     this.machinesDataProcessed.set(true);
+  //     this.machinesEffectTimeoutId = setTimeout(() => {
+  //       this.machinesLoadingState.setDataLoaded();
+  //       setTimeout(() => {
+  //         this.sequentialState.setContentReady(false);
+  //       }, 50);
+  //       this.machinesEffectTimeoutId = null;
+  //     }, 300);
+  //   } else if (this.sequentialState.contentError() && isLoading && !alreadyProcessed) {
+  //     this.machinesDataProcessed.set(true);
+  //     this.machinesLoadingState.setDataLoaded();
+  //   }
+  // });
+  //
+  // private kpisEffect = effect(() => {
+  //   const kpis = this.kpisData();
+  //   const isLoading = this.kpisLoadingState.isLoading();
+  //   const alreadyProcessed = this.kpisDataProcessed();
+  //   
+  //   if (kpis !== null && isLoading && !this.sequentialState.kpisError() && !alreadyProcessed) {
+  //     if (this.kpisEffectTimeoutId) {
+  //       clearTimeout(this.kpisEffectTimeoutId);
+  //     }
+  //     this.kpisDataProcessed.set(true);
+  //     this.kpisEffectTimeoutId = setTimeout(() => {
+  //       this.kpisLoadingState.setDataLoaded();
+  //       setTimeout(() => {
+  //         this.sequentialState.setKPIsReady(false);
+  //       }, 50);
+  //       this.kpisEffectTimeoutId = null;
+  //     }, 300);
+  //   } else if (this.sequentialState.kpisError() && isLoading && !alreadyProcessed) {
+  //     this.kpisDataProcessed.set(true);
+  //     this.kpisLoadingState.setDataLoaded();
+  //   }
+  // });
+  //
+  // private skeletonContentSyncEffect = effect(() => {
+  //   const canShowContent = this.sequentialState.canShowContent();
+  //   const showSkeleton = this.machinesLoadingState.showSkeleton();
+  //   const isSkeletonExiting = this.machinesLoadingState.isSkeletonExiting();
+  //   
+  //   if (canShowContent && showSkeleton && !isSkeletonExiting) {
+  //     // Lógica de sincronización
+  //   }
+  // });
+  // ============================================
 
   // Función para reintentar carga
   retryLoad(): void {
@@ -331,11 +413,71 @@ export class Maquinas implements OnInit {
   });
 
 
+  private isFirstLoad = true;
+
   ngOnInit(): void {
-    // Los estados de carga ya se iniciaron en la inicialización
-    // Los datos se cargan automáticamente con toSignal
-    // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
+    // Suscribirse a eventos de navegación para resetear estados cuando se vuelve a la página
+    this.navigationSubscription = this.router.events
+      .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
+      .subscribe((event: NavigationEnd) => {
+        // Si la URL es la de máquinas y no es la primera carga, resetear estados de carga
+        const isMachinesRoute = event.url === '/maquinas' || event.url.startsWith('/maquinas');
+        if (isMachinesRoute && !this.isFirstLoad) {
+          this.resetLoadingStates();
+        }
+        this.isFirstLoad = false;
+      });
   }
+
+  ngOnDestroy(): void {
+    if (this.navigationSubscription) {
+      this.navigationSubscription.unsubscribe();
+    }
+  }
+
+  private resetLoadingStates(): void {
+    // Resetear estados de carga secuencial
+    this.sequentialState.reset();
+    this.sequentialState.resetErrors();
+    
+    // Reiniciar estados de carga - esto activará los skeletons
+    // Simple y directo, como en driver-detail
+    this.kpisLoadingState.setLoading(true);
+    this.machinesLoadingState.setLoading(true);
+  }
+  
+  // ============================================
+  // CÓDIGO ANTIGUO - COMENTADO (complejidad innecesaria)
+  // ============================================
+  // private resetLoadingStates(): void {
+  //   // Cancelar timeouts pendientes
+  //   if (this.machinesEffectTimeoutId) {
+  //     clearTimeout(this.machinesEffectTimeoutId);
+  //     this.machinesEffectTimeoutId = null;
+  //   }
+  //   if (this.kpisEffectTimeoutId) {
+  //     clearTimeout(this.kpisEffectTimeoutId);
+  //     this.kpisEffectTimeoutId = null;
+  //   }
+  //   
+  //   // Resetear flags de procesamiento
+  //   this.machinesDataProcessed.set(false);
+  //   this.kpisDataProcessed.set(false);
+  //   
+  //   // Resetear estados de carga secuencial primero
+  //   this.sequentialState.reset();
+  //   this.sequentialState.resetErrors();
+  //   
+  //   // Reiniciar estados de carga con delays complejos
+  //   setTimeout(() => {
+  //     this.kpisLoadingState.setLoading(true);
+  //     this.machinesLoadingState.setLoading(true);
+  //     setTimeout(() => {
+  //       // Lógica compleja innecesaria
+  //     }, 100);
+  //   }, 0);
+  // }
+  // ============================================
 
   onViewModeChange(mode: ViewMode): void {
     this.viewMode.set(mode);
