@@ -111,6 +111,8 @@ async def list_drivers(estado: str | None):
         query = query.eq("estado", "activo")
     elif estado == "inactivos":
         query = query.eq("estado", "inactivo")
+    elif estado == "eliminados":
+        query = query.eq("estado", "eliminado")
     # si viene "todos" o None, no filtramos
 
     res = query.execute()
@@ -383,7 +385,7 @@ async def update_driver(driver_id: int, data):
         raise HTTPException(400, "Error actualizando correo del usuario")
 
     # ---------------------------------------------------------
-    # 4. Manejo de asignación de máquina
+    # 2.3 Manejo de asignación de máquina
     # ---------------------------------------------------------
     hoy = date.today().isoformat()
 
@@ -696,3 +698,113 @@ async def create_driver(data: DriverCreate):
         # supabase.auth.admin.delete_user(supabase_uid)
         # si quieres mantener consistencia total entre Auth y DB.
         raise
+
+
+async def delete_driver(driver_id: int):
+    """
+    Elimina la cuenta del chofer:
+    - Desasigna la máquina si la tiene
+    - Elimina su usuario interno (tabla usuarios)
+    - Elimina su cuenta en Supabase Auth
+    - Marca el chofer como 'eliminado'
+
+    Nota: No se eliminan registros diarios, liquidaciones ni historial.
+    """
+
+    # ---------------------------------------------------------
+    # 1) Verificar existencia del chofer
+    # ---------------------------------------------------------
+    chofer_res = (
+        supabase.table("choferes")
+        .select("id, estado")
+        .eq("id", driver_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(chofer_res, "error", None):
+        raise HTTPException(404, "Chofer no encontrado")
+
+    # ---------------------------------------------------------
+    # 2) Obtener usuario asociado (si existe)
+    # ---------------------------------------------------------
+    usr_res = (
+        supabase.table("usuarios")
+        .select("id, supabase_uid")
+        .eq("chofer_id", driver_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if getattr(usr_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo usuario asociado: {usr_res.error}")
+
+    usuario_id = None
+    supabase_uid = None
+
+    if usr_res.data:
+        usuario_id = usr_res.data["id"]
+        supabase_uid = usr_res.data["supabase_uid"]
+
+    # ---------------------------------------------------------
+    # 3) Desasignar máquina actual (fecha_termino = hoy)
+    # ---------------------------------------------------------
+    hoy = date.today().isoformat()
+
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("id")
+        .eq("chofer_id", driver_id)
+        .is_("fecha_termino", None)
+        .maybe_single()
+        .execute()
+    )
+
+    if getattr(asign_raw, "error", None):
+        raise HTTPException(400, f"Error buscando asignación activa: {asign_raw.error}")
+
+    if asign_raw.data:
+        # Cerrar asignación
+        supabase.table("asignaciones_chofer_maquina").update(
+            {"fecha_termino": hoy}
+        ).eq("id", asign_raw.data["id"]).execute()
+
+    # ---------------------------------------------------------
+    # 4) Eliminar usuario interno (tabla usuarios)
+    # ---------------------------------------------------------
+    if usuario_id:
+        del_usr = (
+            supabase.table("usuarios")
+            .delete()
+            .eq("id", usuario_id)
+            .execute()
+        )
+
+        if getattr(del_usr, "error", None):
+            raise HTTPException(400, f"Error eliminando usuario interno: {del_usr.error}")
+
+    # ---------------------------------------------------------
+    # 5) Eliminar cuenta en Supabase Auth
+    # ---------------------------------------------------------
+    if supabase_uid:
+        try:
+            supabase.auth.admin.delete_user(supabase_uid)
+        except Exception as e:
+            # Mantener sistema consistente: el usuario interno ya fue eliminado,
+            # pero Auth falló. El chofer seguirá sin acceso igualmente.
+            raise HTTPException(400, f"Error eliminando usuario en Auth: {e}")
+
+    # ---------------------------------------------------------
+    # 6) Marcar chofer como 'eliminado'
+    # ---------------------------------------------------------
+    upd_ch = (
+        supabase.table("choferes")
+        .update({"estado": "eliminado"})
+        .eq("id", driver_id)
+        .execute()
+    )
+
+    if getattr(upd_ch, "error", None):
+        raise HTTPException(400, f"Error marcando chofer como eliminado: {upd_ch.error}")
+
+    return {"message": "Chofer eliminado correctamente"}

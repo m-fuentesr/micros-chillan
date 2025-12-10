@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Body, Depends
+from fastapi import APIRouter, Depends
 
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
