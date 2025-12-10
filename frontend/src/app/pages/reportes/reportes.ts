@@ -7,6 +7,7 @@ import { ReportsService } from '../../shared/services/reports.service';
 import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 
 interface MachineProfit {
@@ -30,7 +31,7 @@ interface DriverProfit {
 
 @Component({
   selector: 'app-reportes',
-  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, BusIcon],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -47,52 +48,46 @@ interface DriverProfit {
 
       <!-- Barra de Comandos: Tabs -->
       <div class="border-b border-base-200 pb-4 mb-6">
-        <!-- Segmented Control (Tabs) - Carrusel horizontal en móvil -->
-        <div class="flex overflow-x-auto gap-2 px-4 lg:px-0 scrollbar-hide items-center">
-          <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1 lg:min-w-0">
+        <!-- Tabs estilo boxed con scroll horizontal en móvil -->
+        <div class="overflow-x-auto scrollbar-hide -mx-4 lg:mx-0 px-4 lg:px-0">
+          <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1 inline-flex min-w-full lg:min-w-0">
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
-              [class.bg-white]="activeTab() === 'profit'"
-              [class.shadow-sm]="activeTab() === 'profit'"
-              [class.text-primary]="activeTab() === 'profit'"
-              [class.text-base-content/60]="activeTab() !== 'profit'"
-              [class.hover:bg-base-200]="activeTab() !== 'profit'"
-              [class.bg-transparent]="activeTab() !== 'profit'"
+              type="button"
+              class="tab h-11 px-4 sm:px-5 font-semibold transition-all rounded-lg flex items-center gap-2 whitespace-nowrap"
+              [class.tab-active]="activeTab() === 'profit'"
+              [class.bg-primary]="activeTab() === 'profit'"
+              [class.text-primary-content]="activeTab() === 'profit'"
               (click)="activeTab.set('profit')">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
               </svg>
-              <span class="text-xs lg:text-sm">Rentabilidad por Máquina</span>
+              <span class="text-xs sm:text-sm">Rentabilidad por Máquina</span>
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
-              [class.bg-white]="activeTab() === 'revenue'"
-              [class.shadow-sm]="activeTab() === 'revenue'"
-              [class.text-primary]="activeTab() === 'revenue'"
-              [class.text-base-content/60]="activeTab() !== 'revenue'"
-              [class.hover:bg-base-200]="activeTab() !== 'revenue'"
-              [class.bg-transparent]="activeTab() !== 'revenue'"
+              type="button"
+              class="tab h-11 px-4 sm:px-5 font-semibold transition-all rounded-lg flex items-center gap-2 whitespace-nowrap"
+              [class.tab-active]="activeTab() === 'revenue'"
+              [class.bg-primary]="activeTab() === 'revenue'"
+              [class.text-primary-content]="activeTab() === 'revenue'"
               (click)="activeTab.set('revenue')">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
               </svg>
-              <span class="text-xs lg:text-sm">Ranking de Ingresos</span>
+              <span class="text-xs sm:text-sm">Ranking de Ingresos</span>
             </button>
 
             <button
-              class="btn btn-sm h-9 px-3 lg:px-4 rounded-lg border-none transition-all font-normal gap-2 flex-nowrap whitespace-nowrap flex-shrink-0"
-              [class.bg-white]="activeTab() === 'driver'"
-              [class.shadow-sm]="activeTab() === 'driver'"
-              [class.text-primary]="activeTab() === 'driver'"
-              [class.text-base-content/60]="activeTab() !== 'driver'"
-              [class.hover:bg-base-200]="activeTab() !== 'driver'"
-              [class.bg-transparent]="activeTab() !== 'driver'"
+              type="button"
+              class="tab h-11 px-4 sm:px-5 font-semibold transition-all rounded-lg flex items-center gap-2 whitespace-nowrap"
+              [class.tab-active]="activeTab() === 'driver'"
+              [class.bg-primary]="activeTab() === 'driver'"
+              [class.text-primary-content]="activeTab() === 'driver'"
               (click)="activeTab.set('driver')">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
               </svg>
-              <span class="text-xs lg:text-sm">Rentabilidad por Chofer</span>
+              <span class="text-xs sm:text-sm">Rentabilidad por Chofer</span>
             </button>
           </div>
         </div>
@@ -135,7 +130,7 @@ interface DriverProfit {
               </div>
 
               <!-- Gráfico -->
-              <div class="relative h-64 lg:h-80 w-full" appLazyChart #profitChart="lazyChart">
+              <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #profitChart="lazyChart">
                 @if (profitChart.isVisible()) {
                   <canvas baseChart
                     [data]="profitChartData()"
@@ -152,45 +147,123 @@ interface DriverProfit {
               </div>
 
               <!-- Tabla Financiera Desktop -->
-              <div class="hidden lg:block overflow-x-auto">
+              <div class="hidden lg:block">
                 @if (profitLoadingState.showSkeleton() && profitLoadingState.isLoading()) {
                   <app-loading-skeleton 
                     type="table" 
                     [count]="5"
                     [isExiting]="profitLoadingState.isSkeletonExiting()" />
                 } @else {
-                  <table class="table w-full data-table">
-                  <thead class="bg-base-200">
-                    <tr>
-                      <th class="w-16">Rank</th>
-                      <th>Máquina</th>
-                      <th class="text-right">Ingreso Total ($)</th>
-                      <th class="text-right">Costo Diésel ($)</th>
-                      <th class="text-right">Pago Choferes ($)</th>
-                      <th class="text-right">Mantenimiento ($)</th>
-                      <th class="text-right">Ganancia Neta ($)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (item of machinesData(); track item.rank) {
-                      <tr class="hover">
-                        <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
-                        <td><strong>{{ item.machine }}</strong></td>
-                        <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums text-base-content/70">{{ item.driverPayment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums text-base-content/70">
-                          @if (item.maintenance !== null) {
-                            {{ item.maintenance | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                          } @else {
-                            <span class="text-base-content/40">-</span>
-                          }
-                        </td>
-                        <td class="text-right tabular-nums font-bold text-primary bg-primary/5">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                  <div class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
+                      <div class="flex items-center gap-2">
+                        <span class="badge badge-primary badge-outline text-xs">Ranking</span>
+                        <span class="text-sm font-semibold text-base-content">Rentabilidad por máquina</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-base-content/70">
+                        <span class="badge badge-ghost border-base-200">Periodo: {{ selectedPeriod() }}</span>
+                        <span class="badge badge-outline border-base-200">{{ sortedMachines().length }} registros</span>
+                      </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                      <table class="table w-full data-table min-w-[960px]">
+                      <thead class="bg-base-50">
+                        <tr>
+                          <th class="w-16">
+                            <button type="button" class="flex items-center gap-1" (click)="toggleProfitSort('rank')">
+                              Rank
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'rank'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th>
+                            <button type="button" class="flex items-center gap-1" (click)="toggleProfitSort('machine')">
+                              Máquina
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'machine'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleProfitSort('income')">
+                              Ingreso Total ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'income'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleProfitSort('dieselCost')">
+                              Costo Diésel ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'dieselCost'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleProfitSort('driverPayment')">
+                              Pago Choferes ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'driverPayment'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleProfitSort('maintenance')">
+                              Mantenimiento ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'maintenance'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleProfitSort('netProfit')">
+                              Ganancia Neta ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="profitSort().field !== 'netProfit'" [class.rotate-180]="profitSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (item of profitVisibleMachines(); track item.rank) {
+                          <tr class="hover">
+                            <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
+                            <td>
+                              <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
+                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                </div>
+                                <strong class="leading-tight">{{ item.machine }}</strong>
+                              </div>
+                            </td>
+                            <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums text-base-content/70">{{ item.driverPayment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums text-base-content/70">
+                              @if (item.maintenance !== null) {
+                                {{ item.maintenance | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                              } @else {
+                                <span class="text-base-content/40">-</span>
+                              }
+                            </td>
+                            <td class="text-right tabular-nums font-bold text-primary bg-primary/5">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="7">
+                              <div class="py-10 text-center text-base-content/60">
+                                Sin resultados. Ajusta los filtros o búsqueda.
+                              </div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
                 }
               </div>
 
@@ -203,15 +276,18 @@ interface DriverProfit {
                       [isExiting]="profitLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
-                  @for (item of machinesData(); track item.rank) {
+                  @for (item of profitVisibleMachines(); track item.rank) {
                   <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                     <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
                     <div class="pl-2">
                       <div class="flex justify-between items-start mb-3">
-                        <div>
+                        <div class="flex items-center gap-3">
+                          <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2">
-                            <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
-                            <h3 class="font-bold text-lg">{{ item.machine }}</h3>
+                            <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
+                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                            </div>
+                            <h3 class="font-bold text-lg leading-tight">{{ item.machine }}</h3>
                           </div>
                         </div>
                         <div class="text-right">
@@ -243,8 +319,32 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
+                  } @empty {
+                    <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      Sin resultados. Ajusta los filtros.
+                    </div>
                   }
                 }
+              </div>
+
+              <!-- Paginación -->
+              <div class="flex items-center justify-between text-xs text-base-content/60 px-1">
+                <span>
+                  @if (sortedMachines().length === 0) {
+                    Sin resultados
+                  } @else {
+                    Mostrando {{ profitStartRecord() }}-{{ profitEndRecord() }} de {{ sortedMachines().length }} registros
+                  }
+                </span>
+                <div class="flex items-center gap-2">
+                  <div class="join">
+                    <button class="join-item btn btn-xs" (click)="changeProfitPage(profitPage() - 1)" [disabled]="profitPage() === 1">«</button>
+                    @for (page of profitPages(); track page) {
+                      <button class="join-item btn btn-xs" [class.btn-active]="page === profitPage()" (click)="changeProfitPage(page)">{{ page }}</button>
+                    }
+                    <button class="join-item btn btn-xs" (click)="changeProfitPage(profitPage() + 1)" [disabled]="profitPage() === profitTotalPages()">»</button>
+                  </div>
+                </div>
               </div>
             </div>
           }
@@ -283,7 +383,7 @@ interface DriverProfit {
               </div>
 
               <!-- Gráfico -->
-              <div class="relative h-64 lg:h-80 w-full" appLazyChart #revenueChart="lazyChart">
+              <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #revenueChart="lazyChart">
                 @if (revenueChart.isVisible()) {
                   <canvas baseChart
                     [data]="revenueChartData()"
@@ -300,31 +400,79 @@ interface DriverProfit {
               </div>
 
               <!-- Tabla de Ingresos Desktop -->
-              <div class="hidden lg:block overflow-x-auto">
+              <div class="hidden lg:block">
                 @if (revenueLoadingState.showSkeleton() && revenueLoadingState.isLoading()) {
                   <app-loading-skeleton 
                     type="table" 
                     [count]="5"
                     [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                 } @else {
-                  <table class="table w-full data-table">
-                  <thead class="bg-base-200">
-                    <tr>
-                      <th class="w-16">Ranking</th>
-                      <th>Nº Máquina</th>
-                      <th class="text-right">Ingreso Total ($)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (item of revenueRankingData(); track item.rank) {
-                      <tr class="hover">
-                        <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
-                        <td><strong>{{ item.machine }}</strong></td>
-                        <td class="text-right tabular-nums font-bold text-primary">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                  <div class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
+                      <div class="flex items-center gap-2">
+                        <span class="badge badge-success badge-outline text-xs">Ranking</span>
+                        <span class="text-sm font-semibold text-base-content">Ingresos por máquina</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-base-content/70">
+                        <span class="badge badge-ghost border-base-200">Periodo: {{ selectedPeriod() }}</span>
+                        <span class="badge badge-outline border-base-200">{{ sortedRevenue().length }} registros</span>
+                      </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                      <table class="table w-full data-table min-w-[720px]">
+                      <thead class="bg-base-50">
+                        <tr>
+                          <th class="w-16">
+                            <button type="button" class="flex items-center gap-1" (click)="toggleRevenueSort('rank')">
+                              Ranking
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="revenueSort().field !== 'rank'" [class.rotate-180]="revenueSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th>
+                            <button type="button" class="flex items-center gap-1" (click)="toggleRevenueSort('machine')">
+                              Nº Máquina
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="revenueSort().field !== 'machine'" [class.rotate-180]="revenueSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleRevenueSort('income')">
+                              Ingreso Total ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="revenueSort().field !== 'income'" [class.rotate-180]="revenueSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (item of revenueVisible(); track item.rank) {
+                          <tr class="hover">
+                            <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
+                            <td>
+                              <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
+                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                </div>
+                                <strong class="leading-tight">{{ item.machine }}</strong>
+                              </div>
+                            </td>
+                            <td class="text-right tabular-nums font-bold text-primary">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="3">
+                              <div class="py-8 text-center text-base-content/60">Sin resultados. Ajusta los filtros.</div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
                 }
               </div>
 
@@ -337,15 +485,18 @@ interface DriverProfit {
                       [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
-                  @for (item of revenueRankingData(); track item.rank) {
+                  @for (item of revenueVisible(); track item.rank) {
                   <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                     <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-success]="item.rank === 1" [class.bg-success/70]="item.rank === 2" [class.bg-success/50]="item.rank > 2"></div>
                     <div class="pl-2">
                       <div class="flex justify-between items-start">
-                        <div>
+                        <div class="flex items-center gap-3">
+                          <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2">
-                            <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
-                            <h3 class="font-bold text-lg">{{ item.machine }}</h3>
+                            <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
+                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                            </div>
+                            <h3 class="font-bold text-lg leading-tight">{{ item.machine }}</h3>
                           </div>
                         </div>
                         <div class="text-right">
@@ -355,8 +506,32 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
+                  } @empty {
+                    <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      Sin resultados. Ajusta los filtros.
+                    </div>
                   }
                 }
+              </div>
+
+              <!-- Paginación -->
+              <div class="flex items-center justify-between text-xs text-base-content/60 px-1">
+                <span>
+                  @if (sortedRevenue().length === 0) {
+                    Sin resultados
+                  } @else {
+                    Mostrando {{ revenueStartRecord() }}-{{ revenueEndRecord() }} de {{ sortedRevenue().length }} registros
+                  }
+                </span>
+                <div class="flex items-center gap-2">
+                  <div class="join">
+                    <button class="join-item btn btn-xs" (click)="changeRevenuePage(revenuePage() - 1)" [disabled]="revenuePage() === 1">«</button>
+                    @for (page of revenuePages(); track page) {
+                      <button class="join-item btn btn-xs" [class.btn-active]="page === revenuePage()" (click)="changeRevenuePage(page)">{{ page }}</button>
+                    }
+                    <button class="join-item btn btn-xs" (click)="changeRevenuePage(revenuePage() + 1)" [disabled]="revenuePage() === revenueTotalPages()">»</button>
+                  </div>
+                </div>
               </div>
             </div>
           }
@@ -412,37 +587,99 @@ interface DriverProfit {
               </div>
 
               <!-- Tabla de Choferes Desktop -->
-              <div class="hidden lg:block overflow-x-auto">
+              <div class="hidden lg:block">
                 @if (driverLoadingState.showSkeleton() && driverLoadingState.isLoading()) {
                   <app-loading-skeleton 
                     type="table" 
                     [count]="5"
                     [isExiting]="driverLoadingState.isSkeletonExiting()" />
                 } @else {
-                  <table class="table w-full data-table">
-                  <thead class="bg-base-200">
-                    <tr>
-                      <th class="w-16">Rank</th>
-                      <th>Chofer</th>
-                      <th class="text-right">Ingreso Total ($)</th>
-                      <th class="text-right">Costo Diésel ($)</th>
-                      <th class="text-right">Pago Chofer ($)</th>
-                      <th class="text-right">Ganancia Neta ($)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (item of driversData(); track item.rank) {
-                      <tr class="hover">
-                        <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
-                        <td><strong>{{ item.driver }}</strong></td>
-                        <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums text-base-content/70">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                        <td class="text-right tabular-nums font-bold text-primary bg-primary/5">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                      </tr>
-                    }
-                  </tbody>
-                </table>
+                  <div class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
+                      <div class="flex items-center gap-2">
+                        <span class="badge badge-secondary badge-outline text-xs">Ranking</span>
+                        <span class="text-sm font-semibold text-base-content">Rentabilidad por chofer</span>
+                      </div>
+                      <div class="flex items-center gap-2 text-xs text-base-content/70">
+                        <span class="badge badge-ghost border-base-200">Periodo: {{ selectedPeriod() }}</span>
+                        <span class="badge badge-outline border-base-200">{{ sortedDrivers().length }} registros</span>
+                      </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                      <table class="table w-full data-table min-w-[840px]">
+                      <thead class="bg-base-50">
+                        <tr>
+                          <th class="w-16">
+                            <button type="button" class="flex items-center gap-1" (click)="toggleDriverSort('rank')">
+                              Rank
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'rank'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th>
+                            <button type="button" class="flex items-center gap-1" (click)="toggleDriverSort('driver')">
+                              Chofer
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'driver'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleDriverSort('income')">
+                              Ingreso Total ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'income'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleDriverSort('dieselCost')">
+                              Costo Diésel ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'dieselCost'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleDriverSort('payment')">
+                              Pago Chofer ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'payment'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                          <th class="text-right">
+                            <button type="button" class="flex items-center gap-1 ml-auto" (click)="toggleDriverSort('netProfit')">
+                              Ganancia Neta ($)
+                              <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 transition" [class.opacity-0]="driverSort().field !== 'netProfit'" [class.rotate-180]="driverSort().direction === 'desc'" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.24 4.24a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+                              </svg>
+                            </button>
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (item of driverVisible(); track item.rank) {
+                          <tr class="hover">
+                            <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
+                            <td><strong>{{ item.driver }}</strong></td>
+                            <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums text-base-content/70">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                            <td class="text-right tabular-nums font-bold text-primary bg-primary/5">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6">
+                              <div class="py-8 text-center text-base-content/60">Sin resultados. Ajusta los filtros.</div>
+                            </td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
                 }
               </div>
 
@@ -455,7 +692,7 @@ interface DriverProfit {
                       [isExiting]="driverLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
-                  @for (item of driversData(); track item.rank) {
+                  @for (item of driverVisible(); track item.rank) {
                   <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                     <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
                     <div class="pl-2">
@@ -487,8 +724,32 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
+                  } @empty {
+                    <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      Sin resultados. Ajusta los filtros.
+                    </div>
                   }
                 }
+              </div>
+
+              <!-- Paginación -->
+              <div class="flex items-center justify-between text-xs text-base-content/60 px-1">
+                <span>
+                  @if (sortedDrivers().length === 0) {
+                    Sin resultados
+                  } @else {
+                    Mostrando {{ driverStartRecord() }}-{{ driverEndRecord() }} de {{ sortedDrivers().length }} registros
+                  }
+                </span>
+                <div class="flex items-center gap-2">
+                  <div class="join">
+                    <button class="join-item btn btn-xs" (click)="changeDriverPage(driverPage() - 1)" [disabled]="driverPage() === 1">«</button>
+                    @for (page of driverPages(); track page) {
+                      <button class="join-item btn btn-xs" [class.btn-active]="page === driverPage()" (click)="changeDriverPage(page)">{{ page }}</button>
+                    }
+                    <button class="join-item btn btn-xs" (click)="changeDriverPage(driverPage() + 1)" [disabled]="driverPage() === driverTotalPages()">»</button>
+                  </div>
+                </div>
               </div>
             </div>
           }
@@ -568,6 +829,22 @@ export class Reportes implements OnInit {
   revenueLoadingState = this.loadingStateService.createLoadingState();
   driverLoadingState = this.loadingStateService.createLoadingState();
 
+  // Estado de filtros/orden/paginación
+  profitSearch = signal<string>('');
+  profitSort = signal<{ field: keyof MachineProfit; direction: 'asc' | 'desc' }>({ field: 'rank', direction: 'asc' });
+  profitPage = signal(1);
+  profitPageSize = signal(10);
+
+  revenueSearch = signal<string>('');
+  revenueSort = signal<{ field: 'rank' | 'machine' | 'income'; direction: 'asc' | 'desc' }>({ field: 'rank', direction: 'asc' });
+  revenuePage = signal(1);
+  revenuePageSize = signal(10);
+
+  driverSearch = signal<string>('');
+  driverSort = signal<{ field: keyof DriverProfit; direction: 'asc' | 'desc' }>({ field: 'rank', direction: 'asc' });
+  driverPage = signal(1);
+  driverPageSize = signal(10);
+
   // Cargar datos del servicio
   private machineRankingResponse = toSignal(
     this.reportsService.getMachineRanking({
@@ -623,6 +900,24 @@ export class Reportes implements OnInit {
     // Los datos se cargan automáticamente con toSignal
     // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
   }
+
+  private profitPaginationReset = effect(() => {
+    this.profitSearch();
+    this.profitPageSize();
+    this.profitPage.set(1);
+  });
+
+  private revenuePaginationReset = effect(() => {
+    this.revenueSearch();
+    this.revenuePageSize();
+    this.revenuePage.set(1);
+  });
+
+  private driverPaginationReset = effect(() => {
+    this.driverSearch();
+    this.driverPageSize();
+    this.driverPage.set(1);
+  });
 
   // Mapear datos de máquinas desde el servicio
   private rawMachinesData = computed((): MachineProfit[] => {
@@ -692,6 +987,50 @@ export class Reportes implements OnInit {
     return data.length > 0 ? data : this.fallbackMachinesData;
   });
 
+  private compareValues(a: unknown, b: unknown, direction: 'asc' | 'desc'): number {
+    const dir = direction === 'asc' ? 1 : -1;
+    const av = typeof a === 'string' ? a.toLowerCase() : a ?? 0;
+    const bv = typeof b === 'string' ? b.toLowerCase() : b ?? 0;
+    if (av < bv) return -1 * dir;
+    if (av > bv) return 1 * dir;
+    return 0;
+  }
+
+  filteredMachines = computed(() => {
+    const term = this.profitSearch().trim().toLowerCase();
+    if (!term) return this.machinesData();
+    return this.machinesData().filter(item =>
+      item.machine.toLowerCase().includes(term)
+    );
+  });
+
+  sortedMachines = computed(() => {
+    const { field, direction } = this.profitSort();
+    const data = [...this.filteredMachines()];
+    return data.sort((a, b) => this.compareValues(a[field], b[field], direction));
+  });
+
+  profitTotalPages = computed(() => {
+    return Math.max(1, Math.ceil(this.sortedMachines().length / this.profitPageSize()));
+  });
+
+  profitPages = computed(() => Array.from({ length: this.profitTotalPages() }, (_, i) => i + 1));
+
+  profitVisibleMachines = computed(() => {
+    const page = Math.min(this.profitPage(), this.profitTotalPages());
+    const start = (page - 1) * this.profitPageSize();
+    return this.sortedMachines().slice(start, start + this.profitPageSize());
+  });
+
+  profitStartRecord = computed(() => {
+    if (this.sortedMachines().length === 0) return 0;
+    return (Math.min(this.profitPage(), this.profitTotalPages()) - 1) * this.profitPageSize() + 1;
+  });
+
+  profitEndRecord = computed(() => {
+    return Math.min(this.sortedMachines().length, this.profitStartRecord() + this.profitPageSize() - 1);
+  });
+
   totalProfit = computed(() => {
     const data = this.rawMachinesData();
     return data.reduce((sum: number, m: MachineProfit) => sum + m.netProfit, 0);
@@ -713,6 +1052,38 @@ export class Reportes implements OnInit {
         ...item,
         rank: index + 1
       }));
+  });
+
+  filteredRevenue = computed(() => {
+    const term = this.revenueSearch().trim().toLowerCase();
+    const data = [...this.revenueRankingData()];
+    if (!term) return data;
+    return data.filter(item => item.machine.toLowerCase().includes(term));
+  });
+
+  sortedRevenue = computed(() => {
+    const { field, direction } = this.revenueSort();
+    const data = [...this.filteredRevenue()];
+    return data.sort((a, b) => this.compareValues(a[field], b[field], direction));
+  });
+
+  revenueTotalPages = computed(() => Math.max(1, Math.ceil(this.sortedRevenue().length / this.revenuePageSize())));
+
+  revenuePages = computed(() => Array.from({ length: this.revenueTotalPages() }, (_, i) => i + 1));
+
+  revenueVisible = computed(() => {
+    const page = Math.min(this.revenuePage(), this.revenueTotalPages());
+    const start = (page - 1) * this.revenuePageSize();
+    return this.sortedRevenue().slice(start, start + this.revenuePageSize());
+  });
+
+  revenueStartRecord = computed(() => {
+    if (this.sortedRevenue().length === 0) return 0;
+    return (Math.min(this.revenuePage(), this.revenueTotalPages()) - 1) * this.revenuePageSize() + 1;
+  });
+
+  revenueEndRecord = computed(() => {
+    return Math.min(this.sortedRevenue().length, this.revenueStartRecord() + this.revenuePageSize() - 1);
   });
 
   totalIncome = computed(() => {
@@ -874,6 +1245,39 @@ export class Reportes implements OnInit {
       }));
   });
 
+  filteredDrivers = computed(() => {
+    const term = this.driverSearch().trim().toLowerCase();
+    if (!term) return this.driversData();
+    return this.driversData().filter(item =>
+      item.driver.toLowerCase().includes(term)
+    );
+  });
+
+  sortedDrivers = computed(() => {
+    const { field, direction } = this.driverSort();
+    const data = [...this.filteredDrivers()];
+    return data.sort((a, b) => this.compareValues(a[field], b[field], direction));
+  });
+
+  driverTotalPages = computed(() => Math.max(1, Math.ceil(this.sortedDrivers().length / this.driverPageSize())));
+
+  driverPages = computed(() => Array.from({ length: this.driverTotalPages() }, (_, i) => i + 1));
+
+  driverVisible = computed(() => {
+    const page = Math.min(this.driverPage(), this.driverTotalPages());
+    const start = (page - 1) * this.driverPageSize();
+    return this.sortedDrivers().slice(start, start + this.driverPageSize());
+  });
+
+  driverStartRecord = computed(() => {
+    if (this.sortedDrivers().length === 0) return 0;
+    return (Math.min(this.driverPage(), this.driverTotalPages()) - 1) * this.driverPageSize() + 1;
+  });
+
+  driverEndRecord = computed(() => {
+    return Math.min(this.sortedDrivers().length, this.driverStartRecord() + this.driverPageSize() - 1);
+  });
+
   totalDriverProfit = computed(() => {
     const data = this.rawDriversData();
     return data.reduce((sum: number, d: DriverProfit) => sum + d.netProfit, 0);
@@ -965,6 +1369,41 @@ export class Reportes implements OnInit {
       }
     }
   };
+
+  private clampPage(page: number, total: number): number {
+    if (!Number.isFinite(page) || page < 1) return 1;
+    return Math.min(page, Math.max(1, total));
+  }
+
+  toggleProfitSort(field: keyof MachineProfit): void {
+    const current = this.profitSort();
+    const direction = current.field === field && current.direction === 'asc' ? 'desc' : 'asc';
+    this.profitSort.set({ field, direction });
+  }
+
+  changeProfitPage(page: number): void {
+    this.profitPage.set(this.clampPage(page, this.profitTotalPages()));
+  }
+
+  toggleRevenueSort(field: 'rank' | 'machine' | 'income'): void {
+    const current = this.revenueSort();
+    const direction = current.field === field && current.direction === 'asc' ? 'desc' : 'asc';
+    this.revenueSort.set({ field, direction });
+  }
+
+  changeRevenuePage(page: number): void {
+    this.revenuePage.set(this.clampPage(page, this.revenueTotalPages()));
+  }
+
+  toggleDriverSort(field: keyof DriverProfit): void {
+    const current = this.driverSort();
+    const direction = current.field === field && current.direction === 'asc' ? 'desc' : 'asc';
+    this.driverSort.set({ field, direction });
+  }
+
+  changeDriverPage(page: number): void {
+    this.driverPage.set(this.clampPage(page, this.driverTotalPages()));
+  }
 
   // Gráfico de ganancia por máquina (horizontal, premium)
   profitChartData = computed<ChartData<'bar'>>(() => {
