@@ -1,54 +1,95 @@
 ﻿from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import date
 
-#Confirmar pago
-class PaymentConfirmRequest(BaseModel):
+# ==========================================
+# 1. GESTIÓN DE PAGOS SEMANALES (Confirmación y Listado)
+# ==========================================
+
+# Input: Lo que envía el Admin al confirmar un pago (POST)
+class WeeklyPaymentConfirmRequest(BaseModel):
+    # Datos de la transacción
     metodo_pago: str
     fecha_pago: date
-    monto_final_pagado: int
     codigo_transferencia: Optional[str] = None
-#Tabla/lista
-class SettlementResponse(BaseModel):
+    observaciones: Optional[str] = None
+    
+    # Lógica de Garantía (Relevante en última semana)
+    es_ultima_semana: bool = False
+    aplicar_garantia: bool = False  # El Toggle del Frontend
+    
+    # Montos confirmados
+    monto_base_semana: int      # Lo que produjo esta semana
+    monto_bono_final: int       # El bono de ajuste (0 si toggle apagado o semana normal)
+    total_a_pagar: int          # El monto final que sale de caja
+
+# Output: Lo que recibe el Frontend para la tabla de pagos (GET)
+class WeeklyPaymentResponse(BaseModel):
     chofer_id: int
     nombre_chofer: str
+    
+    # Contexto
     mes: int
     anio: int
-    porcentaje_ganado: int
-    sueldo_minimo: int
-    monto_faltante: int
-    total_final: int
+    semana: int
+    es_ultima_semana: bool
+    
+    # Finanzas
+    base_ganado: int            # Producción de ESTA semana
+    acumulado_mes_anterior: int # Suma de semanas anteriores (solo informativo)
+    
+    # Garantía
+    sueldo_minimo_mensual: int
+    ajuste_garantizado_calculado: int # La sugerencia del sistema
+    
+    total_a_pagar: int          # Lo que recibirá el chofer
+    
+    # Estado
+    estado_pago: str            # 'pendiente' / 'pagado'
+    id_pago: Optional[int] = None
 
-    estado_pago: str
-    id_liquidacion: Optional[int] = None
-#Confirmacion Simple
+# Output: Respuesta simple al confirmar (Response)
 class PaymentConfirmResponse(BaseModel):
     message: str
-    liquidacion_id: int
-    estado_pago: str
-#Schemas para ver el total pendientes y nomina
-class PeriodoInfo(BaseModel):
-    mes: int
-    anio: int
+    pago_id: int
+    estado: str
 
-class SettlementsSummaryResponse(BaseModel):
-    periodo: PeriodoInfo
-    count_pendientes: int      
-    total_nomina_mes: int 
-#Resumen del Periodo
+# ==========================================
+# 2. HISTORIAL DE CIERRES (Jerárquico: Mes -> Semanas)
+# ==========================================
+
+# A. Resumen del Mes (La fila principal del historial)
 class HistoryPeriodSummary(BaseModel):
-    periodo_texto: str
+    periodo_texto: str  # Ej: "Octubre 2025"
     mes: int
     anio: int
     total_pagado_mes: int
     fecha_cierre: date
-    estado: str
-#Detalle de choferes ese mes
-class HistoryMonthDetail(BaseModel):
+    estado: str         # "Finalizado"
+
+# --- Estructuras internas para el detalle ---
+
+# Detalle de un pago individual
+class PaymentRefDetail(BaseModel):
     chofer_id: int
-    nombre_completo: str
-    rut: Optional[str] = None
-    fecha_pago: date
-    total_pagado: int
-    metodo_pago: Optional[str] = None
-    codigo_transferencia: Optional[str] = None
+    nombre_chofer: str
+    base: int
+    ajuste: int
+    total: int
+    metodo: str
+    ref: Optional[str] = None
+
+# Grupo Semanal (Contenedor)
+class WeekGroup(BaseModel):
+    numero_semana: int
+    rango_fechas_texto: str # Ej: "Semana 1"
+    total_semana: int
+    pagos: List[PaymentRefDetail]
+
+# B. Respuesta Completa del Detalle Mensual (El reporte final)
+class HistoryMonthDetailResponse(BaseModel):
+    total_liquidado: int
+    cantidad_choferes: int
+    promedio: int
+    estado: str
+    desglose_semanas: List[WeekGroup]
