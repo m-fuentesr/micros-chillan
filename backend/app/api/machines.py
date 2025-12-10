@@ -15,7 +15,8 @@ from app.schemas.machine import (
 )
 from app.schemas.maintenance import (
     MaintenanceRecord,
-    MaintenanceCreate
+    MaintenanceCreate,
+    MaintenanceListResponse
 )
 
 router = APIRouter(prefix="/api/machines", tags=["Machines"])
@@ -120,9 +121,9 @@ async def get_machine_assignments(
     return await machine_service.get_machine_assignments(machine_id, filtro)
 
 # ---------------------------------------------------------
-# 9. LISTAR MANTENIMIENTOS/REPUESTOS DE UNA MÁQUINA (Admin)
+# 9. LISTAR MANTENIMIENTOS/REPUESTOS DE UNA MÁQUINA + RESUMEN (Admin)
 # ---------------------------------------------------------
-@router.get("/{machine_id}/maintenances", response_model=List[MaintenanceRecord])
+@router.get("/{machine_id}/maintenances", response_model=MaintenanceListResponse)
 async def get_machine_maintenances(
     machine_id: int,
     categoria: Optional[str] = None,

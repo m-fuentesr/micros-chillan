@@ -1,6 +1,6 @@
 ﻿from pydantic import BaseModel, Field, field_validator
 from datetime import date
-from typing import Optional
+from typing import List, Optional
 
 
 class MaintenanceRecord(BaseModel):
@@ -10,6 +10,12 @@ class MaintenanceRecord(BaseModel):
     categoria: Optional[str] = None
     costo: float
     numero_documento: Optional[str] = None
+
+
+class MaintenanceListResponse(BaseModel):
+    total_registros: int
+    gasto_mes_actual: float
+    items: List[MaintenanceRecord]
 
 
 class MaintenanceCreate(BaseModel):

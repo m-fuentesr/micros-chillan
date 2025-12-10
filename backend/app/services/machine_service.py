@@ -1,4 +1,5 @@
 ﻿from fastapi import HTTPException
+from calendar import monthrange
 from typing import Optional
 from datetime import date, timedelta
 from app.db.supabase_client import supabase
@@ -678,19 +679,45 @@ async def get_machine_maintenances(
     hasta: Optional[date] = None,
 ):
     """
-    Devuelve todas las compras/mantenimientos asociados a una máquina.
-    Permite filtros por categoría, nombre y fecha.
+    Devuelve:
+    - total_registros: cantidad de resultados filtrados
+    - gasto_mes_actual: suma de costos del mes en curso
+    - items: lista de mantenimientos
     """
 
-    query = supabase.table("v_compras_repuestos") \
-        .select("*") \
-        .eq("maquina_id", machine_id)
+    # ---------------------------------------------------------
+    # 1) Calcular gasto del mes actual
+    # ---------------------------------------------------------
+    hoy = date.today()
+    inicio_mes = hoy.replace(day=1)
+    fin_mes = hoy.replace(day=monthrange(hoy.year, hoy.month)[1])
 
-    # Aplicar filtros dinámicos
+    gasto_raw = (
+        supabase.table("compras_repuestos")
+        .select("costo")
+        .eq("maquina_id", machine_id)
+        .gte("fecha_compra", inicio_mes.isoformat())
+        .lte("fecha_compra", fin_mes.isoformat())
+        .execute()
+    )
+
+    if getattr(gasto_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo gasto mensual: {gasto_raw.error}")
+
+    gasto_mes_actual = sum(r["costo"] for r in gasto_raw.data) if gasto_raw.data else 0
+
+    # ---------------------------------------------------------
+    # 2) Construir el query principal
+    # ---------------------------------------------------------
+    query = (
+        supabase.table("v_compras_repuestos")
+        .select("*")
+        .eq("maquina_id", machine_id)
+    )
+
+    # Categoria
     if categoria:
         categoria_norm = categoria.lower().strip()
-
-        # Normalizar
         categoria_norm = (
             categoria_norm
             .replace("á", "a")
@@ -699,46 +726,59 @@ async def get_machine_maintenances(
             .replace("ó", "o")
             .replace("ú", "u")
         )
-
         if categoria_norm not in ("preventivo", "correctivo"):
             raise HTTPException(400, "Categoría no válida. Use preventivo o correctivo.")
-
         query = query.eq("categoria", categoria_norm)
 
+    # Item
     if item:
         f = item.lower()
-        f_norm = f.replace("á","a").replace("é","e").replace("í","i").replace("ó","o").replace("ú","u")
+        f_norm = (
+            f.replace("á", "a")
+             .replace("é", "e")
+             .replace("í", "i")
+             .replace("ó", "o")
+             .replace("ú", "u")
+        )
         query = query.ilike("item_final_normalizado", f"%{f_norm}%")
 
+    # Fechas
     if desde:
         query = query.gte("fecha_compra", desde.isoformat())
-
     if hasta:
         query = query.lte("fecha_compra", hasta.isoformat())
 
+    # Ejecutar query
     res = query.order("fecha_compra", desc=True).execute()
 
     if getattr(res, "error", None):
         raise HTTPException(400, f"Error obteniendo historial: {res.error}")
 
-    # Ensamblar respuesta limpia
-    output = []
-
+    # ---------------------------------------------------------
+    # 3) Ensamblar items
+    # ---------------------------------------------------------
+    items = []
     for r in res.data:
         nombre_item = r.get("item_final") or "Sin nombre"
+        items.append({
+            "id": r["id"],
+            "fecha": r["fecha_compra"],
+            "item": nombre_item,
+            "categoria": r.get("categoria"),
+            "costo": r.get("costo"),
+            "numero_documento": r.get("numero_documento")
+        })
 
-        output.append(
-            {
-                "id": r["id"],
-                "fecha": r["fecha_compra"],
-                "item": nombre_item,
-                "categoria": r.get("categoria"),
-                "costo": r.get("costo"),
-                "numero_documento": r.get("numero_documento")
-            }
-        )
+    total_registros = len(items)
 
-    return output
+    # ---------------------------------------------------------
+    # 4) Respuesta final
+    # ---------------------------------------------------------
+    return {
+        "total_registros": total_registros,
+        "gasto_mes_actual": gasto_mes_actual,
+        "items": items
+    }
 
 
 async def create_machine_maintenance(machine_id: int, data):
