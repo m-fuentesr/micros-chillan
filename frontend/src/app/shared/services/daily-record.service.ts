@@ -1,7 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
-import { catchError, map, tap, shareReplay } from 'rxjs/operators';
+import { catchError, map, tap, shareReplay, delay } from 'rxjs/operators';
 import {
   DailyRecord,
   DailyRecordFilters,
@@ -32,35 +32,42 @@ export class DailyRecordService {
   /**
    * Obtener lista de registros diarios con filtros
    * Endpoint: GET /api/daily-records
+   * TEMPORAL: Usando mocks hasta que el endpoint esté disponible en el backend
    */
   getDailyRecords(filters?: DailyRecordFilters): Observable<DailyRecordsResponse> {
-    let params = new HttpParams();
-    
-    // Paginación por defecto: 20 registros por página
-    const pagina = filters?.pagina || 1;
-    const porPagina = filters?.por_pagina || 20;
-    
-    if (filters) {
-      if (filters.fecha) params = params.set('fecha', filters.fecha);
-      if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
-      if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
-      if (filters.estado && filters.estado !== 'all') params = params.set('estado', filters.estado);
-      if (filters.desde) params = params.set('desde', filters.desde);
-      if (filters.hasta) params = params.set('hasta', filters.hasta);
-      if (filters.es_emergencia !== undefined) params = params.set('es_emergencia', filters.es_emergencia.toString());
-      if (filters.dia_no_trabajado !== undefined) params = params.set('dia_no_trabajado', filters.dia_no_trabajado.toString());
-      if (filters.busqueda) params = params.set('busqueda', filters.busqueda);
-      if (filters.orden) params = params.set('orden', filters.orden);
-    }
-    
-    // Siempre incluir paginación
-    params = params.set('pagina', pagina.toString());
-    params = params.set('por_pagina', porPagina.toString());
+    // TODO: Descomentar cuando el endpoint esté disponible en el backend
+    // let params = new HttpParams();
+    // 
+    // // Paginación por defecto: 20 registros por página
+    // const pagina = filters?.pagina || 1;
+    // const porPagina = filters?.por_pagina || 20;
+    // 
+    // if (filters) {
+    //   if (filters.fecha) params = params.set('fecha', filters.fecha);
+    //   if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
+    //   if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
+    //   if (filters.estado && filters.estado !== 'all') params = params.set('estado', filters.estado);
+    //   if (filters.desde) params = params.set('desde', filters.desde);
+    //   if (filters.hasta) params = params.set('hasta', filters.hasta);
+    //   if (filters.es_emergencia !== undefined) params = params.set('es_emergencia', filters.es_emergencia.toString());
+    //   if (filters.dia_no_trabajado !== undefined) params = params.set('dia_no_trabajado', filters.dia_no_trabajado.toString());
+    //   if (filters.busqueda) params = params.set('busqueda', filters.busqueda);
+    //   if (filters.orden) params = params.set('orden', filters.orden);
+    // }
+    // 
+    // // Siempre incluir paginación
+    // params = params.set('pagina', pagina.toString());
+    // params = params.set('por_pagina', porPagina.toString());
+    //
+    // return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/api/daily-records`, { params })
+    //   .pipe(
+    //     catchError(() => of(this.getMockDailyRecordsResponse(filters)))
+    //   );
 
-    return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/api/daily-records`, { params })
-      .pipe(
-        catchError(() => of(this.getMockDailyRecordsResponse(filters)))
-      );
+    // Usar mocks directamente por ahora (con un pequeño delay para simular petición real)
+    return of(this.getMockDailyRecordsResponse(filters)).pipe(
+      delay(300)
+    );
   }
 
   /**
@@ -274,27 +281,33 @@ export class DailyRecordService {
   /**
    * Obtener KPIs de registros diarios
    * Endpoint: GET /api/daily-records/kpis
+   * TEMPORAL: Usando mocks hasta que el endpoint esté disponible en el backend
    */
   getDailyRecordsKPIs(period?: { desde: string; hasta: string }): Observable<DailyRecordsKPIs> {
-    let params = new HttpParams();
-    if (period) {
-      params = params.set('desde', period.desde);
-      params = params.set('hasta', period.hasta);
-    }
+    // TODO: Descomentar cuando el endpoint esté disponible en el backend
+    // let params = new HttpParams();
+    // if (period) {
+    //   params = params.set('desde', period.desde);
+    //   params = params.set('hasta', period.hasta);
+    // }
 
-    return this.http.get<DailyRecordsKPIs>(`${this.apiUrl}/api/daily-records/kpis`, { params })
-      .pipe(
-        catchError(() => of(this.getMockKPIs()))
-      );
+    // return this.http.get<DailyRecordsKPIs>(`${this.apiUrl}/api/daily-records/kpis`, { params })
+    //   .pipe(
+    //     catchError(() => of(this.getMockKPIs()))
+    //   );
+
+    // Usar mocks directamente por ahora
+    return of(this.getMockKPIs());
   }
 
   // ========== Mocks temporales (para desarrollo) ==========
 
   private getMockDailyRecordsResponse(filters?: DailyRecordFilters): DailyRecordsResponse {
+    const today = new Date();
     const mockRecords: DailyRecord[] = [
       {
         id: '1',
-        fecha: '2025-11-28',
+        fecha: today.toISOString().split('T')[0],
         maquina_id: 5,
         maquina_identificador: 'Máquina 05',
         chofer_id: 1,
@@ -309,13 +322,14 @@ export class DailyRecordService {
       },
       {
         id: '2',
-        fecha: '2025-11-28',
+        fecha: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         maquina_id: 4,
         maquina_identificador: 'Máquina 04',
         chofer_id: 2,
         chofer_nombre: 'Luis Martínez',
         recaudado: 85000,
-        costo_diesel: 0,
+        costo_diesel: 38000,
+        litros_diesel: 100,
         dia_no_trabajado: false,
         es_emergencia: true,
         estado: 'INCIDENTE_REPORTADO',
@@ -323,7 +337,7 @@ export class DailyRecordService {
       },
       {
         id: '3',
-        fecha: '2025-11-28',
+        fecha: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         maquina_id: 2,
         maquina_identificador: 'Máquina 02',
         chofer_id: 3,
@@ -334,13 +348,58 @@ export class DailyRecordService {
         es_emergencia: false,
         estado: 'PENDIENTE_TRABAJADOR',
         observaciones: null
+      },
+      {
+        id: '4',
+        fecha: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        maquina_id: 1,
+        maquina_identificador: 'Máquina 01',
+        chofer_id: 4,
+        chofer_nombre: 'Carlos Ramírez',
+        recaudado: 150000,
+        costo_diesel: 52000,
+        litros_diesel: 130,
+        dia_no_trabajado: false,
+        es_emergencia: false,
+        estado: 'COMPLETO',
+        observaciones: 'Excelente jornada de trabajo.'
+      },
+      {
+        id: '5',
+        fecha: new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        maquina_id: 3,
+        maquina_identificador: 'Máquina 03',
+        chofer_id: 5,
+        chofer_nombre: 'María Silva',
+        recaudado: 110000,
+        costo_diesel: 40000,
+        litros_diesel: 110,
+        dia_no_trabajado: false,
+        es_emergencia: false,
+        estado: 'COMPLETO',
+        observaciones: 'Todo normal.'
+      },
+      {
+        id: '6',
+        fecha: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        maquina_id: 5,
+        maquina_identificador: 'Máquina 05',
+        chofer_id: 1,
+        chofer_nombre: 'Juan Pérez',
+        recaudado: 0,
+        costo_diesel: 0,
+        dia_no_trabajado: true,
+        es_emergencia: false,
+        estado: 'DIA_NO_TRABAJADO',
+        observaciones: 'Descanso semanal.'
       }
     ];
 
     // Aplicar filtros básicos
     let filtered = [...mockRecords];
     if (filters) {
-      if (filters.estado && filters.estado !== 'all') {
+      // Filtrar por estado solo si está definido y no es 'all'
+      if (filters.estado) {
         filtered = filtered.filter(r => r.estado === filters.estado);
       }
       if (filters.es_emergencia !== undefined) {
@@ -354,6 +413,10 @@ export class DailyRecordService {
           r.id.toLowerCase().includes(query)
         );
       }
+      // Filtrar por fecha si está definida
+      if (filters.fecha) {
+        filtered = filtered.filter(r => r.fecha === filters.fecha);
+      }
     }
 
     const pagina = filters?.pagina || 1;
@@ -361,13 +424,23 @@ export class DailyRecordService {
     const start = (pagina - 1) * porPagina;
     const end = start + porPagina;
 
-    return {
+    const response = {
       datos: filtered.slice(start, end),
       total: filtered.length,
       pagina,
       por_pagina: porPagina,
       total_paginas: Math.ceil(filtered.length / porPagina)
     };
+
+    // Debug: Log para verificar que se están devolviendo datos
+    console.log('📊 Mock Daily Records Response:', {
+      total: response.total,
+      datos: response.datos.length,
+      pagina: response.pagina,
+      filtros: filters
+    });
+
+    return response;
   }
 
   private getMockDailyRecord(id: string): DailyRecord {
@@ -419,16 +492,19 @@ export class DailyRecordService {
   }
 
   private getMockKPIs(): DailyRecordsKPIs {
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
     return {
-      recaudacion_periodo: 300000,
+      recaudacion_periodo: 665000, // Suma de los registros mock
       registros_faltantes: 1,
       registros_con_incidentes: 1,
-      total_registros: 3,
-      registros_completos: 1,
+      total_registros: 6,
+      registros_completos: 3,
       registros_pendientes: 1,
       periodo: {
-        desde: '2025-11-01',
-        hasta: '2025-11-28'
+        desde: firstDayOfMonth.toISOString().split('T')[0],
+        hasta: today.toISOString().split('T')[0]
       }
     };
   }

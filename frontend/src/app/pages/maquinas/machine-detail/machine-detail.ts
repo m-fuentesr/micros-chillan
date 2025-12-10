@@ -16,6 +16,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
@@ -90,7 +91,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 @if (!isEditingGeneral()) {
                   <button 
                     type="button"
-                    class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
                       <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
@@ -672,6 +673,7 @@ export class MachineDetail implements OnInit {
   private driverService = inject(DriverService);
   private dailyRecordService = inject(DailyRecordService);
   private loadingStateService = inject(LoadingStateService);
+  private confirmModalService = inject(ConfirmModalService);
   
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
@@ -908,8 +910,15 @@ export class MachineDetail implements OnInit {
     });
   }
 
-  onDelete(): void {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta máquina?')) {
+  async onDelete(): Promise<void> {
+    const confirmed = await this.confirmModalService.open({
+      title: 'Eliminar Máquina',
+      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción no se puede deshacer.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) {
       return;
     }
 
