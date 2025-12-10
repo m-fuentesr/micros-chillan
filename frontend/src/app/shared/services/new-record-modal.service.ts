@@ -11,6 +11,8 @@ export interface NewRecordFormData {
   dieselLiters: number;
   hasIncident: boolean;
   observations: string;
+  receiptPhoto: File | null;
+  fuelReceiptPhoto: File | null;
 }
 
 @Injectable({
@@ -28,7 +30,9 @@ export class NewRecordModalService {
     dieselExpense: 0,
     dieselLiters: 0,
     hasIncident: false,
-    observations: ''
+    observations: '',
+    receiptPhoto: null,
+    fuelReceiptPhoto: null
   });
   private _resolveCallback = signal<((record: NewRecordFormData | null) => void) | null>(null);
 
@@ -51,7 +55,9 @@ export class NewRecordModalService {
         dieselExpense: 0,
         dieselLiters: 0,
         hasIncident: false,
-        observations: ''
+        observations: '',
+        receiptPhoto: null,
+        fuelReceiptPhoto: null
       });
       this._resolveCallback.set(resolve);
       this._isVisible.set(true);
@@ -99,9 +105,12 @@ export class NewRecordModalService {
       dieselExpense: 0,
       dieselLiters: 0,
       hasIncident: false,
-      observations: ''
+      observations: '',
+      receiptPhoto: null,
+      fuelReceiptPhoto: null
     });
     this._resolveCallback.set(null);
   }
 }
+
 

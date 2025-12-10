@@ -6,6 +6,8 @@ import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
 import { catchError, EMPTY } from 'rxjs';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -42,81 +44,100 @@ interface DailyRecordDetailView extends DailyRecord {
 
 @Component({
   selector: 'app-registro-diario-detail',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage, BusIcon, DriverIcon],
   template: `
-    <div class="bg-base-200 p-4 sm:p-6 rounded-lg">
-      <!-- Sticky Header -->
-      <div class="bg-base-100 border-b border-base-200 sticky top-0 z-30 shadow-sm transition-all">
-        <div class="px-4 sm:px-6 py-3 sm:py-4 lg:h-20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-          <div class="flex items-center gap-2 sm:gap-4 w-full sm:w-auto">
-            <button 
-              class="btn btn-circle btn-ghost btn-sm text-base-content/60 hover:bg-base-200 flex-shrink-0" 
-              (click)="goBack()"
-              type="button">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-              </svg>
-            </button>
-            <div class="flex-1 min-w-0">
-              <h1 class="text-2xl sm:text-3xl font-black text-base-content flex flex-wrap items-center gap-2 sm:gap-3 border-l-4 border-l-primary pl-3 mb-3">
-                <span class="truncate">Registro #{{ record()?.id || '--' }}</span>
-                @if (isIncidente()) {
-                  <span class="badge badge-error gap-1 font-mono font-bold text-white shadow-sm shadow-error/20 text-xs sm:text-sm whitespace-nowrap">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                    Incidente
-                  </span>
-                } @else if (isCompleto()) {
-                  <span class="badge badge-success gap-1 font-mono font-bold text-white shadow-sm shadow-success/20 text-xs sm:text-sm whitespace-nowrap">✓ Completo</span>
-                } @else {
-                  <span class="badge badge-warning gap-1 font-mono font-bold text-warning-content text-xs sm:text-sm whitespace-nowrap">⏳ Pendiente</span>
-                }
-              </h1>
-              <div class="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-base-content/60 font-normal italic mt-0.5">
-                <span class="truncate">📅 {{ record()?.date }}</span>
-                <span class="hidden sm:inline">•</span>
-                <span class="truncate">🚛 {{ record()?.machine }}</span>
-                <span class="hidden sm:inline">•</span>
-                <span class="truncate">👷 {{ record()?.driver }}</span>
+    <main class="bg-base-200 min-h-screen">
+      <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
+        <!-- Hero alineado al estilo de flota/choferes -->
+        <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+          <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex-1 min-w-0 space-y-3">
+              <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
+                <span class="text-primary">Registro diario</span>
+                <span class="h-3 w-px bg-primary/20"></span>
+                <span class="text-base-content/60">Detalle y edición</span>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                <button 
+                  class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 flex-shrink-0" 
+                  (click)="goBack()"
+                  type="button"
+                  aria-label="Volver">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                  </svg>
+                </button>
+
+                <div class="flex items-center gap-3 flex-wrap">
+                  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content tracking-tight">
+                    Registro #{{ record()?.id || '--' }}
+                  </h1>
+                  @if (isIncidente()) {
+                    <span class="inline-flex items-center gap-2 rounded-full bg-error/10 text-error px-3 py-1 text-xs sm:text-sm font-semibold border border-error/20 shadow-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                      </svg>
+                      Incidente
+                    </span>
+                  } @else if (isCompleto()) {
+                    <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-emerald-100 shadow-sm">✓ Completo</span>
+                  } @else {
+                    <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-amber-100 shadow-sm">⏳ Pendiente</span>
+                  }
+                </div>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-base-content/70">
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
+                  </svg>
+                  {{ record()?.date }}
+                </span>
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                  <app-bus-icon class="w-4 h-4 text-primary/80"></app-bus-icon>
+                  {{ record()?.machine }}
+                </span>
+                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                  <app-driver-icon class="w-4 h-4 text-primary/80"></app-driver-icon>
+                  {{ record()?.driver }}
+                </span>
               </div>
             </div>
-          </div>
 
-          <div class="flex gap-2 w-full sm:w-auto justify-end">
-            @if (!isEditMode()) {
-              <button 
-                class="btn btn-primary btn-sm gap-2 shadow-lg shadow-primary/20 hover:scale-105 transition-transform flex-1 sm:flex-none" 
-                (click)="enableEditMode()"
-                type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                </svg>
-                <span class="hidden sm:inline">Editar</span>
-                <span class="sm:hidden">Editar</span>
-              </button>
-            } @else {
-              <button 
-                class="btn btn-ghost btn-sm flex-1 sm:flex-none" 
-                (click)="cancelEdit()"
-                type="button">Cancelar</button>
-              <button 
-                class="btn btn-success text-white btn-sm gap-2 shadow-lg shadow-success/20 flex-1 sm:flex-none" 
-                (click)="saveRecord()"
-                [disabled]="recordForm.invalid"
-                type="button">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                </svg>
-                <span class="hidden sm:inline">Guardar</span>
-                <span class="sm:hidden">Guardar</span>
-              </button>
-            }
+            <div class="flex flex-wrap gap-3 w-full lg:w-auto justify-start lg:justify-end">
+              @if (!isEditMode()) {
+                <button 
+                  class="btn bg-primary text-primary-content border-none hover:bg-primary-focus h-11 px-5 gap-2 rounded-lg shadow-lg shadow-primary/25" 
+                  (click)="enableEditMode()"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                  </svg>
+                  <span>Editar registro</span>
+                </button>
+              } @else {
+                <button 
+                  class="btn btn-ghost border border-base-300 h-11 px-4 rounded-lg" 
+                  (click)="cancelEdit()"
+                  type="button">Cancelar</button>
+                <button 
+                  class="btn bg-success text-white h-11 px-5 gap-2 rounded-lg shadow-lg shadow-success/25" 
+                  (click)="saveRecord()"
+                  [disabled]="recordForm.invalid"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                  </svg>
+                  <span>Guardar cambios</span>
+                </button>
+              }
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
 
-      <div class="px-4 sm:px-6 pt-4 sm:pt-6 pb-12 space-y-4 sm:space-y-6">
+        <div class="space-y-6 sm:space-y-8">
         @if (isLoading()) {
           <div class="flex justify-start items-center h-64 pl-4 border-l-4 border-l-primary">
             <span class="loading loading-spinner loading-lg"></span>
@@ -199,8 +220,8 @@ interface DailyRecordDetailView extends DailyRecord {
                     <div class="card-body p-4 sm:p-5 lg:p-6">
                       <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-base-200">
                         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 sm:w-6 sm:h-6">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3 0h6m-6-4h6m-6-4h6M4.5 6.75h15a.75.75 0 0 1 .75.75v9a.75.75 0 0 1-.75.75h-15A.75.75 0 0 1 3.75 16.5v-9a.75.75 0 0 1 .75-.75Z" />
                           </svg>
                         </div>
                         <div class="min-w-0">
@@ -277,7 +298,11 @@ interface DailyRecordDetailView extends DailyRecord {
                     <div class="card-body p-4 sm:p-5">
                       <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm flex-shrink-0 text-sm sm:text-base">⚠️</div>
+                          <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm flex-shrink-0 text-sm sm:text-base">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.5m0 3.5h.01M10.29 3.86 2.82 17.25a1.5 1.5 0 0 0 1.29 2.25h15.78a1.5 1.5 0 0 0 1.29-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" />
+                            </svg>
+                          </div>
                           <div class="min-w-0">
                             <p class="text-xs sm:text-sm font-bold text-red-800 truncate">¿Es una emergencia?</p>
                             <p class="text-[9px] sm:text-[10px] text-red-600/70">Choque, falla mecánica, etc.</p>
@@ -323,10 +348,10 @@ interface DailyRecordDetailView extends DailyRecord {
                 @if (!recordForm.get('noWorkDay')?.value) {
                   <div class="card bg-base-100 shadow-sm border border-base-200 order-1">
                   <div class="card-body p-4 sm:p-5">
-                    <div class="flex justify-between items-center mb-3 sm:mb-4">
+                    <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
                       <h3 class="font-bold text-sm sm:text-base">Comprobante del Registro Diario</h3>
                       @if (hasComprobanteRegistro()) {
-                        <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2">
+                        <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2 shrink-0">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                           </svg>
@@ -420,11 +445,11 @@ interface DailyRecordDetailView extends DailyRecord {
                 @if (!recordForm.get('noWorkDay')?.value) {
                   <div class="card bg-base-100 shadow-sm border border-base-200 order-2">
                   <div class="card-body p-4 sm:p-5">
-                    <div class="flex justify-between items-center mb-3 sm:mb-4">
+                    <div class="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 flex-wrap">
                       <h3 class="font-bold text-sm sm:text-base">Comprobante Diésel</h3>
-                      <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
+                      <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500 shrink-0">Opcional</span>
                       @if (hasComprobante()) {
-                        <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2">
+                        <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2 shrink-0">
                           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
                             <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
                           </svg>
@@ -588,7 +613,8 @@ interface DailyRecordDetailView extends DailyRecord {
           </div>
         }
       </div>
-    </div>
+      </div>
+    </main>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush
 })

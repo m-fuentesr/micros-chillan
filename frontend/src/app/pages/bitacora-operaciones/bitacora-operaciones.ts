@@ -13,7 +13,6 @@ import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { SearchFilters, FilterField } from '../../shared/components/search-filters/search-filters';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
-import { NewRecordModalComponent } from '../../shared/components/new-record-modal/new-record-modal';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 
 /**
@@ -34,7 +33,7 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon, NewRecordModalComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon],
   template: `
     <div class="space-y-6 relative">
         <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
@@ -188,15 +187,44 @@ interface DailyRecordView {
             </div>
 
             <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-              <!-- Filtros usando componente reutilizable -->
-              <app-search-filters
-                [fields]="filterFields()"
-                [filters]="recordFilters()"
-                [columns]="4"
-                (filterChange)="onRecordFilterChange($event)" />
+              <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
+              <div class="md:hidden mb-4">
+                <div class="sticky top-2 z-20">
+                  <button
+                    type="button"
+                    class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+                    (click)="toggleFiltersMobile()"
+                    [attr.aria-expanded]="showFiltersMobile()">
+                    <div class="flex items-center gap-2">
+                      <span class="w-1 h-4 rounded-full bg-primary"></span>
+                      <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
+                    </div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="showFiltersMobile()" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                @if (showFiltersMobile()) {
+                  <div class="mt-3 bg-base-50/70 rounded-xl border border-base-200/70 shadow-sm">
+                    <app-search-filters
+                      [fields]="filterFields()"
+                      [filters]="recordFilters()"
+                      [columns]="1"
+                      (filterChange)="onRecordFilterChange($event)" />
+                  </div>
+                }
+              </div>
 
-              <!-- Vista Desktop: Tabla Completa (≥ 1024px) -->
-              <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
+              <div class="hidden md:block">
+                <app-search-filters
+                  [fields]="filterFields()"
+                  [filters]="recordFilters()"
+                  [columns]="4"
+                  (filterChange)="onRecordFilterChange($event)" />
+              </div>
+
+              <!-- Vista Desktop: Tabla Completa (≥ 1024px) con scroll horizontal seguro -->
+              <div class="hidden lg:block overflow-x-auto rounded-xl border border-base-200">
                 @if (isLoadingPage()) {
                   <div class="flex justify-center items-center py-12">
                     <app-loading-spinner size="md" text="Cargando registros..." />
@@ -219,17 +247,19 @@ interface DailyRecordView {
                     </div>
                   </div>
                 } @else {
-                  <table class="table w-full table-min-height">
+                  <table class="table w-full table-min-height min-w-[960px]">
                     <thead class="bg-base-50 border-b border-base-200">
                       <tr>
                         <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
-                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[200px]">Conductor</th>
-                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
-                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px] hidden xl:table-cell">Diésel</th>
-                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px] hidden xl:table-cell">Neto</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[180px]">Conductor</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px]">Recaudado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px] hidden xl:table-cell">OBS.</th>
-                        <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[90px] hidden xl:table-cell">OBS.</th>
+                        <th class="py-4 pr-4 lg:pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[96px] lg:min-w-[120px] whitespace-normal leading-4">
+                          Acciones
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -310,15 +340,15 @@ interface DailyRecordView {
                               }
                             </div>
                           </td>
-                          <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
+                          <td class="pr-4 lg:pr-6 text-right py-4" (click)="$event.stopPropagation()">
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal">
+                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-[44px]">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                                 <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
                                 <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
                               </svg>
-                              <span>Ver</span>
+                              <span class="hidden lg:inline">Ver</span>
                             </a>
                           </td>
                         </tr>
@@ -592,7 +622,7 @@ interface DailyRecordView {
                   <div class="divider my-3 opacity-30"></div>
                   
                   <!-- Información Financiera y Fecha -->
-                  <div class="grid grid-cols-2 gap-4 mb-4">
+                  <div class="grid grid-cols-1 min-[380px]:grid-cols-2 gap-4 mb-4">
                     <div>
                       <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Fecha</div>
                       <div class="font-mono text-sm text-base-content/80">{{ record.date }}</div>
@@ -616,7 +646,7 @@ interface DailyRecordView {
                   <div class="mt-2">
                     <a 
                       [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal"
+                      class="btn btn-sm h-11 min-h-[44px] w-full rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
                       [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -658,8 +688,7 @@ interface DailyRecordView {
           </div>
         }
 
-      <!-- Modal Nuevo Registro -->
-      <app-new-record-modal></app-new-record-modal>
+      <!-- Modal Nuevo Registro (renderizado de forma global en app.ts) -->
     </div>
   `,
   styles: [`
@@ -753,6 +782,7 @@ export class BitacoraOperaciones implements OnInit {
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
+  showFiltersMobile = signal(false);
   
   // Filtros usando SearchFilters
   recordFilters = signal<{ chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
@@ -807,6 +837,7 @@ export class BitacoraOperaciones implements OnInit {
       orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
     };
     this.recordFilters.set(filters);
+    this.showFiltersMobile.set(false);
     
     // Actualizar los filtros existentes para compatibilidad
     if (filters.desde) {
@@ -817,6 +848,10 @@ export class BitacoraOperaciones implements OnInit {
     
     // Resetear a página 1 cuando cambian los filtros
     this.currentPage.set(1);
+  }
+
+  toggleFiltersMobile(): void {
+    this.showFiltersMobile.update(open => !open);
   }
   
   // Estado de carga secuencial coordinado

@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnI
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { BusIcon } from '../components/bus-icon/bus-icon';
+import { ConfirmModalService } from '../services/confirm-modal.service';
 
 @Component({
   selector: 'app-navbar',
@@ -979,6 +980,7 @@ export class Navbar implements OnInit {
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);
   private readonly auth = inject(AuthService);
+  private readonly confirmModal = inject(ConfirmModalService);
   private initialized = false;
 
   ngOnInit(): void {
@@ -1005,9 +1007,20 @@ export class Navbar implements OnInit {
     this.isMobileMenuOpen.set(false);
   }
 
-  openLogoutConfirm(event: Event): void {
+  async openLogoutConfirm(event: Event): Promise<void> {
     event.preventDefault();
     this.closeMobileMenu();
-    this.auth.logout();
+
+    const confirmed = await this.confirmModal.open({
+      title: 'Cerrar sesión',
+      message: '¿Seguro que deseas salir de tu cuenta?',
+      confirmText: 'Cerrar sesión',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
+
+    if (confirmed) {
+      this.auth.logout();
+    }
   }
 }

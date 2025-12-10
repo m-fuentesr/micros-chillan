@@ -43,6 +43,13 @@ export const routes: Routes = [
     canActivate: [authGuard]
   },
   {
+    path: 'registro-diario/:id',
+    data: { role: 'admin' },
+    loadComponent: () =>
+      import('./pages/registro-diario-detail/registro-diario-detail').then(m => m.RegistroDiarioDetail),
+    canActivate: [authGuard]
+  },
+  {
     path: 'maquinas',
     data: { role: 'admin' },
     loadComponent: () =>

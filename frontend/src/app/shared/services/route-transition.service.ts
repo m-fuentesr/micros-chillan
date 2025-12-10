@@ -28,6 +28,7 @@ const ADMIN_ROUTES = [
   '/dashboard',
   '/about',
   '/bitacora-operaciones',
+  '/registro-diario',
   '/maquinas',
   '/choferes',
   '/contabilidad',
