@@ -18,6 +18,7 @@ import { CommonModule } from '@angular/common';
           type="date"
           formControlName="revision_tecnica"
           class="input input-bordered w-full"
+          [min]="minDate"
           [class.input-error]="form.get('revision_tecnica')?.invalid && form.get('revision_tecnica')?.touched">
         @if (form.get('revision_tecnica')?.invalid && form.get('revision_tecnica')?.touched) {
           <label class="label">
@@ -37,6 +38,7 @@ import { CommonModule } from '@angular/common';
           type="date"
           formControlName="permiso_circulacion"
           class="input input-bordered w-full"
+          [min]="minDate"
           [class.input-error]="form.get('permiso_circulacion')?.invalid && form.get('permiso_circulacion')?.touched">
         @if (form.get('permiso_circulacion')?.invalid && form.get('permiso_circulacion')?.touched) {
           <label class="label">
@@ -56,6 +58,7 @@ import { CommonModule } from '@angular/common';
           type="date"
           formControlName="seguro_obligatorio"
           class="input input-bordered w-full"
+          [min]="minDate"
           [class.input-error]="form.get('seguro_obligatorio')?.invalid && form.get('seguro_obligatorio')?.touched">
         @if (form.get('seguro_obligatorio')?.invalid && form.get('seguro_obligatorio')?.touched) {
           <label class="label">
@@ -83,6 +86,8 @@ export class MachineDocumentationForm {
     seguro_obligatorio?: string | null;
   }>();
   formValid = output<boolean>();
+
+  minDate = new Date().toISOString().slice(0, 10);
 
   form = this.fb.group({
     revision_tecnica: ['', Validators.required],

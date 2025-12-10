@@ -1,12 +1,12 @@
 import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnInit, OnDestroy, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { ConfirmDialog } from '../components/confirm-dialog/confirm-dialog';
 import { BusIcon } from '../components/bus-icon/bus-icon';
+import { ConfirmModalService } from '../services/confirm-modal.service';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, RouterLinkActive, ConfirmDialog, BusIcon],
+  imports: [RouterLink, RouterLinkActive, BusIcon],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
     <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
@@ -236,17 +236,6 @@ import { BusIcon } from '../components/bus-icon/bus-icon';
         </a>
       </div>
     </aside>
-
-    <!-- Modal de confirmación de cierre de sesión -->
-    <app-confirm-dialog
-      [isOpen]="showLogoutConfirm()"
-      title="Cerrar Sesión"
-      message="¿Estás seguro de que deseas cerrar sesión? Deberás iniciar sesión nuevamente para acceder a la aplicación."
-      confirmLabel="Sí, cerrar sesión"
-      type="destructive"
-      (confirm)="onLogout()"
-      (cancel)="closeLogoutConfirm()">
-    </app-confirm-dialog>
   `,
   styles: [
     `    /* ============================================
@@ -990,8 +979,8 @@ export class Navbar implements OnInit {
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);
-  showLogoutConfirm = signal(false);
   private readonly auth = inject(AuthService);
+  private readonly confirmModal = inject(ConfirmModalService);
   private initialized = false;
 
   ngOnInit(): void {
@@ -1018,18 +1007,20 @@ export class Navbar implements OnInit {
     this.isMobileMenuOpen.set(false);
   }
 
-  openLogoutConfirm(event: Event): void {
+  async openLogoutConfirm(event: Event): Promise<void> {
     event.preventDefault();
-    this.showLogoutConfirm.set(true);
     this.closeMobileMenu();
-  }
 
-  closeLogoutConfirm(): void {
-    this.showLogoutConfirm.set(false);
-  }
+    const confirmed = await this.confirmModal.open({
+      title: 'Cerrar sesión',
+      message: '¿Seguro que deseas salir de tu cuenta?',
+      confirmText: 'Cerrar sesión',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
 
-  onLogout(): void {
-    this.closeLogoutConfirm();
-    this.auth.logout();
+    if (confirmed) {
+      this.auth.logout();
+    }
   }
 }

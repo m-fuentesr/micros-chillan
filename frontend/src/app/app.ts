@@ -9,12 +9,15 @@ import { RouteTransitionService } from './shared/services/route-transition.servi
 import { RouteTransitionOutlet } from './shared/components/route-transition-outlet/route-transition-outlet';
 import { TransitionOrchestratorService } from './shared/services/transition-orchestrator.service';
 import { SpinnerService } from './shared/services/spinner.service';
+import { ConfirmModalComponent } from './shared/components/confirm-modal/confirm-modal';
+import { MaintenanceFormModalComponent } from './shared/components/maintenance-form-modal/maintenance-form-modal';
+import { NewRecordModalComponent } from './shared/components/new-record-modal/new-record-modal';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent],
   template: `
     <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
     <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
@@ -62,6 +65,15 @@ import { filter, map, startWith } from 'rxjs';
       <!-- Sin navbar/sidebar (Login) -->
       <router-outlet></router-outlet>
     }
+
+    <!-- Modal de confirmación global -->
+    <app-confirm-modal></app-confirm-modal>
+    
+    <!-- Modal de registro de mantenimiento global -->
+    <app-maintenance-form-modal></app-maintenance-form-modal>
+
+    <!-- Modal de nuevo registro diario (global) -->
+    <app-new-record-modal></app-new-record-modal>
   `,
   styles: [
     `

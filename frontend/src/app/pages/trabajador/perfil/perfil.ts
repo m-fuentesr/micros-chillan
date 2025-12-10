@@ -5,14 +5,14 @@ import { AuthService } from '../../../shared/services/auth.service';
 import { WorkerService } from '../../../shared/services/worker.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
-import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-perfil',
-  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, ConfirmDialog],
+  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, DriverIcon],
   template: `
     <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
       @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
@@ -34,8 +34,8 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl pointer-events-none"></div>
         <div class="relative z-10 flex flex-col items-center text-white text-center">
           <div class="avatar online mb-3">
-            <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold">
-              {{ initials() }}
+            <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-primary">
+              <app-driver-icon class="w-10 h-10 text-white drop-shadow-md"></app-driver-icon>
             </div>
           </div>
           
@@ -141,16 +141,35 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
       </div>
     </div>
 
+    <!-- Modal Confirmación Logout (full viewport, estilo consistente) -->
+    @if (logoutModalOpen()) {
+      <div class="fixed inset-0 z-[1100] flex items-center justify-center px-4 sm:px-6">
+        <div class="absolute inset-0 bg-base-content/60 backdrop-blur-sm" (click)="closeLogoutModal()"></div>
+        <div class="relative w-full max-w-md">
+          <div class="card bg-base-100 shadow-2xl border border-base-200 rounded-2xl overflow-hidden animate-fade-in">
+            <div class="card-body p-6 sm:p-7">
+              <div class="flex items-start gap-4 pb-4 border-b border-base-200">
+                <div class="p-3 rounded-xl bg-error/10 text-error shrink-0 ring-4 ring-error/5">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M5.1 19h13.8a2 2 0 0 0 1.8-3l-6.9-12a2 2 0 0 0-3.6 0l-6.9 12A2 2 0 0 0 5.1 19Z" />
+                  </svg>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <h3 class="text-lg font-semibold text-base-content">¿Cerrar sesión?</h3>
+                  <p class="text-sm text-base-content/70 mt-1">Confirma para salir de tu cuenta.</p>
+                </div>
+              </div>
+              <div class="pt-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
+                <button class="btn btn-ghost w-full sm:w-auto" type="button" (click)="closeLogoutModal()">Cancelar</button>
+                <button class="btn btn-error text-white w-full sm:w-auto shadow-error/20" type="button" (click)="confirmLogout()">Cerrar sesión</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    }
+
     <!-- Modal de confirmación de cierre de sesión -->
-    <app-confirm-dialog
-      [isOpen]="showLogoutConfirm()"
-      title="Cerrar Sesión"
-      message="¿Estás seguro de que deseas cerrar sesión? Deberás iniciar sesión nuevamente para acceder a la aplicación."
-      confirmLabel="Sí, cerrar sesión"
-      type="destructive"
-      (confirm)="onLogout()"
-      (cancel)="closeLogoutConfirm()">
-    </app-confirm-dialog>
   `,
   styles: [
     `
@@ -234,6 +253,20 @@ import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm
         animation: none;
         opacity: 1;
         transform: none;
+      }
+    }
+
+    /* Animación modal */
+    .animate-fade-in {
+      animation: fadeInModal 200ms ease-out forwards;
+      opacity: 0;
+      transform: translateY(8px);
+    }
+
+    @keyframes fadeInModal {
+      to {
+        opacity: 1;
+        transform: translateY(0);
       }
     }
     `
@@ -348,19 +381,19 @@ export class Perfil implements OnInit {
     return stats?.estadisticas.total_recaudado || 0;
   });
 
-  // Signal para controlar el modal de confirmación
-  showLogoutConfirm = signal(false);
+  // Modal logout
+  logoutModalOpen = signal(false);
 
   openLogoutConfirm(): void {
-    this.showLogoutConfirm.set(true);
+    this.logoutModalOpen.set(true);
   }
 
-  closeLogoutConfirm(): void {
-    this.showLogoutConfirm.set(false);
+  closeLogoutModal(): void {
+    this.logoutModalOpen.set(false);
   }
 
-  onLogout(): void {
-    this.closeLogoutConfirm();
+  confirmLogout(): void {
     this.auth.logout();
+    this.logoutModalOpen.set(false);
   }
 }

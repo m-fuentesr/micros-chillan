@@ -6,6 +6,7 @@ import { DailyRecordService } from '../../shared/services/daily-record.service';
 import { TodayRecordStatusService } from '../../shared/services/today-record-status.service';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import type { DailyRecord } from '../../shared/models/daily-record.models';
@@ -13,7 +14,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
 @Component({
   selector: 'app-trabajador',
   standalone: true,
-  imports: [CommonModule, RouterLink, LoadingSkeleton],
+  imports: [CommonModule, RouterLink, LoadingSkeleton, BusIcon],
   template: `
     <div class="trabajador-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
       @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
@@ -32,7 +33,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
             <p class="text-blue-100 text-xs font-bold uppercase tracking-[0.35em] mb-1 opacity-80">Bienvenido</p>
             <h1 class="text-3xl font-black tracking-tight drop-shadow-sm">{{ workerName() }}</h1>
             <div class="mt-3 inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full shadow-sm">
-              <span class="text-lg drop-shadow-md">🚛</span>
+              <app-bus-icon class="w-5 h-5 text-white drop-shadow-md"></app-bus-icon>
               <span class="font-mono font-bold text-sm tracking-wide">{{ assignedMachine() }}</span>
             </div>
           </div>

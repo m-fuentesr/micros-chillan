@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap, shareReplay, map } from 'rxjs/operators';
 import { Machine, MachineKPIs, MachineDocumentAlerts, MachineSelect } from '../models/machine.models';
 import { environment } from '../../../environments/environment.development';
@@ -122,11 +122,50 @@ export class MachineService {
 
   // GET /api/machines/{id} - Obtener detalle de máquina
   getMachineById(id: number): Observable<Machine> {
-    return this.http.get<Machine>(`${this.apiUrl}/api/machines/${id}`).pipe(
-      catchError(() => {
-        // Mock data para desarrollo
+    interface BackendMachineDetail {
+      id: number;
+      numero_interno: number;
+      patente: string;
+      marca: string;
+      anio_fabricacion: number;
+      estado_operativo: 'operativa' | 'en_taller' | 'inactiva';
+      chofer_actual_id: number | null;
+      documentos: {
+        fecha_venc_revision_tecnica: string | null;
+        fecha_venc_permiso_circulacion: string | null;
+        fecha_venc_seguro_obligatorio: string | null;
+      };
+    }
+
+    const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
+      operativa: 'Operativa',
+      en_taller: 'En Taller',
+      inactiva: 'Inactiva'
+    };
+
+    return this.http.get<BackendMachineDetail>(`${this.apiUrl}/api/machines/${id}`).pipe(
+      map((m): Machine => {
+        return {
+          id: m.id,
+          numero: String(m.numero_interno),
+          marca: m.marca,
+          patente: m.patente || '',
+          año: m.anio_fabricacion,
+          estado_operativo: estadoMap[m.estado_operativo] || 'Operativa',
+          chofer_id: m.chofer_actual_id,
+          // El backend no retorna nombre del chofer; dejamos null para evitar datos falsos
+          chofer_actual: null,
+          documentos: {
+            revision_tecnica: m.documentos?.fecha_venc_revision_tecnica || undefined,
+            permiso_circulacion: m.documentos?.fecha_venc_permiso_circulacion || undefined,
+            seguro_obligatorio: m.documentos?.fecha_venc_seguro_obligatorio || undefined
+          }
+        };
+      }),
+      catchError((error) => {
+        console.error('Error obteniendo detalle de máquina:', error);
         const mockMachine = this.getMockMachineById(id);
-        return mockMachine ? of(mockMachine) : of(null as any);
+        return mockMachine ? of(mockMachine) : throwError(() => error);
       })
     );
   }
@@ -218,10 +257,45 @@ export class MachineService {
       estado_operativo: string; // "operativa", "en_taller", "inactiva"
       chofer_id?: number | null;
       documentos: {
-        fecha_venc_revision_tecnica: string; // ISO date string
-        fecha_venc_permiso_circulacion: string; // ISO date string
-        fecha_venc_seguro_obligatorio: string; // ISO date string
+        fecha_venc_revision_tecnica: string; // ISO date string (YYYY-MM-DD)
+        fecha_venc_permiso_circulacion: string; // ISO date string (YYYY-MM-DD)
+        fecha_venc_seguro_obligatorio: string; // ISO date string (YYYY-MM-DD)
       };
+    }
+
+    // Validar campos obligatorios
+    if (!machine.numero || !machine.patente || !machine.marca) {
+      return throwError(() => new Error('Faltan campos obligatorios: número, patente o marca'));
+    }
+
+    // Validar que las fechas de documentación estén presentes
+    if (!machine.documentos?.revision_tecnica || 
+        !machine.documentos?.permiso_circulacion || 
+        !machine.documentos?.seguro_obligatorio) {
+      return throwError(() => new Error('Todas las fechas de documentación son obligatorias'));
+    }
+
+    // Validar formato de fechas (deben ser strings ISO YYYY-MM-DD)
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+    const revisionTecnica = machine.documentos.revision_tecnica.trim();
+    const permisoCirculacion = machine.documentos.permiso_circulacion.trim();
+    const seguroObligatorio = machine.documentos.seguro_obligatorio.trim();
+
+    if (!fechaRegex.test(revisionTecnica) ||
+        !fechaRegex.test(permisoCirculacion) ||
+        !fechaRegex.test(seguroObligatorio)) {
+      return throwError(() => new Error('Las fechas deben estar en formato YYYY-MM-DD'));
+    }
+
+    // Validar que las fechas sean válidas
+    const revisionDate = new Date(revisionTecnica);
+    const permisoDate = new Date(permisoCirculacion);
+    const seguroDate = new Date(seguroObligatorio);
+
+    if (isNaN(revisionDate.getTime()) || 
+        isNaN(permisoDate.getTime()) || 
+        isNaN(seguroDate.getTime())) {
+      return throwError(() => new Error('Una o más fechas no son válidas'));
     }
 
     // Transformar estado_operativo
@@ -232,18 +306,27 @@ export class MachineService {
     };
     const estadoOperativo = estadoMap[machine.estado_operativo || 'Operativa'] || 'operativa';
 
+    // Manejar chofer_id correctamente (puede ser null, undefined, o un número)
+    let choferId: number | null = null;
+    if (machine.chofer_id !== undefined && machine.chofer_id !== null) {
+      choferId = Number(machine.chofer_id);
+      if (isNaN(choferId)) {
+        choferId = null;
+      }
+    }
+
     // Construir payload para el backend
     const payload: BackendMachineCreate = {
-      numero_interno: Number(machine.numero) || 0,
-      patente: machine.patente || '',
-      marca: machine.marca || '',
+      numero_interno: Number(machine.numero),
+      patente: machine.patente.trim(),
+      marca: machine.marca.trim(),
       anio_fabricacion: machine.año || new Date().getFullYear(),
       estado_operativo: estadoOperativo,
-      chofer_id: machine.chofer_id || null,
+      chofer_id: choferId,
       documentos: {
-        fecha_venc_revision_tecnica: machine.documentos?.revision_tecnica || '',
-        fecha_venc_permiso_circulacion: machine.documentos?.permiso_circulacion || '',
-        fecha_venc_seguro_obligatorio: machine.documentos?.seguro_obligatorio || ''
+        fecha_venc_revision_tecnica: revisionTecnica,
+        fecha_venc_permiso_circulacion: permisoCirculacion,
+        fecha_venc_seguro_obligatorio: seguroObligatorio
       }
     };
 
