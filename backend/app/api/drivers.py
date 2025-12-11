@@ -72,3 +72,13 @@ async def create_driver(data: DriverCreate, current_user: UserInDB = Depends(get
     require_admin(current_user)
 
     return await driver_service.create_driver(data)
+
+
+@router.delete("/{driver_id}")
+async def delete_driver(
+    driver_id: int,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await driver_service.delete_driver(driver_id)
+

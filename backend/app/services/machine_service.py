@@ -1,4 +1,6 @@
 ﻿from fastapi import HTTPException
+from calendar import monthrange
+from typing import Optional
 from datetime import date, timedelta
 from app.db.supabase_client import supabase
 from app.schemas.user import UserInDB
@@ -595,3 +597,255 @@ async def delete_machine(machine_id: int):
         "message": "Máquina desactivada correctamente.",
         "nuevo_estado": "inactiva"
     }
+
+
+async def get_machine_assignments(machine_id: int, filtro: Optional[str]):
+    """
+    Retorna el historial de asignaciones de una máquina.
+    Filtros:
+      - todas (default)
+      - actual
+      - cerradas
+    """
+    # 1. Obtener asignaciones
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("id, chofer_id, fecha_inicio, fecha_termino")
+        .eq("maquina_id", machine_id)
+        .order("fecha_inicio", desc=True)
+        .execute()
+    )
+
+    if getattr(asign_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo historial: {asign_raw.error}")
+
+    asignaciones = asign_raw.data
+
+    if not asignaciones:
+        return []
+
+    # 2. Obtener todos los choferes involucrados
+    chofer_ids = [a["chofer_id"] for a in asignaciones]
+
+    choferes_raw = (
+        supabase.table("choferes")
+        .select("id, primer_nombre, apellido_paterno")
+        .in_("id", chofer_ids)
+        .execute()
+    )
+
+    chofer_map = {c["id"]: f"{c['primer_nombre']} {c['apellido_paterno']}" for c in choferes_raw.data}
+
+    hoy = date.today()
+
+    resultado = []
+
+    for a in asignaciones:
+        fecha_inicio = date.fromisoformat(a["fecha_inicio"])
+        fecha_fin = date.fromisoformat(a["fecha_termino"]) if a["fecha_termino"] else None
+
+        estado = "Activa" if fecha_fin is None else "Cerrada"
+
+        # Cálculo de días
+        fin = fecha_fin or hoy
+        dias = (fin - fecha_inicio).days
+
+        item = {
+            "id": a["id"],
+            "chofer_nombre": chofer_map.get(a["chofer_id"], "Desconocido"),
+            "fecha_inicio": fecha_inicio,
+            "fecha_fin": fecha_fin,
+            "estado": estado,
+            "dias_asignado": dias
+        }
+
+        resultado.append(item)
+
+    # 3. Filtros por estado
+    if filtro == "actual":
+        resultado = [r for r in resultado if r["estado"] == "Activa"]
+
+    elif filtro == "cerradas":
+        resultado = [r for r in resultado if r["estado"] == "Cerrada"]
+
+    return resultado
+
+
+async def get_machine_maintenances(
+    machine_id: int,
+    categoria: Optional[str] = None,
+    item: Optional[str] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+):
+    """
+    Devuelve:
+    - total_registros: cantidad de resultados filtrados
+    - gasto_mes_actual: suma de costos del mes en curso
+    - items: lista de mantenimientos
+    """
+
+    # ---------------------------------------------------------
+    # 1) Calcular gasto del mes actual
+    # ---------------------------------------------------------
+    hoy = date.today()
+    inicio_mes = hoy.replace(day=1)
+    fin_mes = hoy.replace(day=monthrange(hoy.year, hoy.month)[1])
+
+    gasto_raw = (
+        supabase.table("compras_repuestos")
+        .select("costo")
+        .eq("maquina_id", machine_id)
+        .gte("fecha_compra", inicio_mes.isoformat())
+        .lte("fecha_compra", fin_mes.isoformat())
+        .execute()
+    )
+
+    if getattr(gasto_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo gasto mensual: {gasto_raw.error}")
+
+    gasto_mes_actual = sum(r["costo"] for r in gasto_raw.data) if gasto_raw.data else 0
+
+    # ---------------------------------------------------------
+    # 2) Construir el query principal
+    # ---------------------------------------------------------
+    query = (
+        supabase.table("v_compras_repuestos")
+        .select("*")
+        .eq("maquina_id", machine_id)
+    )
+
+    # Categoria
+    if categoria:
+        categoria_norm = categoria.lower().strip()
+        categoria_norm = (
+            categoria_norm
+            .replace("á", "a")
+            .replace("é", "e")
+            .replace("í", "i")
+            .replace("ó", "o")
+            .replace("ú", "u")
+        )
+        if categoria_norm not in ("preventivo", "correctivo"):
+            raise HTTPException(400, "Categoría no válida. Use preventivo o correctivo.")
+        query = query.eq("categoria", categoria_norm)
+
+    # Item
+    if item:
+        f = item.lower()
+        f_norm = (
+            f.replace("á", "a")
+             .replace("é", "e")
+             .replace("í", "i")
+             .replace("ó", "o")
+             .replace("ú", "u")
+        )
+        query = query.ilike("item_final_normalizado", f"%{f_norm}%")
+
+    # Fechas
+    if desde:
+        query = query.gte("fecha_compra", desde.isoformat())
+    if hasta:
+        query = query.lte("fecha_compra", hasta.isoformat())
+
+    # Ejecutar query
+    res = query.order("fecha_compra", desc=True).execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo historial: {res.error}")
+
+    # ---------------------------------------------------------
+    # 3) Ensamblar items
+    # ---------------------------------------------------------
+    items = []
+    for r in res.data:
+        nombre_item = r.get("item_final") or "Sin nombre"
+        items.append({
+            "id": r["id"],
+            "fecha": r["fecha_compra"],
+            "item": nombre_item,
+            "categoria": r.get("categoria"),
+            "costo": r.get("costo"),
+            "numero_documento": r.get("numero_documento")
+        })
+
+    total_registros = len(items)
+
+    # ---------------------------------------------------------
+    # 4) Respuesta final
+    # ---------------------------------------------------------
+    return {
+        "total_registros": total_registros,
+        "gasto_mes_actual": gasto_mes_actual,
+        "items": items
+    }
+
+
+async def create_machine_maintenance(machine_id: int, data):
+    # 1) Validar que la máquina exista
+    m_raw = (
+        supabase.table("maquinas")
+        .select("id")
+        .eq("id", machine_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(m_raw, "error", None):
+        raise HTTPException(404, "Máquina no encontrada")
+
+    # 2) Construir payload de inserción
+    payload = {
+        "maquina_id": machine_id,
+        "item_repuesto_id": data.item_repuesto_id,
+        "item_personalizado": data.item_personalizado,
+        "costo": data.costo,
+        "numero_documento": data.numero_documento,
+        "categoria": data.categoria,
+        "fecha_compra": data.fecha_compra.isoformat()
+    }
+
+    # 3) Insertar en compras_repuestos
+    res = supabase.table("compras_repuestos").insert(payload).execute()
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error creando mantenimiento: {res.error}")
+
+    nuevo = res.data[0]
+
+    return {
+        "message": "Registro creado correctamente",
+        "id": nuevo["id"],
+        "maquina_id": nuevo["maquina_id"]
+    }
+
+
+async def delete_maintenance(maintenance_id: int):
+    """
+    Elimina una compra de repuesto.
+    """
+
+    # Verificar existencia
+    exists = (
+        supabase.table("compras_repuestos")
+        .select("id")
+        .eq("id", maintenance_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(exists, "error", None):
+        raise HTTPException(404, "Registro de mantenimiento no encontrado.")
+
+    # Eliminar
+    res = (
+        supabase.table("compras_repuestos")
+        .delete()
+        .eq("id", maintenance_id)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error eliminando registro: {res.error}")
+
+    return None   # Provoca el 204 No Content

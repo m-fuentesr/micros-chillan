@@ -1,5 +1,6 @@
-﻿from fastapi import APIRouter, Depends, status
-from typing import List
+﻿from fastapi import APIRouter, Body, Depends, status
+from datetime import date
+from typing import List, Literal, Optional
 
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
@@ -9,7 +10,14 @@ from app.schemas.machine import (
     MachineListItem, 
     MachineCreate, 
     MachineDetail,
-    MachineUpdate)
+    MachineUpdate,
+    MachineAssignmentItem
+)
+from app.schemas.maintenance import (
+    MaintenanceRecord,
+    MaintenanceCreate,
+    MaintenanceListResponse
+)
 
 router = APIRouter(prefix="/api/machines", tags=["Machines"])
 
@@ -100,4 +108,43 @@ async def delete_machine(machine_id: int, current_user: UserInDB = Depends(get_c
     require_admin(current_user)
     return await machine_service.delete_machine(machine_id)
 
+# ---------------------------------------------------------
+# 8. HISTORIAL DE ASIGNACIONES DE UNA MÁQUINA (Admin)
+# ---------------------------------------------------------
+@router.get("/{machine_id}/assignments", response_model=List[MachineAssignmentItem])
+async def get_machine_assignments(
+    machine_id: int,
+    filtro: Optional[Literal["todas", "actual", "cerradas"]] = None,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    require_admin(current_user)
+    return await machine_service.get_machine_assignments(machine_id, filtro)
 
+# ---------------------------------------------------------
+# 9. LISTAR MANTENIMIENTOS/REPUESTOS DE UNA MÁQUINA + RESUMEN (Admin)
+# ---------------------------------------------------------
+@router.get("/{machine_id}/maintenances", response_model=MaintenanceListResponse)
+async def get_machine_maintenances(
+    machine_id: int,
+    categoria: Optional[str] = None,
+    item: Optional[str] = None,
+    desde: Optional[date] = None,
+    hasta: Optional[date] = None,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await machine_service.get_machine_maintenances(
+        machine_id, categoria, item, desde, hasta
+    )
+
+# ---------------------------------------------------------
+# 10. REGISTRAR NUEVA COMPRA DE REPUESTO PARA UNA MÁQUINA (Admin)
+# ---------------------------------------------------------
+@router.post("/{machine_id}/maintenances", status_code=201)
+async def create_machine_maintenance(
+    machine_id: int,
+    payload: MaintenanceCreate = Body(...),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await machine_service.create_machine_maintenance(machine_id, payload)

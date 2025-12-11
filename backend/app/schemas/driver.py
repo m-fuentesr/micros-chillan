@@ -19,7 +19,7 @@ class DriverBase(BaseModel):
         ..., description="Fecha de vencimiento de licencia del chofer"
     )
 
-    estado: Literal["activo", "inactivo"] = Field(
+    estado: Literal["activo", "inactivo", "eliminado"] = Field(
         "activo", description="Estado del chofer"
     )
 
@@ -41,7 +41,7 @@ class DriverListItem(BaseModel):
     rut: str
     telefono: str
     correo_electronico: str
-    estado: Literal["activo", "inactivo"]
+    estado: Literal["activo", "inactivo", "eilminado"]
 
     maquina_actual: Optional[DriverMachine]
     licencia_estado: DriverLicenseState
@@ -51,7 +51,7 @@ class DriverDetail(BaseModel):
     id: int
     nombre_completo: str
     rut: str
-    estado: Literal["activo", "inactivo"]
+    estado: Literal["activo", "inactivo", "eliminado"]
     telefono: str
     correo_electronico: str
     porcentaje_pago: float
@@ -75,7 +75,7 @@ class DriverUpdate(BaseModel):
     telefono: str
     correo_electronico: EmailStr
 
-    estado: Literal["activo", "inactivo"]
+    estado: Literal["activo", "inactivo", "eliminado"]
     porcentaje_pago: float
 
     # Máquina asignada (dropdown). Puede ser None = "Sin asignar"

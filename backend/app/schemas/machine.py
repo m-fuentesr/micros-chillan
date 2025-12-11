@@ -86,3 +86,12 @@ class MachineUpdate(BaseModel):
     estado_operativo: str
     chofer_id: Optional[int] = None
     documentos: MachineUpdateDocuments
+
+
+class MachineAssignmentItem(BaseModel):
+    id: int
+    chofer_nombre: str
+    fecha_inicio: date
+    fecha_fin: Optional[date]
+    estado: str  # "Activa" o "Cerrada"
+    dias_asignado: int
