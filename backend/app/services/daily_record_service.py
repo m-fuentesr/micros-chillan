@@ -1,5 +1,4 @@
 ﻿from fastapi import HTTPException
-from typing import List
 from datetime import date, timedelta
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
@@ -185,6 +184,65 @@ async def get_today_record_status(current_user: UserInDB):
             "can_create_new": True,
             "message": "Puede crear un nuevo reporte"
         }
+
+
+async def get_daily_records_summary():
+
+    hoy = date.today()
+    fecha_inicio = date(hoy.year, hoy.month, 1)
+    fecha_inicio_iso = fecha_inicio.isoformat()
+    fecha_fin_iso = hoy.isoformat()
+
+    # ----------------------------------------
+    # 1) RECAUDACIÓN DEL PERIODO
+    # ----------------------------------------
+    recaudacion_res = (
+        supabase.table("registros_diarios")
+        .select("monto_recaudado", count="exact")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    if getattr(recaudacion_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo recaudación: {recaudacion_res.error}")
+
+    recaudacion_periodo = sum(r["monto_recaudado"] for r in recaudacion_res.data)
+
+    # ----------------------------------------
+    # 2) REGISTROS FALTANTES (estado = pendiente)
+    # ----------------------------------------
+    faltantes_res = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+        .eq("estado", "pendiente_trabajador")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    registros_faltantes = faltantes_res.count or 0
+
+    # ----------------------------------------
+    # 3) REGISTROS CON INCIDENTE
+    # ----------------------------------------
+    incidentes_res = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+        .eq("estado", "incidente_reportado")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    registros_incidentes = incidentes_res.count or 0
+
+    return {
+        "recaudacion_periodo": recaudacion_periodo,
+        "registros_faltantes": registros_faltantes,
+        "registros_incidentes": registros_incidentes,
+    }
+
 
 async def list_daily_records_for_admin(
     filters: DailyRecordListFilters,

@@ -6,12 +6,24 @@ from app.schemas.user import UserInDB
 from app.services import daily_record_service
 from app.schemas.daily_record import (
     DailyRecordCreate, 
-    DailyRecordResponse, 
+    DailyRecordResponse,
+    DailyRecordSummary,
     DailyRecordListItem,
     DailyRecordListFilters
 )
 
 router = APIRouter(prefix="/api/daily-records", tags=["Daily Records"])
+
+@router.get("/summary", response_model=DailyRecordSummary)
+async def get_summary(
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Resumen de registros diarios para el administrador (KPIs).
+    """
+    require_admin(current_user)
+    return await daily_record_service.get_daily_records_summary()
+
 
 @router.get("", response_model=PaginatedResponse[DailyRecordListItem])
 async def list_daily_records(

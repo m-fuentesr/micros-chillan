@@ -38,6 +38,13 @@ class DailyRecordResponse(BaseModel):
         from_attributes = True
 
 
+    
+class DailyRecordSummary(BaseModel):
+    recaudacion_periodo: int
+    registros_faltantes: int
+    registros_incidentes: int
+
+
 class DailyRecordListDriver(BaseModel):
     id: int
     nombre: str
