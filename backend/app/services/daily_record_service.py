@@ -202,7 +202,7 @@ async def list_daily_records_for_admin(
     base_query = (
         supabase.table("registros_diarios")
         .select(
-            "id, fecha, monto_recaudado, costo_total_diesel, estado, "
+            "id, fecha, monto_recaudado, costo_total_diesel, estado, observaciones, "
             "choferes(id, primer_nombre, apellido_paterno), "
             "maquinas(id, numero_interno)",
             count="exact"
@@ -224,8 +224,6 @@ async def list_daily_records_for_admin(
 
     if filters.fecha_fin:
         base_query = base_query.lte("fecha", filters.fecha_fin.isoformat())
-
-    search_text = filters.search.lower() if filters.search else None
 
     # Primero obtenemos TOTAL
     count_res = base_query.execute()
@@ -249,13 +247,9 @@ async def list_daily_records_for_admin(
     for row in res.data or []:
         chofer_raw = row.get("choferes") or {}
         maquina_raw = row.get("maquinas") or {}
-
-        nombre_chofer = f"{chofer_raw.get('primer_nombre', '')} {chofer_raw.get('apellido_paterno', '')}".strip()
-        numero_maquina = str(maquina_raw.get("numero_interno", ""))
-
-        if search_text:
-            if search_text not in nombre_chofer.lower() and search_text not in numero_maquina.lower():
-                continue
+        monto = row.get("monto_recaudado", 0)
+        diesel = row.get("costo_total_diesel") or 0
+        neto = monto - diesel
 
         items.append(
             {
@@ -263,15 +257,17 @@ async def list_daily_records_for_admin(
                 "fecha": row["fecha"],
                 "chofer": {
                     "id": chofer_raw.get("id"),
-                    "nombre": nombre_chofer,
+                    "nombre": f"{chofer_raw.get('primer_nombre', '')} {chofer_raw.get('apellido_paterno', '')}".strip(),
                 },
                 "maquina": {
                     "id": maquina_raw.get("id"),
                     "numero_interno": maquina_raw.get("numero_interno")
                 },
-                "monto_recaudado": row.get("monto_recaudado", 0),
-                "diesel": row.get("costo_total_diesel"),
-                "estado": row.get("estado", "")
+                "monto_recaudado": monto,
+                "diesel": diesel,
+                "neto": neto,
+                "estado": row.get("estado", ""),
+                "has_observaciones": bool(row.get("observaciones"))
             }
         )
 

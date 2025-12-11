@@ -55,7 +55,9 @@ class DailyRecordListItem(BaseModel):
     maquina: DailyRecordListMachine
     monto_recaudado: int
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
+    neto: int                      # monto_recaudado - costo_total_diesel
     estado: str
+    has_observaciones: bool
 
 
 class DailyRecordListFilters(BaseModel):
@@ -64,7 +66,6 @@ class DailyRecordListFilters(BaseModel):
     fecha_inicio: Optional[date] = None
     fecha_fin: Optional[date] = None
     estado: Optional[str] = None
-    search: Optional[str] = None
     sort_by: str = "fecha"
     order: str = "desc"
     page: int = 1
