@@ -2,11 +2,12 @@ import { Component, ChangeDetectionStrategy, input, output, computed, signal } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
+import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
 @Component({
   selector: 'app-liquidation-table',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, DriverIcon],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -59,31 +60,32 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
           </div>
 
           <!-- Segunda fila: Botones de Semanas -->
-          <div class="flex flex-col gap-3">
-            <div class="flex items-center gap-2">
-              <span class="text-xs font-bold uppercase tracking-widest text-base-content/50">Seleccionar Semana:</span>
-            </div>
-            <div class="flex gap-2 flex-wrap">
-              @for (week of availableWeeks(); track week) {
-                <button
-                  class="btn btn-sm px-4 rounded-lg transition-all font-bold shadow-sm hover:shadow-md"
-                  [class.btn-primary]="selectedWeek() === week"
-                  [class.btn-outline]="selectedWeek() !== week"
-                  [class.btn-ghost]="selectedWeek() !== week"
-                  [class.border-primary/30]="selectedWeek() === week"
-                  (click)="onWeekChange(week)">
-                  <span>Semana {{ week }}</span>
-                  @if (week === availableWeeks()[availableWeeks().length - 1]) {
-                    <span class="badge badge-xs badge-warning ml-1.5 text-white">Última</span>
-                  }
-                </button>
-              }
+          <div class="flex flex-col gap-2">
+            <span class="text-xs font-bold uppercase tracking-widest text-base-content/50">Seleccionar Semana:</span>
+            <div class="overflow-x-auto scrollbar-hide -mx-4 lg:mx-0 px-4 lg:px-0">
+              <div class="tabs tabs-boxed bg-base-200/50 p-1 gap-1 inline-flex min-w-full lg:min-w-0">
+                @for (week of availableWeeks(); track week) {
+                  <button
+                    type="button"
+                    class="tab h-9 px-3 sm:px-4 font-semibold transition-all rounded-lg flex items-center gap-1.5 whitespace-nowrap"
+                    [class.tab-active]="selectedWeek() === week"
+                    [class.bg-primary]="selectedWeek() === week"
+                    [class.text-primary-content]="selectedWeek() === week"
+                    [class.text-base-content/60]="selectedWeek() !== week"
+                    (click)="onWeekChange(week)">
+                    <span class="text-xs sm:text-sm">Semana {{ week }}</span>
+                    @if (week === availableWeeks()[availableWeeks().length - 1]) {
+                      <span class="badge badge-xs badge-warning text-white">Última</span>
+                    }
+                  </button>
+                }
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Vista Desktop: Tabla con Ecuación Visual -->
-        <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
+        <!-- Vista Desktop: Tabla con Ecuación Visual (solo XL y mayores) -->
+        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-200/50 border-b border-base-200">
               <tr>
@@ -101,10 +103,8 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                   
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-3">
-                      <div class="avatar placeholder">
-                        <div class="bg-primary text-primary-content rounded-full w-10 h-10 flex items-center justify-center">
-                          <span class="text-sm font-bold">{{ getInitials(chofer.chofer_nombre) }}</span>
-                        </div>
+                      <div class="bg-primary/10 text-primary rounded-full w-10 h-10 flex items-center justify-center p-2">
+                        <app-driver-icon class="w-full h-full" />
                       </div>
                       <div class="flex flex-col">
                         <span class="font-bold text-base-content">{{ chofer.chofer_nombre }}</span>
@@ -127,10 +127,10 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                       <!-- Última semana: mostrar acumulado mensual -->
                       <div class="flex flex-col gap-2">
                         <div class="flex flex-col gap-1">
-                          <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
                             Acumulado mes: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                           </span>
-                          <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
                             Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                           </span>
                         </div>
@@ -225,19 +225,18 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
           </table>
         </div>
 
-        <!-- Vista Móvil: Tarjetas de Nómina -->
-        <div class="lg:hidden space-y-4">
-          @for (chofer of liquidation().choferes; track chofer.chofer_id) {
-            <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm" 
+        <!-- Vista Móvil y Tablet: Tarjetas de Nómina (hasta XL) -->
+        <div class="xl:hidden">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            @for (chofer of liquidation().choferes; track chofer.chofer_id) {
+              <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm" 
                  [class.border-l-4]="chofer.estado_pago === 'pagado'" 
                  [class.border-l-success]="chofer.estado_pago === 'pagado'">
               
               <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
-                  <div class="avatar placeholder">
-                    <div class="bg-primary text-primary-content rounded-full w-12 h-12 flex items-center justify-center">
-                      <span class="text-base font-bold">{{ getInitials(chofer.chofer_nombre) }}</span>
-                    </div>
+                  <div class="bg-primary/10 text-primary rounded-full w-12 h-12 flex items-center justify-center p-2.5">
+                    <app-driver-icon class="w-full h-full" />
                   </div>
                   <div>
                     <div class="font-bold text-lg">{{ chofer.chofer_nombre }}</div>
@@ -267,10 +266,10 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                     @if (liquidation().es_ultima_semana) {
                       <!-- Última semana: mostrar acumulado mensual -->
                       <div class="flex flex-col items-end gap-1">
-                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
                           Acum: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                         </span>
-                        <span class="badge badge-sm badge-ghost tabular-nums text-xs text-base-content/50 font-mono">
+                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
                           Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
                         </span>
                         <label class="flex items-center gap-1 cursor-pointer">
@@ -340,7 +339,8 @@ import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.mo
                 </button>
               }
             </div>
-          }
+            }
+          </div>
         </div>
 
         <!-- Footer: Acciones Globales -->

@@ -52,6 +52,7 @@ export interface DriverDailyRecord {
   estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado'; // Mapeo de DailyRecordStatus
   recaudado: number;
   diesel: number; // Alias de costo_diesel para compatibilidad
+  observaciones?: string | null; // Texto opcional mostrado en historial
   tiene_observaciones: boolean; // Booleano que indica si tiene observaciones
 }
 

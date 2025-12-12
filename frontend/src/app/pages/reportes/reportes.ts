@@ -117,8 +117,8 @@ interface DriverProfit {
                     <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                   </div>
                 }
-                <div class="flex items-center gap-2 w-full lg:w-auto">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full lg:w-auto bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -153,7 +153,7 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-1/2 lg:w-auto">
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
@@ -176,7 +176,7 @@ interface DriverProfit {
                     [options]="profitChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else {
+                } @else if (!profitLoadingState.isLoading()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -368,34 +368,34 @@ interface DriverProfit {
                     @for (item of profitVisibleMachines(); track item.rank) {
                       <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
-                        <div class="pl-2">
-                          <div class="flex justify-between items-start mb-3">
-                            <div class="flex items-center gap-3">
-                              <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
-                              <div class="flex items-center gap-2">
-                                <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
-                                </div>
-                                <h3 class="font-bold text-lg leading-tight">{{ item.machine }}</h3>
-                              </div>
+                    <div class="pl-2">
+                      <div class="flex justify-between items-start mb-3 gap-3">
+                        <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
+                          <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
+                          <div class="flex items-center gap-2 min-w-0">
+                            <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
+                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
                             </div>
-                            <div class="text-right">
-                              <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
-                              <div class="text-xl font-bold text-primary tabular-nums">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                            </div>
+                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
                           </div>
+                        </div>
+                        <div class="text-right min-w-[120px] sm:min-w-[140px]">
+                          <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
+                          <div class="text-lg sm:text-xl font-bold text-primary tabular-nums break-words leading-tight">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                        </div>
+                      </div>
                           <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm border-t border-base-100 pt-3">
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Ingreso Total</div>
-                              <div class="font-bold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          <div class="font-bold tabular-nums break-words">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Pago Choferes</div>
-                              <div class="font-semibold tabular-nums">{{ item.driverPayment | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          <div class="font-semibold tabular-nums break-words">{{ item.driverPayment | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Costo Diésel</div>
-                              <div class="font-semibold tabular-nums text-error/80">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          <div class="font-semibold tabular-nums text-error/80 break-words">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Mantenimiento</div>
@@ -459,8 +459,8 @@ interface DriverProfit {
                     <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalIncome() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                   </div>
                 }
-                <div class="flex items-center gap-2 w-full lg:w-auto">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full lg:w-auto bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -495,7 +495,7 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-1/2 lg:w-auto">
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
@@ -518,7 +518,7 @@ interface DriverProfit {
                     [options]="revenueChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else {
+                } @else if (!revenueLoadingState.isLoading()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -666,22 +666,22 @@ interface DriverProfit {
                     @for (item of revenueVisible(); track item.rank) {
                       <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-success]="item.rank === 1" [class.bg-success/70]="item.rank === 2" [class.bg-success/50]="item.rank > 2"></div>
-                        <div class="pl-2">
-                          <div class="flex justify-between items-start">
-                            <div class="flex items-center gap-3">
-                              <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
-                              <div class="flex items-center gap-2">
-                                <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
-                                </div>
-                                <h3 class="font-bold text-lg leading-tight">{{ item.machine }}</h3>
-                              </div>
+                    <div class="pl-2">
+                      <div class="flex justify-between items-start gap-3">
+                        <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
+                          <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
+                          <div class="flex items-center gap-2 min-w-0">
+                            <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
+                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
                             </div>
-                            <div class="text-right">
-                              <div class="text-xs text-base-content/60 uppercase mb-1">Ingreso Total</div>
-                              <div class="text-xl font-bold text-success tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                            </div>
+                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
                           </div>
+                        </div>
+                        <div class="text-right min-w-[120px] sm:min-w-[140px]">
+                          <div class="text-xs text-base-content/60 uppercase mb-1">Ingreso Total</div>
+                          <div class="text-lg sm:text-xl font-bold text-success tabular-nums break-words leading-tight">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                        </div>
+                      </div>
                         </div>
                       </div>
                     } @empty {
@@ -735,8 +735,8 @@ interface DriverProfit {
                     <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                   </div>
                 }
-                <div class="flex items-center gap-2 w-full lg:w-auto">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full lg:w-auto bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -771,7 +771,7 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-1/2 lg:w-auto">
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                     </svg>
@@ -794,7 +794,7 @@ interface DriverProfit {
                     [options]="driverChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else {
+                } @else if (!driverLoadingState.isLoading()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -962,31 +962,29 @@ interface DriverProfit {
                     @for (item of driverVisible(); track item.rank) {
                       <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
-                        <div class="pl-2">
-                          <div class="flex justify-between items-start mb-3">
-                            <div>
-                              <div class="flex items-center gap-2">
-                                <span class="badge badge-sm badge-ghost font-mono">#{{ item.rank }}</span>
-                                <h3 class="font-bold text-lg">{{ item.driver }}</h3>
-                              </div>
-                            </div>
-                            <div class="text-right">
-                              <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
-                              <div class="text-xl font-bold text-primary tabular-nums">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                            </div>
+                      <div class="pl-2">
+                        <div class="flex justify-between items-start mb-3 gap-3">
+                          <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
+                            <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
+                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate mt-2.5 sm:mt-2" [title]="item.driver">{{ item.driver }}</h3>
                           </div>
+                          <div class="text-right min-w-[120px] sm:min-w-[140px]">
+                            <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
+                            <div class="text-lg sm:text-xl font-bold text-primary tabular-nums break-words leading-tight">{{ item.netProfit | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                          </div>
+                        </div>
                           <div class="grid grid-cols-2 gap-y-3 gap-x-4 text-sm border-t border-base-100 pt-3">
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Ingreso Total</div>
-                              <div class="font-bold tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                            <div class="font-bold tabular-nums break-words">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Pago Chofer</div>
-                              <div class="font-semibold tabular-nums">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                            <div class="font-semibold tabular-nums break-words">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                             <div>
                               <div class="text-xs text-base-content/50 mb-0.5">Costo Diésel</div>
-                              <div class="font-semibold tabular-nums text-error/80">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
+                            <div class="font-semibold tabular-nums text-error/80 break-words">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
                             </div>
                           </div>
                         </div>
@@ -1509,7 +1507,8 @@ export class Reportes implements OnInit {
     const machines = this.machineProfitabilityResponse();
     return machines.map((item: MachineProfitabilityResponse, index: number) => ({
       rank: index + 1,
-      machine: item.identificador,
+      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
+      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
       income: item.ingresos_totales,
       dieselCost: item.costos_diesel,
       driverPayment: item.pago_choferes,
@@ -1625,7 +1624,8 @@ export class Reportes implements OnInit {
   revenueRankingData = computed(() => {
     const ranking = this.grossIncomeRankingResponse();
     return ranking.map((item: MachineGrossRankingResponse) => ({
-      machine: item.identificador,
+      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
+      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
       income: item.ingresos_totales,
       rank: item.ranking,
       reports: 0, // No disponible en el backend actual

@@ -89,7 +89,7 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                  [class.ring-2]="expandedIds().has(liquidation.id)"
                  [class.ring-base-200]="expandedIds().has(liquidation.id)">
               
-              <div class="p-4 flex justify-between items-center cursor-pointer" 
+              <div class="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between cursor-pointer" 
                    (click)="toggleDetail(liquidation.id)">
                 <div class="flex items-center gap-3 min-w-0">
                   <div class="bg-base-200/50 p-2.5 rounded-lg text-base-content/60 shrink-0">
@@ -98,17 +98,17 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     </svg>
                   </div>
                   <div class="truncate">
-                    <div class="font-bold text-base truncate">{{ liquidation.periodo }}</div>
-                    <div class="text-xs text-base-content/50 flex items-center gap-1">
+                    <div class="font-bold text-sm sm:text-base truncate">{{ liquidation.periodo }}</div>
+                    <div class="text-[11px] sm:text-xs text-base-content/50 flex items-center gap-1 flex-wrap">
                       <span>{{ formatDate(liquidation.fecha_cierre) }}</span>
                       <span>•</span>
                       <span class="truncate max-w-[100px]">{{ liquidation.cerrado_por }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                  <div class="font-black text-base tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0 self-end sm:self-auto">
+                  <div class="font-black text-sm sm:text-base md:text-lg tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 text-base-content/40" 
                       [class.rotate-180]="expandedIds().has(liquidation.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -141,23 +141,23 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
           </button>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 py-4 border-b border-base-100">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 py-4 border-b border-base-100">
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Total Liquidado</div>
-            <div class="text-2xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Choferes</div>
-            <div class="text-2xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Promedio</div>
-            <div class="text-2xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Estado</div>
-            <div class="badge badge-sm badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+            <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
               Finalizado
@@ -241,18 +241,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     </table>
                   } @else {
                     <!-- Vista Móvil: Lista Vertical de Choferes -->
-                    <div class="divide-y divide-base-100 p-3">
+                    <div class="p-3 space-y-0">
                       @for (chofer of week.choferes; track chofer.chofer_id) {
-                        <div class="p-3 flex justify-between items-center">
-                          <div>
+                        <div class="p-3 border-b border-base-300 last:border-b-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div class="min-w-0">
                             <div class="font-bold text-sm">{{ chofer.chofer_nombre }}</div>
-                            <div class="text-[10px] text-base-content/50 mt-1 flex gap-2">
-                              <span class="uppercase badge badge-xs badge-ghost">{{ chofer.metodo_pago || '—' }}</span>
-                              <span class="font-mono">{{ chofer.codigo_transferencia || '—' }}</span>
+                            <div class="text-[10px] text-base-content/50 mt-1 flex flex-wrap gap-1.5 items-center">
+                              <span class="uppercase badge badge-ghost badge-xxs sm:badge-xs">{{ chofer.metodo_pago || '—' }}</span>
+                              <span class="font-mono truncate max-w-[160px] sm:max-w-[200px]">{{ chofer.codigo_transferencia || '—' }}</span>
                             </div>
                           </div>
-                          <div class="text-right">
-                            <div class="font-bold text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
+                          <div class="text-left sm:text-right">
+                            <div class="font-bold text-sm sm:text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
                             <div class="text-[10px] text-base-content/50">Base: {{ formatCurrency(chofer.total_ganado) }}</div>
                             @if (chofer.monto_a_completar > 0) {
                               <div class="text-[10px] text-primary">Ajuste: {{ formatCurrency(chofer.monto_a_completar) }}</div>
@@ -304,14 +304,13 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
 
     .collapse-anim.collapse-expanded,
     .collapse-anim-mobile.collapse-expanded {
-      max-height: 2000px; /* Aumentado para permitir múltiples semanas expandidas */
+      max-height: 9999px; /* permitir que crezca sin recortar contenido */
     }
     
-    /* Scroll interno para el contenedor de semanas cuando hay muchas expandidas */
+    /* Scroll interno para el contenedor de semanas solo cuando sea necesario */
     .weeks-container {
-      max-height: 1200px;
-      overflow-y: auto;
       overflow-x: hidden;
+      overflow-y: visible;
     }
     
     .weeks-container::-webkit-scrollbar {
