@@ -56,6 +56,7 @@ class DailyRecordListItem(BaseModel):
     monto_recaudado: int
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
     estado: str
+    tiene_observaciones: bool = False
 
 
 class DailyRecordListFilters(BaseModel):
