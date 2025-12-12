@@ -1,9 +1,7 @@
-﻿from datetime import date, timedelta, datetime, timezone
+﻿from datetime import date, timedelta
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
-import logging
-logger = logging.getLogger("app.services.driver")
 
 async def get_summary():
     """
