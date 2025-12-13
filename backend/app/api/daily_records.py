@@ -5,11 +5,16 @@ from app.core.pagination import PaginatedResponse
 from app.schemas.user import UserInDB
 from app.services import daily_record_service
 from app.schemas.daily_record import (
-    DailyRecordCreate, 
-    DailyRecordResponse,
+    DailyRecordAuditItem,
     DailyRecordSummary,
     DailyRecordListItem,
-    DailyRecordListFilters
+    DailyRecordListFilters,
+    DailyRecordCreate, 
+    DailyRecordResponse,
+    DailyRecordDetailResponse,
+    DailyRecordPreviewPaymentRequest,
+    DailyRecordPreviewPaymentResponse,
+    DailyRecordUpdate
 )
 
 router = APIRouter(prefix="/api/daily-records", tags=["Daily Records"])
@@ -25,6 +30,18 @@ async def get_summary(
     return await daily_record_service.get_daily_records_summary()
 
 
+@router.get("/{record_id}", response_model=DailyRecordDetailResponse)
+async def get_daily_record_detail(
+    record_id: int,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Obtener detalle completo de un registro diario para edición (Admin).
+    """
+    require_admin(current_user)
+    return await daily_record_service.get_daily_record_detail(record_id)
+
+
 @router.get("", response_model=PaginatedResponse[DailyRecordListItem])
 async def list_daily_records(
     filters: DailyRecordListFilters = Depends(),
@@ -36,6 +53,52 @@ async def list_daily_records(
     require_admin(current_user)
     return await daily_record_service.list_daily_records_for_admin(
         filters=filters,
+        current_user=current_user,
+    )
+
+
+@router.get("/{record_id}/history", response_model=list[DailyRecordAuditItem])
+async def get_daily_record_history(
+    record_id: int,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Historial de cambios de un registro diario (Admin).
+    """
+    require_admin(current_user)
+    return await daily_record_service.get_daily_record_history(record_id)
+
+
+@router.post("/preview-payment",response_model=DailyRecordPreviewPaymentResponse)
+async def preview_payment(
+    payload: DailyRecordPreviewPaymentRequest,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Previsualiza el cálculo de pago del chofer sin guardar cambios.
+    """
+    require_admin(current_user)
+
+    return await daily_record_service.preview_payment(
+        chofer_id=payload.chofer_id,
+        monto_recaudado_propuesto=payload.monto_recaudado_propuesto,
+    )
+
+
+@router.put("/{record_id}", status_code=status.HTTP_200_OK)
+async def update_daily_record(
+    record_id: int,
+    payload: DailyRecordUpdate,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Guarda correcciones del administrador sobre un registro diario.
+    """
+    require_admin(current_user)
+
+    return await daily_record_service.update_daily_record(
+        record_id=record_id,
+        payload=payload,
         current_user=current_user,
     )
 

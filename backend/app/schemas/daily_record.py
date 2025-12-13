@@ -1,6 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional
-from datetime import date
+from typing import Optional, List
+from datetime import date, datetime
 
 class DailyRecordCreate(BaseModel):
     maquina_id: int
@@ -37,7 +37,6 @@ class DailyRecordResponse(BaseModel):
     class Config:
         from_attributes = True
 
-
     
 class DailyRecordSummary(BaseModel):
     recaudacion_periodo: int
@@ -64,7 +63,7 @@ class DailyRecordListItem(BaseModel):
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
     neto: int                      # monto_recaudado - costo_total_diesel
     estado: str
-    has_observaciones: bool
+    tiene_observaciones: bool = False
 
 
 class DailyRecordListFilters(BaseModel):
@@ -77,3 +76,58 @@ class DailyRecordListFilters(BaseModel):
     order: str = "desc"
     page: int = 1
     per_page: int = 10
+
+
+class DailyRecordDetailResponse(BaseModel):
+    id: int
+    fecha: date
+    estado: str
+
+    maquina: dict
+    chofer: dict
+    datos_financieros: dict
+    estado_operativo: dict
+
+    observaciones: Optional[str]
+    incidente_critico: bool
+    imagenes: dict
+
+
+class DailyRecordPreviewPaymentRequest(BaseModel):
+    chofer_id: int
+    monto_recaudado_propuesto: int
+
+
+class DailyRecordPreviewPaymentResponse(BaseModel):
+    porcentaje_aplicado: float
+    pago_calculado: int
+
+
+class DailyRecordUpdate(BaseModel):
+    monto_recaudado: Optional[int] = None
+    litros_diesel: Optional[float] = None
+    costo_total_diesel: Optional[int] = None
+    observaciones: Optional[str] = None
+
+    # Lógica de excepción
+    es_dia_no_trabajado: bool
+    motivo_no_trabajado: Optional[str] = None
+    motivo_no_trabajado_otro: Optional[str] = None
+
+    incidente_critico: bool = False
+
+
+class DailyRecordAuditDetail(BaseModel):
+    campo: str
+    valor_anterior: str
+    valor_nuevo: str
+
+
+class DailyRecordAuditItem(BaseModel):
+    id: int
+    fecha_cambio: datetime
+    usuario_responsable: str
+    tipo_cambio: str
+    detalles: List[DailyRecordAuditDetail]
+
+    
