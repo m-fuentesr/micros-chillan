@@ -308,22 +308,24 @@ async def update_driver(driver_id: int, data):
     - Porcentaje de pago
     - Correo del usuario
     - Máquina asignada
-    - Fecha de vencimiento de licencia  (ANTES era otro endpoint, ahora se actualiza aquí)
+    - Fecha de vencimiento de licencia
     """
+    hoy = date.today().isoformat()
 
     # ---------------------------------------------------------
-    # 1. Verificar existencia del chofer
+    # 1. Verificar existencia del chofer y obtener 'estado' previo
     # ---------------------------------------------------------
-    exists = (
+    chofer_raw = (
         supabase.table("choferes")
-        .select("id")
+        .select("id, estado")
         .eq("id", driver_id)
         .single()
         .execute()
     )
-
-    if getattr(exists, "error", None):
+    if getattr(chofer_raw, "error", None):
         raise HTTPException(404, "Chofer no encontrado")
+
+    estado_anterior = chofer_raw.data["estado"]
 
     # ---------------------------------------------------------
     # 2. Actualizar datos del chofer
@@ -346,13 +348,12 @@ async def update_driver(driver_id: int, data):
         .eq("id", driver_id)
         .execute()
     )
-
     if getattr(upd, "error", None):
         raise HTTPException(400, f"Error actualizando chofer: {upd.error}")
 
-    # =====================================================================
-    # 2.1 Actualizar correo en Supabase Auth
-    # =====================================================================
+    # ---------------------------------------------------------
+    # 3. Obtener usuario asociado (para correo + auth)
+    # ---------------------------------------------------------
     usr = (
         supabase.table("usuarios")
         .select("id, supabase_uid")
@@ -360,12 +361,15 @@ async def update_driver(driver_id: int, data):
         .single()
         .execute()
     )
-
     if getattr(usr, "error", None):
         raise HTTPException(400, "No se pudo obtener el usuario asociado al chofer")
 
+    usuario_id = usr.data["id"]
     supabase_uid = usr.data["supabase_uid"]
 
+    # ---------------------------------------------------------
+    # 3.1 Actualizar correo en Supabase Auth
+    # ---------------------------------------------------------
     try:
         supabase.auth.admin.update_user_by_id(
             supabase_uid,
@@ -377,23 +381,70 @@ async def update_driver(driver_id: int, data):
     except Exception as e:
         raise HTTPException(400, f"Error actualizando correo en Supabase Auth: {e}")
 
-    # =====================================================================
-    # 2.2 Actualizar correo en tabla interna 'usuarios'
-    # =====================================================================
+    # ---------------------------------------------------------
+    # 3.2 Actualizar correo en tabla 'usuarios'
+    # ---------------------------------------------------------
     upd_user = (
         supabase.table("usuarios")
         .update({"correo": data.correo_electronico})
-        .eq("chofer_id", driver_id)
+        .eq("id", usuario_id)
         .execute()
     )
-
     if getattr(upd_user, "error", None):
         raise HTTPException(400, "Error actualizando correo del usuario")
 
     # ---------------------------------------------------------
-    # 2.3 Manejo de asignación de máquina
+    # 4. Manejo de transición de estado (ACTIVO ↔ INACTIVO)
     # ---------------------------------------------------------
-    hoy = date.today().isoformat()
+    estado_nuevo = data.estado
+
+    # ===== Caso A → ACTIVO → INACTIVO =====
+    if estado_anterior == "activo" and estado_nuevo == "inactivo":
+
+        # 1) Desasignar máquina si la tiene
+        asign_raw = (
+            supabase.table("asignaciones_chofer_maquina")
+            .select("id")
+            .eq("chofer_id", driver_id)
+            .is_("fecha_termino", None)
+            .maybe_single()
+            .execute()
+        )
+
+        if asign_raw.data:
+            supabase.table("asignaciones_chofer_maquina").update(
+                {"fecha_termino": hoy}
+            ).eq("id", asign_raw.data["id"]).execute()
+
+        # 2) Banear usuario
+        try:
+            supabase.auth.admin.update_user_by_id(
+                supabase_uid,
+                {"ban_duration": "876600h"}
+            )
+        except Exception as e:
+            raise HTTPException(400, f"Error bloqueando usuario en Auth: {e}")
+
+    # ===== Caso B → INACTIVO → ACTIVO =====
+    if estado_anterior == "inactivo" and estado_nuevo == "activo":
+
+        # Quitar el ban
+        try:
+            supabase.auth.admin.update_user_by_id(
+                supabase_uid,
+                {"ban_duration": "none"}
+            )
+        except Exception as e:
+            raise HTTPException(400, f"Error reactivando usuario en Auth: {e}")
+
+        # Nota: no se reasigna máquina automáticamente.
+        # El admin debe elegir una máquina en el formulario.
+
+    # ---------------------------------------------------------
+    # 5. Manejo de asignación de máquina (si sigue activo)
+    # ---------------------------------------------------------
+    # Nota: si quedó inactivo, igual permitimos definir maquina_id=None
+    # pero no permitimos asignarlo a una máquina mientras está inactivo.
 
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
@@ -408,25 +459,28 @@ async def update_driver(driver_id: int, data):
     maquina_actual_id = asign_actual["maquina_id"] if asign_actual else None
     nueva_maquina = data.maquina_id
 
-    # Caso 1 → No cambia la máquina
+    # Si chofer está Inactivo, no puede tener máquina asignada
+    if estado_nuevo == "inactivo":
+        nueva_maquina = None
+
+    # --- Caso 1: no cambia la máquina ---
     if nueva_maquina == maquina_actual_id:
         return {"message": "Chofer actualizado correctamente"}
 
-    # Caso 2 → Tenía máquina y ahora es None
+    # --- Caso 2: tenía máquina y ahora es None ---
     if maquina_actual_id is not None and nueva_maquina is None:
         supabase.table("asignaciones_chofer_maquina").update(
             {"fecha_termino": hoy}
         ).eq("id", asign_actual["id"]).execute()
-
         return {"message": "Chofer actualizado correctamente"}
 
-    # Caso 3 → Cambió a otra máquina
+    # --- Caso 3: cambia a otra máquina ---
     if maquina_actual_id is not None and nueva_maquina is not None:
         supabase.table("asignaciones_chofer_maquina").update(
             {"fecha_termino": hoy}
         ).eq("id", asign_actual["id"]).execute()
 
-    # Caso 4 → Crear nueva asignación
+    # --- Caso 4: asignación nueva ---
     if nueva_maquina is not None:
         supabase.table("asignaciones_chofer_maquina").insert({
             "chofer_id": driver_id,
