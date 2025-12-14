@@ -14,6 +14,29 @@ class DailyRecordCreate(BaseModel):
     incidente_critico: bool = False  # El checkbox (True/False)
 
 
+class DailyRecordCreateAdmin(BaseModel):
+    chofer_id: int
+    maquina_id: int
+    fecha: date
+
+    # Estado operativo
+    es_dia_no_trabajado: bool
+    motivo_no_trabajado: Optional[str] = None
+    motivo_no_trabajado_otro: Optional[str] = None
+
+    # Financieros (solo si trabajado)
+    monto_recaudado: Optional[int] = None
+    litros_diesel: Optional[float] = None
+    costo_total_diesel: Optional[int] = None
+
+    # Evidencia
+    imagen_url: Optional[str] = None
+    imagen_comprobante_diesel_url: Optional[str] = None
+
+    observaciones: Optional[str] = None
+    incidente_critico: bool = False
+
+
 class MaquinaInfo(BaseModel):
     numero_interno: int
     marca: str

@@ -1,119 +1,209 @@
 ﻿from fastapi import HTTPException
 from datetime import date, timedelta
+from typing import Optional
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
-from app.schemas.daily_record import DailyRecordCreate, DailyRecordListFilters, DailyRecordUpdate
+from app.schemas.daily_record import (
+    DailyRecordCreate,
+    DailyRecordCreateAdmin,
+    DailyRecordListFilters,
+    DailyRecordUpdate
+)
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
 
-async def create_daily_record(payload: DailyRecordCreate, current_user: UserInDB):
-    """
-    Crea el registro diario.
-    1. Obtiene el porcentaje del chofer desde la tabla 'choferes'.
-    2. Calcula el monto del chofer.
-    3. Guarda todo cumpliendo con los campos obligatorios de la BD.
-    """
-    
-    # 1. Obtener ID del chofer
-    chofer_id = current_user.chofer_id
-    if not chofer_id:
-        raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
-
-    # ---------------------------------------------------------------
-    # VALIDACIÓN: Verificar que no exista un reporte para la misma fecha
-    # ---------------------------------------------------------------
-    fecha_reporte = payload.fecha if payload.fecha else date.today()
-    
-    existing_record = (
+async def _create_daily_record_core(
+    *,
+    chofer_id: int,
+    maquina_id: int,
+    fecha: date,
+    es_dia_no_trabajado: bool,
+    motivo_no_trabajado: Optional[str],
+    motivo_no_trabajado_otro: Optional[str],
+    monto_recaudado: Optional[int],
+    litros_diesel: Optional[float],
+    costo_total_diesel: Optional[int],
+    imagen_url: Optional[str],
+    imagen_comprobante_diesel_url: Optional[str],
+    observaciones: Optional[str],
+    incidente_critico: bool,
+    creado_por_usuario_id: int,
+    tipo_creador: str,  # "worker" | "admin"
+):
+    # --------------------------------------------------
+    # 1. Validar duplicado por chofer + fecha
+    # --------------------------------------------------
+    existing = (
         supabase.table("registros_diarios")
-        .select("id, fecha, estado")
+        .select("id")
         .eq("chofer_id", chofer_id)
-        .eq("fecha", fecha_reporte.isoformat())
+        .eq("fecha", fecha.isoformat())
         .execute()
     )
 
-    if existing_record.data and len(existing_record.data) > 0:
+    if existing.data:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Ya existe un reporte diario para la fecha {fecha_reporte.isoformat()}. Solo se permite un reporte por día."
+            status_code=400,
+            detail="Ya existe un registro diario para este chofer y fecha"
         )
 
-    # ---------------------------------------------------------------
-    # PASO CLAVE: BUSCAR EL PORCENTAJE (Para solucionar el error null)
-    # ---------------------------------------------------------------
-    resp_chofer = (
+    # --------------------------------------------------
+    # 2. Obtener porcentaje del chofer
+    # --------------------------------------------------
+    chofer_res = (
         supabase.table("choferes")
         .select("porcentaje_pago")
         .eq("id", chofer_id)
         .single()
         .execute()
     )
-    
-    if not resp_chofer.data:
-        raise HTTPException(status_code=404, detail="Datos del chofer no encontrados.")
 
-    # Obtenemos el valor. Si es None, usamos 0.0 para evitar errores matemáticos
-    porcentaje_del_chofer = resp_chofer.data.get("porcentaje_pago") or 0.0
+    if not chofer_res.data:
+        raise HTTPException(status_code=404, detail="Chofer no encontrado")
 
-    # ---------------------------------------------------------------
-    # CÁLCULOS OBLIGATORIOS (Según tu BD)
-    # ---------------------------------------------------------------
-    # Calculamos cuánto dinero representa ese porcentaje
-    # Ejemplo: Recaudó 100.000 * 16.5% = 16.500
-    monto_pago_chofer = int(payload.monto_recaudado * porcentaje_del_chofer)
+    porcentaje = chofer_res.data["porcentaje_pago"] or 0
 
-    # Definir estado según el checkbox
-    estado_calculado = "incidente_reportado" if payload.incidente_critico else "completo"
+    # --------------------------------------------------
+    # 3. Construir payload según estado operativo
+    # --------------------------------------------------
+    if es_dia_no_trabajado:
+        if not motivo_no_trabajado:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe indicar motivo de no trabajado"
+            )
 
-    # ---------------------------------------------------------------
-    # ARMAR EL OBJETO FINAL
-    # ---------------------------------------------------------------
-    nuevo_registro = {
-        "chofer_id": chofer_id,
-        "maquina_id": payload.maquina_id,
-        "fecha": payload.fecha.isoformat(),
-        "monto_recaudado": payload.monto_recaudado,
-        "litros_diesel": payload.litros_diesel,
-        "costo_total_diesel": payload.costo_total_diesel,
-        "imagen_url": payload.imagen_url,  # Comprobante del registro diario (obligatorio)
-        "imagen_comprobante_diesel_url": payload.imagen_comprobante_diesel_url,  # Comprobante de diesel (opcional)
-        "observaciones": payload.observaciones,
-        "estado": estado_calculado,
+        if motivo_no_trabajado == "otro" and not motivo_no_trabajado_otro:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe especificar motivo cuando selecciona 'Otro'"
+            )
 
-        # AQUÍ SOLUCIONAMOS EL ERROR:
-        # La BD pedía 'porcentaje_aplicado', aquí se lo damos:
-        "porcentaje_aplicado": porcentaje_del_chofer,
-        
-        # También enviamos el monto calculado, que suele ser obligatorio junto al %
-        "monto_porcentaje_chofer": monto_pago_chofer, 
- 
-    }
+        nuevo_registro = {
+            "chofer_id": chofer_id,
+            "maquina_id": maquina_id,
+            "fecha": fecha.isoformat(),
+            "estado": "no_trabajado",
+            "es_dia_no_trabajado": True,
+            "motivo_no_trabajado": motivo_no_trabajado,
+            "motivo_no_trabajado_otro": motivo_no_trabajado_otro,
+            "monto_recaudado": 0,
+            "litros_diesel": 0,
+            "costo_total_diesel": 0,
+            "porcentaje_aplicado": porcentaje,
+            "monto_porcentaje_chofer": 0,
+            "observaciones": observaciones,
+            "imagen_url": imagen_url,
+            "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
+        }
 
-    # Insertar
+    else:
+        if monto_recaudado is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Monto recaudado es obligatorio en día trabajado"
+            )
+
+        monto_pago = int(monto_recaudado * porcentaje)
+        estado = "incidente_reportado" if incidente_critico else "completo"
+
+        nuevo_registro = {
+            "chofer_id": chofer_id,
+            "maquina_id": maquina_id,
+            "fecha": fecha.isoformat(),
+            "estado": estado,
+            "es_dia_no_trabajado": False,
+            "motivo_no_trabajado": None,
+            "motivo_no_trabajado_otro": None,
+            "monto_recaudado": monto_recaudado,
+            "litros_diesel": litros_diesel,
+            "costo_total_diesel": costo_total_diesel,
+            "porcentaje_aplicado": porcentaje,
+            "monto_porcentaje_chofer": monto_pago,
+            "observaciones": observaciones,
+            "imagen_url": imagen_url,
+            "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
+        }
+
+    # --------------------------------------------------
+    # 4. Insertar registro
+    # --------------------------------------------------
     res = supabase.table("registros_diarios").insert(nuevo_registro).execute()
 
     if getattr(res, "error", None):
-        raise HTTPException(status_code=400, detail=f"Error de BD: {res.error.message}")
-    
-    registro_creado = res.data[0]
-    registro_id = registro_creado["id"]
+        raise HTTPException(400, f"Error creando registro: {res.error}")
 
-    # ----------------------------------------
-    # Inserción de auditoría inicial en registro_diarios_auditoria
-    # ----------------------------------------
-    auditoria_creacion = {
-        "registro_diario_id": registro_id,
+    registro = res.data[0]
+
+    # --------------------------------------------------
+    # 5. Auditoría inicial
+    # --------------------------------------------------
+    supabase.table("registros_diarios_auditoria").insert({
+        "registro_diario_id": registro["id"],
         "version": 1,
         "campo": "registro",
         "valor_anterior": "-",
-        "valor_nuevo": "Creado exitosamente",
-        "modificado_por": current_user.id,
-        "comentario": payload.observaciones,
-    }
+        "valor_nuevo": (
+            "Creado por trabajador"
+            if tipo_creador == "worker"
+            else "Creado por administrador"
+        ),
+        "modificado_por": creado_por_usuario_id,
+        "comentario": observaciones,
+    }).execute()
 
-    supabase.table("registros_diarios_auditoria").insert(auditoria_creacion).execute()
+    return registro
 
-    return registro_creado
+
+async def create_daily_record(
+    payload: DailyRecordCreate,
+    current_user: UserInDB,
+):
+    if not current_user.chofer_id:
+        raise HTTPException(status_code=400, detail="Usuario no es chofer")
+
+    return await _create_daily_record_core(
+        chofer_id=current_user.chofer_id,
+        maquina_id=payload.maquina_id,
+        fecha=payload.fecha,
+        es_dia_no_trabajado=False,
+        motivo_no_trabajado=None,
+        motivo_no_trabajado_otro=None,
+        monto_recaudado=payload.monto_recaudado,
+        litros_diesel=payload.litros_diesel,
+        costo_total_diesel=payload.costo_total_diesel,
+        imagen_url=payload.imagen_url,
+        imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
+        observaciones=payload.observaciones,
+        incidente_critico=payload.incidente_critico,
+        creado_por_usuario_id=current_user.id,
+        tipo_creador="worker",
+    )
+
+
+async def create_daily_record_admin(
+    payload: DailyRecordCreateAdmin,
+    current_user: UserInDB,
+):
+    return await _create_daily_record_core(
+        chofer_id=payload.chofer_id,
+        maquina_id=payload.maquina_id,
+        fecha=payload.fecha,
+        es_dia_no_trabajado=payload.es_dia_no_trabajado,
+        motivo_no_trabajado=payload.motivo_no_trabajado,
+        motivo_no_trabajado_otro=payload.motivo_no_trabajado_otro,
+        monto_recaudado=payload.monto_recaudado,
+        litros_diesel=payload.litros_diesel,
+        costo_total_diesel=payload.costo_total_diesel,
+        imagen_url=payload.imagen_url,
+        imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
+        observaciones=payload.observaciones,
+        incidente_critico=payload.incidente_critico,
+        creado_por_usuario_id=current_user.id,
+        tipo_creador="admin",
+    )
+
+
 
 
 async def get_driver_history(current_user: UserInDB, rango: str):
