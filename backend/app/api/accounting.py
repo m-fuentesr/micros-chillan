@@ -5,7 +5,8 @@ from app.services import accounting_service
 from app.schemas.accounting import (
     AccountingSummaryResponse, 
     WeekSummary, 
-    DriverWeekDetail
+    DriverWeekDetail,
+    DailyProfitabilityData
 )
 from app.schemas.settlement import (
     WeeklyPaymentResponse, 
@@ -31,6 +32,18 @@ async def get_accounting_summary(
     """
     require_admin(current_user)
     return await accounting_service.get_monthly_summary(mes, anio)
+
+@router.get("/daily-profitability", response_model=List[DailyProfitabilityData])
+async def get_daily_profitability(
+    mes: int = Query(..., ge=1, le=12),
+    anio: int = Query(..., ge=2020),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Evolución diaria de rentabilidad del mes (Ingresos vs Egresos vs Ganancia).
+    """
+    require_admin(current_user)
+    return await accounting_service.get_daily_profitability(mes, anio)
 
 @router.get("/weeks", response_model=List[WeekSummary])
 async def get_accounting_weeks(

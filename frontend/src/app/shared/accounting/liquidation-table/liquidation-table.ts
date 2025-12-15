@@ -98,7 +98,55 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               </tr>
             </thead>
             <tbody>
-              @for (chofer of liquidation().choferes; track chofer.chofer_id) {
+              @if (liquidation().choferes.length === 0) {
+                <!-- Skeleton cuando no hay datos (cargando o esperando datos) -->
+                @for (i of [1,2,3,4,5,6]; track i) {
+                  <tr class="border-b border-base-100 last:border-none">
+                    <td class="pl-6 py-4">
+                      <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-base-200 animate-pulse"></div>
+                        <div class="flex flex-col gap-2">
+                          <div class="h-4 w-32 bg-base-200 rounded animate-pulse"></div>
+                          <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td class="text-left">
+                      <div class="h-4 w-24 bg-base-200 rounded animate-pulse"></div>
+                    </td>
+                    <td class="text-left">
+                      <div class="flex flex-col gap-2">
+                        <div class="h-3 w-28 bg-base-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+                        <div class="h-4 w-16 bg-base-200 rounded animate-pulse"></div>
+                      </div>
+                    </td>
+                    <td class="text-left">
+                      <div class="h-8 w-24 bg-base-200 rounded animate-pulse ml-auto"></div>
+                    </td>
+                    <td class="text-left bg-base-50/50">
+                      <div class="h-5 w-28 bg-base-200 rounded animate-pulse"></div>
+                    </td>
+                    <td class="pr-6 bg-base-50/50 text-center">
+                      <div class="h-8 w-24 bg-base-200 rounded animate-pulse mx-auto"></div>
+                    </td>
+                  </tr>
+                }
+              } @else {
+                <!-- Overlay de carga cuando hay datos pero se están recargando -->
+                @if (isLoading() && liquidation().choferes.length > 0) {
+                  <tr>
+                    <td colspan="6" class="relative">
+                      <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center z-10">
+                        <div class="flex flex-col items-center gap-3">
+                          <span class="loading loading-spinner loading-lg text-primary"></span>
+                          <span class="text-sm text-base-content/60 font-medium">Cargando datos...</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+                @for (chofer of liquidation().choferes; track chofer.chofer_id) {
                 <tr class="hover:bg-base-50 transition-colors border-b border-base-100 last:border-none group">
                   
                   <td class="pl-6 py-4">
@@ -220,6 +268,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     }
                   </td>
                 </tr>
+                }
               }
             </tbody>
           </table>
@@ -227,8 +276,54 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
         <!-- Vista Móvil y Tablet: Tarjetas de Nómina (hasta XL) -->
         <div class="xl:hidden">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            @for (chofer of liquidation().choferes; track chofer.chofer_id) {
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
+            @if (liquidation().choferes.length === 0) {
+              <!-- Skeleton para móvil cuando no hay datos (cargando o esperando datos) -->
+              @for (i of [1,2,3,4,5,6]; track i) {
+                <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm">
+                  <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center gap-3">
+                      <div class="w-12 h-12 rounded-full bg-base-200 animate-pulse"></div>
+                      <div class="flex flex-col gap-2">
+                        <div class="h-5 w-32 bg-base-200 rounded animate-pulse"></div>
+                        <div class="h-3 w-24 bg-base-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                    <div class="h-6 w-16 bg-base-200 rounded animate-pulse"></div>
+                  </div>
+                  <div class="bg-base-50 rounded-lg p-3 space-y-2">
+                    <div class="flex justify-between">
+                      <div class="h-3 w-24 bg-base-200 rounded animate-pulse"></div>
+                      <div class="h-4 w-20 bg-base-200 rounded animate-pulse"></div>
+                    </div>
+                    <div class="flex justify-between">
+                      <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+                      <div class="h-4 w-16 bg-base-200 rounded animate-pulse"></div>
+                    </div>
+                    <div class="flex justify-between">
+                      <div class="h-3 w-24 bg-base-200 rounded animate-pulse"></div>
+                      <div class="h-4 w-20 bg-base-200 rounded animate-pulse"></div>
+                    </div>
+                    <div class="border-t border-base-200 my-2"></div>
+                    <div class="flex justify-between">
+                      <div class="h-4 w-16 bg-base-200 rounded animate-pulse"></div>
+                      <div class="h-6 w-24 bg-base-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div class="h-10 w-full bg-base-200 rounded-lg animate-pulse mt-4"></div>
+                </div>
+              }
+            } @else {
+              <!-- Overlay de carga cuando hay datos pero se están recargando -->
+              @if (isLoading() && liquidation().choferes.length > 0) {
+                <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm flex items-center justify-center z-10 rounded-xl">
+                  <div class="flex flex-col items-center gap-3">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <span class="text-sm text-base-content/60 font-medium">Cargando datos...</span>
+                  </div>
+                </div>
+              }
+              @for (chofer of liquidation().choferes; track chofer.chofer_id) {
               <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm" 
                  [class.border-l-4]="chofer.estado_pago === 'pagado'" 
                  [class.border-l-success]="chofer.estado_pago === 'pagado'">
@@ -340,6 +435,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               }
             </div>
             }
+            }
           </div>
         </div>
 
@@ -387,6 +483,7 @@ export class LiquidationTable {
   availableWeeks = input<number[]>([]); // Array de semanas disponibles (ej: [1,2,3,4] o [1,2,3,4,5])
   selectedWeek = input<number>(1);
   payrollPeriod = input<'current' | 'previous'>('current');
+  isLoading = input<boolean>(false); // Estado de carga para mostrar skeleton
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();

@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, input, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accounting.models';
+import { ClosedLiquidation, ClosedLiquidationWeek, LiquidationDriver } from '../../models/accounting.models';
+import { AccountingService } from '../../services/accounting.service';
 
 @Component({
   selector: 'app-liquidation-history',
@@ -29,6 +30,8 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
             </thead>
             <tbody>
               @for (liquidation of liquidations(); track liquidation.id) {
+                @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
+                @let isLoading = isLoadingDetails(liquidation.id);
                 <tr 
                   class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none cursor-pointer"
                   [class.bg-base-50]="expandedIds().has(liquidation.id)"
@@ -72,7 +75,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     <div class="collapse-anim" [class.collapse-expanded]="expandedIds().has(liquidation.id)">
                       <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 motion-panel"
                            [attr.id]="'history-detail-' + liquidation.id">
-                        <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: false }"></ng-container>
+                        @if (isLoading) {
+                          <div class="w-full flex items-center justify-center py-8">
+                            <div class="flex flex-col items-center gap-3">
+                              <span class="loading loading-spinner loading-lg text-primary"></span>
+                              <span class="text-sm text-base-content/60 font-medium">Cargando detalles...</span>
+                            </div>
+                          </div>
+                        } @else if (liquidationWithDetails) {
+                          <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidationWithDetails, isMobile: false }"></ng-container>
+                        } @else {
+                          <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: false }"></ng-container>
+                        }
                       </div>
                     </div>
                   </td>
@@ -85,6 +99,8 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
         <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
         <div class="lg:hidden space-y-4">
           @for (liquidation of liquidations(); track liquidation.id) {
+            @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
+            @let isLoading = isLoadingDetails(liquidation.id);
             <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
                  [class.ring-2]="expandedIds().has(liquidation.id)"
                  [class.ring-base-200]="expandedIds().has(liquidation.id)">
@@ -118,7 +134,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
               <div class="collapse-anim-mobile bg-base-200/30 border-t border-base-200 p-3 motion-panel"
                    [class.collapse-expanded]="expandedIds().has(liquidation.id)"
                    [attr.id]="'history-detail-' + liquidation.id">
-                <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
+                @if (isLoading) {
+                  <div class="w-full flex items-center justify-center py-8">
+                    <div class="flex flex-col items-center gap-3">
+                      <span class="loading loading-spinner loading-lg text-primary"></span>
+                      <span class="text-sm text-base-content/60 font-medium">Cargando detalles...</span>
+                    </div>
+                  </div>
+                } @else if (liquidationWithDetails) {
+                  <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidationWithDetails, isMobile: true }"></ng-container>
+                } @else {
+                  <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
+                }
               </div>
             </div>
           }
@@ -346,6 +373,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
 })
 export class LiquidationHistory {
   liquidations = input.required<ClosedLiquidation[]>();
+  private accountingService = inject(AccountingService);
+  
+  /**
+   * Cache de detalles cargados para evitar recargas innecesarias
+   */
+  private loadedDetails = signal<Map<number, ClosedLiquidation>>(new Map());
+  
+  /**
+   * Estados de carga por período
+   */
+  private loadingDetails = signal<Set<number>>(new Set());
+  
   /**
    * Permite múltiples períodos abiertos en paralelo para comparar cierres.
    */
@@ -356,6 +395,24 @@ export class LiquidationHistory {
    */
   expandedWeeks = signal<Set<string>>(new Set());
 
+  /**
+   * Obtiene la liquidación con detalles cargados
+   */
+  getLiquidationWithDetails(id: number): ClosedLiquidation | null {
+    const loaded = this.loadedDetails().get(id);
+    if (loaded) return loaded;
+    
+    // Buscar en la lista original
+    return this.liquidations().find(l => l.id === id) || null;
+  }
+
+  /**
+   * Verifica si un período está cargando detalles
+   */
+  isLoadingDetails(id: number): boolean {
+    return this.loadingDetails().has(id);
+  }
+
   toggleDetail(id: number): void {
     const current = this.expandedIds();
     const isExpanded = current.has(id);
@@ -365,9 +422,73 @@ export class LiquidationHistory {
       next.delete(id);
     } else {
       next.add(id);
+      // Cargar detalles si no están cargados
+      this.loadDetailsIfNeeded(id);
     }
 
     this.expandedIds.set(next);
+  }
+
+  /**
+   * Carga los detalles del mes si no están en caché
+   */
+  private loadDetailsIfNeeded(id: number): void {
+    // Verificar si ya está cargado
+    if (this.loadedDetails().has(id)) {
+      return;
+    }
+
+    // Verificar si ya está cargando
+    if (this.loadingDetails().has(id)) {
+      return;
+    }
+
+    // Buscar el período en la lista
+    const liquidation = this.liquidations().find(l => l.id === id);
+    if (!liquidation) {
+      return;
+    }
+
+    // Si ya tiene semanas cargadas, no necesita recargar
+    if (liquidation.semanas && liquidation.semanas.length > 0) {
+      return;
+    }
+
+    // Marcar como cargando
+    this.loadingDetails.update(set => {
+      const newSet = new Set(set);
+      newSet.add(id);
+      return newSet;
+    });
+
+    // Cargar detalles del mes
+    this.accountingService.getLiquidationMonthDetail(liquidation.mes, liquidation.anio)
+      .subscribe({
+        next: (detail: ClosedLiquidation) => {
+          // Guardar en caché
+          this.loadedDetails.update(map => {
+            const newMap = new Map(map);
+            newMap.set(id, detail);
+            return newMap;
+          });
+
+          // Remover de loading
+          this.loadingDetails.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(id);
+            return newSet;
+          });
+        },
+        error: (error) => {
+          console.error('Error cargando detalles del período:', error);
+          // Remover de loading
+          this.loadingDetails.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(id);
+            return newSet;
+          });
+        }
+      });
   }
 
   toggleWeek(liquidationId: number, weekNumber: number): void {
@@ -410,9 +531,11 @@ export class LiquidationHistory {
     if (liquidation.semanas && liquidation.semanas.length > 0) {
       const choferIds = new Set<number>();
       liquidation.semanas.forEach(week => {
-        week.choferes.forEach(chofer => {
-          choferIds.add(chofer.chofer_id);
-        });
+        if (week.choferes) {
+          week.choferes.forEach(chofer => {
+            choferIds.add(chofer.chofer_id);
+          });
+        }
       });
       return choferIds.size;
     }
@@ -420,8 +543,27 @@ export class LiquidationHistory {
     return liquidation.choferes?.length || 0;
   }
 
-  getChoferes(liquidation: ClosedLiquidation): any[] {
-    // Retornar choferes consolidados (para compatibilidad)
+  getChoferes(liquidation: ClosedLiquidation): LiquidationDriver[] {
+    // Retornar choferes consolidados de todas las semanas
+    if (liquidation.semanas && liquidation.semanas.length > 0) {
+      const choferMap = new Map<number, LiquidationDriver>();
+      liquidation.semanas.forEach(week => {
+        if (week.choferes) {
+          week.choferes.forEach(chofer => {
+            // Si el chofer ya existe, sumar los pagos
+            if (choferMap.has(chofer.chofer_id)) {
+              const existing = choferMap.get(chofer.chofer_id)!;
+              existing.total_ganado += chofer.total_ganado;
+              existing.pago_final += chofer.pago_final;
+            } else {
+              choferMap.set(chofer.chofer_id, { ...chofer });
+            }
+          });
+        }
+      });
+      return Array.from(choferMap.values());
+    }
+    // Fallback a choferes legacy
     return liquidation.choferes || [];
   }
 

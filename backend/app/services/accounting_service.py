@@ -51,6 +51,10 @@ async def get_monthly_summary(mes: int, anio: int):
     total_mantenimiento = sum((m.get("costo") or 0) for m in res_mant.data)
     ganancia_liquida = total_recaudado - total_diesel - total_mantenimiento - total_choferes
 
+    # Calcular si es el mes actual
+    today = date.today()
+    es_mes_actual = (mes == today.month and anio == today.year)
+
     return {
         "periodo": {"mes": mes, "anio": anio},
         "totales": {
@@ -59,8 +63,87 @@ async def get_monthly_summary(mes: int, anio: int):
             "total_gastos_mantenimiento": int(total_mantenimiento),
             "total_pago_choferes": int(total_choferes),
             "ganancia_liquida": int(ganancia_liquida)
-        }
+        },
+        "es_mes_actual": es_mes_actual
     }
+
+async def get_daily_profitability(mes: int, anio: int):
+    """Calcula la evolución diaria de ingresos, egresos y ganancia del mes."""
+    _, ultimo_dia = calendar.monthrange(anio, mes)
+    fecha_inicio = date(anio, mes, 1).isoformat()
+    fecha_fin = date(anio, mes, ultimo_dia).isoformat()
+
+    # Obtener registros diarios del mes
+    res_registros = (
+        supabase.table("registros_diarios")
+        .select("fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
+        .gte("fecha", fecha_inicio)
+        .lte("fecha", fecha_fin)
+        .execute()
+    )
+    if getattr(res_registros, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error registros: {res_registros.error}")
+    
+    registros = res_registros.data
+
+    # Obtener gastos de mantenimiento del mes
+    res_mant = (
+        supabase.table("compras_repuestos")
+        .select("fecha_compra, costo")
+        .gte("fecha_compra", fecha_inicio)
+        .lte("fecha_compra", fecha_fin)
+        .execute()
+    )
+    if getattr(res_mant, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error repuestos: {res_mant.error}")
+    
+    mantenimientos = res_mant.data
+
+    # Agrupar por fecha
+    datos_por_fecha = {}
+    
+    # Inicializar todos los días del mes con ceros
+    for dia in range(1, ultimo_dia + 1):
+        fecha_str = date(anio, mes, dia).isoformat()
+        datos_por_fecha[fecha_str] = {
+            "ingresos": 0,
+            "egresos": 0,
+            "ganancia": 0
+        }
+    
+    # Procesar registros diarios
+    for reg in registros:
+        fecha_str = reg.get("fecha")
+        if fecha_str in datos_por_fecha:
+            ingresos = reg.get("monto_recaudado") or 0
+            diesel = reg.get("costo_total_diesel") or 0
+            choferes = reg.get("monto_porcentaje_chofer") or 0
+            
+            datos_por_fecha[fecha_str]["ingresos"] += ingresos
+            datos_por_fecha[fecha_str]["egresos"] += diesel + choferes
+    
+    # Procesar mantenimientos
+    for mant in mantenimientos:
+        fecha_str = mant.get("fecha_compra")
+        if fecha_str in datos_por_fecha:
+            costo = mant.get("costo") or 0
+            datos_por_fecha[fecha_str]["egresos"] += costo
+    
+    # Calcular ganancia para cada día
+    resultado = []
+    for fecha_str in sorted(datos_por_fecha.keys()):
+        datos = datos_por_fecha[fecha_str]
+        ganancia = datos["ingresos"] - datos["egresos"]
+        datos["ganancia"] = ganancia
+        
+        resultado.append({
+            "fecha": fecha_str,
+            "ingresos": int(datos["ingresos"]),
+            "egresos": int(datos["egresos"]),
+            "ganancia": int(ganancia)
+        })
+    
+    return resultado
 
 async def get_weekly_summary(mes: int, anio: int):
     """Desglosa el mes en semanas para ver rendimiento operativo."""
@@ -268,7 +351,10 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "ajuste_garantizado_calculado": p["ajuste_garantizado"],
                 "total_a_pagar": p["total_pagado"],
                 "estado_pago": p["estado_pago"],
-                "id_pago": p["id"]
+                "id_pago": p["id"],
+                "metodo_pago": p.get("metodo_pago"),
+                "codigo_transferencia": p.get("codigo_transferencia"),
+                "fecha_pago": p.get("fecha_pago")
             })
 
         # B) PENDIENTE

@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, input, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { WeeklySummary } from '../../models/accounting.models';
+import { WeeklySummary, WeeklyDriverBreakdown } from '../../models/accounting.models';
+import { AccountingService } from '../../services/accounting.service';
 
 @Component({
   selector: 'app-weekly-summary-table',
@@ -95,7 +96,7 @@ import { WeeklySummary } from '../../models/accounting.models';
               </tr>
             </thead>
             <tbody>
-              @for (summary of summaries(); track summary.semana) {
+              @for (summary of summariesWithDrivers(); track summary.semana) {
                 <!-- Fila principal resumen semana -->
                 <tr 
                   class="group cursor-pointer hover:bg-base-50 transition-colors border-b border-base-100 last:border-none"
@@ -143,7 +144,23 @@ import { WeeklySummary } from '../../models/accounting.models';
                                 </tr>
                               </thead>
                               <tbody>
-                                @for (chofer of summary.choferes; track chofer.chofer_id) {
+                                @if (isLoadingWeek(summary.semana)) {
+                                  <tr>
+                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                      <div class="flex items-center justify-center gap-2">
+                                        <span class="loading loading-spinner loading-sm"></span>
+                                        <span>Cargando detalles...</span>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                } @else if (summary.choferes.length === 0) {
+                                  <tr>
+                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                      No hay datos de choferes para esta semana
+                                    </td>
+                                  </tr>
+                                } @else {
+                                  @for (chofer of summary.choferes; track chofer.chofer_id) {
                                   <tr class="hover:bg-base-50 border-b border-base-100 last:border-none">
                                     <td class="font-bold pl-4 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
                                     <td class="text-center"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
@@ -173,6 +190,7 @@ import { WeeklySummary } from '../../models/accounting.models';
                                       </span>
                                     </td>
                                   </tr>
+                                  }
                                 }
                               </tbody>
                             </table>
@@ -189,7 +207,7 @@ import { WeeklySummary } from '../../models/accounting.models';
 
         <!-- Vista Móvil: Cards (sm y abajo) -->
         <div class="md:hidden space-y-3">
-          @for (summary of summaries(); track summary.semana) {
+          @for (summary of summariesWithDrivers(); track summary.semana) {
               <div 
               class="border border-base-200 rounded-xl overflow-hidden transition-all duration-200"
               [class.shadow-md]="expandedWeeks().has(summary.semana)"
@@ -234,7 +252,19 @@ import { WeeklySummary } from '../../models/accounting.models';
                    [attr.id]="'week-detail-' + summary.semana">
                   <div class="text-[10px] font-bold uppercase tracking-widest text-base-content/50 px-1">Desglose por Chofer</div>
                   
-                  @for (chofer of summary.choferes; track chofer.chofer_id) {
+                  @if (isLoadingWeek(summary.semana)) {
+                    <div class="text-center py-8 text-base-content/50">
+                      <div class="flex items-center justify-center gap-2">
+                        <span class="loading loading-spinner loading-sm"></span>
+                        <span>Cargando detalles...</span>
+                      </div>
+                    </div>
+                  } @else if (summary.choferes.length === 0) {
+                    <div class="text-center py-8 text-base-content/50">
+                      No hay datos de choferes para esta semana
+                    </div>
+                  } @else {
+                    @for (chofer of summary.choferes; track chofer.chofer_id) {
                     <div class="bg-base-100 rounded-lg p-3 shadow-sm border border-base-200">
                       <div class="flex justify-between items-start mb-2">
                         <span class="font-bold text-sm text-base-content">{{ chofer.chofer_nombre }}</span>
@@ -266,6 +296,7 @@ import { WeeklySummary } from '../../models/accounting.models';
                         </div>
                       </div>
                     </div>
+                    }
                   }
                 </div>
             </div>
@@ -317,34 +348,54 @@ import { WeeklySummary } from '../../models/accounting.models';
 })
 export class WeeklySummaryTable {
   summaries = input.required<WeeklySummary[]>();
+  mes = input.required<number>();
+  anio = input.required<number>();
+  
+  private accountingService = inject(AccountingService);
+  
+  // Cache de choferes cargados por semana (usando signal para reactividad)
+  private loadedDriversCache = signal<Map<number, WeeklyDriverBreakdown[]>>(new Map());
+  private loadingWeeks = signal<Set<number>>(new Set());
 
   /**
    * Semanas actualmente expandidas (permite múltiples abiertas para comparación).
    */
   expandedWeeks = signal<Set<number>>(new Set());
+  
+  // Summaries con choferes cargados
+  summariesWithDrivers = computed(() => {
+    const cache = this.loadedDriversCache();
+    return this.summaries().map(summary => {
+      const drivers = cache.get(summary.semana);
+      return {
+        ...summary,
+        choferes: drivers || summary.choferes || []
+      };
+    });
+  });
 
   // Cálculos rápidos para los KPIs superiores
   totalRecaudado = computed(() => 
-    this.summaries().reduce((acc, s) => acc + s.total_recaudado, 0)
+    this.summariesWithDrivers().reduce((acc, s) => acc + s.total_recaudado, 0)
   );
 
   totalPagos = computed(() => 
-    this.summaries().reduce((acc, s) => {
+    this.summariesWithDrivers().reduce((acc, s) => {
       const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
       return acc + pagoChoferes;
     }, 0)
   );
 
   totalGastos = computed(() => 
-    this.summaries().reduce((acc, s) => acc + s.gasto_diesel + (s.gasto_mantenimiento || 0), 0)
+    this.summariesWithDrivers().reduce((acc, s) => acc + s.gasto_diesel + (s.gasto_mantenimiento || 0), 0)
   );
 
   getTotalGanancia = computed(() => 
-    this.summaries().reduce((acc, s) => acc + s.ganancia_neta, 0)
+    this.summariesWithDrivers().reduce((acc, s) => acc + s.ganancia_neta, 0)
   );
 
   promedioSemanal = computed(() => 
-    this.summaries().length > 0 ? this.getTotalGanancia() / this.summaries().length : 0
+    this.summariesWithDrivers().length > 0 ? this.getTotalGanancia() / this.summariesWithDrivers().length : 0
   );
 
   toggleWeek(weekNumber: number): void {
@@ -356,6 +407,11 @@ export class WeeklySummaryTable {
       next.delete(weekNumber);
     } else {
       next.add(weekNumber);
+      // Cargar detalles de choferes si no están en caché
+      const cache = this.loadedDriversCache();
+      if (!cache.has(weekNumber)) {
+        this.loadWeekDetails(weekNumber);
+      }
     }
 
     this.expandedWeeks.set(next);
@@ -370,6 +426,43 @@ export class WeeklySummaryTable {
         }
       });
     }
+  }
+
+  private loadWeekDetails(weekNumber: number): void {
+    // Marcar como cargando
+    this.loadingWeeks.update(weeks => new Set(weeks).add(weekNumber));
+    
+    this.accountingService.getWeekDetail(this.mes(), this.anio(), weekNumber)
+      .subscribe({
+        next: (drivers) => {
+          console.log(`✅ Choferes cargados para semana ${weekNumber}:`, drivers);
+          // Guardar en caché usando signal para que sea reactivo
+          this.loadedDriversCache.update(cache => {
+            const newCache = new Map(cache);
+            newCache.set(weekNumber, drivers);
+            return newCache;
+          });
+          // Quitar de loading
+          this.loadingWeeks.update(weeks => {
+            const next = new Set(weeks);
+            next.delete(weekNumber);
+            return next;
+          });
+        },
+        error: (error) => {
+          console.error(`❌ Error al cargar detalles de la semana ${weekNumber}:`, error);
+          // Quitar de loading incluso si hay error
+          this.loadingWeeks.update(weeks => {
+            const next = new Set(weeks);
+            next.delete(weekNumber);
+            return next;
+          });
+        }
+      });
+  }
+  
+  isLoadingWeek(weekNumber: number): boolean {
+    return this.loadingWeeks().has(weekNumber);
   }
 
   formatDateRange(start: string, end: string): string {
