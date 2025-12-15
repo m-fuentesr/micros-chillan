@@ -22,15 +22,24 @@ async def crear_alerta(
             "origen_id": origen_id,
             "tipo": tipo,  
             "estado": "activa" 
-            
         }
         
         response = supabase.table("alertas").insert(data).execute()
         return response
         
     except Exception as e:
-        print(f"Error creando alerta: {e}")
-        # Dependiendo de tu lógica, podrías querer hacer raise e o solo loguear
+        # Convertimos el error a string para buscar el código
+        error_str = str(e)
+        
+        # El código 23505 es "Unique Violation" en Postgres
+        if "23505" in error_str or "unique_alerta_activa" in error_str:
+            # Es un duplicado, esto es normal y esperado. No imprimimos error.
+            # Opcional: print(f"ℹ️ Alerta duplicada omitida: {origen_tipo} {origen_id}")
+            return None
+        else:
+            # Si es CUALQUIER otro error, ahí sí lo queremos ver
+            print(f"❌ Error CRÍTICO creando alerta: {e}")
+            # Aquí podrías hacer raise e si quieres que el endpoint falle
 
 async def marcar_como_leida(alerta_id: int):
     """

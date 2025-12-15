@@ -1,7 +1,8 @@
-﻿from datetime import date, timedelta
+﻿from datetime import date, timedelta, datetime, timezone
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
+from app.services import alert_service
 
 async def get_summary():
     """
@@ -92,38 +93,32 @@ async def get_summary():
 async def list_drivers(estado: str | None):
     """
     Lista principal de choferes para ADMIN.
-
-    - Aplica filtro por estado (activos / inactivos / todos).
-    - Incluye máquina actual (si la tiene).
-    - Calcula estado de licencia (ok / warning / danger).
+    Genera alertas automáticas si la licencia está por vencer.
     """
 
     # ---------------------------------------------------------
-    # 1) Obtener choferes + correo del usuario asociado
+    # 1) Obtener choferes + correo
     # ---------------------------------------------------------
     query = (
         supabase.table("choferes")
         .select("*, usuarios:usuarios!inner(correo)")
     )
 
-    # Filtro por estado (pestañas)
     if estado == "activos":
         query = query.eq("estado", "activo")
     elif estado == "inactivos":
         query = query.eq("estado", "inactivo")
     elif estado == "eliminados":
         query = query.eq("estado", "eliminado")
-    # si viene "todos" o None, no filtramos
 
     res = query.execute()
-
     if getattr(res, "error", None):
         raise HTTPException(400, f"Error obteniendo choferes: {res.error}")
 
     choferes = res.data
 
     # ---------------------------------------------------------
-    # 2) Obtener asignaciones activas (fecha_termino = NULL)
+    # 2) Obtener asignaciones activas
     # ---------------------------------------------------------
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
@@ -131,11 +126,8 @@ async def list_drivers(estado: str | None):
         .is_("fecha_termino", None)
         .execute()
     )
-
-    if getattr(asign_raw, "error", None):
-        raise HTTPException(400, f"Error obteniendo asignaciones: {asign_raw.error}")
-
-    asign_map: dict[int, dict] = {}
+    
+    asign_map = {}
     for a in asign_raw.data:
         asign_map[a["chofer_id"]] = {
             "id": a["maquina_id"],
@@ -143,33 +135,81 @@ async def list_drivers(estado: str | None):
         }
 
     # ---------------------------------------------------------
-    # 3) Construir salida final
+    # 2.5) ANTI-SPAM: Obtener alertas existentes (Activas o Recientes)
+    # ---------------------------------------------------------
+    tiempo_spam = datetime.now(timezone.utc) - timedelta(hours=24)
+    tiempo_iso = tiempo_spam.isoformat()
+
+    alertas_raw = (
+        supabase.table("alertas")
+        .select("origen_id, estado, created_at")
+        .eq("origen_tipo", "chofer")
+        .eq("tipo", "licencia_por_vencer") 
+        .or_(f"estado.eq.activa,created_at.gte.{tiempo_iso}")
+        .execute()
+    )
+
+    alertas_map = {}
+    if alertas_raw.data:
+        for a in alertas_raw.data:
+            alertas_map[a["origen_id"]] = True
+
+    # ---------------------------------------------------------
+    # 3) Construir salida y Generar Alertas
     # ---------------------------------------------------------
     hoy = date.today()
     items = []
 
     for c in choferes:
         nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+        cid = c["id"]
 
-        # Licencia
-        fv = date.fromisoformat(c["fecha_venc_licencia"])
-        dias = (fv - hoy).days
+        if c["fecha_venc_licencia"]:
+            fv = date.fromisoformat(c["fecha_venc_licencia"])
+            dias = (fv - hoy).days
 
-        if dias < 0:
-            estado_lic = "danger"
-        elif dias <= 30:
-            estado_lic = "warning"
+            if dias < 0:
+                estado_lic = "danger"
+            elif dias <= 30:
+                estado_lic = "warning"
+            else:
+                estado_lic = "ok"
+            
+            # --- BLOQUE DE CREACIÓN DE ALERTA ---
+            if estado_lic != "ok" and cid not in alertas_map:
+                
+                severidad = "critica" if estado_lic == "danger" else "advertencia"
+                msg_inicio = "Licencia VENCIDA" if estado_lic == "danger" else "Licencia por vencer"
+                
+                # Diccionario EXACTO con los 5 argumentos que pide tu función
+                nueva_alerta = {
+                    "mensaje": f"{msg_inicio}: Chofer {c['primer_nombre']} {c['apellido_paterno']}",
+                    "severidad": severidad,
+                    "origen_tipo": "chofer",
+                    "origen_id": cid,
+                    "tipo": "licencia_por_vencer"
+                }
+
+                print(f"⚠️ Generando alerta de licencia para chofer {cid}")
+                # Usamos ** para pasar los 5 argumentos por separado
+                await alert_service.crear_alerta(**nueva_alerta)
+                
+                alertas_map[cid] = True
+            # ------------------------------------
+
         else:
-            estado_lic = "ok"
+            fv = None
+            dias = 0
+            estado_lic = "unknown"
 
         items.append({
-            "id": c["id"],
+            "id": cid,
             "nombre_completo": nombre,
             "rut": c["rut"],
             "telefono": c["telefono"],
             "correo_electronico": c["usuarios"]["correo"],
             "estado": c["estado"],
-            "maquina_actual": asign_map.get(c["id"]),  # puede ser None
+            "maquina_actual": asign_map.get(cid),
             "licencia_estado": {
                 "fecha_vencimiento": fv,
                 "estado": estado_lic,
