@@ -1,101 +1,210 @@
 ﻿from fastapi import HTTPException
-from typing import List
 from datetime import date, timedelta
+from typing import Optional
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
-from app.schemas.daily_record import DailyRecordCreate, DailyRecordListFilters
+from app.schemas.daily_record import (
+    DailyRecordCreate,
+    DailyRecordCreateAdmin,
+    DailyRecordListFilters,
+    DailyRecordUpdate
+)
 from app.schemas.user import UserInDB
+from app.utils.helpers import normalize_value
 
-async def create_daily_record(payload: DailyRecordCreate, current_user: UserInDB):
-    """
-    Crea el registro diario.
-    1. Obtiene el porcentaje del chofer desde la tabla 'choferes'.
-    2. Calcula el monto del chofer.
-    3. Guarda todo cumpliendo con los campos obligatorios de la BD.
-    """
-    
-    # 1. Obtener ID del chofer
-    chofer_id = current_user.chofer_id
-    if not chofer_id:
-        raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
-
-    # ---------------------------------------------------------------
-    # VALIDACIÓN: Verificar que no exista un reporte para la misma fecha
-    # ---------------------------------------------------------------
-    fecha_reporte = payload.fecha if payload.fecha else date.today()
-    
-    existing_record = (
+async def _create_daily_record_core(
+    *,
+    chofer_id: int,
+    maquina_id: int,
+    fecha: date,
+    es_dia_no_trabajado: bool,
+    motivo_no_trabajado: Optional[str],
+    motivo_no_trabajado_otro: Optional[str],
+    monto_recaudado: Optional[int],
+    litros_diesel: Optional[float],
+    costo_total_diesel: Optional[int],
+    imagen_url: Optional[str],
+    imagen_comprobante_diesel_url: Optional[str],
+    observaciones: Optional[str],
+    incidente_critico: bool,
+    creado_por_usuario_id: int,
+    tipo_creador: str,  # "worker" | "admin"
+):
+    # --------------------------------------------------
+    # 1. Validar duplicado por chofer + fecha
+    # --------------------------------------------------
+    existing = (
         supabase.table("registros_diarios")
-        .select("id, fecha, estado")
+        .select("id")
         .eq("chofer_id", chofer_id)
-        .eq("fecha", fecha_reporte.isoformat())
+        .eq("fecha", fecha.isoformat())
         .execute()
     )
 
-    if existing_record.data and len(existing_record.data) > 0:
+    if existing.data:
         raise HTTPException(
-            status_code=400, 
-            detail=f"Ya existe un reporte diario para la fecha {fecha_reporte.isoformat()}. Solo se permite un reporte por día."
+            status_code=400,
+            detail="Ya existe un registro diario para este chofer y fecha"
         )
 
-    # ---------------------------------------------------------------
-    # PASO CLAVE: BUSCAR EL PORCENTAJE (Para solucionar el error null)
-    # ---------------------------------------------------------------
-    resp_chofer = (
+    # --------------------------------------------------
+    # 2. Obtener porcentaje del chofer
+    # --------------------------------------------------
+    chofer_res = (
         supabase.table("choferes")
         .select("porcentaje_pago")
         .eq("id", chofer_id)
         .single()
         .execute()
     )
-    
-    if not resp_chofer.data:
-        raise HTTPException(status_code=404, detail="Datos del chofer no encontrados.")
 
-    # Obtenemos el valor. Si es None, usamos 0.0 para evitar errores matemáticos
-    porcentaje_del_chofer = resp_chofer.data.get("porcentaje_pago") or 0.0
+    if not chofer_res.data:
+        raise HTTPException(status_code=404, detail="Chofer no encontrado")
 
-    # ---------------------------------------------------------------
-    # CÁLCULOS OBLIGATORIOS (Según tu BD)
-    # ---------------------------------------------------------------
-    # Calculamos cuánto dinero representa ese porcentaje
-    # Ejemplo: Recaudó 100.000 * 16.5% = 16.500
-    monto_pago_chofer = int(payload.monto_recaudado * porcentaje_del_chofer)
+    porcentaje = chofer_res.data["porcentaje_pago"] or 0
 
-    # Definir estado según el checkbox
-    estado_calculado = "incidente_reportado" if payload.incidente_critico else "completo"
+    # --------------------------------------------------
+    # 3. Construir payload según estado operativo
+    # --------------------------------------------------
+    if es_dia_no_trabajado:
+        if not motivo_no_trabajado:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe indicar motivo de no trabajado"
+            )
 
-    # ---------------------------------------------------------------
-    # ARMAR EL OBJETO FINAL
-    # ---------------------------------------------------------------
-    nuevo_registro = {
-        "chofer_id": chofer_id,
-        "maquina_id": payload.maquina_id,
-        "fecha": payload.fecha.isoformat(),
-        "monto_recaudado": payload.monto_recaudado,
-        "litros_diesel": payload.litros_diesel,
-        "costo_total_diesel": payload.costo_total_diesel,
-        "imagen_url": payload.imagen_url,  # Comprobante del registro diario (obligatorio)
-        "imagen_comprobante_diesel_url": payload.imagen_comprobante_diesel_url,  # Comprobante de diesel (opcional)
-        "observaciones": payload.observaciones,
-        "estado": estado_calculado,
+        if motivo_no_trabajado == "otro" and not motivo_no_trabajado_otro:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe especificar motivo cuando selecciona 'Otro'"
+            )
 
-        # AQUÍ SOLUCIONAMOS EL ERROR:
-        # La BD pedía 'porcentaje_aplicado', aquí se lo damos:
-        "porcentaje_aplicado": porcentaje_del_chofer,
-        
-        # También enviamos el monto calculado, que suele ser obligatorio junto al %
-        "monto_porcentaje_chofer": monto_pago_chofer, 
- 
-    }
+        nuevo_registro = {
+            "chofer_id": chofer_id,
+            "maquina_id": maquina_id,
+            "fecha": fecha.isoformat(),
+            "estado": "no_trabajado",
+            "es_dia_no_trabajado": True,
+            "motivo_no_trabajado": motivo_no_trabajado,
+            "motivo_no_trabajado_otro": motivo_no_trabajado_otro,
+            "monto_recaudado": 0,
+            "litros_diesel": 0,
+            "costo_total_diesel": 0,
+            "porcentaje_aplicado": porcentaje,
+            "monto_porcentaje_chofer": 0,
+            "observaciones": observaciones,
+            "imagen_url": imagen_url,
+            "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
+        }
 
-    # Insertar
+    else:
+        if monto_recaudado is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Monto recaudado es obligatorio en día trabajado"
+            )
+
+        monto_pago = int(monto_recaudado * porcentaje)
+        estado = "incidente_reportado" if incidente_critico else "completo"
+
+        nuevo_registro = {
+            "chofer_id": chofer_id,
+            "maquina_id": maquina_id,
+            "fecha": fecha.isoformat(),
+            "estado": estado,
+            "es_dia_no_trabajado": False,
+            "motivo_no_trabajado": None,
+            "motivo_no_trabajado_otro": None,
+            "monto_recaudado": monto_recaudado,
+            "litros_diesel": litros_diesel,
+            "costo_total_diesel": costo_total_diesel,
+            "porcentaje_aplicado": porcentaje,
+            "monto_porcentaje_chofer": monto_pago,
+            "observaciones": observaciones,
+            "imagen_url": imagen_url,
+            "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
+        }
+
+    # --------------------------------------------------
+    # 4. Insertar registro
+    # --------------------------------------------------
     res = supabase.table("registros_diarios").insert(nuevo_registro).execute()
 
     if getattr(res, "error", None):
-        raise HTTPException(status_code=400, detail=f"Error de BD: {res.error.message}")
+        raise HTTPException(400, f"Error creando registro: {res.error}")
 
-    return res.data[0]
+    registro = res.data[0]
+
+    # --------------------------------------------------
+    # 5. Auditoría inicial
+    # --------------------------------------------------
+    supabase.table("registros_diarios_auditoria").insert({
+        "registro_diario_id": registro["id"],
+        "version": 1,
+        "campo": "registro",
+        "valor_anterior": "-",
+        "valor_nuevo": (
+            "Creado por trabajador"
+            if tipo_creador == "worker"
+            else "Creado por administrador"
+        ),
+        "modificado_por": creado_por_usuario_id,
+        "comentario": observaciones,
+    }).execute()
+
+    return registro
+
+
+async def create_daily_record(
+    payload: DailyRecordCreate,
+    current_user: UserInDB,
+):
+    if not current_user.chofer_id:
+        raise HTTPException(status_code=400, detail="Usuario no es chofer")
+
+    return await _create_daily_record_core(
+        chofer_id=current_user.chofer_id,
+        maquina_id=payload.maquina_id,
+        fecha=payload.fecha,
+        es_dia_no_trabajado=False,
+        motivo_no_trabajado=None,
+        motivo_no_trabajado_otro=None,
+        monto_recaudado=payload.monto_recaudado,
+        litros_diesel=payload.litros_diesel,
+        costo_total_diesel=payload.costo_total_diesel,
+        imagen_url=payload.imagen_url,
+        imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
+        observaciones=payload.observaciones,
+        incidente_critico=payload.incidente_critico,
+        creado_por_usuario_id=current_user.id,
+        tipo_creador="worker",
+    )
+
+
+async def create_daily_record_admin(
+    payload: DailyRecordCreateAdmin,
+    current_user: UserInDB,
+):
+    return await _create_daily_record_core(
+        chofer_id=payload.chofer_id,
+        maquina_id=payload.maquina_id,
+        fecha=payload.fecha,
+        es_dia_no_trabajado=payload.es_dia_no_trabajado,
+        motivo_no_trabajado=payload.motivo_no_trabajado,
+        motivo_no_trabajado_otro=payload.motivo_no_trabajado_otro,
+        monto_recaudado=payload.monto_recaudado,
+        litros_diesel=payload.litros_diesel,
+        costo_total_diesel=payload.costo_total_diesel,
+        imagen_url=payload.imagen_url,
+        imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
+        observaciones=payload.observaciones,
+        incidente_critico=payload.incidente_critico,
+        creado_por_usuario_id=current_user.id,
+        tipo_creador="admin",
+    )
+
+
+
 
 async def get_driver_history(current_user: UserInDB, rango: str):
 
@@ -140,6 +249,7 @@ async def get_driver_history(current_user: UserInDB, rango: str):
         raise HTTPException(status_code=400, detail=f"Error historial: {res.error}")
     
     return res.data
+
 
 async def get_today_record_status(current_user: UserInDB):
     """
@@ -186,6 +296,65 @@ async def get_today_record_status(current_user: UserInDB):
             "message": "Puede crear un nuevo reporte"
         }
 
+
+async def get_daily_records_summary():
+
+    hoy = date.today()
+    fecha_inicio = date(hoy.year, hoy.month, 1)
+    fecha_inicio_iso = fecha_inicio.isoformat()
+    fecha_fin_iso = hoy.isoformat()
+
+    # ----------------------------------------
+    # 1) RECAUDACIÓN DEL PERIODO
+    # ----------------------------------------
+    recaudacion_res = (
+        supabase.table("registros_diarios")
+        .select("monto_recaudado", count="exact")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    if getattr(recaudacion_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo recaudación: {recaudacion_res.error}")
+
+    recaudacion_periodo = sum(r["monto_recaudado"] for r in recaudacion_res.data)
+
+    # ----------------------------------------
+    # 2) REGISTROS FALTANTES (estado = pendiente)
+    # ----------------------------------------
+    faltantes_res = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+        .eq("estado", "pendiente_trabajador")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    registros_faltantes = faltantes_res.count or 0
+
+    # ----------------------------------------
+    # 3) REGISTROS CON INCIDENTE
+    # ----------------------------------------
+    incidentes_res = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+        .eq("estado", "incidente_reportado")
+        .gte("fecha", fecha_inicio_iso)
+        .lte("fecha", fecha_fin_iso)
+        .execute()
+    )
+
+    registros_incidentes = incidentes_res.count or 0
+
+    return {
+        "recaudacion_periodo": recaudacion_periodo,
+        "registros_faltantes": registros_faltantes,
+        "registros_incidentes": registros_incidentes,
+    }
+
+
 async def list_daily_records_for_admin(
     filters: DailyRecordListFilters,
     current_user: UserInDB,
@@ -225,8 +394,6 @@ async def list_daily_records_for_admin(
     if filters.fecha_fin:
         base_query = base_query.lte("fecha", filters.fecha_fin.isoformat())
 
-    search_text = filters.search.lower() if filters.search else None
-
     # Primero obtenemos TOTAL
     count_res = base_query.execute()
     if getattr(count_res, "error", None):
@@ -249,13 +416,10 @@ async def list_daily_records_for_admin(
     for row in res.data or []:
         chofer_raw = row.get("choferes") or {}
         maquina_raw = row.get("maquinas") or {}
-
         nombre_chofer = f"{chofer_raw.get('primer_nombre', '')} {chofer_raw.get('apellido_paterno', '')}".strip()
-        numero_maquina = str(maquina_raw.get("numero_interno", ""))
-
-        if search_text:
-            if search_text not in nombre_chofer.lower() and search_text not in numero_maquina.lower():
-                continue
+        monto = row.get("monto_recaudado", 0)
+        diesel = row.get("costo_total_diesel") or 0
+        neto = monto - diesel
 
         items.append(
             {
@@ -269,8 +433,9 @@ async def list_daily_records_for_admin(
                     "id": maquina_raw.get("id"),
                     "numero_interno": maquina_raw.get("numero_interno")
                 },
-                "monto_recaudado": row.get("monto_recaudado", 0),
-                "diesel": row.get("costo_total_diesel"),
+                "monto_recaudado": monto,
+                "diesel": diesel,
+                "neto": neto,
                 "estado": row.get("estado", ""),
                 "tiene_observaciones": bool(row.get("observaciones"))
             }
@@ -282,3 +447,312 @@ async def list_daily_records_for_admin(
         per_page=filters.per_page,
         items=items
     )
+
+
+async def get_daily_record_detail(record_id: int):
+    
+    registro = (
+        supabase.table("registros_diarios")
+        .select("""
+            id, fecha, estado,
+            monto_recaudado, litros_diesel, costo_total_diesel,
+            porcentaje_aplicado, monto_porcentaje_chofer,
+            observaciones,
+            es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+            imagen_url, imagen_comprobante_diesel_url,
+            choferes(id, primer_nombre, apellido_paterno),
+            maquinas(id, numero_interno)
+        """)
+        .eq("id", record_id)
+        .single()
+        .execute()
+    )
+
+    if not registro.data:
+        raise HTTPException(status_code=404, detail="Registro diario no encontrado")
+
+    row = registro.data
+
+    nombre_chofer = f"{row['choferes']['primer_nombre']} {row['choferes']['apellido_paterno']}"
+
+    return {
+        "id": row["id"],
+        "fecha": row["fecha"],
+        "estado": row["estado"],
+
+        "maquina": {
+            "id": row["maquinas"]["id"],
+            "numero_interno": row["maquinas"]["numero_interno"],
+        },
+
+        "chofer": {
+            "id": row["choferes"]["id"],
+            "nombre": nombre_chofer,
+            "porcentaje_actual": row["porcentaje_aplicado"],
+        },
+
+        "datos_financieros": {
+            "monto_recaudado": row["monto_recaudado"],
+            "litros_diesel": row["litros_diesel"],
+            "costo_total_diesel": row["costo_total_diesel"],
+            "pago_calculado_actual": row["monto_porcentaje_chofer"],
+        },
+
+        "estado_operativo": {
+            "es_dia_no_trabajado": row["es_dia_no_trabajado"],
+            "motivo_no_trabajado": row["motivo_no_trabajado"],
+            "motivo_no_trabajado_otro": row["motivo_no_trabajado_otro"],
+        },
+
+        "observaciones": row["observaciones"],
+
+        "incidente_critico": row["estado"] == "incidente_reportado",
+
+        "imagenes": {
+            "registro": row["imagen_url"],
+            "diesel": row["imagen_comprobante_diesel_url"],
+        },
+    }
+
+
+async def get_daily_record_history(record_id: int):
+    """
+    Retorna historial de cambios agrupado por versión.
+    """
+
+    res = (
+        supabase.table("registros_diarios_auditoria")
+        .select(
+            "id, version, campo, valor_anterior, valor_nuevo, fecha_modificacion, "
+            "usuarios(nombre, apellido)"
+        )
+        .eq("registro_diario_id", record_id)
+        .order("version", desc=True)
+        .order("fecha_modificacion", desc=False)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo auditoría: {res.error}")
+
+    rows = res.data or []
+
+    history = {}
+    for row in rows:
+        version = row["version"]
+
+        if version not in history:
+            usuario = row.get("usuarios") or {}
+            nombre_usuario = (
+                f"{usuario.get('nombre', '')} {usuario.get('apellido', '')}".strip()
+            )
+
+            history[version] = {
+                "id": row["id"],
+                "fecha_cambio": row["fecha_modificacion"],
+                "usuario_responsable": nombre_usuario or "Sistema",
+                "tipo_cambio": "Edición",
+                "detalles": [],
+            }
+
+        history[version]["detalles"].append({
+            "campo": row["campo"],
+            "valor_anterior": row["valor_anterior"] or "-",
+            "valor_nuevo": row["valor_nuevo"] or "-",
+        })
+
+    return list(history.values())
+
+
+async def preview_payment(chofer_id: int, monto_recaudado_propuesto: int):
+    """
+    Calcula el pago del chofer en base a un monto propuesto.
+    NO guarda datos, NO crea auditoría.
+    """
+
+    # 1. Obtener porcentaje actual del chofer
+    chofer_res = (
+        supabase.table("choferes")
+        .select("porcentaje_pago")
+        .eq("id", chofer_id)
+        .single()
+        .execute()
+    )
+
+    if not chofer_res.data:
+        raise HTTPException(status_code=404, detail="Chofer no encontrado")
+
+    porcentaje = chofer_res.data["porcentaje_pago"] or 0
+
+    # 2. Calcular pago
+    pago_calculado = int(monto_recaudado_propuesto * porcentaje)
+
+    return {
+        "porcentaje_aplicado": porcentaje,
+        "pago_calculado": pago_calculado,
+    }
+
+
+async def update_daily_record(
+    record_id: int,
+    payload: DailyRecordUpdate,
+    current_user: UserInDB,
+):
+    """
+    Guarda correcciones del admin y genera auditoría.
+    """
+
+    # ----------------------------------------
+    # 1. Obtener registro actual
+    # ----------------------------------------
+    record_res = (
+        supabase.table("registros_diarios")
+        .select("*")
+        .eq("id", record_id)
+        .single()
+        .execute()
+    )
+
+    if not record_res.data:
+        raise HTTPException(status_code=404, detail="Registro diario no encontrado")
+
+    original = record_res.data
+
+    updates = {}
+    auditoria = []
+
+    version_res = (
+        supabase.table("registros_diarios_auditoria")
+        .select("version")
+        .eq("registro_diario_id", record_id)
+        .order("version", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    last_version = version_res.data[0]["version"] if version_res.data else 0
+    next_version = last_version + 1
+
+    # ----------------------------------------
+    # 2. Día NO trabajado
+    # ----------------------------------------
+    if payload.es_dia_no_trabajado:
+        updates.update({
+            "estado": "no_trabajado",
+            "es_dia_no_trabajado": True,
+            "monto_recaudado": 0,
+            "litros_diesel": 0,
+            "costo_total_diesel": 0,
+            "monto_porcentaje_chofer": 0,
+        })
+
+        # motivo_no_trabajado (ENUM, lo que debe estar en el selector)
+        if payload.motivo_no_trabajado is None:
+            raise HTTPException(
+                status_code=400,
+                detail="Debe indicar un motivo de no trabajado"
+            )
+
+        updates["motivo_no_trabajado"] = payload.motivo_no_trabajado
+
+        # motivo_no_trabajado_otro (Texto libre si se elige "Otro" en el selector)
+        if payload.motivo_no_trabajado == "otro":
+            if not payload.motivo_no_trabajado_otro:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Debe especificar el motivo cuando selecciona 'Otro'"
+                )
+            updates["motivo_no_trabajado_otro"] = payload.motivo_no_trabajado_otro
+        else:
+            updates["motivo_no_trabajado_otro"] = None
+
+    # ----------------------------------------
+    # 3. Día trabajado → recalcular
+    # ----------------------------------------
+    else:
+        monto = (
+            payload.monto_recaudado
+            if payload.monto_recaudado is not None
+            else original["monto_recaudado"]
+        )
+
+        porcentaje = original["porcentaje_aplicado"]
+        monto_pago = int(monto * porcentaje)
+
+        updates.update({
+            "monto_recaudado": monto,
+            "monto_porcentaje_chofer": monto_pago,
+            "es_dia_no_trabajado": False,
+            "estado": "incidente_reportado" if payload.incidente_critico else "completo",
+            "motivo_no_trabajado": None,
+            "motivo_no_trabajado_otro": None
+        })
+
+        if payload.litros_diesel is not None:
+            updates["litros_diesel"] = payload.litros_diesel
+
+        if payload.costo_total_diesel is not None:
+            updates["costo_total_diesel"] = payload.costo_total_diesel
+
+        if payload.motivo_no_trabajado is not None:
+            updates["motivo_no_trabajado"] = payload.motivo_no_trabajado
+
+    # Campo común (ambos casos)
+    if payload.observaciones is not None:
+        updates["observaciones"] = payload.observaciones
+
+    # ----------------------------------------
+    # 4. Auditoría campo a campo
+    # ----------------------------------------
+    for campo, nuevo_valor in updates.items():
+        valor_anterior = original.get(campo)
+        if normalize_value(valor_anterior) != normalize_value(nuevo_valor):
+            auditoria.append({
+                "registro_diario_id": record_id,
+                "version": next_version,
+                "campo": campo,
+                "valor_anterior": str(valor_anterior),
+                "valor_nuevo": str(nuevo_valor),
+                "modificado_por": current_user.id,
+                "comentario": payload.observaciones,
+            })
+
+    # ----------------------------------------
+    # 5. Guardar cambios
+    # ----------------------------------------
+    upd_res = (
+        supabase.table("registros_diarios")
+        .update(updates)
+        .eq("id", record_id)
+        .execute()
+    )
+
+    if getattr(upd_res, "error", None):
+        raise HTTPException(400, f"Error actualizando registro: {upd_res.error}")
+
+    # ----------------------------------------
+    # 6. Insertar auditoría
+    # ----------------------------------------
+    if auditoria:
+        supabase.table("registros_diarios_auditoria").insert(auditoria).execute()
+
+    updated = {**original, **updates}
+    campos_modificados = [a["campo"] for a in auditoria]
+
+    return {
+        "message": "Registro diario actualizado correctamente",
+        "registro": {
+            "id": record_id,
+            "fecha": updated["fecha"],
+            "estado": updated["estado"],
+            "monto_recaudado": updated["monto_recaudado"],
+            "costo_total_diesel": updated["costo_total_diesel"],
+            "neto": updated["monto_recaudado"] - (updated["costo_total_diesel"] or 0),
+            "incidente_critico": updated["estado"] == "incidente_reportado",
+            "es_dia_no_trabajado": updated["es_dia_no_trabajado"],
+        },
+        "auditoria": {
+            "version": next_version,
+            "campos_modificados": campos_modificados
+        }
+    }
