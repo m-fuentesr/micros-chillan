@@ -4,7 +4,7 @@ from app.db.supabase_client import supabase
  # Asegúrate que esta importación funcione en tu estructura
 
 def obtener_token():
-    email = "matiasjfr01@gmail.com"      # <--- PON EL EMAIL DEL USUARIO QUE CREASTE EN SUPABASE
+    email = "userchofer10@micros.cl"      # <--- PON EL EMAIL DEL USUARIO QUE CREASTE EN SUPABASE
     password = "password"  # <--- PON LA CONTRASEÑA QUE LE PUSISTE EN SUPABASE
 
     try:

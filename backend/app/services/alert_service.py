@@ -135,3 +135,67 @@ async def get_admin_alerts():
     except Exception as e:
         print(f"Error obteniendo alertas de admin: {e}")
         return []
+
+async def resolver_todas_alertas_chofer(chofer_id: int):
+    """
+    Marca como 'resuelta' TODAS las alertas activas que pertenecen 
+    específicamente a un chofer (ID).
+    Equivale al botón 'Marcar todo como leído' del trabajador.
+    """
+    try:
+        from datetime import datetime, timezone
+        
+        datos_actualizar = {
+            "estado": "resuelta",
+            "fecha_resuelta": datetime.now(timezone.utc).isoformat()
+        }
+
+        # Ejecutamos el update masivo filtrado por el ID del chofer
+        res = (
+            supabase.table("alertas")
+            .update(datos_actualizar)
+            .eq("origen_id", chofer_id)    # <--- SOLO LAS DE ESTE CHOFER
+            .eq("origen_tipo", "chofer")   # Seguridad extra: asegurar que son alertas de tipo 'persona/chofer'
+            .eq("estado", "activa")        # Solo las que están pendientes
+            .execute()
+        )
+        
+        # Devolvemos cuántas se borraron para mostrar un mensaje tipo "5 alertas limpiadas"
+        if res.data:
+            cantidad = len(res.data)
+            return {"message": f"Se limpiaron {cantidad} alertas.", "count": cantidad}
+        
+        return {"message": "No tenías alertas pendientes.", "count": 0}
+        
+    except Exception as e:
+        print(f"Error limpiando alertas del chofer {chofer_id}: {e}")
+        return {"error": str(e)}
+    
+async def verificar_propiedad_chofer(user_id: int, chofer_id_url: int) -> bool:
+    """
+    Verifica si el chofer de la URL corresponde al asignado en la cuenta del usuario.
+    Busca en la tabla 'usuarios' el campo 'chofer_id'.
+    """
+    try:
+        # 1. Buscamos al USUARIO (dueño del token)
+        res = (
+            supabase.table("usuarios") 
+            .select("chofer_id")  # <--- Aquí está la clave
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        
+        # 2. Si existe el usuario y tiene un chofer asignado...
+        if res.data and res.data.get('chofer_id'):
+            chofer_asociado_db = res.data['chofer_id']
+            
+            # 3. Comparamos si el chofer de su base de datos es igual al de la URL
+            print(f"🔍 Verificando: Usuario {user_id} tiene Chofer {chofer_asociado_db}. URL pide {chofer_id_url}")
+            return int(chofer_asociado_db) == int(chofer_id_url)
+            
+        return False
+        
+    except Exception as e:
+        print(f"Error verificando propiedad: {e}")
+        return False

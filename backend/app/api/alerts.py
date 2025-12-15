@@ -1,53 +1,116 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
 from app.services import alert_service
+from app.utils.auth import get_current_user, require_admin
+from app.schemas.user import UserInDB
 
 router = APIRouter(
-    prefix="/alertas",
-    tags=["Alertas"]
+    prefix="/api/alerts",
+    tags=["Alerts"]
 )
 
-# ... tus otros endpoints (GET, POST) ...
-
-@router.put("/{alerta_id}/leida")
-async def marcar_alerta_leida(alerta_id: int):
+# ---------------------------------------------------------
+# 1. RESOLVER UNA ALERTA INDIVIDUAL (General)
+# ---------------------------------------------------------
+@router.patch("/{alert_id}/resolve")
+async def resolve_single_alert(
+    alert_id: int, 
+    current_user: UserInDB = Depends(get_current_user)
+):
     """
     Endpoint para el botón 'X' o 'Entendido'.
-    Pasa la alerta a estado 'resuelta'.
+    Marca una alerta específica como 'resuelta'.
     """
-    exito = await alert_service.marcar_como_leida(alerta_id)
+    exito = await alert_service.marcar_como_leida(alert_id)
     
     if not exito:
-        # Si falla (ej. la alerta no existía o error de conexión)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="No se pudo marcar la alerta como leída."
+            detail="No se pudo resolver la alerta. Puede que no exista o ya esté resuelta."
         )
     
-    return {"message": "Alerta marcada como leída correctamente"}
+    return {"message": "Alerta resuelta correctamente"}
 
-@router.put("/alertas/resolver-todas")
-async def resolver_todas_alertas_admin():
+
+# ---------------------------------------------------------
+# 2. LISTAR ALERTAS (Admin vs Worker)
+# ---------------------------------------------------------
+
+# Para el ADMIN: Ver todas
+@router.get("/admin")
+async def list_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
     """
-    Botón 'Eliminar Todas' del Dashboard de Administrador.
-    Limpia alertas de documentos, registros, incidentes, etc.
-    NO toca las notificaciones de los choferes.
+    Trae las alertas globales para el panel de administración.
     """
+    require_admin(current_user) # Bloquea a usuarios no administradores
+    return await alert_service.get_admin_alerts()
+
+# Para el TRABAJADOR: Ver las suyas
+@router.get("/my-alerts/{worker_id}")
+async def list_worker_alerts(
+    worker_id: int, 
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Trae las alertas personales de un chofer específico.
+    """
+    # Nota: El frontend usa esto para llenar la campanita
+    return await alert_service.get_alerts_by_worker(worker_id)
+
+
+# ---------------------------------------------------------
+# 3. RESOLUCIÓN MASIVA (Limpiar todo)
+# ---------------------------------------------------------
+
+# ADMIN: Limpiar todo lo global
+@router.patch("/admin/resolve-all")
+async def resolve_all_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Botón 'Dismiss All' del Admin.
+    NO toca las notificaciones personales de los choferes.
+    """
+    require_admin(current_user)
+    
     cantidad = await alert_service.marcar_todas_admin_como_resueltas()
     
     if cantidad == -1:
-        raise HTTPException(status_code=500, detail="Error interno al resolver alertas.")
+        raise HTTPException(
+            status_code=500, 
+            detail="Error interno al resolver las alertas."
+        )
         
     return {"message": f"Se resolvieron {cantidad} alertas correctamente."}
 
-@router.get("/alertas/mis-alertas/{chofer_id}")
-async def listar_alertas_trabajador(chofer_id: int):
-    # FastAPI convertirá la lista de diccionarios a JSON automáticamente
-    alertas = await alert_service.get_alerts_by_worker(chofer_id)
-    return alertas
+# TRABAJADOR: Limpiar lo suyo
+@router.patch("/my-alerts/{worker_id}/resolve-all")
+async def resolve_all_worker_alerts(
+    worker_id: int,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Botón 'Marcar todo como leído' del Trabajador.
+    """
+    
+    # 1. VERIFICACIÓN CORREGIDA (Tabla Usuarios -> Chofer)
+    es_propietario = await alert_service.verificar_propiedad_chofer(
+        user_id=current_user.id,    # ID 17 (Usuario)
+        chofer_id_url=worker_id     # ID 10 (Chofer)
+    )
 
-# --- Endpoint: Traer alertas para el ADMIN ---
-@router.get("/alertas/admin")
-async def listar_alertas_admin():
-    # FastAPI convertirá la lista de diccionarios a JSON automáticamente
-    alertas = await alert_service.get_admin_alerts()
-    return alertas
+    if not es_propietario:
+        print(f"⛔ Bloqueo: El usuario {current_user.id} NO tiene asignado el chofer {worker_id}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, 
+            detail="No tienes permiso. Tu usuario no tiene asignado este perfil de chofer."
+        )
+
+    # 2. Ejecutar limpieza
+    resultado = await alert_service.resolver_todas_alertas_chofer(worker_id)
+    
+    # 3. Verificar errores
+    if "error" in resultado:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=resultado["error"]
+        )
+        
+    return resultado
