@@ -6,6 +6,7 @@ import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
+import { DriverService } from '../../shared/services/driver.service';
 import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
@@ -712,6 +713,7 @@ export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private driverService = inject(DriverService);
   private destroyRef = inject(DestroyRef);
   private loadingStateService = inject(LoadingStateService);
   private newRecordModalService = inject(NewRecordModalService);
@@ -787,20 +789,27 @@ export class BitacoraOperaciones implements OnInit {
   // Filtros usando SearchFilters
   recordFilters = signal<{ chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
   
+  // Choferes cargados dinámicamente
+  private drivers = signal<Array<{ id: number; nombre_completo: string }>>([]);
+  
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
+    const choferes = this.drivers();
+    const choferOptions = [
+      { value: null, label: 'Todos los choferes' },
+      ...choferes.map(driver => ({
+        value: driver.id.toString(),
+        label: driver.nombre_completo
+      }))
+    ];
+    
     return [
       {
         key: 'chofer',
         label: 'Chofer',
         type: 'select',
         icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 9a2 2 0 11-4 0 2 2 0 014 0zm12 0a2 2 0 11-4 0 2 2 0 014 0zm-6 1a2 2 0 100 4 2 2 0 000-4zm-6 1a4 4 0 100 8 4 4 0 000-8zm12 0a4 4 0 100 8 4 4 0 000-8z" /></svg>',
-        options: [
-          { value: null, label: 'Todos los choferes' },
-          { value: '1', label: 'Juan Pérez' },
-          { value: '2', label: 'Luis Martínez' },
-          { value: '3', label: 'Ana Gómez' }
-        ]
+        options: choferOptions
       },
       {
         key: 'desde',
@@ -873,6 +882,9 @@ export class BitacoraOperaciones implements OnInit {
     
     this.isLoadingRecords = true;
     
+    // Obtener filtros de recordFilters (usado por SearchFilters)
+    const recordFilters = this.recordFilters();
+    
     // Mapear el filtro de estado del select a los estados del modelo
     let estadoFilter: DailyRecordStatus | undefined = undefined;
     if (this.statusFilter() !== 'all') {
@@ -886,8 +898,12 @@ export class BitacoraOperaciones implements OnInit {
     
     const filters: DailyRecordFilters = {
       estado: estadoFilter,
-      fecha: this.dateFilter() || undefined,
+      fecha: this.dateFilter() || recordFilters.desde || undefined,
+      desde: recordFilters.desde || undefined,
+      hasta: recordFilters.hasta || undefined,
+      chofer_id: recordFilters.chofer ? parseInt(recordFilters.chofer, 10) : undefined,
       busqueda: this.searchQuery() || undefined,
+      orden: recordFilters.orden || 'mas_reciente',
       pagina: this.currentPage(),
       por_pagina: this.itemsPerPage
     };
@@ -958,6 +974,7 @@ export class BitacoraOperaciones implements OnInit {
       const status = this.statusFilter();
       const date = this.dateFilter();
       const page = this.currentPage();
+      const filters = this.recordFilters(); // También reaccionar a cambios en recordFilters
       
       // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
       untracked(() => {
@@ -1073,6 +1090,23 @@ export class BitacoraOperaciones implements OnInit {
 
   ngOnInit(): void {
     // Los datos se cargan automáticamente mediante loadRecords() en constructor
+    // Cargar choferes activos para el filtro
+    this.loadDrivers();
+  }
+
+  private loadDrivers(): void {
+    this.driverService.getActiveDrivers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (drivers) => {
+          this.drivers.set(drivers);
+        },
+        error: (error) => {
+          console.error('Error cargando choferes:', error);
+          // Mantener array vacío en caso de error
+          this.drivers.set([]);
+        }
+      });
   }
 
   // Función para reintentar carga
@@ -1114,14 +1148,19 @@ export class BitacoraOperaciones implements OnInit {
     return match ? parseInt(match[0], 10) : 1;
   }
 
-  private extractDriverId(driverName: string): number {
-    // Mapeo temporal - en producción esto vendría de un select con IDs
-    const driverMap: Record<string, number> = {
-      'Juan Pérez': 1,
-      'Luis Martínez': 2,
-      'Ana Gómez': 3
-    };
-    return driverMap[driverName] || 1;
+  private extractDriverId(driverIdOrName: string | number): number {
+    // Si ya es un número, retornarlo directamente
+    if (typeof driverIdOrName === 'number') {
+      return driverIdOrName;
+    }
+    // Si es string y es un número, parsearlo
+    const parsed = parseInt(driverIdOrName, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+    // Si es un nombre, buscar en la lista de choferes cargados
+    const driver = this.drivers().find(d => d.nombre_completo === driverIdOrName);
+    return driver ? driver.id : 1;
   }
 
   getInitials(name: string): string {

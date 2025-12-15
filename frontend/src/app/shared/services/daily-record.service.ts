@@ -44,7 +44,18 @@ export class DailyRecordService {
     if (filters) {
       if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
       if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
-      if (filters.estado && filters.estado !== 'all') params = params.set('estado', filters.estado);
+      // Mapear estados del frontend (mayúsculas) al backend (minúsculas)
+      if (filters.estado && filters.estado !== 'all') {
+        const estadoMap: Record<string, string> = {
+          'COMPLETO': 'completo',
+          'INCIDENTE_REPORTADO': 'incidente_reportado',
+          'PENDIENTE_TRABAJADOR': 'pendiente_trabajador',
+          'NO_TRABAJADO': 'no_trabajado',
+          'DIA_NO_TRABAJADO': 'no_trabajado'
+        };
+        const estadoBackend = estadoMap[filters.estado] || filters.estado.toLowerCase();
+        params = params.set('estado', estadoBackend);
+      }
       if (filters.desde) params = params.set('fecha_inicio', filters.desde);
       if (filters.hasta) params = params.set('fecha_fin', filters.hasta);
       if (filters.busqueda) params = params.set('search', filters.busqueda);
@@ -77,21 +88,41 @@ export class DailyRecordService {
     return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/daily-records`, { params })
       .pipe(
         map(response => ({
-          datos: response.items.map(item => ({
-            id: item.id.toString(),
-            fecha: item.fecha,
-            maquina_id: item.maquina.id,
-            maquina_identificador: `Máquina ${item.maquina.numero_interno}`,
-            chofer_id: item.chofer.id,
-            chofer_nombre: item.chofer.nombre,
-            recaudado: item.monto_recaudado,
-            costo_diesel: item.diesel || 0,
-            litros_diesel: undefined,
-            dia_no_trabajado: false,
-            es_emergencia: false,
-            estado: item.estado as DailyRecordStatus,
-            tiene_observaciones: item.tiene_observaciones // Usar el booleano del backend
-          })),
+          datos: response.items.map(item => {
+            // Mapear estados del backend (minúsculas) al frontend (mayúsculas)
+            let estado: DailyRecordStatus = 'COMPLETO';
+            if (item.estado === 'completo') {
+              estado = 'COMPLETO';
+            } else if (item.estado === 'incidente_reportado') {
+              estado = 'INCIDENTE_REPORTADO';
+            } else if (item.estado === 'pendiente_trabajador') {
+              estado = 'PENDIENTE_TRABAJADOR';
+            } else if (item.estado === 'no_trabajado') {
+              estado = 'DIA_NO_TRABAJADO';
+            }
+
+            // Determinar si es emergencia basado en el estado
+            const es_emergencia = item.estado === 'incidente_reportado';
+            
+            // Determinar si es día no trabajado
+            const dia_no_trabajado = item.estado === 'no_trabajado';
+
+            return {
+              id: item.id.toString(),
+              fecha: item.fecha,
+              maquina_id: item.maquina.id,
+              maquina_identificador: `Máquina ${item.maquina.numero_interno}`,
+              chofer_id: item.chofer.id,
+              chofer_nombre: item.chofer.nombre,
+              recaudado: item.monto_recaudado,
+              costo_diesel: item.diesel || 0,
+              litros_diesel: undefined,
+              dia_no_trabajado,
+              es_emergencia,
+              estado,
+              tiene_observaciones: item.tiene_observaciones
+            };
+          }),
           total: response.total,
           pagina: response.page,
           por_pagina: response.per_page,
@@ -314,24 +345,45 @@ export class DailyRecordService {
 
   /**
    * Obtener KPIs de registros diarios
-   * Endpoint: GET /api/daily-records/kpis
-   * TEMPORAL: Usando mocks hasta que el endpoint esté disponible en el backend
+   * Endpoint: GET /api/daily-records/summary
    */
   getDailyRecordsKPIs(period?: { desde: string; hasta: string }): Observable<DailyRecordsKPIs> {
-    // TODO: Descomentar cuando el endpoint esté disponible en el backend
-    // let params = new HttpParams();
-    // if (period) {
-    //   params = params.set('desde', period.desde);
-    //   params = params.set('hasta', period.hasta);
-    // }
+    // El backend devuelve DailyRecordSummary que tiene:
+    // - recaudacion_periodo
+    // - registros_faltantes
+    // - registros_incidentes
+    
+    interface BackendSummary {
+      recaudacion_periodo: number;
+      registros_faltantes: number;
+      registros_incidentes: number;
+    }
 
-    // return this.http.get<DailyRecordsKPIs>(`${this.apiUrl}/api/daily-records/kpis`, { params })
-    //   .pipe(
-    //     catchError(() => of(this.getMockKPIs()))
-    //   );
+    interface BackendSummary {
+      recaudacion_periodo: number;
+      registros_faltantes: number;
+      registros_incidentes: number; // El backend devuelve 'registros_incidentes'
+    }
 
-    // Usar mocks directamente por ahora
-    return of(this.getMockKPIs());
+    return this.http.get<BackendSummary>(`${this.apiUrl}/api/daily-records/summary`)
+      .pipe(
+        map((response) => ({
+          recaudacion_periodo: response.recaudacion_periodo,
+          registros_faltantes: response.registros_faltantes,
+          registros_con_incidentes: response.registros_incidentes, // Mapear de registros_incidentes a registros_con_incidentes
+          total_registros: 0, // No viene del backend, se puede calcular si es necesario
+          registros_completos: 0, // No viene del backend
+          registros_pendientes: response.registros_faltantes, // Aproximación
+          periodo: period || {
+            desde: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+            hasta: new Date().toISOString().split('T')[0]
+          }
+        })),
+        catchError((error) => {
+          console.error('Error obteniendo KPIs de registros diarios:', error);
+          return of(this.getMockKPIs());
+        })
+      );
   }
 
   // ========== Mocks temporales (para desarrollo) ==========

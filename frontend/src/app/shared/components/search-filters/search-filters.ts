@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { DatePicker } from '../date-picker/date-picker';
 
 export interface FilterField {
@@ -15,7 +16,7 @@ export interface FilterField {
 
 @Component({
   selector: 'app-search-filters',
-  imports: [CommonModule, DatePicker],
+  imports: [CommonModule, FormsModule, DatePicker],
   template: `
     <div class="bg-base-50/50 p-5 sm:p-6 rounded-xl border border-base-200/50 mb-6">
       <!-- Header de Filtros -->
@@ -56,26 +57,22 @@ export interface FilterField {
                 <div class="dropdown dropdown-bottom w-full">
                   <div 
                     tabindex="0" 
-                    role="button" 
-                    class="select select-bordered w-full bg-base-100 border-base-200 focus:border-primary transition-colors cursor-pointer">
+                    role="button"
+                    class="select select-bordered w-full bg-base-100 border-base-200 focus:border-primary">
                     <span class="truncate">
                       {{ getSelectDisplayValue(field.key) }}
                     </span>
                   </div>
-                  <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-[100] w-full shadow-lg border border-base-200 mt-1 max-h-[288px] overflow-y-auto overscroll-contain">
+                  <ul class="dropdown-content menu bg-base-100 rounded-box z-[100] shadow-xl border border-base-200 mt-1 max-h-[240px] overflow-y-auto" 
+                      style="min-width: 100%; width: 100%;">
                     @if (field.options) {
                       @for (option of field.options; track option.value) {
-                        <li>
+                        <li class="w-full">
                           <a 
-                            (click)="onFilterChange(field.key, option.value)"
+                            (click)="onOptionClick($event, field.key, option.value)"
                             [class.active]="getFilterValue(field.key) === option.value"
-                            class="cursor-pointer flex items-center justify-between gap-2">
-                            <span>{{ option.label }}</span>
-                            @if (getFilterValue(field.key) === option.value) {
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary shrink-0">
-                                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                              </svg>
-                            }
+                            class="w-full block">
+                            {{ option.label }}
                           </a>
                         </li>
                       }
@@ -140,37 +137,50 @@ export interface FilterField {
     </div>
   `,
   styles: [`
-    /* Scroll personalizado para el dropdown de filtros */
+    /* Asegurar que el dropdown tenga el ancho correcto */
+    .dropdown {
+      position: relative;
+    }
+    
     .dropdown-content.menu {
-      scrollbar-width: thin;
-      scrollbar-color: hsl(var(--bc) / 0.2) transparent;
+      display: flex !important;
+      flex-direction: column !important;
+      min-width: 100% !important;
+      width: 100% !important;
+      left: 0 !important;
+      right: 0 !important;
     }
-
-    .dropdown-content.menu::-webkit-scrollbar {
-      width: 6px;
+    
+    .dropdown-content.menu li {
+      width: 100% !important;
+      min-width: 100% !important;
     }
-
-    .dropdown-content.menu::-webkit-scrollbar-track {
-      background: transparent;
-    }
-
-    .dropdown-content.menu::-webkit-scrollbar-thumb {
-      background-color: hsl(var(--bc) / 0.2);
-      border-radius: 3px;
-    }
-
-    .dropdown-content.menu::-webkit-scrollbar-thumb:hover {
-      background-color: hsl(var(--bc) / 0.3);
+    
+    .dropdown-content.menu li > a {
+      display: block !important;
+      width: 100% !important;
+      white-space: normal !important;
+      word-wrap: break-word !important;
+      overflow-wrap: break-word !important;
+      padding: 0.75rem 1rem !important;
+      line-height: 1.5 !important;
+      text-align: left !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class SearchFilters {
+export class SearchFilters implements OnDestroy {
   fields = input.required<FilterField[]>();
   filters = input<Record<string, any>>({});
   columns = input<number>(4); // Número de columnas en el grid
 
   filterChange = output<Record<string, any>>();
+
+  ngOnDestroy(): void {
+    // Cleanup si es necesario
+  }
 
   gridClasses = computed(() => {
     const cols = this.columns();
@@ -229,6 +239,21 @@ export class SearchFilters {
     const target = event.target as HTMLInputElement;
     const value = target.value ? Number(target.value) : null;
     this.onFilterChange(key, value);
+  }
+
+  onOptionClick(event: Event, key: string, value: any): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.onFilterChange(key, value);
+    // Cerrar el dropdown después de seleccionar
+    const target = event.target as HTMLElement;
+    const dropdown = target.closest('.dropdown');
+    if (dropdown) {
+      const button = dropdown.querySelector('[tabindex="0"]') as HTMLElement;
+      if (button) {
+        button.blur();
+      }
+    }
   }
 
   onFilterChange(key: string, value: any): void {
