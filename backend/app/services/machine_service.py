@@ -1,7 +1,7 @@
 ﻿from fastapi import HTTPException
 from calendar import monthrange
 from typing import Optional
-from datetime import date, timedelta, datetime
+from datetime import date, timedelta, datetime, timezone
 from app.db.supabase_client import supabase
 from app.schemas.user import UserInDB
 from app.services import alert_service
@@ -552,7 +552,7 @@ async def update_machine(machine_id: int, data):
             {"fecha_vencimiento": d["fecha"].isoformat()}
         ).eq("maquina_id", machine_id).eq("tipo_documento", d["tipo"]).execute()
 
-    # 3. Manejo de Chofer y Alertas de Asignación
+    # 3. Manejo de Chofer y Alertas de Asignación (ESTA ES LA PARTE QUE VALE)
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
         .select("id, chofer_id")
@@ -605,8 +605,7 @@ async def update_machine(machine_id: int, data):
                 origen_id=nuevo_chofer_id
             )
 
-    # --- 4. LIMPIEZA AUTOMÁTICA DE ALERTAS DE DOCUMENTOS (El bloque mágico) ---
-    # Si llegamos aquí, se actualizaron los documentos. Borramos las alertas viejas.
+    # --- 4. LIMPIEZA AUTOMÁTICA DE ALERTAS DE DOCUMENTOS ---
     try:
         (
             supabase.table("alertas")
@@ -625,69 +624,8 @@ async def update_machine(machine_id: int, data):
         )
     except Exception as e:
         print(f"Advertencia: No se pudieron limpiar alertas automáticas: {e}")
-    # -------------------------------------------------------------------------
 
-    return {"message": "Máquina actualizada correctamente"}
-
-    # ----------------------------------------
-    # 3. Manejo de reasignación + ALERTAS
-    # ----------------------------------------
-    
-    # Obtener asignación actual
-    asign_raw = (
-        supabase.table("asignaciones_chofer_maquina")
-        .select("id, chofer_id")
-        .eq("maquina_id", machine_id)
-        .is_("fecha_termino", None)
-        .maybe_single()
-        .execute()
-    )
-
-    asign_actual = asign_raw.data if asign_raw and asign_raw.data else None
-    chofer_actual_id = asign_actual["chofer_id"] if asign_actual else None
-    nuevo_chofer_id = data.chofer_id
-
-    hoy = date.today().isoformat()
-    nombre_maquina = f"Máquina {data.numero_interno}"
-
-    # CASO: Hubo cambios de chofer
-    if chofer_actual_id != nuevo_chofer_id:
-        
-        # A) Cerrar asignación anterior (si existía)
-        if chofer_actual_id is not None:
-            supabase.table("asignaciones_chofer_maquina").update(
-                {"fecha_termino": hoy}
-            ).eq("id", asign_actual["id"]).execute()
-            
-            # Alerta de desvinculación (Opcional, para el que se va)
-            await alert_service.crear_alerta(
-                mensaje=f"Ya no tienes asignada la {nombre_maquina}.",
-                severidad="informativa",       # Coincide con tu enum
-                tipo="asignacion_maquina",     # <--- TIPO ESPECÍFICO
-                origen_tipo="chofer",
-                origen_id=chofer_actual_id
-            )
-
-        # B) Crear nueva asignación (si hay nuevo chofer)
-        if nuevo_chofer_id is not None:
-            supabase.table("asignaciones_chofer_maquina").insert(
-                {
-                    "maquina_id": machine_id,
-                    "chofer_id": nuevo_chofer_id,
-                    "fecha_inicio": hoy,
-                    "fecha_termino": None,
-                }
-            ).execute()
-
-            # Alerta de NUEVA ASIGNACIÓN (Para el dashboard del chofer)
-            await alert_service.crear_alerta(
-                mensaje=nombre_maquina,         # "Máquina 05"
-                severidad="informativa",        # Punto azul
-                tipo="asignacion_maquina",      # <--- TIPO ESPECÍFICO
-                origen_tipo="chofer",           # Para que salga en su vista
-                origen_id=nuevo_chofer_id
-            )
-
+    # 5. RETORNO FINAL (Aquí termina la función)
     return {"message": "Máquina actualizada correctamente"}
 
 async def delete_machine(machine_id: int):
