@@ -1,10 +1,60 @@
 ﻿from fastapi import HTTPException
 from calendar import monthrange
 from typing import Optional
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 from app.db.supabase_client import supabase
 from app.schemas.user import UserInDB
 from app.services import alert_service
+
+NOMBRES_DOCS = {
+    "revision_tecnica": "Revisión Técnica",
+    "permiso_circulacion": "Permiso de Circulación",
+    "seguro_obligatorio": "Seguro Obligatorio"
+}
+# --- FUNCIÓN AUXILIAR (Movida al inicio para que Python la lea primero) ---
+async def verificar_crear_alerta_documento(
+    maquina_id: int, 
+    numero_interno: str, 
+    tipo_doc_key: str, 
+    estado: str, 
+    alertas_activas_map: dict
+):
+    """
+    Verifica si existe una alerta activa para este documento.
+    Si NO existe, la crea usando alert_service.
+    """
+    # 1. Definir tipo de alerta
+    if estado == "vencido":
+        tipo_alerta = "doc_vencida"
+        severidad = "critica" 
+        sufijo_msg = "se encuentra VENCIDA"
+    elif estado == "por_vencer":
+        tipo_alerta = "doc_por_vencer"
+        severidad = "advertencia"
+        sufijo_msg = "está por vencer"
+    else:
+        return 
+
+    # 2. Verificar duplicados en memoria
+    nombre_doc = NOMBRES_DOCS.get(tipo_doc_key, tipo_doc_key)
+    clave_duplicidad = f"{maquina_id}_{tipo_alerta}_{tipo_doc_key}"
+
+    if clave_duplicidad in alertas_activas_map:
+        return # Ya existe, no hacemos nada
+
+    # 3. Crear alerta si es nueva
+    mensaje = f"Máquina {numero_interno}: {nombre_doc} {sufijo_msg}."
+    
+    await alert_service.crear_alerta(
+        mensaje=mensaje,
+        severidad=severidad,
+        tipo=tipo_alerta,
+        origen_tipo="maquina",
+        origen_id=maquina_id
+    )
+    
+    # Actualizar mapa
+    alertas_activas_map[clave_duplicidad] = True
 
 async def get_active_machines():
     """
@@ -159,17 +209,41 @@ async def list_machines():
 
     maquinas = maquinas_raw.data
 
-    # 2) Obtener las asignaciones actuales (fecha_termino = NULL)
+    # 2) Obtener las asignaciones actuales
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
         .select("id, maquina_id, chofer_id, fecha_inicio, fecha_termino")
         .is_("fecha_termino", None)
         .execute()
     )
-
     asignaciones = {a["maquina_id"]: a["chofer_id"] for a in asign_raw.data}
 
-    # 3) Obtener datos de choferes asignados
+    # --- 2.5) Obtener ALERTAS ACTIVAS (Anti-spam de alertas) ---
+    alertas_raw = (
+        supabase.table("alertas")
+        .select("origen_id, tipo, mensaje")
+        .eq("origen_tipo", "maquina")
+        .eq("estado", "activa")
+        .execute()
+    )
+    
+    alertas_existentes_map = {}
+    for a in alertas_raw.data:
+        mid = a["origen_id"]
+        t_alerta = a["tipo"]
+        msg = a["mensaje"]
+        
+        # Inferencia simple del documento basado en el mensaje
+        doc_key_detectado = "desconocido"
+        if "Revisión Técnica" in msg: doc_key_detectado = "revision_tecnica"
+        elif "Permiso" in msg: doc_key_detectado = "permiso_circulacion"
+        elif "Seguro" in msg: doc_key_detectado = "seguro_obligatorio"
+        
+        clave = f"{mid}_{t_alerta}_{doc_key_detectado}"
+        alertas_existentes_map[clave] = True
+    # -----------------------------------------------------------
+
+    # 3) Obtener datos de choferes
     chofer_ids = list(asignaciones.values())
     choferes_map = {}
 
@@ -188,7 +262,7 @@ async def list_machines():
                 "nombre_completo": nombre
             }
 
-    # 4) Obtener documentos de todas las máquinas
+    # 4) Obtener documentos
     docs_raw = (
         supabase.table("documentos_maquina")
         .select("maquina_id, tipo_documento, fecha_vencimiento")
@@ -201,40 +275,50 @@ async def list_machines():
         docs_map.setdefault(mid, {})
         docs_map[mid][d["tipo_documento"]] = d["fecha_vencimiento"]
 
-    # 5) Construcción de respuesta final
+    # 5) Construcción final
     items = []
 
     for m in maquinas:
         mid = m["id"]
+        num_interno = m["numero_interno"]
 
-        # Chofer asignado
+        # Chofer
         chofer_info = None
         if mid in asignaciones:
             cid = asignaciones[mid]
             chofer_info = choferes_map.get(cid)
 
-        # Documentos
+        # Documentos y Alertas
         documentos = {}
         for tipo in ["revision_tecnica", "permiso_circulacion", "seguro_obligatorio"]:
             if mid in docs_map and tipo in docs_map[mid]:
                 fv = date.fromisoformat(docs_map[mid][tipo])
+                estado = "ok"
 
                 if fv < hoy:
                     estado = "vencido"
                 elif fv <= limite_warning:
                     estado = "por_vencer"
-                else:
-                    estado = "ok"
+                
+                # --- VERIFICAR Y CREAR ALERTA ---
+                if estado != "ok":
+                    await verificar_crear_alerta_documento(
+                        maquina_id=mid,
+                        numero_interno=num_interno,
+                        tipo_doc_key=tipo,
+                        estado=estado,
+                        alertas_activas_map=alertas_existentes_map
+                    )
+                # --------------------------------
 
                 documentos[tipo] = {
                     "fecha_vencimiento": fv,
                     "estado": estado
                 }
 
-        # Ensamblar item final
         items.append({
             "id": mid,
-            "numero_interno": m["numero_interno"],
+            "numero_interno": num_interno,
             "marca": m["marca"],
             "patente": m.get("patente"),
             "estado_operativo": m["estado_operativo"],
@@ -424,9 +508,7 @@ async def get_machine_detail(machine_id: int):
 
 
 async def update_machine(machine_id: int, data):
-    # ----------------------------------------
     # 0. Verificar existencia
-    # ----------------------------------------
     m_raw = (
         supabase.table("maquinas")
         .select("id, numero_interno")
@@ -438,9 +520,7 @@ async def update_machine(machine_id: int, data):
     if getattr(m_raw, "error", None):
         raise HTTPException(404, "Máquina no encontrada")
 
-    # ----------------------------------------
-    # 1. Actualizar datos de la máquina
-    # ----------------------------------------
+    # 1. Actualizar datos máquina
     update_payload = {
         "numero_interno": data.numero_interno,
         "patente": data.patente,
@@ -459,9 +539,7 @@ async def update_machine(machine_id: int, data):
     if getattr(upd_res, "error", None):
         raise HTTPException(400, f"Error actualizando máquina: {upd_res.error}")
 
-    # ----------------------------------------
     # 2. Actualizar documentos
-    # ----------------------------------------
     docs = data.documentos
     docs_updates = [
         {"tipo": "revision_tecnica", "fecha": docs.fecha_venc_revision_tecnica},
@@ -473,6 +551,83 @@ async def update_machine(machine_id: int, data):
         supabase.table("documentos_maquina").update(
             {"fecha_vencimiento": d["fecha"].isoformat()}
         ).eq("maquina_id", machine_id).eq("tipo_documento", d["tipo"]).execute()
+
+    # 3. Manejo de Chofer y Alertas de Asignación
+    asign_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("id, chofer_id")
+        .eq("maquina_id", machine_id)
+        .is_("fecha_termino", None)
+        .maybe_single()
+        .execute()
+    )
+
+    asign_actual = asign_raw.data if asign_raw and asign_raw.data else None
+    chofer_actual_id = asign_actual["chofer_id"] if asign_actual else None
+    nuevo_chofer_id = data.chofer_id
+
+    hoy_iso = date.today().isoformat()
+    nombre_maquina = f"Máquina {data.numero_interno}"
+
+    if chofer_actual_id != nuevo_chofer_id:
+        # A) Cerrar anterior
+        if chofer_actual_id is not None:
+            supabase.table("asignaciones_chofer_maquina").update(
+                {"fecha_termino": hoy_iso}
+            ).eq("id", asign_actual["id"]).execute()
+            
+            # Alerta Desvinculación
+            await alert_service.crear_alerta(
+                mensaje=f"Ya no tienes asignada la {nombre_maquina}.",
+                severidad="informativa",
+                tipo="asignacion_maquina",
+                origen_tipo="chofer",
+                origen_id=chofer_actual_id
+            )
+
+        # B) Crear nueva
+        if nuevo_chofer_id is not None:
+            supabase.table("asignaciones_chofer_maquina").insert(
+                {
+                    "maquina_id": machine_id,
+                    "chofer_id": nuevo_chofer_id,
+                    "fecha_inicio": hoy_iso,
+                    "fecha_termino": None,
+                }
+            ).execute()
+
+            # Alerta Nueva Asignación
+            await alert_service.crear_alerta(
+                mensaje=nombre_maquina,
+                severidad="informativa",
+                tipo="asignacion_maquina",
+                origen_tipo="chofer",
+                origen_id=nuevo_chofer_id
+            )
+
+    # --- 4. LIMPIEZA AUTOMÁTICA DE ALERTAS DE DOCUMENTOS (El bloque mágico) ---
+    # Si llegamos aquí, se actualizaron los documentos. Borramos las alertas viejas.
+    try:
+        (
+            supabase.table("alertas")
+            .update({
+                "estado": "resuelta",
+                "fecha_resuelta": datetime.now(timezone.utc).isoformat(),
+                "resuelta_por": None 
+            })
+            .match({
+                "origen_id": machine_id,
+                "origen_tipo": "maquina",
+                "estado": "activa"
+            })
+            .in_("tipo", ["doc_por_vencer", "doc_vencida"])
+            .execute()
+        )
+    except Exception as e:
+        print(f"Advertencia: No se pudieron limpiar alertas automáticas: {e}")
+    # -------------------------------------------------------------------------
+
+    return {"message": "Máquina actualizada correctamente"}
 
     # ----------------------------------------
     # 3. Manejo de reasignación + ALERTAS
@@ -848,15 +1003,3 @@ async def delete_maintenance(maintenance_id: int):
         raise HTTPException(400, f"Error eliminando registro: {res.error}")
 
     return None   # Provoca el 204 No Content
-
-# ALERTAS 
-
-# --- FUNCIÓN AUXILIAR 
-async def _obtener_nombre_chofer(chofer_id: int):
-    """Obtiene el nombre completo para el mensaje de la alerta"""
-    if not chofer_id:
-        return "Desconocido"
-    res = supabase.table("choferes").select("primer_nombre, apellido_paterno").eq("id", chofer_id).single().execute()
-    if res.data:
-        return f"{res.data.get('primer_nombre','')} {res.data.get('apellido_paterno','')}".strip()
-    return "Chofer ID " + str(chofer_id)

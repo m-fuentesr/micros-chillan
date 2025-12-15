@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # Importar los routers
 from app.api.auth import router as auth_router
+from app.api.alerts import router as alerts_router
 from app.api.accounting import router as accounting_router
 from app.api.daily_records import router as daily_records_router
 from app.api.dashboard import router as dashboard_router
@@ -32,6 +33,7 @@ app.add_middleware(
 
 # Incluir los routers
 app.include_router(auth_router)
+app.include_router(alerts_router)
 app.include_router(accounting_router)
 app.include_router(daily_records_router)
 app.include_router(dashboard_router)
