@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { MachineService } from '../../../shared/services/machine.service';
 import { DriverService } from '../../../shared/services/driver.service';
 import { DailyRecordService } from '../../../shared/services/daily-record.service';
@@ -11,18 +12,19 @@ import { MachineAssignmentHistory } from '../../../shared/machines/machine-assig
 import { MachineMaintenance } from '../../../shared/machines/machine-maintenance/machine-maintenance';
 import { Machine } from '../../../shared/models/machine.models';
 import { MachineDailyRecord, MachineDailyRecordFilters, MachineAssignment, MaintenanceRecord, MaintenanceFilters } from '../../../shared/models/machine-detail.models';
-import { catchError, of, switchMap } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of, switchMap, combineLatest } from 'rxjs';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
+import { AlertModalService } from '../../../shared/services/alert-modal.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, RouterLink, LoadingSkeleton, BusIcon],
+  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, LoadingSkeleton, BusIcon],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
@@ -120,7 +122,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v5.5a.75.75 0 0 0 1.5 0v-5.5ZM10.75 15.25a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0v-1.5ZM3.5 10a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 3.5 10ZM16.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1-.75-.75ZM2.22 7.22a.75.75 0 0 1 1.06 0l1.25 1.25a.75.75 0 0 1-1.06 1.06L2.22 8.28a.75.75 0 0 1 0-1.06ZM18.47 7.22a.75.75 0 0 1 0 1.06l-1.25 1.25a.75.75 0 1 1-1.06-1.06l1.25-1.25a.75.75 0 0 1 1.06 0ZM2.22 12.78a.75.75 0 0 1 0-1.06l1.25-1.25a.75.75 0 0 1 1.06 1.06L3.28 13.84a.75.75 0 0 1-1.06 0ZM18.47 12.78a.75.75 0 0 1-1.06 0l-1.25-1.25a.75.75 0 0 1 1.06-1.06l1.25 1.25a.75.75 0 0 1 0 1.06Z" />
+                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
                     </svg>
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
@@ -424,25 +426,31 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     <p class="text-sm font-medium text-primary mb-1">
                       Conductor Responsable
                     </p>
-                    <p class="text-xs text-base-content/50 mb-6">
-                      Asignado el 01 Oct 2025
-                    </p>
                     @if (isEditingGeneral()) {
-                      <div class="w-full mt-2 text-left">
+                      <div class="w-full max-w-xs mt-2">
                         <label class="label py-1">
                           <span class="label-text text-xs font-semibold text-base-content/60">
-                            Cambiar conductor responsable
+                            Cambiar conductor
                           </span>
                         </label>
                         <select
-                          class="select select-sm w-full max-w-xs"
-                          [value]="editChoferId() ?? ''"
-                          (change)="onChoferIdChange($any($event.target).value)">
-                          <option value="">Sin asignar</option>
-                          @for (c of choferes(); track c.id) {
-                            <option [value]="c.id">
-                              {{ c.nombre_completo }}
-                            </option>
+                          class="select select-sm w-full"
+                          [ngModel]="choferSelectValueComputed()"
+                          (ngModelChange)="handleChoferChangeFromNgModel($event)">
+                          @if (choferSelectValueComputed() && choferSelectValueComputed() !== '') {
+                            @for (c of choferesSelectOrdered(); track c.id) {
+                              <option [value]="c.id.toString()">
+                                {{ c.nombre_completo }}
+                              </option>
+                            }
+                            <option value="">Sin asignar</option>
+                          } @else {
+                            <option value="">Sin asignar</option>
+                            @for (c of choferesSelect(); track c.id) {
+                              <option [value]="c.id.toString()">
+                                {{ c.nombre_completo }}
+                              </option>
+                            }
                           }
                         </select>
                       </div>
@@ -459,14 +467,38 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     <h4 class="text-lg font-bold text-base-content/70">
                       Sin Asignar
                     </h4>
-                    <p class="text-sm text-base-content/50 mb-6 px-4">
+                    <p class="text-sm text-base-content/50 mb-4 px-4">
                       Esta máquina no tiene conductor responsable actualmente.
                     </p>
-                    <button
-                      class="btn btn-primary w-full shadow-lg shadow-primary/20"
-                      [routerLink]="['/maquinas', machine()?.id, 'editar']">
-                      Asignar Conductor
-                    </button>
+                    @if (isEditingGeneral()) {
+                      <div class="w-full max-w-xs">
+                        <label class="label py-1">
+                          <span class="label-text text-xs font-semibold text-base-content/60">
+                            Asignar conductor
+                          </span>
+                        </label>
+                        <select
+                          class="select select-sm w-full"
+                          [ngModel]="choferSelectValueComputed()"
+                          (ngModelChange)="handleChoferChangeFromNgModel($event)">
+                          @if (choferSelectValueComputed() && choferSelectValueComputed() !== '') {
+                            @for (c of choferesSelectOrdered(); track c.id) {
+                              <option [value]="c.id.toString()">
+                                {{ c.nombre_completo }}
+                              </option>
+                            }
+                            <option value="">Sin asignar</option>
+                          } @else {
+                            <option value="">Sin asignar</option>
+                            @for (c of choferesSelect(); track c.id) {
+                              <option [value]="c.id.toString()">
+                                {{ c.nombre_completo }}
+                              </option>
+                            }
+                          }
+                        </select>
+                      </div>
+                    }
                   }
                 </div>
               </div>
@@ -674,6 +706,7 @@ export class MachineDetail implements OnInit {
   private dailyRecordService = inject(DailyRecordService);
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
+  private alertModalService = inject(AlertModalService);
   
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
@@ -694,6 +727,37 @@ export class MachineDetail implements OnInit {
   editPermisoCirculacion = signal<string>('');
   editSeguroObligatorio = signal<string>('');
   editChoferId = signal<number | null>(null);
+  
+  // Signal para el valor del select (para evitar problemas con el binding)
+  choferSelectValue = signal<string>('');
+  
+  // Computed signal para el valor del select que siempre está sincronizado
+  choferSelectValueComputed = computed(() => {
+    if (this.isEditingGeneral()) {
+      // En modo edición, primero verificar editChoferId (se establece en toggleEditGeneral)
+      const editId = this.editChoferId();
+      if (editId !== null && editId !== undefined) {
+        return String(editId);
+      }
+      
+      // Si no hay editChoferId, verificar choferSelectValue (puede haber sido cambiado por el usuario)
+      const selectValue = this.choferSelectValue();
+      if (selectValue !== '') {
+        return selectValue;
+      }
+      
+      // Si no hay valor en ninguno, usar el valor de la máquina como fallback
+      const machineId = this.machine()?.chofer_actual?.id;
+      return machineId ? String(machineId) : '';
+    }
+    
+    // Si no estamos en modo edición, usar el valor de la máquina
+    const machineId = this.machine()?.chofer_actual?.id;
+    return machineId ? String(machineId) : '';
+  });
+
+  // Signal para forzar recarga de datos
+  refreshTrigger = signal(0);
 
   // Cargar máquina - usando route.params para reactividad
   machineIdParam = toSignal(
@@ -705,24 +769,40 @@ export class MachineDetail implements OnInit {
 
   machineId = computed(() => this.machineIdParam());
 
-  // COMENTADO: Cargar máquina desde backend - deshabilitado para trabajar en UI
-  // machineData = toSignal(
-  //   this.route.params.pipe(
-  //     switchMap(params => {
-  //       const id = params['id'] ? Number(params['id']) : null;
-  //       if (!id) {
-  //         return of<Machine | null>(null);
-  //       }
-  //       return this.machineService.getMachineById(id).pipe(
-  //         catchError(() => of<Machine | null>(null))
-  //       );
-  //     })
-  //   ),
-  //   { initialValue: null }
-  // );
-  
-  // Usar datos mock directamente para desarrollo UI
-  machineData = signal<Machine | null>(this.getMockMachine());
+  // Cargar máquina desde backend (se recarga cuando cambia el ID o el refreshTrigger)
+  machineData = toSignal(
+    combineLatest([
+      this.route.params.pipe(map(params => params['id'] ? Number(params['id']) : null)),
+      toObservable(this.refreshTrigger),
+      this.driverService.getActiveDrivers().pipe(catchError(() => of([])))
+    ]).pipe(
+      switchMap(([id, _, choferes]) => {
+        if (!id) {
+          return of<Machine | null>(null);
+        }
+        return this.machineService.getMachineById(id).pipe(
+          map((machine) => {
+            // Poblar chofer_actual si hay chofer_id y choferes disponibles
+            if (machine && machine.chofer_id && choferes.length > 0) {
+              const chofer = choferes.find(c => c.id === machine.chofer_id);
+              if (chofer && chofer.nombre_completo) {
+                return {
+                  ...machine,
+                  chofer_actual: {
+                    id: chofer.id,
+                    nombre_completo: chofer.nombre_completo
+                  }
+                };
+              }
+            }
+            return machine;
+          }),
+          catchError(() => of<Machine | null>(null))
+        );
+      })
+    ),
+    { initialValue: null }
+  );
 
   machine = computed(() => this.machineData());
 
@@ -739,16 +819,46 @@ export class MachineDetail implements OnInit {
     return calculateMachineDocumentStatus(m, 30);
   });
 
-  // COMENTADO: Cargar choferes desde backend - deshabilitado para trabajar en UI
-  // choferesData = toSignal(
-  //   this.driverService.getDrivers({ estado: 'activo' }).pipe(
-  //     catchError(() => of([]))
-  //   ),
-  //   { initialValue: [] }
-  // );
+  // Cargar choferes activos desde backend (para el select)
+  choferesSelectData = toSignal(
+    this.driverService.getActiveDrivers().pipe(
+      catchError((error) => {
+        console.error('Error cargando choferes activos:', error);
+        // Retornar array vacío si hay error - el servicio ya maneja datos mock
+        return of([]);
+      })
+    ),
+    { initialValue: [] }
+  );
   
-  // Usar datos mock directamente para desarrollo UI
-  choferesData = signal<any[]>(this.getMockDrivers());
+  choferesSelect = computed(() => {
+    return this.choferesSelectData() ?? [];
+  });
+
+  // Choferes ordenados: el asignado primero, luego los demás
+  choferesSelectOrdered = computed(() => {
+    const choferes = this.choferesSelect();
+    const currentChoferId = this.machine()?.chofer_actual?.id;
+    
+    if (!currentChoferId) {
+      return choferes;
+    }
+    
+    // Separar el conductor asignado del resto
+    const assignedChofer = choferes.find(c => c.id === currentChoferId);
+    const otherChoferes = choferes.filter(c => c.id !== currentChoferId);
+    
+    // Retornar el asignado primero, luego los demás
+    return assignedChofer ? [assignedChofer, ...otherChoferes] : choferes;
+  });
+  
+  // Cargar choferes completos para otros componentes (MachineDailyRecords)
+  choferesData = toSignal(
+    this.driverService.getDrivers({ estado: 'activo' }).pipe(
+      catchError(() => of([]))
+    ),
+    { initialValue: [] }
+  );
   
   choferes = computed(() => this.choferesData() ?? []);
 
@@ -768,6 +878,7 @@ export class MachineDetail implements OnInit {
       this.machineLoadingState.setDataLoaded();
     }
   });
+
 
   ngOnInit(): void {
     // Iniciar estado de carga
@@ -791,8 +902,16 @@ export class MachineDetail implements OnInit {
         this.editRevisionTecnica.set(m.documentos?.revision_tecnica || '');
         this.editPermisoCirculacion.set(m.documentos?.permiso_circulacion || '');
         this.editSeguroObligatorio.set(m.documentos?.seguro_obligatorio || '');
-        this.editChoferId.set(m.chofer_actual?.id || null);
+        const choferId = m.chofer_actual?.id || null;
+        this.editChoferId.set(choferId);
+        // Actualizar también el valor del select - asegurarse de que sea string
+        const selectValue = choferId ? String(choferId) : '';
+        this.choferSelectValue.set(selectValue);
       }
+    } else {
+      // Al salir del modo edición, limpiar los valores temporales
+      this.choferSelectValue.set('');
+      this.editChoferId.set(null);
     }
     
     this.isEditingGeneral.set(isEditing);
@@ -804,74 +923,80 @@ export class MachineDetail implements OnInit {
 
     const choferId = this.editChoferId();
     const estado = this.editEstadoOperativo() as 'Operativa' | 'En Taller' | 'Inactiva' | undefined;
-    
-    // COMENTADO: Actualizar máquina en backend - deshabilitado para trabajar en UI
-    // const updateData: Partial<Machine> = {
-    //   marca: this.editMarca(),
-    //   'año': this.editAnio() ?? undefined,
-    //   patente: this.editPatente(),
-    //   estado_operativo: estado,
-    //   documentos: {
-    //     revision_tecnica: this.editRevisionTecnica() || undefined,
-    //     permiso_circulacion: this.editPermisoCirculacion() || undefined,
-    //     seguro_obligatorio: this.editSeguroObligatorio() || undefined
-    //   }
-    // };
-    //
-    // // Agregar chofer_actual_id solo si existe (el backend puede esperar este campo)
-    // if (choferId !== null) {
-    //   (updateData as any).chofer_actual_id = choferId;
-    // }
-    //
-    // this.machineService.updateMachine(machineId, updateData)
-    //   .pipe(
-    //     catchError((error) => {
-    //       console.error('Error al actualizar máquina:', error);
-    //       alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
-    //       return of(null);
-    //     })
-    //   )
-    //   .subscribe((updatedMachine) => {
-    //     if (updatedMachine) {
-    //       // Recargar la máquina actualizada
-    //       this.machineService.getMachineById(machineId).subscribe((machine) => {
-    //         // El signal se actualizará automáticamente a través de machineData
-    //       });
-    //       this.isEditingGeneral.set(false);
-    //       alert('Cambios guardados correctamente.');
-    //     }
-    //   });
-    
-    // Actualizar localmente para desarrollo UI
     const currentMachine = this.machine();
-    if (currentMachine) {
-      const updatedMachine: Machine = {
-        ...currentMachine,
-        marca: this.editMarca(),
-        'año': this.editAnio() ?? undefined,
-        patente: this.editPatente(),
-        estado_operativo: estado || currentMachine.estado_operativo,
-        documentos: {
-          revision_tecnica: this.editRevisionTecnica() || undefined,
-          permiso_circulacion: this.editPermisoCirculacion() || undefined,
-          seguro_obligatorio: this.editSeguroObligatorio() || undefined
-        }
-      };
-      
-      // Actualizar chofer si se cambió
-      if (choferId !== null) {
-        const chofer = this.choferes().find(c => c.id === choferId);
-        if (chofer) {
-          updatedMachine.chofer_actual = chofer;
-        }
-      } else {
-        updatedMachine.chofer_actual = undefined;
-      }
-      
-      this.machineData.set(updatedMachine);
-      this.isEditingGeneral.set(false);
-      alert('Cambios guardados correctamente (modo desarrollo - no se guardó en backend).');
+    
+    if (!currentMachine) return;
+    
+    // Validar que las fechas de documentación estén presentes
+    if (!this.editRevisionTecnica() || !this.editPermisoCirculacion() || !this.editSeguroObligatorio()) {
+      this.alertModalService.show({
+        title: 'Documentación Incompleta',
+        message: 'Todas las fechas de documentación (Revisión Técnica, Permiso de Circulación, Seguro Obligatorio) son obligatorias.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
     }
+    
+    // Asegurar que chofer_id sea un número o null
+    const choferIdFinal = choferId !== null && choferId !== undefined ? Number(choferId) : null;
+    
+    const updateData: Partial<Machine> = {
+      numero: currentMachine.numero,
+      marca: this.editMarca(),
+      'año': this.editAnio() ?? currentMachine.año,
+      patente: this.editPatente(),
+      estado_operativo: estado || currentMachine.estado_operativo,
+      chofer_id: choferIdFinal,
+      documentos: {
+        revision_tecnica: this.editRevisionTecnica() || undefined,
+        permiso_circulacion: this.editPermisoCirculacion() || undefined,
+        seguro_obligatorio: this.editSeguroObligatorio() || undefined
+      }
+    };
+
+    this.machineService.updateMachine(machineId, updateData)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al actualizar máquina:', error);
+          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          this.alertModalService.show({
+            title: 'Error al Guardar',
+            message: `Hubo un error al guardar los cambios de la máquina: ${errorMessage}. Por favor, intenta nuevamente.`,
+            type: 'error',
+            buttonText: 'Entendido'
+          });
+          return of(null);
+        })
+      )
+      .subscribe((updatedMachine) => {
+        if (updatedMachine) {
+          this.isEditingGeneral.set(false);
+          
+          this.alertModalService.show({
+            title: 'Cambios Guardados',
+            message: 'La información de la máquina ha sido actualizada correctamente.',
+            type: 'success',
+            buttonText: 'Entendido'
+          });
+          
+          // Esperar un momento para asegurar que el backend haya procesado
+          setTimeout(() => {
+            // Forzar recarga de datos actualizando el refreshTrigger
+            this.refreshTrigger.set(this.refreshTrigger() + 1);
+            
+            // Verificar después de un momento si se cargó correctamente
+            setTimeout(() => {
+              const machine = this.machine();
+              const choferes = this.choferes();
+              
+              if (machine && machine.chofer_id && !machine.chofer_actual && choferes.length > 0) {
+                this.refreshTrigger.set(this.refreshTrigger() + 1);
+              }
+            }, 1000);
+          }, 300);
+        }
+      });
   }
 
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {
@@ -913,7 +1038,7 @@ export class MachineDetail implements OnInit {
   async onDelete(): Promise<void> {
     const confirmed = await this.confirmModalService.open({
       title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción no se puede deshacer.`,
+      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción desactivará la máquina y liberará al chofer asignado.`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'
     });
@@ -922,23 +1047,35 @@ export class MachineDetail implements OnInit {
       return;
     }
 
-    // COMENTADO: Eliminar máquina en backend - deshabilitado para trabajar en UI
-    // if (this.machineId()) {
-    //   this.machineService.deleteMachine(this.machineId()!)
-    //     .pipe(
-    //       catchError((error) => {
-    //         console.error('Error al eliminar máquina:', error);
-    //         return of(null);
-    //       })
-    //     )
-    //     .subscribe(() => {
-    //       this.router.navigate(['/maquinas']);
-    //     });
-    // }
-    
-    // Simular eliminación para desarrollo UI
-    alert('Eliminación simulada (modo desarrollo - no se eliminó en backend).');
-    // this.router.navigate(['/maquinas']);
+    const machineId = this.machineId();
+    if (!machineId) {
+      this.alertModalService.show({
+        title: 'Error de Eliminación',
+        message: 'No se pudo identificar la máquina a eliminar. Por favor, recarga la página e intenta nuevamente.',
+        type: 'error',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    this.machineService.deleteMachine(machineId)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al eliminar máquina:', error);
+          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          this.alertModalService.show({
+            title: 'Error al Eliminar',
+            message: `Hubo un error al eliminar la máquina: ${errorMessage}. Por favor, intenta nuevamente.`,
+            type: 'error',
+            buttonText: 'Entendido'
+          });
+          return of(null);
+        })
+      )
+      .subscribe(() => {
+        // Navegar a la lista de máquinas después de eliminar
+        this.router.navigate(['/maquinas']);
+      });
   }
 
   onRecordFilterChange(filters: MachineDailyRecordFilters): void {
@@ -958,167 +1095,116 @@ export class MachineDetail implements OnInit {
 
     const filters = this.recordFilters();
     
-    // COMENTADO: Obtener registros de la máquina desde backend - deshabilitado para trabajar en UI
-    // this.dailyRecordService.getDailyRecords({
-    //   maquina_id: machine.id,
-    //   chofer_id: filters.chofer_id || undefined,
-    //   desde: filters.desde || undefined,
-    //   hasta: filters.hasta || undefined
-    // }).subscribe({
-    //   next: (response) => {
-    //     const records = response.datos || [];
-    //     
-    //     // Mapear DailyRecord a MachineDailyRecord
-    //     const machineRecords: MachineDailyRecord[] = records.map((record: DailyRecord) => ({
-    //       id: parseInt(record.id),
-    //       fecha: record.fecha,
-    //       chofer: record.chofer_nombre || '',
-    //       chofer_id: record.chofer_id,
-    //       recaudado: record.recaudado || 0,
-    //       diesel: record.costo_diesel || 0,
-    //       observaciones: record.observaciones || null,
-    //       estado: record.estado
-    //     }));
-    //
-    //     // Ordenar según filtro
-    //     if (filters.orden === 'mas_antiguo') {
-    //       machineRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-    //     } else {
-    //       // Por defecto: más reciente primero
-    //       machineRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    //     }
-    //
-    //     this.dailyRecords.set(machineRecords);
-    //   },
-    //   error: (error) => {
-    //     console.error('Error al cargar registros diarios:', error);
-    //     this.dailyRecords.set([]);
-    //   }
-    // });
-    
-    // Usar datos mock directamente para desarrollo UI
-    const mockRecords: MachineDailyRecord[] = this.getMockDailyRecords();
-    
-    // Aplicar filtros básicos
-    let filteredRecords = mockRecords;
-    if (filters.chofer_id) {
-      filteredRecords = filteredRecords.filter(r => r.chofer_id === filters.chofer_id);
-    }
-    if (filters.desde) {
-      filteredRecords = filteredRecords.filter(r => r.fecha >= filters.desde!);
-    }
-    if (filters.hasta) {
-      filteredRecords = filteredRecords.filter(r => r.fecha <= filters.hasta!);
-    }
-    
-    // Ordenar según filtro
-    if (filters.orden === 'mas_antiguo') {
-      filteredRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-    } else {
-      // Por defecto: más reciente primero
-      filteredRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    }
-    
-    this.dailyRecords.set(filteredRecords);
+    this.dailyRecordService.getDailyRecords({
+      maquina_id: machine.id,
+      chofer_id: filters.chofer_id || undefined,
+      desde: filters.desde || undefined,
+      hasta: filters.hasta || undefined,
+      orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
+      pagina: 1,
+      por_pagina: 100 // Obtener todos los registros de la máquina
+    }).subscribe({
+      next: (response) => {
+        const records = response.datos || [];
+        
+        // Mapear DailyRecord a MachineDailyRecord
+        const machineRecords: MachineDailyRecord[] = records.map((record: DailyRecord) => ({
+          id: parseInt(record.id),
+          fecha: record.fecha,
+          chofer: record.chofer_nombre || '',
+          chofer_id: record.chofer_id,
+          recaudado: record.recaudado || 0,
+          diesel: record.costo_diesel || 0,
+          observaciones: record.observaciones || null, // null si no hay, string si hay (aunque sea vacío)
+          estado: record.estado
+        }));
+
+        // Ordenar según filtro (aunque el backend ya lo ordena, por si acaso)
+        if (filters.orden === 'mas_antiguo') {
+          machineRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
+        } else {
+          machineRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
+        }
+
+        this.dailyRecords.set(machineRecords);
+      },
+      error: (error) => {
+        console.error('Error al cargar registros diarios:', error);
+        this.dailyRecords.set([]);
+      }
+    });
   }
 
   private loadAssignments(): void {
-    // Mock data - en producción vendría del servicio
-    const machine = this.machine();
-    if (!machine) return;
+    const machineId = this.machineId();
+    if (!machineId) return;
 
-    this.assignments.set([
-      {
-        id: 1,
-        chofer: {
-          id: 1,
-          nombre_completo: 'Juan Pérez'
-        },
-        fecha_inicio: '2025-10-01',
-        fecha_fin: null,
-        duracion_dias: 51,
-        estado: 'activa'
+    this.machineService.getMachineAssignments(machineId).subscribe({
+      next: (assignments) => {
+        this.assignments.set(assignments);
       },
-      {
-        id: 2,
-        chofer: {
-          id: 2,
-          nombre_completo: 'Laura Diaz'
-        },
-        fecha_inicio: '2025-08-01',
-        fecha_fin: '2025-09-30',
-        duracion_dias: 60,
-        estado: 'cerrada'
-      },
-      {
-        id: 3,
-        chofer: {
-          id: 3,
-          nombre_completo: 'Pedro López'
-        },
-        fecha_inicio: '2025-05-01',
-        fecha_fin: '2025-07-31',
-        duracion_dias: 91,
-        estado: 'cerrada'
+      error: (error) => {
+        console.error('Error al cargar asignaciones:', error);
+        this.assignments.set([]);
       }
-    ]);
+    });
   }
 
   private loadMaintenanceRecords(): void {
-    // Mock data - en producción vendría del servicio
-    const machine = this.machine();
-    if (!machine) return;
+    const machineId = this.machineId();
+    if (!machineId) return;
 
-    this.maintenanceRecords.set([
-      {
-        id: 1,
-        maquina_id: machine.id,
-        item: 'Neumáticos',
-        costo: 450000,
-        numero_factura: '001-00001234',
-        categoria: 'preventivo',
-        fecha: '2025-11-10'
+    const filters = this.maintenanceFilters();
+    this.machineService.getMachineMaintenances(machineId, {
+      categoria: filters.categoria && filters.categoria !== 'all' ? filters.categoria : undefined,
+      item: filters.item,
+      desde: filters.desde,
+      hasta: filters.hasta
+    }).subscribe({
+      next: (response) => {
+        this.maintenanceRecords.set(response.items);
       },
-      {
-        id: 2,
-        maquina_id: machine.id,
-        item: 'Aceite Motor',
-        costo: 85000,
-        numero_factura: '001-00001233',
-        categoria: 'preventivo',
-        fecha: '2025-11-05'
-      },
-      {
-        id: 3,
-        maquina_id: machine.id,
-        item: 'Filtros',
-        costo: 120000,
-        numero_factura: '001-00001232',
-        categoria: 'preventivo',
-        fecha: '2025-10-28'
-      },
-      {
-        id: 4,
-        maquina_id: machine.id,
-        item: 'Reparación Frenos',
-        costo: 280000,
-        numero_factura: '001-00001231',
-        categoria: 'correctivo',
-        fecha: '2025-10-15'
+      error: (error) => {
+        console.error('Error al cargar mantenimientos:', error);
+        this.maintenanceRecords.set([]);
       }
-    ]);
+    });
   }
 
   onMaintenanceRecordAdded(record: MaintenanceRecord): void {
-    const current = this.maintenanceRecords();
-    this.maintenanceRecords.set([...current, record]);
-    // En producción, aquí se enviaría al backend
+    const machineId = this.machineId();
+    if (!machineId) return;
+
+    this.machineService.createMachineMaintenance(machineId, {
+      item: record.item,
+      costo: record.costo,
+      numero_factura: record.numero_factura,
+      categoria: record.categoria,
+      fecha: record.fecha
+    }).subscribe({
+      next: (newRecord) => {
+        const current = this.maintenanceRecords();
+        // Agregar al inicio para que aparezca primero
+        this.maintenanceRecords.set([newRecord, ...current]);
+      },
+      error: (error) => {
+        console.error('Error al crear mantenimiento:', error);
+        // Mostrar error al usuario
+      }
+    });
   }
 
   onMaintenanceRecordDeleted(id: number): void {
-    const current = this.maintenanceRecords();
-    this.maintenanceRecords.set(current.filter(r => r.id !== id));
-    // En producción, aquí se enviaría al backend
+    this.machineService.deleteMaintenance(id).subscribe({
+      next: () => {
+        const current = this.maintenanceRecords();
+        this.maintenanceRecords.set(current.filter(r => r.id !== id));
+      },
+      error: (error) => {
+        console.error('Error al eliminar mantenimiento:', error);
+        // Mostrar error al usuario
+      }
+    });
   }
 
   onMaintenanceFilterChange(filters: MaintenanceFilters): void {
@@ -1173,9 +1259,142 @@ export class MachineDetail implements OnInit {
     this.editAnio.set(numValue && !isNaN(numValue) ? numValue : null);
   }
 
-  onChoferIdChange(value: string): void {
-    const numValue = value ? parseInt(value, 10) : null;
-    this.editChoferId.set(numValue && !isNaN(numValue) ? numValue : null);
+  getChoferSelectValue(): string {
+    // Si estamos en modo edición, priorizar editChoferId sobre choferSelectValue
+    // porque editChoferId se inicializa primero en toggleEditGeneral
+    if (this.isEditingGeneral()) {
+      const editId = this.editChoferId();
+      if (editId !== null && editId !== undefined) {
+        return String(editId);
+      }
+      
+      // Si no hay editChoferId, usar choferSelectValue
+      const selectValue = this.choferSelectValue();
+      if (selectValue !== '') {
+        return selectValue;
+      }
+      
+      // Si no hay valor en ninguno, usar el valor de la máquina
+      const machineId = this.machine()?.chofer_actual?.id;
+      return machineId ? String(machineId) : '';
+    }
+    
+    // Si no estamos en modo edición, usar el valor de la máquina
+    const machineId = this.machine()?.chofer_actual?.id;
+    return machineId ? String(machineId) : '';
+  }
+
+  handleChoferChange(event: Event): void {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value;
+    
+    // Actualizar el signal del select primero
+    this.choferSelectValue.set(value);
+    
+    // Si el valor es una cadena vacía, establecer null inmediatamente
+    if (value === '' || value === null || value === undefined) {
+      this.editChoferId.set(null);
+      this.choferSelectValue.set('');
+      return;
+    }
+    
+    // Llamar directamente a onChoferIdChange para valores no vacíos
+    this.onChoferIdChange(value);
+  }
+
+  handleChoferChangeFromNgModel(value: string): void {
+    // Actualizar el signal del select primero
+    this.choferSelectValue.set(value);
+    
+    // Si el valor es una cadena vacía, establecer null inmediatamente
+    if (value === '' || value === null || value === undefined) {
+      this.editChoferId.set(null);
+      this.choferSelectValue.set('');
+      return;
+    }
+    
+    // Llamar directamente a onChoferIdChange para valores no vacíos
+    this.onChoferIdChange(value);
+  }
+
+  onChoferIdChange(value: string | number | null | undefined): void {
+    // Convertir a string si es necesario
+    const stringValue = value === null || value === undefined ? '' : String(value);
+    
+    // Si el valor es una cadena vacía, null, undefined, o el string "null", establecer null
+    if (!stringValue || stringValue.trim() === '' || stringValue === 'null' || stringValue === 'undefined') {
+      this.editChoferId.set(null);
+      this.choferSelectValue.set('');
+      return;
+    }
+    
+    const numValue = parseInt(stringValue, 10);
+    // Si es un número válido, establecerlo; de lo contrario, null
+    if (!isNaN(numValue) && numValue > 0) {
+      this.editChoferId.set(numValue);
+      this.choferSelectValue.set(String(numValue));
+    } else {
+      this.editChoferId.set(null);
+      this.choferSelectValue.set('');
+    }
+  }
+
+  onAssignDriver(value: string): void {
+    const machineId = this.machineId();
+    if (!machineId) return;
+
+    const choferId = value ? parseInt(value, 10) : null;
+    const currentMachine = this.machine();
+    
+    if (!currentMachine) return;
+    
+    // Validar que las fechas de documentación estén presentes
+    if (!currentMachine.documentos?.revision_tecnica || 
+        !currentMachine.documentos?.permiso_circulacion || 
+        !currentMachine.documentos?.seguro_obligatorio) {
+      this.alertModalService.show({
+        title: 'Documentación Pendiente',
+        message: 'No se puede asignar un conductor a esta máquina porque faltan fechas de documentación. Por favor, edita la máquina y completa la documentación primero.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+    
+    const updateData: Partial<Machine> = {
+      numero: currentMachine.numero,
+      marca: currentMachine.marca,
+      'año': currentMachine.año,
+      patente: currentMachine.patente,
+      estado_operativo: currentMachine.estado_operativo,
+      chofer_id: choferId ?? undefined,
+      documentos: {
+        revision_tecnica: currentMachine.documentos.revision_tecnica,
+        permiso_circulacion: currentMachine.documentos.permiso_circulacion,
+        seguro_obligatorio: currentMachine.documentos.seguro_obligatorio
+      }
+    };
+
+    this.machineService.updateMachine(machineId, updateData)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al asignar conductor:', error);
+          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          this.alertModalService.show({
+            title: 'Error al Asignar Conductor',
+            message: `Hubo un error al asignar el conductor: ${errorMessage}. Por favor, intenta nuevamente.`,
+            type: 'error',
+            buttonText: 'Entendido'
+          });
+          return of(null);
+        })
+      )
+      .subscribe((updatedMachine) => {
+        if (updatedMachine) {
+          // Forzar recarga de datos actualizando el refreshTrigger
+          this.refreshTrigger.set(this.refreshTrigger() + 1);
+        }
+      });
   }
 
   // Métodos mock para desarrollo UI

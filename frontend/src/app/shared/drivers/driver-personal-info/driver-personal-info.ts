@@ -61,7 +61,7 @@ import { Driver } from '../../models/driver.models';
             </div>
             <div>
               <label class="text-xs uppercase tracking-wide text-base-content/70">Porcentaje</label>
-              <div class="font-semibold">{{ driver().porcentaje_pago }}%</div>
+              <div class="font-semibold">{{ formatPorcentajeForDisplay(driver().porcentaje_pago) }}%</div>
             </div>
           </div>
         } @else {
@@ -180,7 +180,8 @@ export class DriverPersonalInfo {
       correo: driver.correo || '',
       estado: driver.estado || 'activo',
       maquina_id: driver.maquina_actual?.id || null,
-      porcentaje_pago: driver.porcentaje_pago || 0
+      // Convertir de decimal (0.3) a porcentaje (30) para mostrar en el input
+      porcentaje_pago: this.convertDecimalToPorcentaje(driver.porcentaje_pago || 0)
     });
     this.isEditing.set(true);
   }
@@ -201,10 +202,32 @@ export class DriverPersonalInfo {
         telefono: value.telefono || undefined,
         correo: value.correo || undefined,
         estado: value.estado as 'activo' | 'inactivo' || 'activo',
-        porcentaje_pago: value.porcentaje_pago || 0
+        // Convertir de porcentaje (30) a decimal (0.3) para guardar en el backend
+        porcentaje_pago: this.convertPorcentajeToDecimal(value.porcentaje_pago || 0)
       });
       this.isEditing.set(false);
     }
+  }
+
+  /**
+   * Convierte de decimal (0.3) a porcentaje (30) para mostrar en el frontend
+   */
+  formatPorcentajeForDisplay(decimalValue: number): number {
+    return decimalValue * 100;
+  }
+
+  /**
+   * Convierte de decimal (0.3) a porcentaje (30) para el input
+   */
+  convertDecimalToPorcentaje(decimalValue: number): number {
+    return decimalValue * 100;
+  }
+
+  /**
+   * Convierte de porcentaje (30) a decimal (0.3) para guardar en el backend
+   */
+  convertPorcentajeToDecimal(porcentajeValue: number): number {
+    return porcentajeValue / 100;
   }
 }
 

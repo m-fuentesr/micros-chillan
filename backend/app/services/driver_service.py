@@ -273,10 +273,16 @@ async def get_driver_detail(driver_id: int):
     # 4) Construcción de respuesta final
     # ---------------------------------------------------------
     nombre_completo = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+    if c.get('segundo_nombre'):
+        nombre_completo = f"{c['primer_nombre']} {c['segundo_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
 
     return {
         "id": c["id"],
         "nombre_completo": nombre_completo,
+        "primer_nombre": c["primer_nombre"],
+        "segundo_nombre": c.get("segundo_nombre"),
+        "apellido_paterno": c["apellido_paterno"],
+        "apellido_materno": c["apellido_materno"],
         "rut": c["rut"],
         "estado": c["estado"],
         "telefono": c["telefono"],

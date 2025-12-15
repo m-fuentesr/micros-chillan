@@ -9,7 +9,7 @@ export interface Driver {
   porcentaje_pago: number;
   fecha_venc_licencia: string;
   alerta_licencia: boolean;
-  estado: 'activo' | 'inactivo';
+  estado: 'activo' | 'inactivo' | 'eliminado';
   maquina_actual?: {
     id: number;
     identificador: string;
@@ -52,7 +52,8 @@ export interface DriverDailyRecord {
   estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado'; // Mapeo de DailyRecordStatus
   recaudado: number;
   diesel: number; // Alias de costo_diesel para compatibilidad
-  observaciones?: string | null;
+  observaciones?: string | null; // Texto opcional mostrado en historial
+  tiene_observaciones: boolean; // Booleano que indica si tiene observaciones
 }
 
 export interface DriverLiquidation {

@@ -145,7 +145,7 @@ export class MachineService {
 
     return this.http.get<BackendMachineDetail>(`${this.apiUrl}/api/machines/${id}`).pipe(
       map((m): Machine => {
-        return {
+        const machine: Machine = {
           id: m.id,
           numero: String(m.numero_interno),
           marca: m.marca,
@@ -153,7 +153,7 @@ export class MachineService {
           año: m.anio_fabricacion,
           estado_operativo: estadoMap[m.estado_operativo] || 'Operativa',
           chofer_id: m.chofer_actual_id,
-          // El backend no retorna nombre del chofer; dejamos null para evitar datos falsos
+          // El backend no retorna nombre del chofer; dejamos null para que se pueble después
           chofer_actual: null,
           documentos: {
             revision_tecnica: m.documentos?.fecha_venc_revision_tecnica || undefined,
@@ -161,6 +161,7 @@ export class MachineService {
             seguro_obligatorio: m.documentos?.fecha_venc_seguro_obligatorio || undefined
           }
         };
+        return machine;
       }),
       catchError((error) => {
         console.error('Error obteniendo detalle de máquina:', error);
@@ -382,13 +383,18 @@ export class MachineService {
     const estadoOperativo = estadoMap[machine.estado_operativo || 'Operativa'] || 'operativa';
 
     // Construir payload para el backend
+    // Asegurar que chofer_id sea explícitamente null si no hay valor
+    const choferIdValue = machine.chofer_id !== undefined && machine.chofer_id !== null 
+      ? Number(machine.chofer_id) 
+      : null;
+    
     const payload: BackendMachineUpdate = {
       numero_interno: Number(machine.numero) || 0,
       patente: machine.patente || '',
       marca: machine.marca || '',
       anio_fabricacion: machine.año || new Date().getFullYear(),
       estado_operativo: estadoOperativo,
-      chofer_id: machine.chofer_id || null,
+      chofer_id: choferIdValue,
       documentos: {
         fecha_venc_revision_tecnica: machine.documentos?.revision_tecnica || '',
         fecha_venc_permiso_circulacion: machine.documentos?.permiso_circulacion || '',
@@ -465,6 +471,147 @@ export class MachineService {
       params = params.set('estado', filters.estado);
     }
     return this.http.get<MachineDocumentAlerts>(`${this.apiUrl}/api/machines/document-alerts`, { params });
+  }
+
+  // GET /api/machines/{id}/assignments - Obtener historial de asignaciones de una máquina
+  getMachineAssignments(machineId: number, filtro?: 'todas' | 'actual' | 'cerradas'): Observable<any[]> {
+    let params = new HttpParams();
+    if (filtro && filtro !== 'todas') {
+      params = params.set('filtro', filtro);
+    }
+
+    // Tipo de respuesta del backend
+    interface BackendAssignment {
+      id: number;
+      chofer_id: number;
+      chofer_nombre: string;
+      fecha_inicio: string; // ISO date string
+      fecha_fin: string | null; // ISO date string o null
+      estado: "Activa" | "Cerrada";
+      dias_asignado: number;
+    }
+
+    return this.http.get<BackendAssignment[]>(`${this.apiUrl}/api/machines/${machineId}/assignments`, { params }).pipe(
+      map((assignments) => 
+        assignments.map((a) => ({
+          id: a.id,
+          chofer: {
+            id: a.chofer_id,
+            nombre_completo: a.chofer_nombre
+          },
+          fecha_inicio: a.fecha_inicio,
+          fecha_fin: a.fecha_fin,
+          duracion_dias: a.dias_asignado,
+          estado: a.estado.toLowerCase() as 'activa' | 'cerrada'
+        }))
+      ),
+      catchError((error) => {
+        console.error('Error obteniendo asignaciones:', error);
+        return of([]);
+      })
+    );
+  }
+
+  // GET /api/machines/{id}/maintenances - Obtener mantenimientos de una máquina
+  getMachineMaintenances(
+    machineId: number, 
+    filters?: { categoria?: string; item?: string; desde?: string; hasta?: string }
+  ): Observable<{ items: any[]; total_registros: number; gasto_mes_actual: number }> {
+    let params = new HttpParams();
+    if (filters?.categoria) {
+      params = params.set('categoria', filters.categoria);
+    }
+    if (filters?.item) {
+      params = params.set('item', filters.item);
+    }
+    if (filters?.desde) {
+      params = params.set('desde', filters.desde);
+    }
+    if (filters?.hasta) {
+      params = params.set('hasta', filters.hasta);
+    }
+
+    // Tipo de respuesta del backend
+    interface BackendMaintenanceResponse {
+      total_registros: number;
+      gasto_mes_actual: number;
+      items: Array<{
+        id: number;
+        fecha: string; // ISO date string
+        item: string;
+        categoria: string | null;
+        costo: number;
+        numero_documento: string | null;
+      }>;
+    }
+
+    return this.http.get<BackendMaintenanceResponse>(`${this.apiUrl}/api/machines/${machineId}/maintenances`, { params }).pipe(
+      map((response) => ({
+        total_registros: response.total_registros,
+        gasto_mes_actual: response.gasto_mes_actual,
+        items: response.items.map((item) => ({
+          id: item.id,
+          maquina_id: machineId,
+          item: item.item,
+          costo: item.costo,
+          numero_factura: item.numero_documento || '',
+          categoria: item.categoria as 'preventivo' | 'correctivo' | null,
+          fecha: item.fecha
+        }))
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo mantenimientos:', error);
+        return of({ items: [], total_registros: 0, gasto_mes_actual: 0 });
+      })
+    );
+  }
+
+  // POST /api/machines/{id}/maintenances - Crear mantenimiento
+  createMachineMaintenance(machineId: number, maintenance: {
+    item: string;
+    costo: number;
+    numero_factura: string;
+    categoria?: 'preventivo' | 'correctivo' | null;
+    fecha: string;
+  }): Observable<any> {
+    // El backend espera item_personalizado (string) o item_repuesto_id (number)
+    // Por ahora, usamos item_personalizado con el nombre del item
+    const payload = {
+      item_personalizado: maintenance.item,
+      costo: maintenance.costo,
+      numero_documento: maintenance.numero_factura,
+      categoria: maintenance.categoria || null,
+      fecha_compra: maintenance.fecha
+    };
+
+    return this.http.post<{ id: number; maquina_id: number; message: string }>(
+      `${this.apiUrl}/api/machines/${machineId}/maintenances`, 
+      payload
+    ).pipe(
+      map((response) => ({
+        id: response.id,
+        maquina_id: response.maquina_id,
+        item: maintenance.item,
+        costo: maintenance.costo,
+        numero_factura: maintenance.numero_factura,
+        categoria: maintenance.categoria || null,
+        fecha: maintenance.fecha
+      })),
+      catchError((error) => {
+        console.error('Error creando mantenimiento:', error);
+        throw error;
+      })
+    );
+  }
+
+  // DELETE /api/maintenances/{id} - Eliminar mantenimiento
+  deleteMaintenance(maintenanceId: number): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/api/maintenances/${maintenanceId}`).pipe(
+      catchError((error) => {
+        console.error('Error eliminando mantenimiento:', error);
+        throw error;
+      })
+    );
   }
 }
 

@@ -58,18 +58,55 @@ export interface ProfitabilityReport {
 }
 
 /**
- * Filtros para ranking
+ * Filtros para reportes (usando mes/año como en el backend)
  */
-export interface RankingFilters {
-  desde?: string; // YYYY-MM-DD
-  hasta?: string; // YYYY-MM-DD
-  orden_por?: 'recaudado' | 'ganancia' | 'dias_trabajados';
-  orden?: 'asc' | 'desc';
-  limite?: number;
+export interface ReportFilters {
+  mes: number; // 1-12
+  anio: number; // >= 2020
 }
 
 /**
- * Ranking de choferes
+ * Respuesta de rentabilidad por máquina del backend
+ */
+export interface MachineProfitabilityResponse {
+  maquina_id: number;
+  identificador: string;
+  ingresos_totales: number;
+  costos_diesel: number;
+  pago_choferes: number;
+  gastos_mantenimiento: number;
+  ganancia_neta: number;
+}
+
+/**
+ * Respuesta de ranking de ingresos del backend
+ */
+export interface MachineGrossRankingResponse {
+  ranking: number;
+  maquina_id: number;
+  identificador: string;
+  ingresos_totales: number;
+  costos_diesel: number;
+  pago_choferes: number;
+  ganancia_neta: number;
+}
+
+/**
+ * Respuesta de rentabilidad por chofer del backend
+ */
+export interface DriverProfitabilityResponse {
+  ranking: number;
+  chofer_id: number;
+  nombre_chofer: string;
+  dias_trabajados: number;
+  ingresos_totales: number;
+  costos_diesel: number;
+  pago_chofer: number;
+  ganancia_neta: number;
+}
+
+/**
+ * Interfaces para compatibilidad con el componente (mapeadas desde el backend)
  */
 export interface DriverRanking {
   posicion: number;
@@ -82,9 +119,6 @@ export interface DriverRanking {
   promedio_diario: number;
 }
 
-/**
- * Ranking de máquinas
- */
 export interface MachineRanking {
   posicion: number;
   maquina_id: number;
@@ -153,73 +187,114 @@ export class ReportsService {
   }
 
   /**
-   * Obtener ranking de choferes
-   * Endpoint: GET /api/reports/driver-ranking
+   * Obtener rentabilidad por máquina
+   * Endpoint: GET /api/reports/profitability
    */
-  getDriverRanking(filters: RankingFilters): Observable<DriverRanking[]> {
+  getMachineProfitability(filters: ReportFilters): Observable<MachineProfitabilityResponse[]> {
     const cacheKey = this.getCacheKey(filters);
     
-    // Verificar caché
-    const cached = this.driverRankingCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return of(cached.data);
-    }
-    
-    let params = new HttpParams();
-    
-    if (filters.desde) params = params.set('desde', filters.desde);
-    if (filters.hasta) params = params.set('hasta', filters.hasta);
-    if (filters.orden_por) params = params.set('orden_por', filters.orden_por);
-    if (filters.orden) params = params.set('orden', filters.orden);
-    if (filters.limite) params = params.set('limite', filters.limite.toString());
+    let params = new HttpParams()
+      .set('mes', filters.mes.toString())
+      .set('anio', filters.anio.toString());
 
-    return this.http.get<DriverRanking[]>(`${this.apiUrl}/reports/driver-ranking`, { params })
+    return this.http.get<MachineProfitabilityResponse[]>(`${this.apiUrl}/api/reports/profitability`, { params })
       .pipe(
-        map(ranking => {
-          this.driverRankingCache.set(cacheKey, { data: ranking, timestamp: Date.now() });
-          return ranking;
-        }),
-        catchError(() => {
-          const mock = this.getMockDriverRanking(filters);
-          this.driverRankingCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-          return of(mock);
+        catchError((error) => {
+          console.error('Error obteniendo rentabilidad por máquina:', error);
+          return of([]);
         })
       );
   }
 
   /**
-   * Obtener ranking de máquinas
-   * Endpoint: GET /api/reports/machine-ranking
+   * Obtener ranking de ingresos brutos
+   * Endpoint: GET /api/reports/gross-income-ranking
    */
-  getMachineRanking(filters: RankingFilters): Observable<MachineRanking[]> {
+  getGrossIncomeRanking(filters: ReportFilters): Observable<MachineGrossRankingResponse[]> {
     const cacheKey = this.getCacheKey(filters);
     
-    // Verificar caché
-    const cached = this.machineRankingCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
-      return of(cached.data);
-    }
-    
-    let params = new HttpParams();
-    
-    if (filters.desde) params = params.set('desde', filters.desde);
-    if (filters.hasta) params = params.set('hasta', filters.hasta);
-    if (filters.orden_por) params = params.set('orden_por', filters.orden_por);
-    if (filters.orden) params = params.set('orden', filters.orden);
-    if (filters.limite) params = params.set('limite', filters.limite.toString());
+    let params = new HttpParams()
+      .set('mes', filters.mes.toString())
+      .set('anio', filters.anio.toString());
 
-    return this.http.get<MachineRanking[]>(`${this.apiUrl}/reports/machine-ranking`, { params })
+    return this.http.get<MachineGrossRankingResponse[]>(`${this.apiUrl}/api/reports/gross-income-ranking`, { params })
       .pipe(
-        map(ranking => {
-          this.machineRankingCache.set(cacheKey, { data: ranking, timestamp: Date.now() });
-          return ranking;
-        }),
-        catchError(() => {
-          const mock = this.getMockMachineRanking(filters);
-          this.machineRankingCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-          return of(mock);
+        catchError((error) => {
+          console.error('Error obteniendo ranking de ingresos:', error);
+          return of([]);
         })
       );
+  }
+
+  /**
+   * Obtener rentabilidad por chofer
+   * Endpoint: GET /api/reports/driver-profitability
+   */
+  getDriverProfitability(filters: ReportFilters): Observable<DriverProfitabilityResponse[]> {
+    const cacheKey = this.getCacheKey(filters);
+    
+    let params = new HttpParams()
+      .set('mes', filters.mes.toString())
+      .set('anio', filters.anio.toString());
+
+    return this.http.get<DriverProfitabilityResponse[]>(`${this.apiUrl}/api/reports/driver-profitability`, { params })
+      .pipe(
+        catchError((error) => {
+          console.error('Error obteniendo rentabilidad por chofer:', error);
+          return of([]);
+        })
+      );
+  }
+
+  /**
+   * Obtener ranking de choferes (mapeado desde driver-profitability)
+   * Mantiene compatibilidad con el componente
+   */
+  getDriverRanking(filters: { mes: number; anio: number }): Observable<DriverRanking[]> {
+    return this.getDriverProfitability(filters).pipe(
+      map((drivers) => 
+        drivers.map((d) => ({
+          posicion: d.ranking,
+          chofer_id: d.chofer_id,
+          chofer_nombre: d.nombre_chofer,
+          total_recaudado: d.ingresos_totales,
+          total_ganancia: d.ganancia_neta,
+          dias_trabajados: d.dias_trabajados,
+          promedio_diario: d.dias_trabajados > 0 
+            ? Math.round(d.ingresos_totales / d.dias_trabajados) 
+            : 0
+        }))
+      ),
+      catchError(() => {
+        const mock = this.getMockDriverRanking(filters);
+        return of(mock);
+      })
+    );
+  }
+
+  /**
+   * Obtener ranking de máquinas (mapeado desde profitability)
+   * Mantiene compatibilidad con el componente
+   */
+  getMachineRanking(filters: { mes: number; anio: number }): Observable<MachineRanking[]> {
+    return this.getMachineProfitability(filters).pipe(
+      map((machines) => 
+        machines.map((m, index) => ({
+          posicion: index + 1,
+          maquina_id: m.maquina_id,
+          maquina_identificador: m.identificador,
+          total_recaudado: m.ingresos_totales,
+          total_ganancia: m.ganancia_neta,
+          dias_operativos: 0, // No disponible en el backend actual
+          promedio_diario: 0, // No disponible en el backend actual
+          choferes_asignados: 0 // No disponible en el backend actual
+        }))
+      ),
+      catchError(() => {
+        const mock = this.getMockMachineRanking(filters);
+        return of(mock);
+      })
+    );
   }
   
   /**
@@ -287,7 +362,7 @@ export class ReportsService {
     };
   }
 
-  private getMockDriverRanking(filters: RankingFilters): DriverRanking[] {
+  private getMockDriverRanking(filters: any): DriverRanking[] {
     return [
       {
         posicion: 1,
@@ -322,7 +397,7 @@ export class ReportsService {
     ];
   }
 
-  private getMockMachineRanking(filters: RankingFilters): MachineRanking[] {
+  private getMockMachineRanking(filters: any): MachineRanking[] {
     return [
       {
         posicion: 1,

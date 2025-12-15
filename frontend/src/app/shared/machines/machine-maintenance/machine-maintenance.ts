@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, ViewEncapsulation, input, output, signal, computed, OnInit, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, ViewEncapsulation, input, output, signal, computed, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaintenanceRecord, MaintenanceFilters } from '../../models/machine-detail.models';
@@ -75,8 +75,10 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
-              [style.animation-delay.ms]="i * 50"
+              class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group"
+              [class.animate-card-enter]="!isNewlyAdded(record.id)"
+              [class.animate-new-record]="isNewlyAdded(record.id)"
+              [style.animation-delay.ms]="isNewlyAdded(record.id) ? 0 : i * 50"
               [style.animation-fill-mode]="'both'">
               <div class="card-body p-5">
                 <!-- Header: Fecha y Categoría -->
@@ -180,8 +182,10 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
             <tbody>
               @for (record of filteredRecords(); track record.id; let i = $index) {
                 <tr 
-                  class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
-                  [style.animation-delay.ms]="i * 30"
+                  class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none"
+                  [class.animate-table-row-enter]="!isNewlyAdded(record.id)"
+                  [class.animate-new-record]="isNewlyAdded(record.id)"
+                  [style.animation-delay.ms]="isNewlyAdded(record.id) ? 0 : i * 30"
                   [style.animation-fill-mode]="'both'">
                   
                   <td class="pl-6 py-4">
@@ -330,11 +334,62 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
       animation: fade-in 400ms ease-out both;
     }
 
+    @keyframes new-record-enter {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.98);
+        max-height: 0;
+        margin-top: 0;
+        margin-bottom: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        max-height: 200px;
+      }
+    }
+
+    .animate-new-record {
+      animation: new-record-enter 500ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      background: linear-gradient(to right, 
+        hsl(var(--p) / 0.05) 0%, 
+        transparent 3%, 
+        transparent 97%, 
+        hsl(var(--p) / 0.05) 100%);
+    }
+
+    /* Resaltar temporalmente el nuevo registro */
+    .animate-new-record::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: hsl(var(--p));
+      animation: highlight-fade 2000ms ease-out forwards;
+    }
+
+    @keyframes highlight-fade {
+      0% {
+        opacity: 1;
+      }
+      50% {
+        opacity: 0.6;
+      }
+      100% {
+        opacity: 0;
+      }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .animate-component-enter,
       .animate-card-enter,
       .animate-table-row-enter,
-      .animate-fade-in {
+      .animate-fade-in,
+      .animate-new-record {
         animation: none;
         transform: none;
       }
@@ -363,7 +418,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
   encapsulation: ViewEncapsulation.None,
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class MachineMaintenance implements OnInit {
+export class MachineMaintenance implements OnInit, OnDestroy {
   machineId = input.required<number>();
   records = input.required<MaintenanceRecord[]>();
   availableItems = input<string[]>([]);
@@ -375,6 +430,10 @@ export class MachineMaintenance implements OnInit {
 
   private confirmModal = inject(ConfirmModalService);
   private maintenanceFormModal = inject(MaintenanceFormModalService);
+
+  // Rastrear IDs de registros recién agregados para animación
+  private newlyAddedIds = signal<Set<number>>(new Set());
+  private previousRecordIds = signal<Set<number>>(new Set());
 
   monthTotal = computed(() => {
     const records = this.records();
@@ -411,6 +470,11 @@ export class MachineMaintenance implements OnInit {
       return true;
     });
   });
+
+  // Verificar si un registro es nuevo (siempre retorna false para evitar problemas)
+  isNewlyAdded = (recordId: number): boolean => {
+    return false; // Deshabilitado temporalmente para evitar problemas con el cambio de pestañas
+  };
 
   hasActiveFilters = computed(() => {
     const f = this.filters();
@@ -472,8 +536,16 @@ export class MachineMaintenance implements OnInit {
   }
 
   ngOnInit(): void {
-    // Cargar ítems disponibles del backend (mock por ahora)
-    // En producción vendría de un servicio
+    // Inicializar la lista de IDs anteriores con los registros actuales
+    const initialRecords = this.records();
+    if (initialRecords.length > 0) {
+      const initialIds = new Set(initialRecords.map(r => r.id));
+      this.previousRecordIds.set(initialIds);
+    }
+  }
+
+  ngOnDestroy(): void {
+    // Limpiar cualquier timeout pendiente si es necesario
   }
 
 

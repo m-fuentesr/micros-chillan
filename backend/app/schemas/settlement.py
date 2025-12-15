@@ -47,6 +47,11 @@ class WeeklyPaymentResponse(BaseModel):
     # Estado
     estado_pago: str            # 'pendiente' / 'pagado'
     id_pago: Optional[int] = None
+    
+    # Información del pago (solo si está pagado)
+    metodo_pago: Optional[str] = None
+    codigo_transferencia: Optional[str] = None
+    fecha_pago: Optional[date] = None
 
 # Output: Respuesta simple al confirmar (Response)
 class PaymentConfirmResponse(BaseModel):
