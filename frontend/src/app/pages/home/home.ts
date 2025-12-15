@@ -15,16 +15,12 @@ import { TransitionService } from '../../shared/services/transition.service';
   imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
   template: `
     <div class="space-y-6">
-      <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
-        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
-          <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
-            Dashboard del Administrador
-          </h1>
-          <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
-            Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
-          </p>
-        </div>
+      <!-- Header - Aparece primero -->
+      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
+        <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Dashboard del Administrador</h1>
+        <p class="text-base-content/70 italic">
+          Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
+        </p>
       </div>
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->

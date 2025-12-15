@@ -82,6 +82,7 @@ export interface DailyRecord {
   // Estado y observaciones
   estado: DailyRecordStatus;
   observaciones?: string | null;
+  tiene_observaciones?: boolean; // Booleano que indica si tiene observaciones (usado en listados)
   
   // Comprobantes y desglose
   comprobante_registro?: {  // Comprobante del registro diario (obligatorio)

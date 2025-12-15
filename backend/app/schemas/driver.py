@@ -41,7 +41,7 @@ class DriverListItem(BaseModel):
     rut: str
     telefono: str
     correo_electronico: str
-    estado: Literal["activo", "inactivo", "eilminado"]
+    estado: Literal["activo", "inactivo", "eliminado"]
 
     maquina_actual: Optional[DriverMachine]
     licencia_estado: DriverLicenseState

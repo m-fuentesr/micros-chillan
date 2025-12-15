@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, input, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accounting.models';
+import { ClosedLiquidation, ClosedLiquidationWeek, LiquidationDriver } from '../../models/accounting.models';
+import { AccountingService } from '../../services/accounting.service';
 
 @Component({
   selector: 'app-liquidation-history',
@@ -29,6 +30,8 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
             </thead>
             <tbody>
               @for (liquidation of liquidations(); track liquidation.id) {
+                @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
+                @let isLoading = isLoadingDetails(liquidation.id);
                 <tr 
                   class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none cursor-pointer"
                   [class.bg-base-50]="expandedIds().has(liquidation.id)"
@@ -72,7 +75,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     <div class="collapse-anim" [class.collapse-expanded]="expandedIds().has(liquidation.id)">
                       <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 motion-panel"
                            [attr.id]="'history-detail-' + liquidation.id">
-                        <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: false }"></ng-container>
+                        @if (isLoading) {
+                          <div class="w-full flex items-center justify-center py-8">
+                            <div class="flex flex-col items-center gap-3">
+                              <span class="loading loading-spinner loading-lg text-primary"></span>
+                              <span class="text-sm text-base-content/60 font-medium">Cargando detalles...</span>
+                            </div>
+                          </div>
+                        } @else if (liquidationWithDetails) {
+                          <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidationWithDetails, isMobile: false }"></ng-container>
+                        } @else {
+                          <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: false }"></ng-container>
+                        }
                       </div>
                     </div>
                   </td>
@@ -85,11 +99,13 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
         <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
         <div class="lg:hidden space-y-4">
           @for (liquidation of liquidations(); track liquidation.id) {
+            @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
+            @let isLoading = isLoadingDetails(liquidation.id);
             <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
                  [class.ring-2]="expandedIds().has(liquidation.id)"
                  [class.ring-base-200]="expandedIds().has(liquidation.id)">
               
-              <div class="p-4 flex justify-between items-center cursor-pointer" 
+              <div class="p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between cursor-pointer" 
                    (click)="toggleDetail(liquidation.id)">
                 <div class="flex items-center gap-3 min-w-0">
                   <div class="bg-base-200/50 p-2.5 rounded-lg text-base-content/60 shrink-0">
@@ -98,17 +114,17 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     </svg>
                   </div>
                   <div class="truncate">
-                    <div class="font-bold text-base truncate">{{ liquidation.periodo }}</div>
-                    <div class="text-xs text-base-content/50 flex items-center gap-1">
+                    <div class="font-bold text-sm sm:text-base truncate">{{ liquidation.periodo }}</div>
+                    <div class="text-[11px] sm:text-xs text-base-content/50 flex items-center gap-1 flex-wrap">
                       <span>{{ formatDate(liquidation.fecha_cierre) }}</span>
                       <span>•</span>
                       <span class="truncate max-w-[100px]">{{ liquidation.cerrado_por }}</span>
                     </div>
                   </div>
                 </div>
-                <div class="flex items-center gap-2 shrink-0">
-                  <div class="font-black text-base tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
+                <div class="flex items-center gap-2 sm:gap-3 shrink-0 self-end sm:self-auto">
+                  <div class="font-black text-sm sm:text-base md:text-lg tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5 transition-transform duration-300 text-base-content/40" 
                       [class.rotate-180]="expandedIds().has(liquidation.id)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -118,7 +134,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
               <div class="collapse-anim-mobile bg-base-200/30 border-t border-base-200 p-3 motion-panel"
                    [class.collapse-expanded]="expandedIds().has(liquidation.id)"
                    [attr.id]="'history-detail-' + liquidation.id">
-                <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
+                @if (isLoading) {
+                  <div class="w-full flex items-center justify-center py-8">
+                    <div class="flex flex-col items-center gap-3">
+                      <span class="loading loading-spinner loading-lg text-primary"></span>
+                      <span class="text-sm text-base-content/60 font-medium">Cargando detalles...</span>
+                    </div>
+                  </div>
+                } @else if (liquidationWithDetails) {
+                  <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidationWithDetails, isMobile: true }"></ng-container>
+                } @else {
+                  <ng-container *ngTemplateOutlet="receiptDetail; context: { $implicit: liquidation, isMobile: true }"></ng-container>
+                }
               </div>
             </div>
           }
@@ -141,23 +168,23 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
           </button>
         </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 py-4 border-b border-base-100">
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 px-4 py-4 border-b border-base-100">
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Total Liquidado</div>
-            <div class="text-2xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-black text-base-content tabular-nums">{{ formatCurrency(liquidation.total_pagado) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Choferes</div>
-            <div class="text-2xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-bold text-base-content">{{ getChoferesCount(liquidation) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Promedio</div>
-            <div class="text-2xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
+            <div class="text-base sm:text-lg md:text-xl font-bold text-base-content tabular-nums">{{ formatCurrency(getAveragePayment(liquidation)) }}</div>
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Estado</div>
-            <div class="badge badge-sm badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
+            <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
                 <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
               </svg>
               Finalizado
@@ -241,18 +268,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
                     </table>
                   } @else {
                     <!-- Vista Móvil: Lista Vertical de Choferes -->
-                    <div class="divide-y divide-base-100 p-3">
+                    <div class="p-3 space-y-0">
                       @for (chofer of week.choferes; track chofer.chofer_id) {
-                        <div class="p-3 flex justify-between items-center">
-                          <div>
+                        <div class="p-3 border-b border-base-300 last:border-b-0 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div class="min-w-0">
                             <div class="font-bold text-sm">{{ chofer.chofer_nombre }}</div>
-                            <div class="text-[10px] text-base-content/50 mt-1 flex gap-2">
-                              <span class="uppercase badge badge-xs badge-ghost">{{ chofer.metodo_pago || '—' }}</span>
-                              <span class="font-mono">{{ chofer.codigo_transferencia || '—' }}</span>
+                            <div class="text-[10px] text-base-content/50 mt-1 flex flex-wrap gap-1.5 items-center">
+                              <span class="uppercase badge badge-ghost badge-xxs sm:badge-xs">{{ chofer.metodo_pago || '—' }}</span>
+                              <span class="font-mono truncate max-w-[160px] sm:max-w-[200px]">{{ chofer.codigo_transferencia || '—' }}</span>
                             </div>
                           </div>
-                          <div class="text-right">
-                            <div class="font-bold text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
+                          <div class="text-left sm:text-right">
+                            <div class="font-bold text-sm sm:text-base tabular-nums">{{ formatCurrency(chofer.pago_final) }}</div>
                             <div class="text-[10px] text-base-content/50">Base: {{ formatCurrency(chofer.total_ganado) }}</div>
                             @if (chofer.monto_a_completar > 0) {
                               <div class="text-[10px] text-primary">Ajuste: {{ formatCurrency(chofer.monto_a_completar) }}</div>
@@ -304,14 +331,13 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
 
     .collapse-anim.collapse-expanded,
     .collapse-anim-mobile.collapse-expanded {
-      max-height: 2000px; /* Aumentado para permitir múltiples semanas expandidas */
+      max-height: 9999px; /* permitir que crezca sin recortar contenido */
     }
     
-    /* Scroll interno para el contenedor de semanas cuando hay muchas expandidas */
+    /* Scroll interno para el contenedor de semanas solo cuando sea necesario */
     .weeks-container {
-      max-height: 1200px;
-      overflow-y: auto;
       overflow-x: hidden;
+      overflow-y: visible;
     }
     
     .weeks-container::-webkit-scrollbar {
@@ -347,6 +373,18 @@ import { ClosedLiquidation, ClosedLiquidationWeek } from '../../models/accountin
 })
 export class LiquidationHistory {
   liquidations = input.required<ClosedLiquidation[]>();
+  private accountingService = inject(AccountingService);
+  
+  /**
+   * Cache de detalles cargados para evitar recargas innecesarias
+   */
+  private loadedDetails = signal<Map<number, ClosedLiquidation>>(new Map());
+  
+  /**
+   * Estados de carga por período
+   */
+  private loadingDetails = signal<Set<number>>(new Set());
+  
   /**
    * Permite múltiples períodos abiertos en paralelo para comparar cierres.
    */
@@ -357,6 +395,24 @@ export class LiquidationHistory {
    */
   expandedWeeks = signal<Set<string>>(new Set());
 
+  /**
+   * Obtiene la liquidación con detalles cargados
+   */
+  getLiquidationWithDetails(id: number): ClosedLiquidation | null {
+    const loaded = this.loadedDetails().get(id);
+    if (loaded) return loaded;
+    
+    // Buscar en la lista original
+    return this.liquidations().find(l => l.id === id) || null;
+  }
+
+  /**
+   * Verifica si un período está cargando detalles
+   */
+  isLoadingDetails(id: number): boolean {
+    return this.loadingDetails().has(id);
+  }
+
   toggleDetail(id: number): void {
     const current = this.expandedIds();
     const isExpanded = current.has(id);
@@ -366,9 +422,73 @@ export class LiquidationHistory {
       next.delete(id);
     } else {
       next.add(id);
+      // Cargar detalles si no están cargados
+      this.loadDetailsIfNeeded(id);
     }
 
     this.expandedIds.set(next);
+  }
+
+  /**
+   * Carga los detalles del mes si no están en caché
+   */
+  private loadDetailsIfNeeded(id: number): void {
+    // Verificar si ya está cargado
+    if (this.loadedDetails().has(id)) {
+      return;
+    }
+
+    // Verificar si ya está cargando
+    if (this.loadingDetails().has(id)) {
+      return;
+    }
+
+    // Buscar el período en la lista
+    const liquidation = this.liquidations().find(l => l.id === id);
+    if (!liquidation) {
+      return;
+    }
+
+    // Si ya tiene semanas cargadas, no necesita recargar
+    if (liquidation.semanas && liquidation.semanas.length > 0) {
+      return;
+    }
+
+    // Marcar como cargando
+    this.loadingDetails.update(set => {
+      const newSet = new Set(set);
+      newSet.add(id);
+      return newSet;
+    });
+
+    // Cargar detalles del mes
+    this.accountingService.getLiquidationMonthDetail(liquidation.mes, liquidation.anio)
+      .subscribe({
+        next: (detail: ClosedLiquidation) => {
+          // Guardar en caché
+          this.loadedDetails.update(map => {
+            const newMap = new Map(map);
+            newMap.set(id, detail);
+            return newMap;
+          });
+
+          // Remover de loading
+          this.loadingDetails.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(id);
+            return newSet;
+          });
+        },
+        error: (error) => {
+          console.error('Error cargando detalles del período:', error);
+          // Remover de loading
+          this.loadingDetails.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(id);
+            return newSet;
+          });
+        }
+      });
   }
 
   toggleWeek(liquidationId: number, weekNumber: number): void {
@@ -411,9 +531,11 @@ export class LiquidationHistory {
     if (liquidation.semanas && liquidation.semanas.length > 0) {
       const choferIds = new Set<number>();
       liquidation.semanas.forEach(week => {
-        week.choferes.forEach(chofer => {
-          choferIds.add(chofer.chofer_id);
-        });
+        if (week.choferes) {
+          week.choferes.forEach(chofer => {
+            choferIds.add(chofer.chofer_id);
+          });
+        }
       });
       return choferIds.size;
     }
@@ -421,8 +543,27 @@ export class LiquidationHistory {
     return liquidation.choferes?.length || 0;
   }
 
-  getChoferes(liquidation: ClosedLiquidation): any[] {
-    // Retornar choferes consolidados (para compatibilidad)
+  getChoferes(liquidation: ClosedLiquidation): LiquidationDriver[] {
+    // Retornar choferes consolidados de todas las semanas
+    if (liquidation.semanas && liquidation.semanas.length > 0) {
+      const choferMap = new Map<number, LiquidationDriver>();
+      liquidation.semanas.forEach(week => {
+        if (week.choferes) {
+          week.choferes.forEach(chofer => {
+            // Si el chofer ya existe, sumar los pagos
+            if (choferMap.has(chofer.chofer_id)) {
+              const existing = choferMap.get(chofer.chofer_id)!;
+              existing.total_ganado += chofer.total_ganado;
+              existing.pago_final += chofer.pago_final;
+            } else {
+              choferMap.set(chofer.chofer_id, { ...chofer });
+            }
+          });
+        }
+      });
+      return Array.from(choferMap.values());
+    }
+    // Fallback a choferes legacy
     return liquidation.choferes || [];
   }
 
