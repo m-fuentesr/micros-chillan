@@ -218,12 +218,18 @@ async def list_machines():
     )
     asignaciones = {a["maquina_id"]: a["chofer_id"] for a in asign_raw.data}
 
-    # --- 2.5) Obtener ALERTAS ACTIVAS (Anti-spam de alertas) ---
+    # --- 2.5) CORRECCIÓN: FILTRO ANTI-SPAM INTELIGENTE ---
+    
+    # Calculamos fecha de hace 24 horas (o el tiempo que quieras de "silencio")
+    tiempo_spam = datetime.now(timezone.utc) - timedelta(hours=24)
+    tiempo_iso = tiempo_spam.isoformat()
+
+    # Pedimos: (Estado es Activa) O (Creada hace menos de 24h)
     alertas_raw = (
         supabase.table("alertas")
-        .select("origen_id, tipo, mensaje")
+        .select("origen_id, tipo, mensaje, estado, created_at")
         .eq("origen_tipo", "maquina")
-        .eq("estado", "activa")
+        .or_(f"estado.eq.activa,created_at.gte.{tiempo_iso}") # <--- AQUÍ ESTÁ LA MAGIA
         .execute()
     )
     
@@ -233,13 +239,15 @@ async def list_machines():
         t_alerta = a["tipo"]
         msg = a["mensaje"]
         
-        # Inferencia simple del documento basado en el mensaje
+        # Inferencia simple del documento
         doc_key_detectado = "desconocido"
         if "Revisión Técnica" in msg: doc_key_detectado = "revision_tecnica"
         elif "Permiso" in msg: doc_key_detectado = "permiso_circulacion"
         elif "Seguro" in msg: doc_key_detectado = "seguro_obligatorio"
         
         clave = f"{mid}_{t_alerta}_{doc_key_detectado}"
+        
+        # Si está en este mapa, NO se volverá a crear
         alertas_existentes_map[clave] = True
     # -----------------------------------------------------------
 
@@ -302,6 +310,8 @@ async def list_machines():
                 
                 # --- VERIFICAR Y CREAR ALERTA ---
                 if estado != "ok":
+                    # Ahora "alertas_existentes_map" ya incluye las resueltas recientemente.
+                    # Por tanto, esta función simplemente retornará sin hacer nada si ya existe.
                     await verificar_crear_alerta_documento(
                         maquina_id=mid,
                         numero_interno=num_interno,

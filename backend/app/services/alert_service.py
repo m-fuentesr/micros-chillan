@@ -1,6 +1,6 @@
 ﻿
 from app.db.supabase_client import supabase
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # Definimos los enums aquí para usarlos en código
 SEVERIDAD_CRITICA = "CRITICA"
@@ -199,3 +199,32 @@ async def verificar_propiedad_chofer(user_id: int, chofer_id_url: int) -> bool:
     except Exception as e:
         print(f"Error verificando propiedad: {e}")
         return False
+    
+async def existe_alerta_reciente(origen_id: int, tipo: str, horas: int = 24) -> bool:
+    """
+    Evita duplicados. Retorna True si ya se creó una alerta (activa o resuelta)
+    para este ID y TIPO en las últimas X horas.
+    """
+    try:
+        # Calculamos la fecha límite (hace 24 horas)
+        # Usamos UTC porque Supabase guarda en UTC
+        limite = datetime.now(timezone.utc) - timedelta(hours=horas)
+        
+        res = (
+            supabase.table("alertas")
+            .select("id")
+            .eq("origen_id", origen_id)   # Ej: ID de la máquina (85)
+            .eq("tipo", tipo)             # Ej: 'doc_por_vencer'
+            .gte("created_at", limite.isoformat()) # Created_at >= hace 24hrs
+            .execute()
+        )
+        
+        # Si devuelve alguna fila (sea activa o resuelta), es que ya existe una reciente.
+        if res.data and len(res.data) > 0:
+            return True
+            
+        return False
+
+    except Exception as e:
+        print(f"Error verificando duplicados: {e}")
+        return False # Ante la duda, dejamos pasar (fail-safe)
