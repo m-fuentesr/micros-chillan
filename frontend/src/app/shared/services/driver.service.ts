@@ -29,66 +29,57 @@ export class DriverService {
       params = params.set('estado', mapped);
     }
     
-    // El backend retorna {items: BackendDriver[]}, necesitamos mapear a Driver[]
+    // El backend retorna DriverListItem[] con el formato:
+    // { id, nombre_completo, rut, telefono, correo_electronico, estado, maquina_actual, licencia_estado }
     interface BackendDriver {
       id: number;
+      nombre_completo: string;
       rut: string;
-      primer_nombre: string;
-      segundo_nombre?: string | null;
-      apellido_paterno: string;
-      apellido_materno: string;
       telefono: string;
       correo_electronico: string;
-      fecha_venc_licencia: string; // ISO date string
-      estado: 'activo' | 'inactivo';
-      porcentaje_pago: number;
-      created_at?: string;
-      updated_at?: string;
-      // El backend no retorna maquina_actual en el listado, se obtiene de otra consulta
+      estado: 'activo' | 'inactivo' | 'eliminado';
+      maquina_actual?: {
+        id: number;
+        identificador: string;
+      } | null;
+      licencia_estado: {
+        fecha_vencimiento: string; // ISO date string
+        estado: 'ok' | 'warning' | 'danger';
+        dias_restantes: number;
+      };
     }
     
     return this.http.get<any>(`${this.apiUrl}/api/drivers`, { params }).pipe(
       map((response) => {
-        // El backend responde con un array o con { items: [] } según el endpoint
+        // El backend responde con un array
         const backendItems: BackendDriver[] = Array.isArray(response)
           ? response
           : (response?.items || []);
 
         // Transformar los datos del backend al formato del frontend
         let drivers: Driver[] = backendItems.map((backendDriver): Driver => {
-          // Construir nombre_completo
-          const nombreCompleto = [
-            backendDriver.primer_nombre,
-            backendDriver.segundo_nombre,
-            backendDriver.apellido_paterno,
-            backendDriver.apellido_materno
-          ]
-            .filter(Boolean)
-            .join(' ');
-          
-          // Calcular alerta de licencia
-          const licenseStatus = calculateLicenseStatus(backendDriver.fecha_venc_licencia, 30);
-          const alertaLicencia = licenseStatus.estado === 'error' || licenseStatus.estado === 'warning';
+          // Calcular alerta de licencia desde el estado que viene del backend
+          const alertaLicencia = backendDriver.licencia_estado.estado === 'danger' || backendDriver.licencia_estado.estado === 'warning';
           
           return {
             id: backendDriver.id,
-            nombre_completo: nombreCompleto,
+            nombre_completo: backendDriver.nombre_completo,
             rut: backendDriver.rut,
             telefono: backendDriver.telefono,
             correo: backendDriver.correo_electronico,
-            porcentaje_pago: backendDriver.porcentaje_pago,
-            fecha_venc_licencia: backendDriver.fecha_venc_licencia,
+            porcentaje_pago: 0, // No viene en el listado, se obtiene en el detalle
+            fecha_venc_licencia: backendDriver.licencia_estado.fecha_vencimiento,
             alerta_licencia: alertaLicencia,
             estado: backendDriver.estado,
-            maquina_actual: null, // El backend no retorna esto en el listado, se puede obtener de otra consulta si es necesario
-            nombre: backendDriver.primer_nombre,
-            segundo_nombre: backendDriver.segundo_nombre || undefined,
-            apellido: backendDriver.apellido_paterno,
-            segundo_apellido: backendDriver.apellido_materno,
-            created_at: backendDriver.created_at,
-            updated_at: backendDriver.updated_at
+            maquina_actual: backendDriver.maquina_actual || null
           };
         });
+        
+        // Eliminar duplicados por ID (por si el backend devuelve duplicados)
+        const uniqueDrivers = drivers.filter((driver, index, self) => 
+          index === self.findIndex(d => d.id === driver.id)
+        );
+        drivers = uniqueDrivers;
         
         // Aplicar filtros en el frontend si el backend no los soporta
         if (filters?.estado) {
@@ -127,13 +118,72 @@ export class DriverService {
     return this.http.get<Array<{ id: number; nombre_completo: string }>>(
       `${this.apiUrl}/api/drivers/active`
     ).pipe(
-      catchError(() => of([]))
+      map((response) => {
+        // Asegurar que la respuesta sea un array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error obteniendo choferes activos:', error);
+        // Retornar datos mock en caso de error para desarrollo
+        return of([
+          { id: 1, nombre_completo: 'Juan Pérez' },
+          { id: 2, nombre_completo: 'María Gómez' },
+          { id: 3, nombre_completo: 'Pedro López' }
+        ]);
+      })
     );
   }
 
   // GET /api/drivers/{id} - Obtener detalle de chofer
   getDriverById(id: number): Observable<Driver> {
-    return this.http.get<Driver>(`${this.apiUrl}/api/drivers/${id}`).pipe(
+    interface BackendDriverDetail {
+      id: number;
+      nombre_completo: string;
+      primer_nombre?: string;
+      segundo_nombre?: string | null;
+      apellido_paterno?: string;
+      apellido_materno?: string;
+      rut: string;
+      estado: 'activo' | 'inactivo' | 'eliminado';
+      telefono: string;
+      correo_electronico: string;
+      porcentaje_pago: number;
+      maquina_actual: { id: number; identificador: string } | null;
+      licencia: {
+        fecha_vencimiento: string;
+        dias_restantes: number;
+        estado: 'ok' | 'warning' | 'danger';
+      };
+    }
+
+    return this.http.get<BackendDriverDetail>(`${this.apiUrl}/api/drivers/${id}`).pipe(
+      map((backendDriver): Driver => {
+        // Usar los campos individuales si están disponibles, sino extraer del nombre_completo
+        const nombre = backendDriver.primer_nombre || '';
+        const segundoNombre = backendDriver.segundo_nombre || undefined;
+        const apellido = backendDriver.apellido_paterno || '';
+        const segundoApellido = backendDriver.apellido_materno || '';
+
+        return {
+          id: backendDriver.id,
+          nombre_completo: backendDriver.nombre_completo,
+          rut: backendDriver.rut,
+          telefono: backendDriver.telefono,
+          correo: backendDriver.correo_electronico, // Mapear correo_electronico a correo
+          porcentaje_pago: backendDriver.porcentaje_pago,
+          fecha_venc_licencia: backendDriver.licencia.fecha_vencimiento,
+          alerta_licencia: backendDriver.licencia.estado === 'danger' || backendDriver.licencia.estado === 'warning',
+          estado: backendDriver.estado,
+          maquina_actual: backendDriver.maquina_actual,
+          nombre: nombre,
+          segundo_nombre: segundoNombre,
+          apellido: apellido,
+          segundo_apellido: segundoApellido
+        };
+      }),
       catchError(() => {
         // Mock data para desarrollo
         const mockDriver = this.getMockDriverById(id);

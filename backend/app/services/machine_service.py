@@ -524,6 +524,26 @@ async def update_machine(machine_id: int, data):
 
     # Crear asignación nueva si hay nuevo chofer
     if nuevo_chofer is not None:
+        # IMPORTANTE: Verificar si el nuevo chofer ya tiene una asignación activa en otra máquina
+        # y cerrarla antes de crear la nueva asignación
+        asign_chofer_previo = (
+            supabase.table("asignaciones_chofer_maquina")
+            .select("id, maquina_id")
+            .eq("chofer_id", nuevo_chofer)
+            .is_("fecha_termino", None)
+            .maybe_single()
+            .execute()
+        )
+
+        # Si el chofer ya tiene una asignación activa en otra máquina, cerrarla
+        if asign_chofer_previo and asign_chofer_previo.data:
+            # Solo cerrar si no es la misma máquina que estamos actualizando
+            if asign_chofer_previo.data["maquina_id"] != machine_id:
+                supabase.table("asignaciones_chofer_maquina").update(
+                    {"fecha_termino": hoy}
+                ).eq("id", asign_chofer_previo.data["id"]).execute()
+
+        # Crear nueva asignación para esta máquina
         supabase.table("asignaciones_chofer_maquina").insert(
             {
                 "maquina_id": machine_id,
@@ -652,9 +672,10 @@ async def get_machine_assignments(machine_id: int, filtro: Optional[str]):
 
         item = {
             "id": a["id"],
+            "chofer_id": a["chofer_id"],
             "chofer_nombre": chofer_map.get(a["chofer_id"], "Desconocido"),
-            "fecha_inicio": fecha_inicio,
-            "fecha_fin": fecha_fin,
+            "fecha_inicio": fecha_inicio.isoformat(),
+            "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
             "estado": estado,
             "dias_asignado": dias
         }

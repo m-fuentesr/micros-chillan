@@ -8,12 +8,13 @@ import { DailyRecordService } from '../../../shared/services/daily-record.servic
 import { AccountingService } from '../../../shared/services/accounting.service';
 import type { DailyRecord, DailyRecordStatus } from '../../../shared/models/daily-record.models';
 import { Driver, DriverDailyRecord, DriverLiquidation } from '../../../shared/models/driver.models';
-import { catchError, of, switchMap } from 'rxjs';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, of, switchMap, combineLatest } from 'rxjs';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
+import { AlertModalService } from '../../../shared/services/alert-modal.service';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
 import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
@@ -115,7 +116,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M10.75 2.75a.75.75 0 0 0-1.5 0v5.5a.75.75 0 0 0 1.5 0v-5.5ZM10.75 15.25a.75.75 0 0 0-1.5 0v1.5a.75.75 0 0 0 1.5 0v-1.5ZM3.5 10a.75.75 0 0 1 .75-.75h5.5a.75.75 0 0 1 0 1.5h-5.5A.75.75 0 0 1 3.5 10ZM16.5 10a.75.75 0 0 1 .75-.75h.5a.75.75 0 0 1 0 1.5h-.5a.75.75 0 0 1-.75-.75ZM2.22 7.22a.75.75 0 0 1 1.06 0l1.25 1.25a.75.75 0 0 1-1.06 1.06L2.22 8.28a.75.75 0 0 1 0-1.06ZM18.47 7.22a.75.75 0 0 1 0 1.06l-1.25 1.25a.75.75 0 1 1-1.06-1.06l1.25-1.25a.75.75 0 0 1 1.06 0ZM2.22 12.78a.75.75 0 0 1 0-1.06l1.25-1.25a.75.75 0 0 1 1.06 1.06L3.28 13.84a.75.75 0 0 1-1.06 0ZM18.47 12.78a.75.75 0 0 1-1.06 0l-1.25-1.25a.75.75 0 0 1 1.06-1.06l1.25 1.25a.75.75 0 0 1 0 1.06Z" />
+                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
                     </svg>
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
@@ -185,32 +186,52 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     </span>
                     @if (isEditingGeneral()) {
                       <div class="grid grid-cols-2 gap-2 mt-1">
-                        <input
-                          type="text"
-                          class="input input-sm w-full"
-                          [value]="editNombre()"
-                          (input)="editNombre.set($any($event.target).value)"
-                          placeholder="Primer nombre">
-                        <input
-                          type="text"
-                          class="input input-sm w-full"
-                          [value]="editSegundoNombre()"
-                          (input)="editSegundoNombre.set($any($event.target).value)"
-                          placeholder="Segundo nombre">
+                        <div class="flex flex-col gap-1">
+                          <label class="text-xs font-semibold text-base-content/60">
+                            Primer nombre <span class="text-error">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            class="input input-sm w-full"
+                            [value]="editNombre()"
+                            (input)="editNombre.set($any($event.target).value)"
+                            placeholder="Primer nombre">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                          <label class="text-xs font-semibold text-base-content/60">
+                            Segundo nombre
+                          </label>
+                          <input
+                            type="text"
+                            class="input input-sm w-full"
+                            [value]="editSegundoNombre()"
+                            (input)="editSegundoNombre.set($any($event.target).value)"
+                            placeholder="Segundo nombre">
+                        </div>
                       </div>
                       <div class="grid grid-cols-2 gap-2 mt-2">
-                        <input
-                          type="text"
-                          class="input input-sm w-full"
-                          [value]="editApellido()"
-                          (input)="editApellido.set($any($event.target).value)"
-                          placeholder="Apellido paterno">
-                        <input
-                          type="text"
-                          class="input input-sm w-full"
-                          [value]="editSegundoApellido()"
-                          (input)="editSegundoApellido.set($any($event.target).value)"
-                          placeholder="Apellido materno">
+                        <div class="flex flex-col gap-1">
+                          <label class="text-xs font-semibold text-base-content/60">
+                            Apellido paterno <span class="text-error">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            class="input input-sm w-full"
+                            [value]="editApellido()"
+                            (input)="editApellido.set($any($event.target).value)"
+                            placeholder="Apellido paterno">
+                        </div>
+                        <div class="flex flex-col gap-1">
+                          <label class="text-xs font-semibold text-base-content/60">
+                            Apellido materno <span class="text-error">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            class="input input-sm w-full"
+                            [value]="editSegundoApellido()"
+                            (input)="editSegundoApellido.set($any($event.target).value)"
+                            placeholder="Apellido materno">
+                        </div>
                       </div>
                     } @else {
                       <div class="font-bold text-lg text-base-content">
@@ -222,7 +243,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   <div class="grid grid-cols-2 gap-4">
                     <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
                       <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
-                        RUT
+                        RUT <span class="text-error">*</span>
                       </span>
                       @if (isEditingGeneral()) {
                         <input
@@ -263,29 +284,33 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   </div>
 
                   <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
-                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
-                      Contacto
+                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-3">
+                      CONTACTO
                     </span>
-                    <div class="space-y-2">
-                      <div>
-                        <span class="text-xs text-base-content/50">Teléfono</span>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div class="flex flex-col gap-1">
+                        <span class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">
+                          Teléfono <span class="text-error">*</span>
+                        </span>
                         @if (isEditingGeneral()) {
                           <input
                             type="tel"
-                            class="input input-sm w-full mt-1"
+                            class="input input-sm w-full"
                             [value]="editTelefono()"
                             (input)="editTelefono.set($any($event.target).value)"
                             placeholder="Teléfono">
                         } @else {
-                          <div class="font-semibold text-base-content">{{ driver()!.telefono }}</div>
+                          <div class="font-semibold text-base-content font-mono">{{ driver()!.telefono }}</div>
                         }
                       </div>
-                      <div>
-                        <span class="text-xs text-base-content/50">Correo</span>
+                      <div class="flex flex-col gap-1">
+                        <span class="text-xs font-semibold text-base-content/60 uppercase tracking-wide">
+                          Correo <span class="text-error">*</span>
+                        </span>
                         @if (isEditingGeneral()) {
                           <input
                             type="email"
-                            class="input input-sm w-full mt-1"
+                            class="input input-sm w-full"
                             [value]="editCorreo()"
                             (input)="editCorreo.set($any($event.target).value)"
                             placeholder="Correo electrónico">
@@ -317,7 +342,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
                     } @else {
                       <div class="font-bold text-lg text-primary">
-                        {{ driver()!.porcentaje_pago }}%
+                        {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
                       </div>
                     }
                   </div>
@@ -421,17 +446,19 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </label>
                       <select
                         class="select select-sm w-full max-w-xs"
-                        [value]="editMaquinaId() ?? ''"
-                        (change)="onMaquinaIdChange($any($event.target).value)">
-                        <option value="">Sin asignar</option>
-                        @if (driver()!.maquina_actual) {
-                          <option [value]="driver()!.maquina_actual!.id">
-                            {{ driver()!.maquina_actual!.identificador }} (actual)
-                          </option>
-                        }
-                        @for (m of maquinas(); track m.id) {
-                          @if (m.id !== driver()!.maquina_actual?.id) {
-                            <option [value]="m.id">
+                        [ngModel]="maquinaSelectValueComputed()"
+                        (ngModelChange)="handleMaquinaChangeFromNgModel($event)">
+                        @if (maquinaSelectValueComputed() && maquinaSelectValueComputed() !== '') {
+                          @for (m of maquinasSelectOrdered(); track m.id) {
+                            <option [value]="m.id.toString()">
+                              {{ m.identificador }}
+                            </option>
+                          }
+                          <option value="">Sin asignar</option>
+                        } @else {
+                          <option value="">Sin asignar</option>
+                          @for (m of maquinas(); track m.id) {
+                            <option [value]="m.id.toString()">
                               {{ m.identificador }}
                             </option>
                           }
@@ -460,13 +487,22 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </label>
                       <select
                         class="select select-sm w-full max-w-xs"
-                        [value]="editMaquinaId() ?? ''"
-                        (change)="onMaquinaIdChange($any($event.target).value)">
-                        <option value="">Sin asignar</option>
-                        @for (m of maquinas(); track m.id) {
-                          <option [value]="m.id">
-                            {{ m.identificador }}
-                          </option>
+                        [ngModel]="maquinaSelectValueComputed()"
+                        (ngModelChange)="handleMaquinaChangeFromNgModel($event)">
+                        @if (maquinaSelectValueComputed() && maquinaSelectValueComputed() !== '') {
+                          @for (m of maquinasSelectOrdered(); track m.id) {
+                            <option [value]="m.id.toString()">
+                              {{ m.identificador }}
+                            </option>
+                          }
+                          <option value="">Sin asignar</option>
+                        } @else {
+                          <option value="">Sin asignar</option>
+                          @for (m of maquinas(); track m.id) {
+                            <option [value]="m.id.toString()">
+                              {{ m.identificador }}
+                            </option>
+                          }
                         }
                       </select>
                     </div>
@@ -570,13 +606,13 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
 
                           <!-- Observaciones -->
-                      @if (record.observaciones) {
+                      @if (record.tiene_observaciones) {
                         <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
                           <div class="flex items-start gap-2">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-info shrink-0 mt-0.5">
                               <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
                             </svg>
-                            <p class="text-xs text-base-content/70 flex-1">{{ record.observaciones }}</p>
+                            <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
                           </div>
                         </div>
                       }
@@ -675,13 +711,11 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             
                             <td class="text-center py-4" (click)="$event.stopPropagation()">
                               <div class="flex items-center justify-center">
-                            @if (record.observaciones) {
-                                  <div class="tooltip tooltip-top" [attr.data-tip]="record.observaciones">
-                                    <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
-                                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
-                                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                      </svg>
-                                    </div>
+                            @if (record.tiene_observaciones) {
+                                  <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
+                                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
+                                    </svg>
                                   </div>
                                 } @else {
                                   <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
@@ -1342,6 +1376,7 @@ export class DriverDetail implements OnInit {
   private accountingService = inject(AccountingService);
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
+  private alertModalService = inject(AlertModalService);
   
   // Estado de carga con umbral de 200ms
   driverLoadingState = this.loadingStateService.createLoadingState();
@@ -1362,6 +1397,34 @@ export class DriverDetail implements OnInit {
   editFechaVencLicencia = signal<string>('');
   editMaquinaId = signal<number | null>(null);
 
+  // Signal para el valor del select de máquina (para evitar problemas con el binding)
+  maquinaSelectValue = signal<string>('');
+
+  // Computed signal para el valor del select que siempre está sincronizado
+  maquinaSelectValueComputed = computed(() => {
+    if (this.isEditingGeneral()) {
+      // En modo edición, primero verificar editMaquinaId (se establece en toggleEditGeneral)
+      const editId = this.editMaquinaId();
+      if (editId !== null && editId !== undefined) {
+        return String(editId);
+      }
+      
+      // Si no hay editMaquinaId, verificar maquinaSelectValue (puede haber sido cambiado por el usuario)
+      const selectValue = this.maquinaSelectValue();
+      if (selectValue !== '') {
+        return selectValue;
+      }
+      
+      // Si no hay valor en ninguno, usar el valor del chofer como fallback
+      const maquinaId = this.driver()?.maquina_actual?.id;
+      return maquinaId ? String(maquinaId) : '';
+    }
+    
+    // Si no estamos en modo edición, usar el valor del chofer
+    const maquinaId = this.driver()?.maquina_actual?.id;
+    return maquinaId ? String(maquinaId) : '';
+  });
+
   // Cargar chofer
   driverIdParam = toSignal(
     this.route.params.pipe(
@@ -1372,9 +1435,15 @@ export class DriverDetail implements OnInit {
 
   driverId = computed(() => this.driverIdParam());
 
+  // Signal para forzar recarga de datos
+  refreshTrigger = signal(0);
+
   driverData = toSignal(
-    this.route.params.pipe(
-      switchMap(params => {
+    combineLatest([
+      this.route.params,
+      toObservable(this.refreshTrigger)
+    ]).pipe(
+      switchMap(([params]) => {
         const id = params['id'] ? Number(params['id']) : null;
         if (!id) {
           return of<Driver | null>(null);
@@ -1415,13 +1484,32 @@ export class DriverDetail implements OnInit {
     const machines = this.maquinasData() ?? [];
     return machines.map(m => ({
       id: m.id,
-      identificador: `Máquina ${m.numero || m.id}`
+      identificador: `MÁQUINA ${m.numero || m.id}`
     }));
+  });
+
+  // Máquinas ordenadas: la asignada primero, luego las demás
+  maquinasSelectOrdered = computed(() => {
+    const maquinas = this.maquinas();
+    const currentMaquinaId = this.driver()?.maquina_actual?.id;
+    
+    if (!currentMaquinaId) {
+      return maquinas;
+    }
+    
+    // Separar la máquina asignada del resto
+    const assignedMaquina = maquinas.find(m => m.id === currentMaquinaId);
+    const otherMaquinas = maquinas.filter(m => m.id !== currentMaquinaId);
+    
+    // Retornar la asignada primero, luego las demás
+    return assignedMaquina ? [assignedMaquina, ...otherMaquinas] : maquinas;
   });
 
   // Registros diarios
   dailyRecords = signal<DriverDailyRecord[]>([]);
-  recordFilters = signal<{ desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
+  recordFilters = signal<{ desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({
+    orden: 'mas_reciente'
+  });
   
   // Registros filtrados
   filteredRecords = computed(() => {
@@ -1431,8 +1519,10 @@ export class DriverDetail implements OnInit {
     // Filtrar por fecha desde
     if (filters.desde) {
       const desde = new Date(filters.desde);
+      desde.setHours(0, 0, 0, 0);
       filtered = filtered.filter(r => {
         const fecha = new Date(r.fecha);
+        fecha.setHours(0, 0, 0, 0);
         return fecha >= desde;
       });
     }
@@ -1443,12 +1533,14 @@ export class DriverDetail implements OnInit {
       hasta.setHours(23, 59, 59, 999);
       filtered = filtered.filter(r => {
         const fecha = new Date(r.fecha);
+        fecha.setHours(0, 0, 0, 0);
         return fecha <= hasta;
       });
     }
 
     // Ordenar
-    if (filters.orden === 'mas_antiguo') {
+    const orden = filters.orden || 'mas_reciente';
+    if (orden === 'mas_antiguo') {
       filtered.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
     } else {
       // Por defecto: más reciente primero
@@ -1489,12 +1581,15 @@ export class DriverDetail implements OnInit {
   });
   
   onRecordFilterChange(newFilters: Record<string, any>): void {
-    const filters = {
+    const filters: { desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
       desde: newFilters['desde'] || null,
       hasta: newFilters['hasta'] || null,
       orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
     };
     this.recordFilters.set(filters);
+    
+    // Recargar datos del backend con los nuevos filtros
+    this.loadDailyRecords();
   }
   
   getEmptyRows(): number[] {
@@ -1577,11 +1672,22 @@ export class DriverDetail implements OnInit {
         this.editRut.set(d.rut || '');
         this.editTelefono.set(d.telefono || '');
         this.editCorreo.set(d.correo || '');
-        this.editEstado.set(d.estado || 'activo');
-        this.editPorcentajePago.set(d.porcentaje_pago || 0);
+        // Mapear 'eliminado' a 'inactivo' por ahora hasta que se resuelva la lógica
+        const estadoEdit = d.estado === 'eliminado' ? 'inactivo' : (d.estado || 'activo');
+        this.editEstado.set(estadoEdit as 'activo' | 'inactivo');
+        // Convertir de decimal (0.3) a porcentaje (30) para mostrar en el input
+        this.editPorcentajePago.set(this.convertDecimalToPorcentaje(d.porcentaje_pago || 0));
         this.editFechaVencLicencia.set(d.fecha_venc_licencia || '');
-        this.editMaquinaId.set(d.maquina_actual?.id || null);
+        const maquinaId = d.maquina_actual?.id || null;
+        this.editMaquinaId.set(maquinaId);
+        // Actualizar también el valor del select - asegurarse de que sea string
+        const selectValue = maquinaId ? String(maquinaId) : '';
+        this.maquinaSelectValue.set(selectValue);
       }
+    } else {
+      // Al salir del modo edición, limpiar los valores temporales
+      this.maquinaSelectValue.set('');
+      this.editMaquinaId.set(null);
     }
     
     this.isEditingGeneral.set(isEditing);
@@ -1591,50 +1697,75 @@ export class DriverDetail implements OnInit {
     const driverId = this.driverId();
     if (!driverId) return;
 
-    // Construir nombre_completo desde los campos individuales
-    const nombreParts = [
-      this.editNombre(),
-      this.editSegundoNombre(),
-      this.editApellido(),
-      this.editSegundoApellido()
-    ].filter(p => p && p.trim() !== '');
-    const nombreCompleto = nombreParts.join(' ');
+    // Validar campos requeridos
+    if (!this.editNombre() || !this.editApellido() || !this.editSegundoApellido() || !this.editRut() || !this.editTelefono() || !this.editCorreo()) {
+      this.alertModalService.show({
+        title: 'Campos incompletos',
+        message: 'Por favor, completa todos los campos requeridos antes de guardar.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
 
-    const updateData: Partial<Driver> = {
-      nombre: this.editNombre(),
-      segundo_nombre: this.editSegundoNombre() || undefined,
-      apellido: this.editApellido(),
-      segundo_apellido: this.editSegundoApellido(),
-      nombre_completo: nombreCompleto,
+    // Convertir fecha de string a Date
+    let fechaVencLicencia: Date;
+    try {
+      fechaVencLicencia = new Date(this.editFechaVencLicencia());
+      if (isNaN(fechaVencLicencia.getTime())) {
+        throw new Error('Fecha inválida');
+      }
+    } catch (error) {
+      this.alertModalService.show({
+        title: 'Fecha inválida',
+        message: 'Por favor, ingresa una fecha de vencimiento de licencia válida.',
+        type: 'error',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    // Mapear campos del frontend al formato que espera el backend (DriverUpdate)
+    const updateData: any = {
+      primer_nombre: this.editNombre(),
+      segundo_nombre: this.editSegundoNombre() || null,
+      apellido_paterno: this.editApellido(),
+      apellido_materno: this.editSegundoApellido(),
       rut: this.editRut(),
       telefono: this.editTelefono(),
-      correo: this.editCorreo(),
+      correo_electronico: this.editCorreo(),
       estado: this.editEstado(),
-      porcentaje_pago: this.editPorcentajePago(),
-      fecha_venc_licencia: this.editFechaVencLicencia(),
+      // Convertir de porcentaje (30) a decimal (0.3) para guardar en el backend
+      porcentaje_pago: this.convertPorcentajeToDecimal(this.editPorcentajePago()),
+      fecha_venc_licencia: fechaVencLicencia.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      maquina_id: this.editMaquinaId()
     };
-
-    // Agregar maquina_id solo si existe
-    if (this.editMaquinaId() !== null) {
-      (updateData as any).maquina_id = this.editMaquinaId();
-    }
 
     this.driverService.updateDriver(driverId, updateData)
       .pipe(
         catchError((error) => {
           console.error('Error al actualizar chofer:', error);
-          alert('Error al guardar los cambios. Por favor, intenta nuevamente.');
+          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          this.alertModalService.show({
+            title: 'Error al Guardar',
+            message: `Hubo un error al guardar los cambios: ${errorMessage}. Por favor, intenta nuevamente.`,
+            type: 'error',
+            buttonText: 'Entendido'
+          });
           return of(null);
         })
       )
       .subscribe((updatedDriver) => {
         if (updatedDriver) {
-          // Recargar el chofer actualizado
-          this.driverService.getDriverById(driverId).subscribe((driver) => {
-            // El signal se actualizará automáticamente a través de driverData
-          });
+          // Forzar recarga de datos incrementando el refreshTrigger
+          this.refreshTrigger.set(this.refreshTrigger() + 1);
           this.isEditingGeneral.set(false);
-          alert('Cambios guardados correctamente.');
+          this.alertModalService.show({
+            title: 'Cambios Guardados',
+            message: 'La información del chofer ha sido actualizada correctamente.',
+            type: 'success',
+            buttonText: 'Entendido'
+          });
         }
       });
   }
@@ -1677,18 +1808,37 @@ export class DriverDetail implements OnInit {
       return;
     }
 
-    if (this.driverId()) {
-      this.driverService.deleteDriver(this.driverId()!)
-        .pipe(
-          catchError((error) => {
-            console.error('Error al eliminar chofer:', error);
-            return of(null);
-          })
-        )
-        .subscribe(() => {
-          this.router.navigate(['/choferes']);
-        });
+    const driverId = this.driverId();
+    if (!driverId) {
+      this.alertModalService.show({
+        title: 'Error de Eliminación',
+        message: 'No se pudo identificar el chofer a eliminar. Por favor, recarga la página e intenta nuevamente.',
+        type: 'error',
+        buttonText: 'Entendido'
+      });
+      return;
     }
+
+    this.driverService.deleteDriver(driverId)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al eliminar chofer:', error);
+          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          this.alertModalService.show({
+            title: 'Error al Eliminar',
+            message: `Hubo un error al eliminar el chofer: ${errorMessage}. Por favor, intenta nuevamente.`,
+            type: 'error',
+            buttonText: 'Entendido'
+          });
+          return of(null);
+        })
+      )
+      .subscribe((result) => {
+        if (result !== null) {
+          // Navegar a la lista de choferes después de eliminar
+          this.router.navigate(['/choferes']);
+        }
+      });
   }
 
   getInitials(name: string): string {
@@ -1756,8 +1906,15 @@ export class DriverDetail implements OnInit {
     const driverId = this.driverId();
     if (!driverId) return;
 
+    const filters = this.recordFilters();
+    
     this.dailyRecordService.getDailyRecords({
-      chofer_id: driverId
+      chofer_id: driverId,
+      desde: filters.desde || undefined,
+      hasta: filters.hasta || undefined,
+      orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
+      pagina: 1,
+      por_pagina: 100 // Obtener todos los registros del chofer
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
@@ -1790,13 +1947,12 @@ export class DriverDetail implements OnInit {
             estado,
             recaudado: record.recaudado || 0,
             diesel: record.costo_diesel || 0,
-            observaciones: record.observaciones || null
+            tiene_observaciones: record.tiene_observaciones || false
           };
         });
 
-        // Ordenar por fecha (más reciente primero)
-        driverRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-
+        // No ordenar aquí, el orden lo maneja filteredRecords según los filtros
+        // (aunque el backend ya ordena, filteredRecords puede aplicar ordenamiento adicional si es necesario)
         this.dailyRecords.set(driverRecords);
       },
       error: (error) => {
@@ -1893,6 +2049,28 @@ export class DriverDetail implements OnInit {
     this.router.navigate(['/choferes']);
   }
 
+  // Métodos auxiliares para conversiones de porcentaje
+  /**
+   * Convierte de decimal (0.3) a porcentaje (30) para mostrar en el frontend
+   */
+  formatPorcentajeForDisplay(decimalValue: number): number {
+    return decimalValue * 100;
+  }
+
+  /**
+   * Convierte de decimal (0.3) a porcentaje (30) para el input
+   */
+  convertDecimalToPorcentaje(decimalValue: number): number {
+    return decimalValue * 100;
+  }
+
+  /**
+   * Convierte de porcentaje (30) a decimal (0.3) para guardar en el backend
+   */
+  convertPorcentajeToDecimal(porcentajeValue: number): number {
+    return porcentajeValue / 100;
+  }
+
   // Métodos auxiliares para conversiones en plantillas
   onPorcentajePagoChange(value: string): void {
     const numValue = value ? parseFloat(value) : 0;
@@ -1900,6 +2078,15 @@ export class DriverDetail implements OnInit {
   }
 
   onMaquinaIdChange(value: string): void {
+    const numValue = value ? parseInt(value, 10) : null;
+    this.editMaquinaId.set(numValue && !isNaN(numValue) ? numValue : null);
+    // Actualizar también el valor del select
+    this.maquinaSelectValue.set(value || '');
+  }
+
+  // Método para manejar cambios desde ngModel (similar a machine-detail)
+  handleMaquinaChangeFromNgModel(value: string): void {
+    this.maquinaSelectValue.set(value || '');
     const numValue = value ? parseInt(value, 10) : null;
     this.editMaquinaId.set(numValue && !isNaN(numValue) ? numValue : null);
   }

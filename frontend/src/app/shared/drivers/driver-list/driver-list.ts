@@ -192,7 +192,7 @@ interface LicenseAlerts {
       </div>
       <div class="card-body">
         <!-- En ≤1300px solo mostrar tarjetas (sin selector) -->
-        <div class="min-[1501px]:hidden">
+        <div class="max-[1300px]:block min-[1301px]:hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @for (driver of filteredDrivers(); track driver.id; let i = $index) {
               <div [class]="getCardAnimationClass(i)">

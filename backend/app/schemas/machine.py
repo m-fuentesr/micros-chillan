@@ -90,8 +90,9 @@ class MachineUpdate(BaseModel):
 
 class MachineAssignmentItem(BaseModel):
     id: int
+    chofer_id: int
     chofer_nombre: str
-    fecha_inicio: date
-    fecha_fin: Optional[date]
+    fecha_inicio: str  # ISO date string
+    fecha_fin: Optional[str]  # ISO date string o None
     estado: str  # "Activa" o "Cerrada"
     dias_asignado: int

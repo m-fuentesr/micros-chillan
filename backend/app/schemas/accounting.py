@@ -15,6 +15,7 @@ class TotalesSummary(BaseModel):
 class AccountingSummaryResponse(BaseModel):
     periodo: PeriodoInfo
     totales: TotalesSummary
+    es_mes_actual: bool
 
 class WeekSummary(BaseModel):
     numero_semana: int
@@ -33,3 +34,9 @@ class DriverWeekDetail(BaseModel):
     costo_diesel: int
     gastos_mantenimiento: int
     total_ganado_chofer: int
+
+class DailyProfitabilityData(BaseModel):
+    fecha: str  # YYYY-MM-DD
+    ingresos: int
+    egresos: int
+    ganancia: int

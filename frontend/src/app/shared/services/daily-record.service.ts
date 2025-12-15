@@ -9,7 +9,8 @@ import {
   CreateDailyRecordDto,
   UpdateDailyRecordDto,
   DailyRecordsKPIs,
-  DailyRecordHistoryResponse
+  DailyRecordHistoryResponse,
+  DailyRecordStatus
 } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
 
@@ -32,42 +33,75 @@ export class DailyRecordService {
   /**
    * Obtener lista de registros diarios con filtros
    * Endpoint: GET /api/daily-records
-   * TEMPORAL: Usando mocks hasta que el endpoint esté disponible en el backend
    */
   getDailyRecords(filters?: DailyRecordFilters): Observable<DailyRecordsResponse> {
-    // TODO: Descomentar cuando el endpoint esté disponible en el backend
-    // let params = new HttpParams();
-    // 
-    // // Paginación por defecto: 20 registros por página
-    // const pagina = filters?.pagina || 1;
-    // const porPagina = filters?.por_pagina || 20;
-    // 
-    // if (filters) {
-    //   if (filters.fecha) params = params.set('fecha', filters.fecha);
-    //   if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
-    //   if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
-    //   if (filters.estado && filters.estado !== 'all') params = params.set('estado', filters.estado);
-    //   if (filters.desde) params = params.set('desde', filters.desde);
-    //   if (filters.hasta) params = params.set('hasta', filters.hasta);
-    //   if (filters.es_emergencia !== undefined) params = params.set('es_emergencia', filters.es_emergencia.toString());
-    //   if (filters.dia_no_trabajado !== undefined) params = params.set('dia_no_trabajado', filters.dia_no_trabajado.toString());
-    //   if (filters.busqueda) params = params.set('busqueda', filters.busqueda);
-    //   if (filters.orden) params = params.set('orden', filters.orden);
-    // }
-    // 
-    // // Siempre incluir paginación
-    // params = params.set('pagina', pagina.toString());
-    // params = params.set('por_pagina', porPagina.toString());
-    //
-    // return this.http.get<DailyRecordsResponse>(`${this.apiUrl}/api/daily-records`, { params })
-    //   .pipe(
-    //     catchError(() => of(this.getMockDailyRecordsResponse(filters)))
-    //   );
+    let params = new HttpParams();
+    
+    // Paginación por defecto: 20 registros por página
+    const pagina = filters?.pagina || 1;
+    const porPagina = filters?.por_pagina || 20;
+    
+    if (filters) {
+      if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
+      if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
+      if (filters.estado && filters.estado !== 'all') params = params.set('estado', filters.estado);
+      if (filters.desde) params = params.set('fecha_inicio', filters.desde);
+      if (filters.hasta) params = params.set('fecha_fin', filters.hasta);
+      if (filters.busqueda) params = params.set('search', filters.busqueda);
+      if (filters.orden) {
+        params = params.set('sort_by', 'fecha');
+        params = params.set('order', filters.orden === 'mas_reciente' || filters.orden === 'fecha_desc' ? 'desc' : 'asc');
+      }
+    }
+    
+    // Siempre incluir paginación
+    params = params.set('page', pagina.toString());
+    params = params.set('per_page', porPagina.toString());
 
-    // Usar mocks directamente por ahora (con un pequeño delay para simular petición real)
-    return of(this.getMockDailyRecordsResponse(filters)).pipe(
-      delay(300)
-    );
+    interface BackendPaginatedResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: Array<{
+        id: number;
+        fecha: string;
+        chofer: { id: number; nombre: string };
+        maquina: { id: number; numero_interno: number };
+        monto_recaudado: number;
+        diesel: number | null;
+        estado: string;
+        tiene_observaciones: boolean;
+      }>;
+    }
+
+    return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/daily-records`, { params })
+      .pipe(
+        map(response => ({
+          datos: response.items.map(item => ({
+            id: item.id.toString(),
+            fecha: item.fecha,
+            maquina_id: item.maquina.id,
+            maquina_identificador: `Máquina ${item.maquina.numero_interno}`,
+            chofer_id: item.chofer.id,
+            chofer_nombre: item.chofer.nombre,
+            recaudado: item.monto_recaudado,
+            costo_diesel: item.diesel || 0,
+            litros_diesel: undefined,
+            dia_no_trabajado: false,
+            es_emergencia: false,
+            estado: item.estado as DailyRecordStatus,
+            tiene_observaciones: item.tiene_observaciones // Usar el booleano del backend
+          })),
+          total: response.total,
+          pagina: response.page,
+          por_pagina: response.per_page,
+          total_paginas: Math.ceil(response.total / response.per_page)
+        })),
+        catchError((error) => {
+          console.error('Error obteniendo registros diarios:', error);
+          return of(this.getMockDailyRecordsResponse(filters));
+        })
+      );
   }
 
   /**

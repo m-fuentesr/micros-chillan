@@ -202,7 +202,7 @@ async def list_daily_records_for_admin(
     base_query = (
         supabase.table("registros_diarios")
         .select(
-            "id, fecha, monto_recaudado, costo_total_diesel, estado, "
+            "id, fecha, monto_recaudado, costo_total_diesel, estado, observaciones, "
             "choferes(id, primer_nombre, apellido_paterno), "
             "maquinas(id, numero_interno)",
             count="exact"
@@ -271,7 +271,8 @@ async def list_daily_records_for_admin(
                 },
                 "monto_recaudado": row.get("monto_recaudado", 0),
                 "diesel": row.get("costo_total_diesel"),
-                "estado": row.get("estado", "")
+                "estado": row.get("estado", ""),
+                "tiene_observaciones": bool(row.get("observaciones"))
             }
         )
 
