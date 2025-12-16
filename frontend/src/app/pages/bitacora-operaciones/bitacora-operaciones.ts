@@ -4,17 +4,20 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { catchError, of, firstValueFrom } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import { DriverService } from '../../shared/services/driver.service';
-import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
+import { StorageService } from '../../shared/services/storage.service';
+import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters, CreateDailyRecordAdminDto } from '../../shared/models/daily-record.models';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { SearchFilters, FilterField } from '../../shared/components/search-filters/search-filters';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
+import { AlertModalService } from '../../shared/services/alert-modal.service';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -25,7 +28,7 @@ interface DailyRecordView {
   date: string; // Formateado para display
   machine: string; // maquina_identificador o derivado
   driver: string; // chofer_nombre
-  status: 'complete' | 'pending' | 'incident'; // Mapeo de DailyRecordStatus
+  status: 'complete' | 'pending' | 'incident' | 'no_worked'; // Mapeo de DailyRecordStatus
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
   hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
@@ -34,7 +37,7 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon, BusIcon],
   template: `
     <div class="space-y-6 relative">
         <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
@@ -315,6 +318,13 @@ interface DailyRecordView {
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                                 Incidente
                               </div>
+                            } @else if (record.status === 'no_worked') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                                No Trabajado
+                              </div>
                             } @else {
                               <div class="badge badge-sm gap-1 badge-warning">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
@@ -459,6 +469,13 @@ interface DailyRecordView {
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                                 Incidente
                               </div>
+                            } @else if (record.status === 'no_worked') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                                No Trabajado
+                              </div>
                             } @else {
                               <div class="badge badge-sm gap-1 badge-warning">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
@@ -537,44 +554,23 @@ interface DailyRecordView {
                 [class.border-l-error]="record.status === 'incident'"
                 [class.border-l-warning]="record.status === 'pending'"
                 [class.bg-error/5]="record.status === 'incident'"
-                [class.bg-warning/5]="record.status === 'pending'">
+                [class.bg-warning/5]="record.status === 'pending'"
+                [class.bg-base-200/30]="record.status === 'no_worked'">
                 <div class="card-body p-5">
                   <!-- Header: Avatares y Estado -->
                   <div class="flex items-start gap-4 mb-4">
                     <!-- Avatar Máquina -->
                     <div class="avatar placeholder shrink-0">
                       <div 
-                        class="rounded-lg w-12 h-12 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center"
+                        class="rounded-lg w-12 h-12 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center p-2"
                         [class.bg-error/10]="record.status === 'incident'"
                         [class.border]="record.status === 'incident'"
                         [class.border-error/20]="record.status === 'incident'"
                         [class.bg-gradient-to-br]="record.status !== 'incident'"
                         [class.from-primary/20]="record.status !== 'incident'"
                         [class.to-primary/10]="record.status !== 'incident'">
-                        <svg 
-                          class="w-7 h-7"
-                          [class.text-error]="record.status === 'incident'"
-                          [class.text-primary]="record.status !== 'incident'"
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          xmlns="http://www.w3.org/2000/svg">
-                          <path 
-                            d="M4 7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V17C20 17.5523 19.5523 18 19 18H5C4.44772 18 4 17.5523 4 17V7Z" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round" 
-                            stroke-linejoin="round"/>
-                          <path 
-                            d="M4 10H20" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round"/>
-                          <path 
-                            d="M8 13H16" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round"/>
-                        </svg>
+                        <app-bus-icon 
+                          [class]="record.status === 'incident' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
                       </div>
                     </div>
 
@@ -587,8 +583,8 @@ interface DailyRecordView {
                           </h3>
                           <div class="flex items-center gap-2 mt-1.5">
                             <div class="avatar placeholder shrink-0">
-                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200">
-                                <span class="text-[9px] font-bold">{{ getInitials(record.driver) }}</span>
+                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                                <app-driver-icon class="w-full h-full" />
                               </div>
                             </div>
                             <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
@@ -607,6 +603,13 @@ interface DailyRecordView {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                               Incidente
+                            </div>
+                          } @else if (record.status === 'no_worked') {
+                            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                              </svg>
+                              No Trabajado
                             </div>
                           } @else {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/10">
@@ -713,10 +716,12 @@ export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private alertModalService = inject(AlertModalService);
   private driverService = inject(DriverService);
   private destroyRef = inject(DestroyRef);
   private loadingStateService = inject(LoadingStateService);
   private newRecordModalService = inject(NewRecordModalService);
+  private storageService = inject(StorageService);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -784,6 +789,7 @@ export class BitacoraOperaciones implements OnInit {
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
+  private isManualReload = false; // Flag para indicar que estamos recargando manualmente (evita que el effect interfiera)
   showFiltersMobile = signal(false);
   
   // Filtros usando SearchFilters
@@ -873,6 +879,89 @@ export class BitacoraOperaciones implements OnInit {
   // Estado de carga para KPIs
   kpisLoading = signal(true);
   
+  /**
+   * Recargar registros y mostrar mensaje de éxito después de crear un nuevo registro
+   */
+  private async reloadRecordsAndShowSuccess(choferId: number, fecha: string): Promise<void> {
+    // Marcar que estamos haciendo una recarga manual
+    this.isManualReload = true;
+    
+    // Obtener filtros actuales
+    const recordFilters = this.recordFilters();
+    
+    // Mapear el filtro de estado del select a los estados del modelo
+    let estadoFilter: DailyRecordStatus | undefined = undefined;
+    if (this.statusFilter() !== 'all') {
+      const statusMap: Record<string, DailyRecordStatus> = {
+        'complete': 'COMPLETO',
+        'pending': 'PENDIENTE_TRABAJADOR',
+        'incident': 'INCIDENTE_REPORTADO'
+      };
+      estadoFilter = statusMap[this.statusFilter()];
+    }
+    
+    const filters: DailyRecordFilters = {
+      estado: estadoFilter,
+      fecha: this.dateFilter() || recordFilters.desde || undefined,
+      desde: recordFilters.desde || undefined,
+      hasta: recordFilters.hasta || undefined,
+      chofer_id: recordFilters.chofer ? parseInt(recordFilters.chofer, 10) : undefined,
+      busqueda: this.searchQuery() || undefined,
+      orden: recordFilters.orden || 'mas_reciente',
+      pagina: this.currentPage(),
+      por_pagina: this.itemsPerPage
+    };
+    
+    try {
+      // Esperar un momento para asegurar que el backend haya procesado el nuevo registro
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Esperar a que se carguen los registros
+      const response = await firstValueFrom(
+        this.dailyRecordService.getDailyRecords(filters)
+      );
+      
+      // Actualizar los registros usando untracked para evitar que el effect se ejecute
+      untracked(() => {
+        this.recordsResponse.set(response);
+        this.isLoading.set(false);
+        this.isLoadingPage.set(false);
+        this.isLoadingRecords = false;
+      });
+      
+      // Esperar un momento más para asegurar que la UI se haya actualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Mostrar mensaje de éxito después de que la tabla se haya actualizado
+      const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Creado Exitosamente',
+        message: `El registro diario para ${choferNombre} del ${fecha} ha sido creado correctamente.`,
+        buttonText: 'Entendido'
+      });
+      
+      // Mantener la bandera activa por un tiempo suficiente para evitar que el effect recargue
+      // La desactivaremos después de un tiempo razonable (3 segundos)
+      // Esto da tiempo suficiente para que el usuario vea y acepte el modal
+      setTimeout(() => {
+        this.isManualReload = false;
+      }, 3000);
+    } catch (error) {
+      console.error('Error al recargar registros:', error);
+      this.isManualReload = false;
+      
+      // Mostrar mensaje de éxito de todas formas
+      const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Creado Exitosamente',
+        message: `El registro diario para ${choferNombre} del ${fecha} ha sido creado correctamente.`,
+        buttonText: 'Entendido'
+      });
+    }
+  }
+
   // Cargar datos cuando cambian los filtros o la página
   private loadRecords(): void {
     // Evitar múltiples peticiones simultáneas
@@ -969,6 +1058,11 @@ export class BitacoraOperaciones implements OnInit {
     // Recargar cuando cambian los filtros o la página
     // El effect se ejecutará automáticamente al inicializar, así que no necesitamos llamar loadRecords() directamente
     effect(() => {
+      // Si estamos haciendo una recarga manual, no ejecutar el effect
+      if (this.isManualReload) {
+        return;
+      }
+      
       // Leer los signals para que el effect reaccione a sus cambios
       const query = this.searchQuery();
       const status = this.statusFilter();
@@ -990,11 +1084,13 @@ export class BitacoraOperaciones implements OnInit {
     const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
     
     // Mapear estado
-    let status: 'complete' | 'pending' | 'incident';
+    let status: 'complete' | 'pending' | 'incident' | 'no_worked';
     if (record.estado === 'COMPLETO') {
       status = 'complete';
     } else if (record.estado === 'INCIDENTE_REPORTADO') {
       status = 'incident';
+    } else if (record.estado === 'DIA_NO_TRABAJADO' || record.estado === 'NO_TRABAJADO') {
+      status = 'no_worked';
     } else {
       status = 'pending';
     }
@@ -1056,34 +1152,123 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   openNewRecordModal(): void {
-    this.newRecordModalService.open().then((formData) => {
-      if (formData) {
-        // Mapear formulario a DTO
-        const createDto = {
-          fecha: formData.date || '',
-          maquina_id: this.extractMachineId(formData.machine || ''),
-          chofer_id: this.extractDriverId(formData.driver || ''),
-          recaudado: formData.noWorkDay ? undefined : (formData.income ?? undefined),
-          costo_diesel: formData.noWorkDay ? undefined : (formData.dieselExpense ?? undefined),
-          litros_diesel: formData.noWorkDay ? undefined : (formData.dieselLiters ?? undefined),
-          dia_no_trabajado: formData.noWorkDay || false,
-          motivo_inactividad: formData.noWorkDay ? (formData.noWorkDayReason as any) : undefined,
-          es_emergencia: formData.hasIncident || false,
-          observaciones: formData.observations || null
+    this.newRecordModalService.open().then(async (formData) => {
+      if (!formData) return;
+
+      try {
+        // 1. Extraer IDs de máquina y chofer (ahora vienen como números del modal)
+        const maquinaId = typeof formData.machine === 'number' ? formData.machine : this.extractMachineId(String(formData.machine || ''));
+        const choferId = typeof formData.driver === 'number' ? formData.driver : this.extractDriverId(formData.driver || '');
+
+        // 2. Subir imágenes primero (solo si es día trabajado)
+        let imagenUrl: string | null = null;
+        let imagenDieselUrl: string | null = null;
+
+        if (!formData.noWorkDay) {
+          // Solo subir imágenes si NO es día no trabajado
+          if (formData.receiptPhoto) {
+            const uploadResult = await firstValueFrom(
+              this.storageService.uploadDailyRecordImageAdmin(
+                formData.receiptPhoto,
+                choferId,
+                formData.date
+              )
+            );
+            imagenUrl = uploadResult.url;
+          }
+
+          if (formData.fuelReceiptPhoto) {
+            const uploadResult = await firstValueFrom(
+              this.storageService.uploadDailyRecordImageAdmin(
+                formData.fuelReceiptPhoto,
+                choferId,
+                formData.date
+              )
+            );
+            imagenDieselUrl = uploadResult.url;
+          }
+        }
+
+        // 3. Preparar payload para admin
+        const adminPayload: CreateDailyRecordAdminDto = {
+          chofer_id: choferId,
+          maquina_id: maquinaId,
+          fecha: formData.date,
+          es_dia_no_trabajado: formData.noWorkDay,
+          motivo_no_trabajado: formData.noWorkDay ? (formData.noWorkDayReason === 'Otro' ? 'otro' : formData.noWorkDayReason) : null,
+          motivo_no_trabajado_otro: formData.noWorkDay && formData.noWorkDayReason === 'Otro' 
+            ? formData.noWorkDayReasonOther 
+            : null,
+          monto_recaudado: formData.noWorkDay ? null : (formData.income || null),
+          litros_diesel: formData.noWorkDay ? null : (formData.dieselLiters || null),
+          costo_total_diesel: formData.noWorkDay ? null : (formData.dieselExpense || null),
+          imagen_url: imagenUrl,
+          imagen_comprobante_diesel_url: imagenDieselUrl,
+          observaciones: formData.noWorkDay ? null : (formData.observations || null),
+          incidente_critico: formData.noWorkDay ? false : (formData.hasIncident || false)
         };
 
-        this.dailyRecordService.createDailyRecord(createDto)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (newRecord) => {
-              // Recargar datos después de crear
-              this.loadRecords();
-            },
-            error: (error) => {
+        // 4. Crear registro como admin
+        this.dailyRecordService.createDailyRecordAdmin(adminPayload)
+          .pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError((error) => {
               console.error('Error al crear registro:', error);
-              // TODO: Mostrar mensaje de error al usuario
+              
+              // Determinar el mensaje de error según el tipo
+              let errorMessage = 'No se pudo crear el registro. Por favor, verifica los datos e intenta nuevamente.';
+              let errorTitle = 'Error al Crear Registro';
+              
+              // Verificar si es un error de registro duplicado
+              const errorDetail = error?.error?.detail || error?.message || '';
+              const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+              
+              if (errorDetail.includes('Ya existe un registro diario') || 
+                  errorDetail.includes('registro diario para este chofer y fecha') ||
+                  errorDetail.toLowerCase().includes('duplicado')) {
+                errorTitle = 'Registro Duplicado';
+                errorMessage = `Ya existe un registro diario para ${choferNombre} en la fecha ${formData.date}. No se puede crear un registro duplicado.`;
+              } else if (errorDetail) {
+                errorMessage = errorDetail;
+              }
+              
+              // Cerrar el modal de creación en caso de error
+              this.newRecordModalService.finishSubmission();
+              
+              // Mostrar modal de error
+              this.alertModalService.show({
+                type: 'error',
+                title: errorTitle,
+                message: errorMessage,
+                buttonText: 'Entendido'
+              });
+              
+              return of(null);
+            })
+          )
+          .subscribe(async (response: any) => {
+            if (response) {
+              // Cerrar el modal de creación primero
+              this.newRecordModalService.finishSubmission();
+              
+              // Recargar datos después de crear exitosamente y esperar a que termine
+              await this.reloadRecordsAndShowSuccess(choferId, formData.date);
             }
           });
+
+      } catch (error) {
+        console.error('Error al subir imágenes o crear registro:', error);
+        
+        // Cerrar el modal de creación en caso de error
+        this.newRecordModalService.finishSubmission();
+        
+        // Mostrar mensaje de error genérico
+        this.alertModalService.show({
+          type: 'error',
+          title: 'Error al Crear Registro',
+          message: 'Ocurrió un error al procesar las imágenes o crear el registro. Por favor, intenta nuevamente.',
+          buttonText: 'Entendido'
+        });
       }
     });
   }

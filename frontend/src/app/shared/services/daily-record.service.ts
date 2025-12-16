@@ -1,18 +1,55 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map, tap, shareReplay, delay } from 'rxjs/operators';
 import {
   DailyRecord,
   DailyRecordFilters,
   DailyRecordsResponse,
   CreateDailyRecordDto,
+  CreateDailyRecordAdminDto,
   UpdateDailyRecordDto,
   DailyRecordsKPIs,
   DailyRecordHistoryResponse,
-  DailyRecordStatus
+  DailyRecordStatus,
+  InactivityReason
 } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
+
+/**
+ * Interfaz para la respuesta del backend del detalle de registro diario
+ */
+interface DailyRecordDetailResponse {
+  id: number;
+  fecha: string;
+  estado: string;
+  maquina: {
+    id: number;
+    numero_interno: number;
+  };
+  chofer: {
+    id: number;
+    nombre: string;
+    porcentaje_actual: number;
+  };
+  datos_financieros: {
+    monto_recaudado: number | null;
+    litros_diesel: number | null;
+    costo_total_diesel: number | null;
+    pago_calculado_actual: number | null;
+  };
+  estado_operativo: {
+    es_dia_no_trabajado: boolean;
+    motivo_no_trabajado: string | null;
+    motivo_no_trabajado_otro: string | null;
+  };
+  observaciones: string | null;
+  incidente_critico: boolean;
+  imagenes: {
+    registro: string | null;
+    diesel: string | null;
+  };
+}
 
 /**
  * Servicio para gestión de registros diarios
@@ -140,10 +177,119 @@ export class DailyRecordService {
    * Endpoint: GET /api/daily-records/:id
    */
   getDailyRecordById(id: string): Observable<DailyRecord> {
-    return this.http.get<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`)
+    return this.http.get<DailyRecordDetailResponse>(`${this.apiUrl}/api/daily-records/${id}`)
       .pipe(
-        catchError(() => of(this.getMockDailyRecord(id)))
+        map((backendResponse) => this.mapDetailResponseToDailyRecord(backendResponse)),
+        catchError((error) => {
+          console.error('Error obteniendo registro diario:', error);
+          return of(this.getMockDailyRecord(id));
+        })
       );
+  }
+
+  /**
+   * Mapear la respuesta del backend (DailyRecordDetailResponse) al modelo del frontend (DailyRecord)
+   */
+  private mapDetailResponseToDailyRecord(response: DailyRecordDetailResponse): DailyRecord {
+    const datosFinancieros = response.datos_financieros || {};
+    const estadoOperativo = response.estado_operativo || {};
+    const imagenes = response.imagenes || {};
+    
+    // Calcular desglose de pago
+    const base = datosFinancieros.monto_recaudado || 0;
+    const porcentaje = response.chofer?.porcentaje_actual || 30;
+    const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentaje / 100);
+    
+    // Mapear estado del backend al frontend
+    const estadoMap: Record<string, DailyRecordStatus> = {
+      'pendiente_trabajador': 'PENDIENTE_TRABAJADOR',
+      'incidente_reportado': 'INCIDENTE_REPORTADO',
+      'completo': 'COMPLETO',
+      'no_trabajado': 'NO_TRABAJADO',
+      'dia_no_trabajado': 'DIA_NO_TRABAJADO'
+    };
+    const estado = estadoMap[response.estado?.toLowerCase() || ''] || 'PENDIENTE_TRABAJADOR';
+    
+    return {
+      id: String(response.id),
+      fecha: response.fecha,
+      maquina_id: response.maquina?.id || 0,
+      maquina_identificador: response.maquina?.numero_interno 
+        ? `Máquina ${String(response.maquina.numero_interno).padStart(2, '0')}` 
+        : undefined,
+      chofer_id: response.chofer?.id || 0,
+      chofer_nombre: response.chofer?.nombre || '',
+      
+      // Información financiera
+      recaudado: datosFinancieros.monto_recaudado || 0,
+      costo_diesel: datosFinancieros.costo_total_diesel || 0,
+      litros_diesel: datosFinancieros.litros_diesel || undefined,
+      
+      // Estado de operación
+      dia_no_trabajado: estadoOperativo.es_dia_no_trabajado || false,
+      motivo_inactividad: this.mapEnumToMotivoInactividad(estadoOperativo.motivo_no_trabajado) || null,
+      es_emergencia: response.incidente_critico || false,
+      
+      // Estado y observaciones
+      estado,
+      observaciones: response.observaciones || null,
+      
+      // Comprobantes
+      comprobante_registro: imagenes.registro ? {
+        imagen_url: imagenes.registro,
+        subido_en: undefined // El backend no devuelve esta fecha en el detalle
+      } : null,
+      comprobante_diesel: imagenes.diesel ? {
+        monto: datosFinancieros.costo_total_diesel || 0,
+        imagen_url: imagenes.diesel,
+        subido_en: undefined // El backend no devuelve esta fecha en el detalle
+      } : null,
+      
+      // Desglose de pago
+      desglose_pago: {
+        base: base,
+        porcentaje: porcentaje,
+        monto: montoPago
+      },
+      
+      // Auditoría (no viene en el detalle, se puede obtener del endpoint de historial)
+      historial: []
+    };
+  }
+
+  /**
+   * Mapear el valor del enum de la base de datos al valor legible del frontend
+   */
+  private mapEnumToMotivoInactividad(motivoEnum: string | null): InactivityReason | null {
+    if (!motivoEnum) return null;
+    
+    const enumToFrontendMap: Record<string, InactivityReason> = {
+      'descanso_semanal': 'Descanso Semanal',
+      'vacaciones': 'Vacaciones',
+      'licencia_medica': 'Licencia Médica',
+      'permiso_personal': 'Permiso Personal',
+      'maquina_en_mantenimiento': 'En Taller / Mantenimiento',
+      'sin_asignacion_ruta': 'Sin Chofer Asignado',
+      'otro': 'Otro'
+    };
+    
+    // Si el valor ya está en formato legible, retornarlo
+    const valoresValidos: InactivityReason[] = [
+      'Descanso Semanal',
+      'Vacaciones',
+      'Licencia Médica',
+      'Permiso Personal',
+      'En Taller / Mantenimiento',
+      'Sin Chofer Asignado',
+      'Otro'
+    ];
+    
+    if (valoresValidos.includes(motivoEnum as InactivityReason)) {
+      return motivoEnum as InactivityReason;
+    }
+    
+    // Mapear desde el enum
+    return enumToFrontendMap[motivoEnum] || null;
   }
 
   /**
@@ -273,57 +419,58 @@ export class DailyRecordService {
   }
 
   /**
+   * Crear un nuevo registro diario como administrador
+   * Endpoint: POST /api/daily-records/admin
+   * El backend espera JSON con imagen_url como string (ya subidas previamente)
+   */
+  createDailyRecordAdmin(record: CreateDailyRecordAdminDto): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/api/daily-records/admin`,
+      record
+    ).pipe(
+      catchError((error) => {
+        console.error('Error creando registro diario como admin:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Actualizar un registro diario existente
    * Endpoint: PUT /api/daily-records/:id
+   * Nota: El backend espera JSON con URLs de imágenes (ya subidas previamente).
+   * Si se proporcionan archivos File, deben subirse primero usando StorageService.
    */
   updateDailyRecord(id: string, record: UpdateDailyRecordDto): Observable<DailyRecord> {
-    // Si hay archivos de imagen, usar FormData
-    const hasFileRegistro = record.comprobante_registro?.imagen instanceof File;
-    const hasFileDiesel = record.comprobante_diesel?.imagen instanceof File;
+    // Preparar payload JSON según el schema DailyRecordUpdate del backend
+    const payload: any = {
+      monto_recaudado: record.recaudado,
+      litros_diesel: record.litros_diesel,
+      costo_total_diesel: record.costo_diesel,
+      observaciones: record.observaciones || null,
+      es_dia_no_trabajado: record.dia_no_trabajado || false,
+      motivo_no_trabajado: record.motivo_inactividad || null,
+      motivo_no_trabajado_otro: null, // Si es "Otro", debería venir en motivo_inactividad
+      incidente_critico: record.es_emergencia || false
+    };
     
-    if (hasFileRegistro || hasFileDiesel) {
-      const formData = new FormData();
-      Object.keys(record).forEach(key => {
-        const value = (record as any)[key];
-        if (value !== undefined && key !== 'comprobante_registro' && key !== 'comprobante_diesel') {
-          if (typeof value === 'object') {
-            formData.append(key, JSON.stringify(value));
-          } else {
-            formData.append(key, value.toString());
-          }
-        }
-      });
-      if (record.comprobante_registro?.imagen instanceof File) {
-        formData.append('comprobante_registro_imagen', record.comprobante_registro.imagen);
-      }
-      if (record.comprobante_diesel?.imagen instanceof File) {
-        formData.append('comprobante_diesel_imagen', record.comprobante_diesel.imagen);
-      }
-      
-      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, formData)
-        .pipe(
-          catchError(() => of(this.getMockDailyRecord(id)))
-        );
-    } else {
-      // Preparar payload JSON con URLs de imágenes si son strings
-      const payload: any = { ...record };
-      
-      if (record.comprobante_registro?.imagen && typeof record.comprobante_registro.imagen === 'string') {
-        payload.imagen_url = record.comprobante_registro.imagen;
-      }
-      if (record.comprobante_diesel?.imagen && typeof record.comprobante_diesel.imagen === 'string') {
-        payload.imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
-      }
-      
-      // Remover comprobantes del payload ya que se procesaron
-      delete payload.comprobante_registro;
-      delete payload.comprobante_diesel;
-      
-      return this.http.put<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}`, payload)
-        .pipe(
-          catchError(() => of(this.getMockDailyRecord(id)))
-        );
+    // Si hay URLs de imágenes (strings), agregarlas al payload
+    // Nota: Si hay archivos File, deben subirse primero antes de llamar a este método
+    if (record.comprobante_registro?.imagen && typeof record.comprobante_registro.imagen === 'string') {
+      payload.imagen_url = record.comprobante_registro.imagen;
     }
+    if (record.comprobante_diesel?.imagen && typeof record.comprobante_diesel.imagen === 'string') {
+      payload.imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
+    }
+    
+    return this.http.put<DailyRecordDetailResponse>(`${this.apiUrl}/api/daily-records/${id}`, payload)
+      .pipe(
+        map((response) => this.mapDetailResponseToDailyRecord(response)),
+        catchError((error) => {
+          console.error('Error actualizando registro diario:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
   /**
@@ -331,14 +478,12 @@ export class DailyRecordService {
    * Endpoint: PATCH /api/daily-records/:id/resolve
    */
   resolveIncident(id: string): Observable<DailyRecord> {
-    return this.http.patch<DailyRecord>(`${this.apiUrl}/api/daily-records/${id}/resolve`, {})
+    return this.http.patch<DailyRecordDetailResponse>(`${this.apiUrl}/api/daily-records/${id}/resolve`, {})
       .pipe(
-        catchError(() => {
-          const mockRecord = this.getMockDailyRecord(id);
-          return of({
-            ...mockRecord,
-            estado: 'COMPLETO' as const
-          });
+        map((response) => this.mapDetailResponseToDailyRecord(response)),
+        catchError((error) => {
+          console.error('Error resolviendo incidente:', error);
+          return throwError(() => error);
         })
       );
   }

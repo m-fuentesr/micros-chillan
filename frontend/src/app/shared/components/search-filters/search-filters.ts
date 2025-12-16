@@ -143,7 +143,7 @@ export interface FilterField {
     }
     
     .dropdown-content.menu {
-      display: flex !important;
+      display: block !important;
       flex-direction: column !important;
       min-width: 100% !important;
       width: 100% !important;
@@ -152,8 +152,10 @@ export interface FilterField {
     }
     
     .dropdown-content.menu li {
+      display: block !important;
       width: 100% !important;
       min-width: 100% !important;
+      float: none !important;
     }
     
     .dropdown-content.menu li > a {
