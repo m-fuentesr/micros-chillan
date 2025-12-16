@@ -156,14 +156,14 @@ export class DriverCreate {
   // Resumen
   summary = computed(() => {
     const data = this.formData();
-    
+
     // Obtener máquina asignada
     let maquinaIdentificador = '— Sin asignar —';
     if (data.maquina_actual?.id) {
       const maquina = this.maquinas().find(m => m.id === data.maquina_actual!.id);
       maquinaIdentificador = maquina?.identificador || '— Sin asignar —';
     }
-    
+
     // Construir nombre completo
     const nombre = [
       data.nombre,
@@ -191,14 +191,19 @@ export class DriverCreate {
     // Mapear maquina_id a maquina_actual si existe
     const currentData = this.formData();
     const updatedData: Partial<Driver> = { ...currentData, ...data };
-    
+
     // Si viene maquina_id del formulario, mapearlo a maquina_actual
     if ('maquina_id' in data && data.maquina_id !== undefined) {
-      const maquinaId = data.maquina_id as number | null;
+      const maquinaId =
+        data.maquina_id !== null ? Number(data.maquina_id) : null;
+
       if (maquinaId) {
         const maquina = this.maquinas().find(m => m.id === maquinaId);
         if (maquina) {
-          updatedData.maquina_actual = { id: maquina.id, identificador: maquina.identificador } as any;
+          updatedData.maquina_actual = {
+            id: maquina.id,
+            identificador: maquina.identificador
+          } as any;
         }
       } else {
         updatedData.maquina_actual = undefined;
@@ -206,7 +211,7 @@ export class DriverCreate {
       // Eliminar maquina_id del objeto final ya que no es parte del modelo Driver
       delete (updatedData as any).maquina_id;
     }
-    
+
     this.formData.set(updatedData);
   }
 
@@ -219,17 +224,22 @@ export class DriverCreate {
       return;
     }
 
-    const driverData: Partial<Driver> = {
-      ...this.formData(),
-      nombre_completo: [
-        this.formData().nombre,
-        this.formData().segundo_nombre,
-        this.formData().apellido,
-        this.formData().segundo_apellido
-      ].filter(n => n).join(' ')
+    const data = this.formData();
+
+    const payload = {
+      rut: data.rut!,
+      primer_nombre: data.nombre!,
+      segundo_nombre: data.segundo_nombre ?? null,
+      apellido_paterno: data.apellido!,
+      apellido_materno: data.segundo_apellido!,
+      telefono: data.telefono!,
+      correo_electronico: data.correo!,
+      estado: data.estado!,
+      fecha_venc_licencia: data.fecha_venc_licencia!,
+      maquina_asignada: data.maquina_actual?.id ?? null,
     };
 
-    this.driverService.createDriver(driverData)
+    this.driverService.createDriver(payload as any)
       .pipe(
         catchError((error) => {
           console.error('Error al crear chofer:', error);

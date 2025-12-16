@@ -1286,66 +1286,31 @@ export class RestablecerClave implements OnInit {
     
     // Si el usuario ya está autenticado pero no hay token de recovery válido,
     // mostrar mensaje informativo (pero permitir continuar si hay token válido)
-    const currentUser = this.auth.currentUser();
-    if (currentUser && this.tokenValid() !== true) {
+    //const currentUser = this.auth.currentUser();
+    //if (currentUser && this.tokenValid() !== true) {
       // El usuario está autenticado pero no tiene token de recovery válido
       // Esto puede ser porque accedió directamente sin el enlace del correo
       // En este caso, permitimos el acceso pero el token será inválido
       // y se mostrará el mensaje de error correspondiente
-    }
+    //}
   }
 
   private async validateToken() {
     this.tokenValid.set(null);
 
     try {
-      // Verificar si hay un hash fragment con token de recuperación
-      const hash = window.location.hash;
-      const hasRecoveryToken = hash.includes('access_token=') && hash.includes('type=recovery');
-      
-      if (hasRecoveryToken) {
-        // El token está en el hash, Supabase debería procesarlo automáticamente
-        // Esperar un momento para que Supabase procese el hash
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Limpiar el hash de la URL después de procesarlo (seguridad)
-        // Esto previene que el token quede expuesto en la URL
-        if (window.history && window.history.replaceState) {
-          window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
-      }
+      // Esperar a que Supabase procese el hash si viene desde email
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      // Verificar si hay una sesión de recuperación activa
-      const { data: { session }, error } = await this.auth['supabase'].auth.getSession();
-      
-      if (error || !session) {
+      const { data, error } = await this.auth.getSession();
+
+      if (error || !data.session) {
         this.tokenValid.set(false);
         return;
       }
 
-      // Si hay un token de recovery en el hash, priorizar esa validación
-      // Esto asegura que incluso si el usuario tiene una sesión normal activa,
-      // el token de recovery tenga prioridad
-      if (hasRecoveryToken && session.user) {
-        this.tokenValid.set(true);
-        return;
-      }
-
-      // Si no hay token de recovery en el hash, verificar que la sesión sea de tipo recovery
-      // y que el usuario no tenga una sesión normal activa en nuestra app
-      const currentUser = this.auth.currentUser();
-      const isRecoverySession = session.user && 
-        session.user.app_metadata?.provider === 'email' &&
-        !currentUser; // Si hay un usuario autenticado en nuestra app, no es una sesión de recovery
-
-      if (isRecoverySession) {
-        this.tokenValid.set(true);
-      } else {
-        // Si hay una sesión pero no es de recovery, invalidar
-        this.tokenValid.set(false);
-      }
-    } catch (err) {
-      console.error('Error validando token:', err);
+      this.tokenValid.set(true);
+    } catch {
       this.tokenValid.set(false);
     }
   }
@@ -1384,9 +1349,7 @@ export class RestablecerClave implements OnInit {
       }
 
       // Actualizar la contraseña usando Supabase
-      const { error: updateError } = await this.auth['supabase'].auth.updateUser({
-        password: password!,
-      });
+      const { error: updateError } = await this.auth.updatePassword(password!);
 
       if (updateError) {
         throw new Error(updateError.message || 'No se pudo actualizar la contraseña');

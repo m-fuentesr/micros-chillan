@@ -17,6 +17,17 @@ export const authGuard: CanActivateFn = (route, state): boolean | UrlTree | Prom
   const auth = inject(AuthService);
   const router = inject(Router);
 
+  // =====================================================
+  // Password recovery
+  // =====================================================
+  if (auth.isRecovering()) {
+    // Permitir SOLO la vista de restablecer clave
+    if (state.url !== '/restablecer-clave') {
+      return router.createUrlTree(['/restablecer-clave']);
+    }
+    return true;
+  }
+
   // Si aún estamos verificando la sesión inicial, esperar
   if (auth.isInitializing()) {
     return new Promise<boolean | UrlTree>((resolve) => {
@@ -25,7 +36,7 @@ export const authGuard: CanActivateFn = (route, state): boolean | UrlTree | Prom
         if (!auth.isInitializing()) {
           // Inicialización completa, verificar usuario
           const user = auth.currentUser();
-          
+
           if (!user) {
             resolve(router.createUrlTree(['/login'], {
               queryParams: { redirectTo: state.url || '/' }

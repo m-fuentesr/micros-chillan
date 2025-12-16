@@ -1,8 +1,9 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Driver } from '../../models/driver.models';
 import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
+import { formatRut, isValidRut } from '../../utils/rut.utils';
 
 @Component({
   selector: 'app-driver-form',
@@ -28,10 +29,16 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
               class="input input-bordered w-full"
               placeholder="12.345.678-9"
               maxlength="12"
+              (input)="onRutInput($event)"
               [class.input-error]="form.get('rut')?.invalid && form.get('rut')?.touched">
-            @if (form.get('rut')?.invalid && form.get('rut')?.touched) {
+            @if (form.get('rut')?.touched && form.get('rut')?.errors) {
               <label class="label">
-                <span class="label-text-alt text-error">Este campo es obligatorio</span>
+                @if (form.get('rut')?.errors?.['required']) {
+                  <span class="label-text-alt text-error">El RUT es obligatorio</span>
+                }
+                @if (form.get('rut')?.errors?.['rutInvalid']) {
+                  <span class="label-text-alt text-error">RUT inválido</span>
+                }
               </label>
             }
           </div>
@@ -228,7 +235,7 @@ export class DriverForm implements OnDestroy {
   formValid = output<boolean>();
 
   form = this.fb.group({
-    rut: ['', Validators.required],
+    rut: ['', [Validators.required, this.rutValidator.bind(this)]],
     primer_nombre: ['', Validators.required],
     segundo_nombre: [''],
     apellido_paterno: ['', Validators.required],
@@ -284,6 +291,23 @@ export class DriverForm implements OnDestroy {
 
   ngOnDestroy(): void {
     this.formSubscription?.unsubscribe();
+  }
+
+  rutValidator(control: AbstractControl): ValidationErrors | null {
+    const value = control.value;
+    if (!value) return null;
+    return isValidRut(value) ? null : { rutInvalid: true };
+  }
+
+  onRutInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const formatted = formatRut(input.value);
+
+    // Evitar ciclos infinitos
+    if (formatted !== input.value) {
+      input.value = formatted;
+      this.form.get('rut')?.setValue(formatted, { emitEvent: false });
+    }
   }
 
   getFormValue(): Partial<Driver> {

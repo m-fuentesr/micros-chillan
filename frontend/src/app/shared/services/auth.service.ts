@@ -41,6 +41,9 @@ export class AuthService {
   private readonly _currentUser = signal<AuthUser | null>(this.hydrateUser());
   readonly currentUser = this._currentUser;
 
+  private readonly _isRecovering = signal(false);
+  readonly isRecovering = this._isRecovering.asReadonly();
+
   // Signal para indicar si estamos verificando la sesión inicial
   private readonly _isInitializing = signal(true);
   readonly isInitializing = this._isInitializing.asReadonly();
@@ -97,6 +100,34 @@ export class AuthService {
 
     this.supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
+      // ===============================
+      // Recovery flow
+      // ===============================
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('PASSWORD_RECOVERY detectado');
+
+        this._isRecovering.set(true);
+
+        // Cortar cualquier flujo previo
+        this.isManualLogin = false;
+        this.isSyncing = false;
+
+        // Limpiar estado local (muy importante)
+        this._currentUser.set(null);
+        sessionStorage.removeItem(this.tokenStorageKey);
+        sessionStorage.removeItem(this.userStorageKey);
+
+        // NO persistir token
+        // NO llamar syncDomainUser
+        // NO dejar pasar guards
+
+        await this.router.navigateByUrl('/restablecer-clave', {
+          replaceUrl: true,
+        });
+
+        return; // No continuar
+      }
+
       // Evitar logs excesivos en producción
       if (event !== 'TOKEN_REFRESHED') {
         console.log('Auth event:', event, session);
@@ -334,6 +365,14 @@ export class AuthService {
         this.isManualLogin = false;
       }, 500);
     }
+  }
+
+  async getSession() {
+    return this.supabase.auth.getSession();
+  }
+
+  async updatePassword(password: string) {
+    return this.supabase.auth.updateUser({ password });
   }
 
   private async syncDomainUser(retryCount = 0): Promise<void> {
