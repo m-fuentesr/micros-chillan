@@ -197,8 +197,11 @@ export class DailyRecordService {
     
     // Calcular desglose de pago
     const base = datosFinancieros.monto_recaudado || 0;
-    const porcentaje = response.chofer?.porcentaje_actual || 30;
-    const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentaje / 100);
+    // El backend devuelve el porcentaje como decimal (0.3), convertimos a porcentaje (30) para mostrar
+    const porcentajeDecimal = response.chofer?.porcentaje_actual || 0.3;
+    const porcentaje = porcentajeDecimal * 100; // Convertir de decimal a porcentaje para mostrar
+    // El backend ya calcula el monto, pero si no viene, lo calculamos multiplicando directamente (porque porcentajeDecimal es decimal)
+    const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentajeDecimal);
     
     // Mapear estado del backend al frontend
     const estadoMap: Record<string, DailyRecordStatus> = {

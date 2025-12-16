@@ -37,32 +37,43 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon, BusIcon],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon],
   template: `
     <div class="space-y-6 relative">
-        <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
-        
         <!-- Hero Section Premium -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
-          <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-            <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
-              <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
-                Registros Diarios
-              </h1>
-              <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
-                Gestión y auditoría centralizada de todos los reportes operativos diarios.
-              </p>
+        @if (isLoading() && records().length === 0) {
+          <!-- Skeleton del Hero Section -->
+          <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0 space-y-3">
+                <div class="h-10 md:h-12 lg:h-14 w-64 skeleton-shimmer rounded mb-2"></div>
+                <div class="h-4 w-96 skeleton-shimmer rounded"></div>
+              </div>
+              <div class="h-11 w-40 skeleton-shimmer rounded-lg"></div>
             </div>
-            <button 
-              (click)="openNewRecordModal()"
-              class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
-              </svg>
-              Nuevo Registro
-            </button>
           </div>
-        </div>
+        } @else {
+          <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+            <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+              <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
+                <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+                  Registros Diarios
+                </h1>
+                <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+                  Gestión y auditoría centralizada de todos los reportes operativos diarios.
+                </p>
+              </div>
+              <button 
+                (click)="openNewRecordModal()"
+                class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                  <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
+                </svg>
+                Nuevo Registro
+              </button>
+            </div>
+          </div>
+        }
 
         <!-- KPIs -->
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
@@ -140,10 +151,73 @@ interface DailyRecordView {
         </div>
 
         <!-- Filtros y Búsqueda -->
-        @if (!sequentialState.canShowContent() && isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
-          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
+        @if (!sequentialState.canShowContent() && !sequentialState.contentError()) {
+          <!-- Skeleton personalizado del Card con Header y Filtros -->
           <div class="card bg-base-100 shadow-xl border border-base-200">
-            <app-loading-skeleton type="table" [count]="10" />
+            <!-- Skeleton del Card Header -->
+            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex-1 min-w-0 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <div class="w-1 h-6 bg-primary border-l-4 border-l-primary"></div>
+                    <div class="h-8 sm:h-10 lg:h-12 w-48 skeleton-shimmer rounded"></div>
+                  </div>
+                  <div class="h-4 w-96 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="h-8 w-32 skeleton-shimmer rounded-full"></div>
+              </div>
+            </div>
+
+            <!-- Skeleton del Card Body con Filtros -->
+            <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+              <!-- Skeleton: Header de Filtros -->
+              <div class="bg-base-50/50 p-5 sm:p-6 rounded-xl border border-base-200/50 mb-6">
+                <div class="flex items-center justify-between gap-4 mb-5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-1 h-4 rounded-full bg-primary"></div>
+                    <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                  </div>
+                </div>
+
+                <!-- Skeleton: Grid de Filtros (4 columnas en desktop) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <!-- Skeleton: Filtro Chofer -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Desde -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Hasta -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Orden -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Tabla -->
+              <app-loading-skeleton type="table" [count]="10" />
+            </div>
           </div>
         } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
           <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
@@ -162,12 +236,10 @@ interface DailyRecordView {
           </div>
         } @else {
           <!-- Solo renderizar el contenido cuando canShowContent es true -->
-          <div 
-            class="card bg-base-100 shadow-xl border border-base-200 animate-card-enter"
-            [class.animate-fade-in]="sequentialState.canShowContent()" 
-            [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-            [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
-            [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
+          @if (sequentialState.canShowContent()) {
+            <div 
+              class="card bg-base-100 shadow-xl border border-base-200 animate-card-enter animate-fade-in"
+              style="transition: opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1); transform: translateY(0); opacity: 1;">
             <!-- Header Premium con gradiente sutil -->
             <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -690,6 +762,7 @@ interface DailyRecordView {
               </div>
             </div>
           </div>
+          }
         }
 
       <!-- Modal Nuevo Registro (renderizado de forma global en app.ts) -->
@@ -708,6 +781,21 @@ interface DailyRecordView {
     }
     .animate-fade-in {
       animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -790,6 +878,7 @@ export class BitacoraOperaciones implements OnInit {
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
   private isManualReload = false; // Flag para indicar que estamos recargando manualmente (evita que el effect interfiera)
+  private isInitialLoad = true; // Flag para evitar que el effect se ejecute en la carga inicial
   showFiltersMobile = signal(false);
   
   // Filtros usando SearchFilters
@@ -1032,9 +1121,8 @@ export class BitacoraOperaciones implements OnInit {
             
             // Si es la primera carga, marcar contenido como listo (incluso si está vacío)
             if (isFirstLoad && !this.sequentialState.contentError()) {
-              setTimeout(() => {
-                this.sequentialState.setContentReady(false);
-              }, 100);
+              // Llamar inmediatamente, sin setTimeout para evitar pestañeo
+              this.sequentialState.setContentReady(false);
             }
           });
         },
@@ -1060,6 +1148,13 @@ export class BitacoraOperaciones implements OnInit {
     effect(() => {
       // Si estamos haciendo una recarga manual, no ejecutar el effect
       if (this.isManualReload) {
+        return;
+      }
+      
+      // En la carga inicial, no ejecutar el effect (se carga manualmente en ngOnInit)
+      // Esto evita que el effect se ejecute cuando recordsResponse se actualiza por primera vez
+      if (this.isInitialLoad) {
+        this.isInitialLoad = false;
         return;
       }
       
@@ -1274,7 +1369,8 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   ngOnInit(): void {
-    // Los datos se cargan automáticamente mediante loadRecords() en constructor
+    // Cargar datos iniciales manualmente (el effect no se ejecuta en la carga inicial)
+    this.loadRecords();
     // Cargar choferes activos para el filtro
     this.loadDrivers();
   }
@@ -1300,6 +1396,7 @@ export class BitacoraOperaciones implements OnInit {
     this.sequentialState.reset();
     this.isLoading.set(true);
     this.currentPage.set(1);
+    this.isInitialLoad = false; // Asegurar que el effect funcione después de un retry
     this.loadRecords();
   }
 

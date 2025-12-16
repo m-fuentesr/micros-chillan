@@ -82,19 +82,30 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
 
         <!-- Gráfico -->
         <div class="relative h-[280px] w-full flex-shrink-0" appLazyChart #lazyChart="lazyChart">
+          <!-- Skeleton del gráfico (barras horizontales) -->
+          @if (!lazyChart.isVisible()) {
+            <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
+              <div class="h-full flex flex-col gap-3">
+                <!-- Barras horizontales -->
+                @for (i of [1,2,3,4,5]; track i) {
+                  <div class="flex items-center gap-3">
+                    <!-- Etiqueta Y (izquierda) -->
+                    <div class="w-16 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                    <!-- Barra horizontal -->
+                    <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 15)"></div>
+                    <!-- Valor X (derecha) -->
+                    <div class="w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
           @if (lazyChart.isVisible()) {
             <canvas baseChart
               [data]="chartData()"
               [options]="chartOptions"
               [type]="chartType">
             </canvas>
-          } @else {
-            <div class="flex items-center justify-center h-full text-base-content/40">
-              <div class="text-left pl-4 border-l-4 border-l-primary">
-                <div class="loading loading-spinner loading-md mb-2"></div>
-                <p class="text-sm">Cargando gráfico...</p>
-              </div>
-            </div>
           }
         </div>
         <p class="text-xs text-base-content/70 mt-2 flex-shrink-0">
@@ -103,7 +114,22 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FinancialSummary implements OnInit {
