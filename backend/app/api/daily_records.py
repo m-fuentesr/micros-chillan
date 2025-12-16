@@ -144,6 +144,22 @@ async def update_daily_record(
         current_user=current_user,
     )
 
+
+@router.patch("/{record_id}/resolve", response_model=DailyRecordDetailResponse)
+async def resolve_incident(
+    record_id: int,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Marca un incidente como resuelto cambiando el estado de 'incidente_reportado' a 'completo'.
+    """
+    require_admin(current_user)
+    
+    return await daily_record_service.resolve_incident(
+        record_id=record_id,
+        current_user=current_user,
+    )
+
 # --------------------------------------------------
 # Crear registro diario (Trabajador) 
 # Debe ser la última ruta debido a conflictos de path

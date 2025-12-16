@@ -214,6 +214,120 @@ async def upload_daily_record_image(
         )
 
 
+async def upload_daily_record_image_admin(
+    file: UploadFile,
+    chofer_id: int,
+    fecha: str,
+    current_user: UserInDB
+) -> dict:
+    """
+    Versión para admin: permite subir imágenes para cualquier chofer.
+    NO valida que current_user.chofer_id == chofer_id.
+    Las imágenes se guardan en la carpeta del chofer indicado.
+    
+    Validaciones:
+    1. Validar tamaño del archivo
+    2. Validar Magic Bytes (tipo real del archivo)
+    3. Optimizar imagen (redimensionar, convertir a WebP, comprimir)
+    4. Subir a Supabase Storage con estructura organizada en carpeta del chofer
+    5. Retornar URL pública
+    
+    Args:
+        file: Archivo de imagen a subir
+        chofer_id: ID del chofer para el cual se sube la imagen
+        fecha: Fecha del reporte (formato YYYY-MM-DD)
+        current_user: Usuario autenticado (debe ser admin, validado en el endpoint)
+    
+    Returns:
+        Dict con url, path, size, original_size, mime_type del archivo subido
+    
+    Raises:
+        HTTPException: Si hay errores de validación o al subir el archivo
+    """
+    # Obtener datos del chofer para crear nombre de carpeta
+    folder_name = await _get_chofer_folder_name(chofer_id)
+    
+    # Leer contenido del archivo
+    file_content = await file.read()
+    file_size = len(file_content)
+    
+    # Validaciones iniciales (Tamaño y Magic Bytes)
+    if file_size > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Archivo muy grande. Máximo: {MAX_FILE_SIZE/1024/1024:.0f}MB"
+        )
+    
+    if file_size < 1024:  # Mínimo 1KB
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El archivo parece estar corrupto o vacío"
+        )
+    
+    is_valid, detected_mime = validate_magic_bytes(file_content)
+    if not is_valid or detected_mime not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato de archivo no válido."
+        )
+
+    # --- OPTIMIZACIÓN DE IMAGEN (misma lógica que para trabajadores) ---
+    optimized_content, final_mime_type, final_extension = process_and_optimize_image(
+        file_content,
+        max_dimension=MAX_DIMENSION,
+        quality=QUALITY
+    )
+    
+    final_size = len(optimized_content)
+
+    # Generar nombre con estructura: {folder_name}/{fecha}/{timestamp}_{unique_id}.webp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    unique_id = str(uuid.uuid4())[:8]
+    file_name = f"{folder_name}/{fecha}/{timestamp}_{unique_id}.{final_extension}"
+    
+    try:
+        storage_bucket = supabase.storage.from_(STORAGE_BUCKET)
+        
+        # Subir contenido optimizado
+        upload_response = storage_bucket.upload(
+            file_name,
+            optimized_content,
+            file_options={
+                "content-type": final_mime_type,
+                "upsert": False
+            }
+        )
+        
+        if hasattr(upload_response, 'error') and upload_response.error:
+            raise Exception(upload_response.error.message)
+        
+        # Obtener URL pública
+        public_url = _get_public_url(storage_bucket, file_name)
+        
+        if not public_url:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="No se pudo obtener la URL pública del archivo"
+            )
+        
+        return {
+            "url": public_url,
+            "path": file_name,
+            "size": final_size,
+            "original_size": file_size,
+            "mime_type": final_mime_type
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error upload pipeline: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error procesando la subida de la imagen: {str(e)}"
+        )
+
+
 async def _get_chofer_folder_name(chofer_id: int) -> str:
     """
     Obtiene el nombre de carpeta seguro para un chofer.

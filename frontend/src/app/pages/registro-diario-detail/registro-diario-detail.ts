@@ -4,8 +4,10 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angu
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
+import { StorageService } from '../../shared/services/storage.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, forkJoin, of, switchMap, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
 
@@ -152,7 +154,7 @@ interface DailyRecordDetailView extends DailyRecord {
                 </svg>
                 <div class="flex-1">
                   <h3 class="font-bold text-error">Incidente Crítico Reportado</h3>
-                  <div class="text-sm opacity-90 italic mt-1">El conductor reportó un choque leve en parachoques trasero. Revisa las observaciones y fotos antes de validar.</div>
+                  <div class="text-sm opacity-90 italic mt-1">El conductor reportó un incidente. Revisa las observaciones y fotos antes de validar.</div>
                 </div>
                 <button 
                   class="btn btn-sm btn-error text-white shadow-sm" 
@@ -204,9 +206,11 @@ interface DailyRecordDetailView extends DailyRecord {
                             [disabled]="!isEditMode()">
                             <option value="">Seleccione un motivo...</option>
                             <option value="Descanso Semanal">Descanso Semanal</option>
+                            <option value="Vacaciones">Vacaciones</option>
+                            <option value="Licencia Médica">Licencia Médica</option>
+                            <option value="Permiso Personal">Permiso Personal</option>
                             <option value="En Taller / Mantenimiento">En Taller / Mantenimiento</option>
                             <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
-                            <option value="Licencia Médica">Licencia Médica</option>
                           </select>
                         </label>
                       </div>
@@ -623,6 +627,7 @@ export class RegistroDiarioDetail {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private storageService = inject(StorageService);
 
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
@@ -847,28 +852,104 @@ export class RegistroDiarioDetail {
       };
       this.record.set(optimisticRecord);
       
-      // Mapear formulario a DTO de actualización
-      const updateDto: any = {
-        recaudado: formValue.noWorkDay ? undefined : formValue.income,
-        costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
-        litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
-        dia_no_trabajado: formValue.noWorkDay || false,
-        motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
-        es_emergencia: formValue.isEmergency || false,
-        observaciones: formValue.observations || null
-      };
+      // 3. Subir imágenes si hay archivos nuevos
+      const registroFile = this.registroFile();
+      const receiptFile = this.receiptFile();
+      const uploads: Array<Observable<{ url: string; type: 'registro' | 'diesel' }>> = [];
       
-      // Actualizar comprobante si se subió una nueva imagen
-      if (this.receiptFile()) {
-        updateDto.comprobante_diesel = {
-          monto: formValue.dieselExpense || 0,
-          imagen: this.receiptFile()!
-        };
+      if (registroFile && currentRecord.chofer_id) {
+        uploads.push(
+          this.storageService.uploadDailyRecordImageAdmin(
+            registroFile,
+            currentRecord.chofer_id,
+            currentRecord.fecha
+          ).pipe(
+            map(result => ({ url: result.url, type: 'registro' as const })),
+            catchError((error) => {
+              console.error('Error subiendo comprobante del registro:', error);
+              this.showErrorToast('Error al subir comprobante del registro');
+              return EMPTY;
+            })
+          )
+        );
       }
       
-      this.dailyRecordService.updateDailyRecord(recordId, updateDto).pipe(
+      if (receiptFile && currentRecord.chofer_id) {
+        uploads.push(
+          this.storageService.uploadDailyRecordImageAdmin(
+            receiptFile,
+            currentRecord.chofer_id,
+            currentRecord.fecha
+          ).pipe(
+            map(result => ({ url: result.url, type: 'diesel' as const })),
+            catchError((error) => {
+              console.error('Error subiendo comprobante de diesel:', error);
+              this.showErrorToast('Error al subir comprobante de diesel');
+              return EMPTY;
+            })
+          )
+        );
+      }
+      
+      // 4. Esperar a que se suban las imágenes (si hay) y luego actualizar
+      const updateAfterUploads = uploads.length > 0 
+        ? forkJoin(uploads).pipe(
+            switchMap((results) => {
+              // Construir DTO con URLs de imágenes subidas
+              const updateDto: any = {
+                recaudado: formValue.noWorkDay ? undefined : formValue.income,
+                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+                dia_no_trabajado: formValue.noWorkDay || false,
+                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+                es_emergencia: formValue.isEmergency || false,
+                observaciones: formValue.observations || null
+              };
+              
+              // Agregar URLs de imágenes subidas
+              results.forEach(result => {
+                if (result.type === 'registro') {
+                  updateDto.comprobante_registro = { imagen: result.url };
+                } else if (result.type === 'diesel') {
+                  updateDto.comprobante_diesel = { imagen: result.url };
+                }
+              });
+              
+              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+            })
+          )
+        : of(null).pipe(
+            switchMap(() => {
+              // Sin archivos nuevos, solo actualizar datos
+              const updateDto: any = {
+                recaudado: formValue.noWorkDay ? undefined : formValue.income,
+                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+                dia_no_trabajado: formValue.noWorkDay || false,
+                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+                es_emergencia: formValue.isEmergency || false,
+                observaciones: formValue.observations || null,
+                // Mantener URLs existentes si no se cambiaron
+                comprobante_registro: currentRecord.comprobanteRegistro?.imageUrl 
+                  ? { imagen: currentRecord.comprobanteRegistro.imageUrl }
+                  : undefined,
+                comprobante_diesel: currentRecord.receipt?.imageUrl
+                  ? { imagen: currentRecord.receipt.imageUrl }
+                  : undefined
+              };
+              
+              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+            })
+          );
+      
+      updateAfterUploads.pipe(
+        // 5. Después de actualizar, recargar el registro completo desde el servidor
+        // para obtener todos los datos actualizados (historial, desglose de pago, etc.)
+        switchMap(() => {
+          return this.dailyRecordService.getDailyRecordById(recordId);
+        }),
         catchError((error) => {
-          // 3. Rollback en caso de error
+          // 6. Rollback en caso de error
           if (this.previousRecordState) {
             this.record.set(this.previousRecordState);
             // Restaurar formulario al estado anterior
@@ -883,17 +964,39 @@ export class RegistroDiarioDetail {
             });
           }
           
-          // 4. Notificar al usuario
+          // 7. Notificar al usuario
           this.showErrorToast('No se pudo guardar el registro. Intenta nuevamente.');
           
           return EMPTY;
         })
       ).subscribe({
         next: (updatedRecord) => {
+          // 8. Actualizar con el registro completo recargado del servidor
           const viewRecord = this.mapToDetailView(updatedRecord);
           this.record.set(viewRecord);
+          
+          // 9. Actualizar el formulario con los valores del servidor
+          this.recordForm.patchValue({
+            noWorkDay: viewRecord.noWorkDay,
+            noWorkDayReason: viewRecord.noWorkDayReason || '',
+            isEmergency: viewRecord.isEmergency || false,
+            income: viewRecord.income,
+            dieselExpense: viewRecord.dieselExpense,
+            dieselLiters: viewRecord.dieselLiters || 0,
+            observations: viewRecord.observations || ''
+          });
+          
+          // 10. Actualizar previews de imágenes con las URLs del servidor
+          if (viewRecord.receipt?.imageUrl) {
+            this.receiptPreview.set(viewRecord.receipt.imageUrl);
+          }
+          if (viewRecord.comprobanteRegistro?.imageUrl) {
+            this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+          }
+          
           this.isEditMode.set(false);
           this.receiptFile.set(null);
+          this.registroFile.set(null);
           this.previousRecordState = null;
           this.showSuccessToast('Registro guardado exitosamente');
         },

@@ -98,6 +98,78 @@ export class StorageService {
   }
 
   /**
+   * Sube una imagen como administrador (permite subir para cualquier chofer)
+   * El backend valida que el usuario sea admin y guarda la imagen en la carpeta del chofer indicado
+   * 
+   * @param file Archivo de imagen
+   * @param choferId ID del chofer para el cual se sube la imagen
+   * @param fecha Fecha del registro (YYYY-MM-DD)
+   * @param onProgress Callback opcional para progreso
+   * @returns Observable con la URL de la imagen subida
+   */
+  uploadDailyRecordImageAdmin(
+    file: File,
+    choferId: number,
+    fecha: string,
+    onProgress?: (progress: UploadProgress) => void
+  ): Observable<UploadResult> {
+    // Validación en capa 1 (Frontend)
+    const validationError = this.validateImageFile(file);
+    if (validationError) {
+      return throwError(() => new Error(validationError));
+    }
+
+    // Preparar FormData
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('chofer_id', choferId.toString());
+    formData.append('fecha', fecha);
+
+    // Subir a través del backend (endpoint de admin)
+    return this.http.post<UploadResult>(
+      `${this.apiUrl}/api/storage/upload-daily-record-image-admin`,
+      formData,
+      {
+        reportProgress: true,
+        observe: 'events'
+      }
+    ).pipe(
+      map((event: HttpEvent<any>) => {
+        // Manejar eventos de progreso
+        if (event.type === HttpEventType.UploadProgress) {
+          const progressEvent = event as HttpProgressEvent;
+          const progress: UploadProgress = {
+            loaded: progressEvent.loaded || 0,
+            total: progressEvent.total || 0,
+            percentage: progressEvent.total 
+              ? Math.round((100 * progressEvent.loaded) / progressEvent.total)
+              : 0
+          };
+          
+          if (onProgress) {
+            onProgress(progress);
+          }
+        }
+        
+        // Retornar resultado cuando esté completo
+        if (event.type === HttpEventType.Response) {
+          return event.body as UploadResult;
+        }
+        
+        return null;
+      }),
+      // Filtrar solo el resultado final
+      filter((result): result is UploadResult => result !== null),
+      catchError((error) => {
+        console.error('Error subiendo imagen como admin:', error);
+        return throwError(() => 
+          new Error(error.error?.detail || error.message || 'Error al subir la imagen')
+        );
+      })
+    );
+  }
+
+  /**
    * Valida el archivo de imagen en el frontend (Capa 1)
    */
   private validateImageFile(file: File): string | null {

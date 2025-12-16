@@ -16,9 +16,11 @@ export type DailyRecordStatus =
  */
 export type InactivityReason = 
   | 'Descanso Semanal'
+  | 'Vacaciones'
+  | 'Licencia Médica'
+  | 'Permiso Personal'
   | 'En Taller / Mantenimiento'
   | 'Sin Chofer Asignado'
-  | 'Licencia Médica'
   | 'Otro';
 
 /**
@@ -144,6 +146,26 @@ export interface CreateDailyRecordDto {
     monto: number;
     imagen?: File | string; // File para upload, string para URL
   };
+}
+
+/**
+ * DTO para crear un nuevo registro diario como administrador
+ * Endpoint: POST /api/daily-records/admin
+ */
+export interface CreateDailyRecordAdminDto {
+  chofer_id: number;
+  maquina_id: number;
+  fecha: string; // YYYY-MM-DD
+  es_dia_no_trabajado: boolean;
+  motivo_no_trabajado?: string | null;
+  motivo_no_trabajado_otro?: string | null;
+  monto_recaudado?: number | null;
+  litros_diesel?: number | null;
+  costo_total_diesel?: number | null;
+  imagen_url?: string | null;
+  imagen_comprobante_diesel_url?: string | null;
+  observaciones?: string | null;
+  incidente_critico: boolean;
 }
 
 /**
