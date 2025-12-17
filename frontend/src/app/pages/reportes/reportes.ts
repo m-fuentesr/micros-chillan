@@ -164,19 +164,48 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #profitChart="lazyChart">
+                <!-- Skeleton del gráfico (barras horizontales) -->
+                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && !profitChart.isVisible()) {
+                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
+                    <div class="h-full flex flex-col gap-3">
+                      <!-- Barras horizontales -->
+                      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+                        <div class="flex items-center gap-3">
+                          <!-- Etiqueta Y (izquierda) -->
+                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal -->
+                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
+                          <!-- Valor X (derecha) -->
+                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
                 <!-- Overlay de carga solo en el gráfico -->
-                @if (profitLoadingState.isLoading() && !profitLoadingState.showSkeleton()) {
+                @else if (profitLoadingState.isLoading() && !profitLoadingState.showSkeleton() && !profitChart.isVisible()) {
                   <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
-                @if (profitChart.isVisible()) {
+                @if (profitChart.isVisible() && hasProfitData()) {
                   <canvas baseChart
                     [data]="profitChartData()"
                     [options]="profitChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else if (!profitLoadingState.isLoading()) {
+                } @else if (profitChart.isVisible() && !profitLoadingState.isLoading() && !hasProfitData()) {
+                  <!-- Estado vacío estilo Apple -->
+                  <div class="w-full h-full flex flex-col items-center justify-center text-center p-8">
+                    <div class="w-16 h-16 rounded-full bg-base-200/50 flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-base-content/40">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                      </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-base-content mb-1">Sin datos disponibles</h3>
+                    <p class="text-sm text-base-content/60 max-w-sm">No hay información de rentabilidad para el período seleccionado.</p>
+                  </div>
+                } @else if (!profitLoadingState.isLoading() && !profitLoadingState.showSkeleton()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -506,19 +535,48 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #revenueChart="lazyChart">
+                <!-- Skeleton del gráfico (barras horizontales) -->
+                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && !revenueChart.isVisible()) {
+                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
+                    <div class="h-full flex flex-col gap-3">
+                      <!-- Barras horizontales -->
+                      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+                        <div class="flex items-center gap-3">
+                          <!-- Etiqueta Y (izquierda) -->
+                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal -->
+                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
+                          <!-- Valor X (derecha) -->
+                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
                 <!-- Overlay de carga solo en el gráfico -->
-                @if (revenueLoadingState.isLoading() && !revenueLoadingState.showSkeleton()) {
+                @else if (revenueLoadingState.isLoading() && !revenueLoadingState.showSkeleton() && !revenueChart.isVisible()) {
                   <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
-                @if (revenueChart.isVisible()) {
+                @if (revenueChart.isVisible() && hasRevenueData()) {
                   <canvas baseChart
                     [data]="revenueChartData()"
                     [options]="revenueChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else if (!revenueLoadingState.isLoading()) {
+                } @else if (revenueChart.isVisible() && !revenueLoadingState.isLoading() && !hasRevenueData()) {
+                  <!-- Estado vacío estilo Apple -->
+                  <div class="w-full h-full flex flex-col items-center justify-center text-center p-8">
+                    <div class="w-16 h-16 rounded-full bg-base-200/50 flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-base-content/40">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                      </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-base-content mb-1">Sin datos disponibles</h3>
+                    <p class="text-sm text-base-content/60 max-w-sm">No hay información de ingresos para el período seleccionado.</p>
+                  </div>
+                } @else if (!revenueLoadingState.isLoading() && !revenueLoadingState.showSkeleton()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -782,19 +840,48 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full" appLazyChart #driverChart="lazyChart">
+                <!-- Skeleton del gráfico (barras horizontales) -->
+                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && !driverChart.isVisible()) {
+                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
+                    <div class="h-full flex flex-col gap-3">
+                      <!-- Barras horizontales -->
+                      @for (i of [1,2,3,4,5,6,7,8]; track i) {
+                        <div class="flex items-center gap-3">
+                          <!-- Etiqueta Y (izquierda) -->
+                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal -->
+                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
+                          <!-- Valor X (derecha) -->
+                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        </div>
+                      }
+                    </div>
+                  </div>
+                }
                 <!-- Overlay de carga solo en el gráfico -->
-                @if (driverLoadingState.isLoading() && !driverLoadingState.showSkeleton()) {
+                @else if (driverLoadingState.isLoading() && !driverLoadingState.showSkeleton() && !driverChart.isVisible()) {
                   <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
-                @if (driverChart.isVisible()) {
+                @if (driverChart.isVisible() && hasDriverData()) {
                   <canvas baseChart
                     [data]="driverChartData()"
                     [options]="driverChartOptions"
                     [type]="barChartType">
                   </canvas>
-                } @else if (!driverLoadingState.isLoading()) {
+                } @else if (driverChart.isVisible() && !driverLoadingState.isLoading() && !hasDriverData()) {
+                  <!-- Estado vacío estilo Apple -->
+                  <div class="w-full h-full flex flex-col items-center justify-center text-center p-8">
+                    <div class="w-16 h-16 rounded-full bg-base-200/50 flex items-center justify-center mb-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 text-base-content/40">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
+                      </svg>
+                    </div>
+                    <h3 class="text-lg font-semibold text-base-content mb-1">Sin datos disponibles</h3>
+                    <p class="text-sm text-base-content/60 max-w-sm">No hay información de rentabilidad para el período seleccionado.</p>
+                  </div>
+                } @else if (!driverLoadingState.isLoading() && !driverLoadingState.showSkeleton()) {
                   <div class="flex items-start justify-start h-full text-base-content/40 pl-4 border-l-4 border-l-primary">
                     <div class="text-left">
                       <app-loading-spinner size="md" text="Cargando gráfico..." />
@@ -1518,58 +1605,14 @@ export class Reportes implements OnInit {
   });
 
   // Datos hardcodeados de respaldo (temporal)
-  private fallbackMachinesData: MachineProfit[] = [
-    {
-      rank: 1,
-      machine: 'Máquina 02',
-      income: 4700000,
-      dieselCost: 1100000,
-      driverPayment: 320000,
-      maintenance: null,
-      netProfit: 3280000
-    },
-    {
-      rank: 2,
-      machine: 'Máquina 05',
-      income: 5200000,
-      dieselCost: 1350000,
-      driverPayment: 350000,
-      maintenance: 535000,
-      netProfit: 2965000
-    },
-    {
-      rank: 3,
-      machine: 'Máquina 07',
-      income: 4250000,
-      dieselCost: 1050000,
-      driverPayment: 300000,
-      maintenance: 120000,
-      netProfit: 2780000
-    },
-    {
-      rank: 4,
-      machine: 'Máquina 01',
-      income: 3950000,
-      dieselCost: 980000,
-      driverPayment: 290000,
-      maintenance: null,
-      netProfit: 2680000
-    },
-    {
-      rank: 5,
-      machine: 'Máquina 03',
-      income: 3500000,
-      dieselCost: 990000,
-      driverPayment: 310000,
-      maintenance: null,
-      netProfit: 2200000
-    }
-  ];
-
   machinesData = computed(() => {
-    const data = this.rawMachinesData();
-    return data.length > 0 ? data : this.fallbackMachinesData;
+    return this.rawMachinesData();
   });
+
+  // Computed públicos para verificar si hay datos reales (para el template)
+  hasProfitData = computed(() => this.machineProfitabilityResponse().length > 0);
+  hasRevenueData = computed(() => this.grossIncomeRankingResponse().length > 0);
+  hasDriverData = computed(() => this.driverProfitabilityResponse().length > 0);
 
   private compareValues(a: unknown, b: unknown, direction: 'asc' | 'desc'): number {
     const dir = direction === 'asc' ? 1 : -1;
@@ -1771,53 +1814,9 @@ export class Reportes implements OnInit {
   });
 
   // Datos hardcodeados de respaldo (temporal)
-  private fallbackDriversData: DriverProfit[] = [
-    {
-      rank: 1,
-      driver: 'Juan Pérez',
-      income: 5200000,
-      dieselCost: 1350000,
-      payment: 350000,
-      netProfit: 3500000
-    },
-    {
-      rank: 2,
-      driver: 'Carlos Rodríguez',
-      income: 4700000,
-      dieselCost: 1100000,
-      payment: 320000,
-      netProfit: 3280000
-    },
-    {
-      rank: 3,
-      driver: 'Luis González',
-      income: 4250000,
-      dieselCost: 1050000,
-      payment: 300000,
-      netProfit: 2900000
-    },
-    {
-      rank: 4,
-      driver: 'Pedro Martínez',
-      income: 3950000,
-      dieselCost: 980000,
-      payment: 290000,
-      netProfit: 2680000
-    },
-    {
-      rank: 5,
-      driver: 'Miguel Sánchez',
-      income: 3500000,
-      dieselCost: 990000,
-      payment: 310000,
-      netProfit: 2200000
-    }
-  ];
-
   driversData = computed(() => {
     const data = this.rawDriversData();
-    const sorted = data.length > 0 ? data : this.fallbackDriversData;
-    return sorted
+    return data
       .sort((a, b) => b.netProfit - a.netProfit)
       .map((item, index) => ({
         ...item,

@@ -12,7 +12,8 @@ import {
   DailyRecordsKPIs,
   DailyRecordHistoryResponse,
   DailyRecordStatus,
-  InactivityReason
+  InactivityReason,
+  DailyRecordHistoryItem
 } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
 
@@ -49,6 +50,22 @@ interface DailyRecordDetailResponse {
     registro: string | null;
     diesel: string | null;
   };
+}
+
+/**
+ * Respuesta del endpoint de historial/auditoría por registro
+ * GET /api/daily-records/{id}/history
+ */
+interface DailyRecordAuditItem {
+  id: number;
+  fecha_cambio: string;
+  usuario_responsable: string | null;
+  tipo_cambio: string | null;
+  detalles?: Array<{
+    campo: string;
+    valor_anterior: string | null;
+    valor_nuevo: string | null;
+  }>;
 }
 
 /**
@@ -188,6 +205,37 @@ export class DailyRecordService {
   }
 
   /**
+   * Obtener historial/auditoría de un registro diario (requiere admin)
+   * Endpoint: GET /api/daily-records/{id}/history
+   */
+  getDailyRecordHistory(id: string): Observable<DailyRecordHistoryItem[]> {
+    return this.http.get<DailyRecordAuditItem[]>(`${this.apiUrl}/api/daily-records/${id}/history`)
+      .pipe(
+        map((items) => (items || []).map((item) => this.mapAuditItemToHistory(item))),
+        catchError((error) => {
+          console.error('Error obteniendo historial del registro:', error);
+          return of([]);
+        })
+      );
+  }
+
+  private mapAuditItemToHistory(item: DailyRecordAuditItem): DailyRecordHistoryItem {
+    const cambios = item.detalles?.map((detalle) => {
+      const anterior = detalle.valor_anterior ?? '-';
+      const nuevo = detalle.valor_nuevo ?? '-';
+      return `${detalle.campo}: ${anterior} → ${nuevo}`;
+    }).join('; ');
+
+    return {
+      id: String(item.id),
+      usuario: item.usuario_responsable || 'Sistema',
+      accion: item.tipo_cambio || 'Edición',
+      timestamp: item.fecha_cambio,
+      cambios
+    };
+  }
+
+  /**
    * Mapear la respuesta del backend (DailyRecordDetailResponse) al modelo del frontend (DailyRecord)
    */
   private mapDetailResponseToDailyRecord(response: DailyRecordDetailResponse): DailyRecord {
@@ -197,8 +245,11 @@ export class DailyRecordService {
     
     // Calcular desglose de pago
     const base = datosFinancieros.monto_recaudado || 0;
-    const porcentaje = response.chofer?.porcentaje_actual || 30;
-    const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentaje / 100);
+    // El backend devuelve el porcentaje como decimal (0.3), convertimos a porcentaje (30) para mostrar
+    const porcentajeDecimal = response.chofer?.porcentaje_actual || 0.3;
+    const porcentaje = porcentajeDecimal * 100; // Convertir de decimal a porcentaje para mostrar
+    // El backend ya calcula el monto, pero si no viene, lo calculamos multiplicando directamente (porque porcentajeDecimal es decimal)
+    const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentajeDecimal);
     
     // Mapear estado del backend al frontend
     const estadoMap: Record<string, DailyRecordStatus> = {

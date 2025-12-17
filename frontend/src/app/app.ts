@@ -14,12 +14,13 @@ import { MaintenanceFormModalComponent } from './shared/components/maintenance-f
 import { NewRecordModalComponent } from './shared/components/new-record-modal/new-record-modal';
 import { AlertModalComponent } from './shared/components/alert-modal/alert-modal';
 import { PaymentConfirmModalComponent } from './shared/components/payment-confirm-modal/payment-confirm-modal';
+import { ImageModalComponent } from './shared/components/image-modal/image-modal';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent],
   template: `
     <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
     <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
@@ -82,6 +83,9 @@ import { filter, map, startWith } from 'rxjs';
 
     <!-- Modal de confirmación de pago global -->
     <app-payment-confirm-modal></app-payment-confirm-modal>
+
+    <!-- Modal de imagen global -->
+    <app-image-modal></app-image-modal>
   `,
   styles: [
     `
