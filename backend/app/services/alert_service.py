@@ -136,6 +136,7 @@ async def get_admin_alerts():
             .select("*")
             .eq("estado", "activa")
             .neq("tipo", "asignacion_maquina") # Filtramos lo que no le interesa al admin
+            .neq("tipo", "confirmacion_pago")
             .order("severidad", desc=False)    # Primero criticas, luego advertencias (según tu enum)
             .order("created_at", desc=True)    # Luego las más nuevas
             .execute()

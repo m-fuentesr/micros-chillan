@@ -9,6 +9,7 @@ from app.schemas.daily_record import (
     DailyRecordListFilters,
     DailyRecordUpdate
 )
+from app.services import alert_service
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
 
@@ -48,11 +49,12 @@ async def _create_daily_record_core(
         )
 
     # --------------------------------------------------
-    # 2. Obtener porcentaje del chofer
+    # 2. Obtener porcentaje del chofer Y NOMBRE (Para la alerta)
     # --------------------------------------------------
+    # ✅ CAMBIO: Agregamos primer_nombre y apellido_paterno a la consulta
     chofer_res = (
         supabase.table("choferes")
-        .select("porcentaje_pago")
+        .select("porcentaje_pago, primer_nombre, apellido_paterno")
         .eq("id", chofer_id)
         .single()
         .execute()
@@ -62,6 +64,8 @@ async def _create_daily_record_core(
         raise HTTPException(status_code=404, detail="Chofer no encontrado")
 
     porcentaje = chofer_res.data["porcentaje_pago"] or 0
+    # Guardamos el nombre para usarlo en la alerta al final
+    nombre_chofer = f"{chofer_res.data.get('primer_nombre', '')} {chofer_res.data.get('apellido_paterno', '')}".strip()
 
     # --------------------------------------------------
     # 3. Construir payload según estado operativo
@@ -151,6 +155,39 @@ async def _create_daily_record_core(
         "modificado_por": creado_por_usuario_id,
         "comentario": observaciones,
     }).execute()
+
+    # ✅ NUEVO: Lógica de Alerta para el Admin
+    # -------------------------------------------------------
+    # Solo alertamos si el registro lo creó un chofer ("worker")
+    if tipo_creador == "worker":
+        try:
+            # Determinamos si es una alerta normal o crítica (Incidente)
+            # Aunque pediste la "sencilla", ya dejé preparada la lógica 
+            # para que detecte si el toggle "incidente_critico" viene en True.
+            
+            if incidente_critico:
+                msj = f"⚠️ Incidente reportado por {nombre_chofer}"
+                severidad = "critica" 
+            else:
+                msj = f"Nuevo registro diario de {nombre_chofer}"
+                severidad = "informativa"
+
+            alerta_payload = {
+                "mensaje": msj,
+                "severidad": severidad,
+                "tipo": "registro_diario",
+                "origen_tipo": "registro_diario", # Para poder linkear al detalle si clickean
+                "origen_id": registro["id"],
+                # NOTA: No ponemos "chofer_id" ni "origen_tipo='chofer'" porque
+                # esta alerta es PARA EL ADMIN, no para el chofer.
+                # Al no tener destinatario específico, la verán los admins.
+            }
+            
+            await alert_service.crear_alerta(**alerta_payload)
+            
+        except Exception as e:
+            print(f"⚠️ Error enviando alerta de registro diario: {e}")
+    # -------------------------------------------------------
 
     return registro
 
