@@ -356,10 +356,22 @@ export class DailyRecordsTable {
   }
 
   formatDate(dateString: string): string {
-    const date = new Date(dateString);
+    const date = this.parseLocalDate(dateString);
+    if (!date) return dateString;
     const day = date.getDate();
     const month = date.toLocaleDateString('es-ES', { month: 'short' });
     return `${day} ${month}`;
+  }
+
+  private parseLocalDate(dateString: string): Date | null {
+    if (!dateString) return null;
+    const parts = dateString.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d); // Fecha local sin convertir a UTC
+    }
+    const parsed = new Date(dateString);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 }
 

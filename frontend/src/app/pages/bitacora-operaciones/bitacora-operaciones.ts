@@ -1164,9 +1164,11 @@ export class BitacoraOperaciones implements OnInit {
 
   // Helper para mapear desde el modelo unificado a la vista
   private mapToView(record: UnifiedDailyRecord): DailyRecordView {
-    // Formatear fecha
-    const date = new Date(record.fecha);
-    const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    // Formatear fecha usando zona local (evitar desfase UTC)
+    const date = this.parseLocalDate(record.fecha);
+    const formattedDate = date
+      ? date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
+      : record.fecha;
     
     // Mapear estado
     let status: 'complete' | 'pending' | 'incident' | 'no_worked';
@@ -1454,18 +1456,24 @@ export class BitacoraOperaciones implements OnInit {
   }
   
   formatDateFull(date: string): string {
-    if (!date) return '';
-    try {
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return ''; // Validar fecha inválida
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
+    const d = this.parseLocalDate(date);
+    if (!d) return '';
+    return d.toLocaleDateString('es-CL', { 
+      weekday: 'short',
+      day: '2-digit', 
+      month: 'short'
+    });
+  }
+  
+  private parseLocalDate(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
     }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
   
   onViewRecordDetail(record: DailyRecordView): void {

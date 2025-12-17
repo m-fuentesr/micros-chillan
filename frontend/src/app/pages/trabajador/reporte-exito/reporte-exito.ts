@@ -282,18 +282,8 @@ export class ReporteExito implements OnInit {
   // Computed para formatear la fecha (formateo manual sin DatePipe)
   formattedDate = computed(() => {
     const data = this.reportData();
-    let dateToFormat: Date;
-    
-    if (!data?.fecha) {
-      dateToFormat = new Date();
-    } else {
-      try {
-        dateToFormat = new Date(data.fecha);
-      } catch {
-        return data.fecha;
-      }
-    }
-    
+    const dateToFormat = this.parseLocalDate(data?.fecha) || new Date();
+
     // Formatear manualmente: "d MMM, y" (ej: "14 Nov, 2025")
     const day = dateToFormat.getDate();
     const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -356,5 +346,16 @@ export class ReporteExito implements OnInit {
         this.reportId.set(state.recordId);
       }
     }
+  }
+
+  private parseLocalDate(value?: string | null): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 }
