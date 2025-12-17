@@ -1,8 +1,9 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed, OnDestroy } from '@angular/core';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { Driver } from '../../models/driver.models';
 import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
+import { formatRut, isValidRut } from '../../utils/rut.utils';
 
 @Component({
   selector: 'app-driver-form',
@@ -28,10 +29,16 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
               class="input input-bordered w-full"
               placeholder="12.345.678-9"
               maxlength="12"
+              (input)="onRutInput($event)"
               [class.input-error]="form.get('rut')?.invalid && form.get('rut')?.touched">
-            @if (form.get('rut')?.invalid && form.get('rut')?.touched) {
+            @if (form.get('rut')?.touched && form.get('rut')?.errors) {
               <label class="label">
-                <span class="label-text-alt text-error">Este campo es obligatorio</span>
+                @if (form.get('rut')?.errors?.['required']) {
+                  <span class="label-text-alt text-error">El RUT es obligatorio</span>
+                }
+                @if (form.get('rut')?.errors?.['rutInvalid']) {
+                  <span class="label-text-alt text-error">RUT inválido</span>
+                }
               </label>
             }
           </div>
@@ -159,27 +166,6 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-bold">
-                Estado <span class="text-error">*</span>
-              </span>
-            </label>
-            <select formControlName="estado" class="select select-bordered w-full">
-              <option value="">Selecciona un estado</option>
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-            <label class="label">
-              <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-            </label>
-            @if (form.get('estado')?.invalid && form.get('estado')?.touched) {
-              <label class="label">
-                <span class="label-text-alt text-error">Este campo es obligatorio</span>
-              </label>
-            }
-          </div>
-
-          <div class="form-control">
-            <label class="label">
               <span class="label-text font-bold">Máquina Asignada</span>
             </label>
             <select formControlName="maquina_id" class="select select-bordered w-full">
@@ -203,12 +189,23 @@ import { distinctUntilChanged, debounceTime, Subscription } from 'rxjs';
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-bold">Fecha Vencimiento Licencia</span>
+              <span class="label-text font-bold">
+                Fecha Vencimiento Licencia <span class="text-error">*</span>
+              </span>
             </label>
             <input
               type="date"
               formControlName="fecha_venc_licencia"
-              class="input input-bordered w-full">
+              class="input input-bordered w-full"
+              [class.input-error]="form.get('fecha_venc_licencia')?.invalid && form.get('fecha_venc_licencia')?.touched">
+            <label class="label">
+              <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
+            </label>
+            @if (form.get('fecha_venc_licencia')?.invalid && form.get('fecha_venc_licencia')?.touched) {
+              <label class="label">
+                <span class="label-text-alt text-error">La fecha de vencimiento es obligatoria</span>
+              </label>
+            }
           </div>
         </div>
       </div>
@@ -228,14 +225,13 @@ export class DriverForm implements OnDestroy {
   formValid = output<boolean>();
 
   form = this.fb.group({
-    rut: ['', Validators.required],
+    rut: ['', [Validators.required, this.rutValidator.bind(this)]],
     primer_nombre: ['', Validators.required],
     segundo_nombre: [''],
     apellido_paterno: ['', Validators.required],
     apellido_materno: ['', Validators.required],
     telefono: ['', Validators.required],
     correo: ['', [Validators.required, Validators.email]],
-    estado: ['', Validators.required],
     maquina_id: [null as number | null],
     fecha_venc_licencia: ['']
   });
@@ -258,7 +254,7 @@ export class DriverForm implements OnDestroy {
         segundo_apellido: value.apellido_materno || undefined,
         telefono: value.telefono || undefined,
         correo: value.correo || undefined,
-        estado: value.estado as 'activo' | 'inactivo' || undefined,
+        estado: 'activo',
         maquina_id: value.maquina_id ?? undefined,
         fecha_venc_licencia: value.fecha_venc_licencia || undefined
       });
@@ -276,7 +272,6 @@ export class DriverForm implements OnDestroy {
         apellido_materno: initial.segundo_apellido || '',
         telefono: initial.telefono || '',
         correo: initial.correo || '',
-        estado: initial.estado || '',
         fecha_venc_licencia: initial.fecha_venc_licencia || ''
       }, { emitEvent: false }); // No emitir eventos al cargar datos iniciales
     }
@@ -284,6 +279,23 @@ export class DriverForm implements OnDestroy {
 
   ngOnDestroy(): void {
     this.formSubscription?.unsubscribe();
+  }
+
+  rutValidator(control: AbstractControl): ValidationErrors | null {
+    const value = control.value;
+    if (!value) return null;
+    return isValidRut(value) ? null : { rutInvalid: true };
+  }
+
+  onRutInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const formatted = formatRut(input.value);
+
+    // Evitar ciclos infinitos
+    if (formatted !== input.value) {
+      input.value = formatted;
+      this.form.get('rut')?.setValue(formatted, { emitEvent: false });
+    }
   }
 
   getFormValue(): Partial<Driver> {
@@ -296,7 +308,7 @@ export class DriverForm implements OnDestroy {
       segundo_apellido: value.apellido_materno || undefined,
       telefono: value.telefono || undefined,
       correo: value.correo || undefined,
-      estado: value.estado as 'activo' | 'inactivo' || undefined,
+      estado: 'activo',
       fecha_venc_licencia: value.fecha_venc_licencia || undefined
     };
   }

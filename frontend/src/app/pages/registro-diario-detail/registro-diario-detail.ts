@@ -4,8 +4,12 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angu
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
+import { StorageService } from '../../shared/services/storage.service';
+import { ImageModalService } from '../../shared/services/image-modal.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
-import { catchError, EMPTY } from 'rxjs';
+import { catchError, EMPTY, forkJoin, of, switchMap, Observable } from 'rxjs';
+import { map, startWith } from 'rxjs/operators';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
 
@@ -49,98 +53,255 @@ interface DailyRecordDetailView extends DailyRecord {
     <main class="bg-base-200 min-h-screen">
       <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
         <!-- Hero alineado al estilo de flota/choferes -->
-        <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
-          <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div class="flex-1 min-w-0 space-y-3">
-              <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
-                <span class="text-primary">Registro diario</span>
-                <span class="h-3 w-px bg-primary/20"></span>
-                <span class="text-base-content/60">Detalle y edición</span>
-              </div>
+        @if (isLoading()) {
+          <!-- Skeleton del Hero Section -->
+          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex-1 min-w-0 space-y-3">
+                <!-- Skeleton: Breadcrumb -->
+                <div class="flex items-center gap-2">
+                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                  <div class="h-3 w-px bg-base-300"></div>
+                  <div class="h-3 w-32 skeleton-shimmer rounded"></div>
+                </div>
 
-              <div class="flex flex-wrap items-center gap-3 sm:gap-4">
-                <button 
-                  class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 flex-shrink-0" 
-                  (click)="goBack()"
-                  type="button"
-                  aria-label="Volver">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                  </svg>
-                </button>
+                <!-- Skeleton: Título y Badge -->
+                <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                  <div class="h-8 w-8 skeleton-shimmer rounded-full"></div>
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <div class="h-8 sm:h-10 lg:h-12 w-40 skeleton-shimmer rounded"></div>
+                    <div class="h-6 w-20 skeleton-shimmer rounded-full"></div>
+                  </div>
+                </div>
 
-                <div class="flex items-center gap-3 flex-wrap">
-                  <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content tracking-tight">
-                    Registro #{{ record()?.id || '--' }}
-                  </h1>
-                  @if (isIncidente()) {
-                    <span class="inline-flex items-center gap-2 rounded-full bg-error/10 text-error px-3 py-1 text-xs sm:text-sm font-semibold border border-error/20 shadow-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                      </svg>
-                      Incidente
-                    </span>
-                  } @else if (isCompleto()) {
-                    <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-emerald-100 shadow-sm">✓ Completo</span>
-                  } @else {
-                    <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-amber-100 shadow-sm">⏳ Pendiente</span>
-                  }
+                <!-- Skeleton: Badges de información -->
+                <div class="flex flex-wrap items-center gap-3">
+                  <div class="h-7 w-24 skeleton-shimmer rounded-full"></div>
+                  <div class="h-7 w-28 skeleton-shimmer rounded-full"></div>
+                  <div class="h-7 w-32 skeleton-shimmer rounded-full"></div>
                 </div>
               </div>
 
-              <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-base-content/70">
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
-                  </svg>
-                  {{ record()?.date }}
-                </span>
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                  <app-bus-icon class="w-4 h-4 text-primary/80"></app-bus-icon>
-                  {{ record()?.machine }}
-                </span>
-                <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                  <app-driver-icon class="w-4 h-4 text-primary/80"></app-driver-icon>
-                  {{ record()?.driver }}
-                </span>
+              <!-- Skeleton: Botón de acción -->
+              <div class="flex flex-wrap gap-3 w-full lg:w-auto justify-start lg:justify-end">
+                <div class="h-11 w-36 skeleton-shimmer rounded-lg"></div>
               </div>
             </div>
+          </section>
+        } @else {
+          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+            <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div class="flex-1 min-w-0 space-y-3">
+                <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
+                  <span class="text-primary">Registro diario</span>
+                  <span class="h-3 w-px bg-primary/20"></span>
+                  <span class="text-base-content/60">Detalle y edición</span>
+                </div>
 
-            <div class="flex flex-wrap gap-3 w-full lg:w-auto justify-start lg:justify-end">
-              @if (!isEditMode()) {
-                <button 
-                  class="btn bg-primary text-primary-content border-none hover:bg-primary-focus h-11 px-5 gap-2 rounded-lg shadow-lg shadow-primary/25" 
-                  (click)="enableEditMode()"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                    <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                  </svg>
-                  <span>Editar registro</span>
-                </button>
-              } @else {
-                <button 
-                  class="btn btn-ghost border border-base-300 h-11 px-4 rounded-lg" 
-                  (click)="cancelEdit()"
-                  type="button">Cancelar</button>
-                <button 
-                  class="btn bg-success text-white h-11 px-5 gap-2 rounded-lg shadow-lg shadow-success/25" 
-                  (click)="saveRecord()"
-                  [disabled]="recordForm.invalid"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                    <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                  </svg>
-                  <span>Guardar cambios</span>
-                </button>
-              }
+                <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+                  <button 
+                    class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 flex-shrink-0" 
+                    (click)="goBack()"
+                    type="button"
+                    aria-label="Volver">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+                    </svg>
+                  </button>
+
+                  <div class="flex items-center gap-3 flex-wrap">
+                    <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content tracking-tight">
+                      Registro #{{ record()?.id || '--' }}
+                    </h1>
+                    @if (isIncidente()) {
+                      <span class="inline-flex items-center gap-2 rounded-full bg-error/10 text-error px-3 py-1 text-xs sm:text-sm font-semibold border border-error/20 shadow-sm">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                        </svg>
+                        Incidente
+                      </span>
+                    } @else if (isCompleto()) {
+                      <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-emerald-100 shadow-sm">✓ Completo</span>
+                    } @else {
+                      <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-amber-100 shadow-sm">⏳ Pendiente</span>
+                    }
+                  </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-base-content/70">
+                  <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
+                    </svg>
+                    {{ record()?.date }}
+                  </span>
+                  <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                    <app-bus-icon class="w-4 h-4 text-primary/80"></app-bus-icon>
+                    {{ record()?.machine }}
+                  </span>
+                  <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
+                    <app-driver-icon class="w-4 h-4 text-primary/80"></app-driver-icon>
+                    {{ record()?.driver }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-3 w-full lg:w-auto justify-start lg:justify-end">
+                @if (!isEditMode()) {
+                  <button 
+                    class="btn bg-primary text-primary-content border-none hover:bg-primary-focus h-11 px-5 gap-2 rounded-lg shadow-lg shadow-primary/25" 
+                    (click)="enableEditMode()"
+                    type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                    </svg>
+                    <span>Editar registro</span>
+                  </button>
+                } @else {
+                  <button 
+                    class="btn btn-ghost border border-base-300 h-11 px-4 rounded-lg" 
+                    (click)="cancelEdit()"
+                    type="button">Cancelar</button>
+                  <button 
+                    class="btn bg-success text-white h-11 px-5 gap-2 rounded-lg shadow-lg shadow-success/25" 
+                    (click)="saveRecord()"
+                    [disabled]="recordForm.invalid"
+                    type="button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
+                    </svg>
+                    <span>Guardar cambios</span>
+                  </button>
+                }
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        }
 
         <div class="space-y-6 sm:space-y-8">
         @if (isLoading()) {
-          <div class="flex justify-start items-center h-64 pl-4 border-l-4 border-l-primary">
-            <span class="loading loading-spinner loading-lg"></span>
+          <!-- Skeleton que coincide con la estructura de la página -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+            <!-- Columna Principal (2/3) -->
+            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
+              <!-- Skeleton: Toggle Día No Trabajado -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5 lg:p-6">
+                  <div class="flex items-center gap-3">
+                    <div class="h-6 w-6 skeleton-shimmer rounded"></div>
+                    <div class="flex-1 space-y-2">
+                      <div class="h-5 w-3/4 skeleton-shimmer rounded"></div>
+                      <div class="h-4 w-full skeleton-shimmer rounded"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Información Financiera -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5 lg:p-6">
+                  <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-base-200">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 skeleton-shimmer rounded-xl"></div>
+                    <div class="flex-1 space-y-2">
+                      <div class="h-5 w-40 skeleton-shimmer rounded"></div>
+                      <div class="h-3 w-32 skeleton-shimmer rounded"></div>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+                    <div class="sm:col-span-2 space-y-2">
+                      <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                      <div class="h-16 w-full skeleton-shimmer rounded-lg"></div>
+                      <div class="h-3 w-48 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-24 skeleton-shimmer rounded"></div>
+                      <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                    </div>
+                    <div class="space-y-2">
+                      <div class="h-4 w-28 skeleton-shimmer rounded"></div>
+                      <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Selector de Emergencia -->
+              <div class="card bg-red-50 border border-red-100 shadow-sm">
+                <div class="card-body p-4 sm:p-5">
+                  <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 sm:gap-3 flex-1">
+                      <div class="w-8 h-8 sm:w-10 sm:h-10 skeleton-shimmer rounded-full"></div>
+                      <div class="flex-1 space-y-2">
+                        <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                        <div class="h-3 w-40 skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                    <div class="h-6 w-11 skeleton-shimmer rounded-full"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Observaciones -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5 lg:p-6">
+                  <div class="h-5 w-32 skeleton-shimmer rounded mb-2"></div>
+                  <div class="h-32 w-full skeleton-shimmer rounded-lg"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sidebar (1/3) -->
+            <div class="lg:col-span-1 space-y-4 sm:space-y-6">
+              <!-- Skeleton: Comprobante del Registro Diario -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5">
+                  <div class="h-5 w-48 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
+                  <div class="w-full aspect-[4/3] skeleton-shimmer rounded-xl mb-4"></div>
+                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Comprobante Diésel -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5">
+                  <div class="h-5 w-40 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
+                  <div class="w-full aspect-[4/3] skeleton-shimmer rounded-xl mb-4"></div>
+                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Desglose de Pago -->
+              <div class="card bg-gradient-to-br from-white to-base-200 shadow-md border border-base-200">
+                <div class="card-body p-4 sm:p-5">
+                  <div class="h-3 w-32 skeleton-shimmer rounded mb-4 sm:mb-6"></div>
+                  <div class="space-y-2 mb-4 sm:mb-6">
+                    <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                    <div class="h-10 w-3/4 skeleton-shimmer rounded"></div>
+                  </div>
+                  <div class="h-2 w-full skeleton-shimmer rounded-full mb-2"></div>
+                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Historial -->
+              <div class="card bg-base-100 shadow-sm border border-base-200">
+                <div class="card-body p-4 sm:p-5">
+                  <div class="h-5 w-24 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
+                  <div class="space-y-4">
+                    @for (i of [1,2,3]; track i) {
+                      <div class="flex gap-3">
+                        <div class="w-2 h-2 skeleton-shimmer rounded-full mt-2"></div>
+                        <div class="flex-1 space-y-2">
+                          <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                          <div class="h-3 w-48 skeleton-shimmer rounded"></div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         } @else if (record()) {
           <form [formGroup]="recordForm">
@@ -152,7 +313,7 @@ interface DailyRecordDetailView extends DailyRecord {
                 </svg>
                 <div class="flex-1">
                   <h3 class="font-bold text-error">Incidente Crítico Reportado</h3>
-                  <div class="text-sm opacity-90 italic mt-1">El conductor reportó un choque leve en parachoques trasero. Revisa las observaciones y fotos antes de validar.</div>
+                  <div class="text-sm opacity-90 italic mt-1">El conductor reportó un incidente. Revisa las observaciones y fotos antes de validar.</div>
                 </div>
                 <button 
                   class="btn btn-sm btn-error text-white shadow-sm" 
@@ -198,16 +359,25 @@ interface DailyRecordDetailView extends DailyRecord {
                       <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-base-200">
                         <label class="form-control w-full">
                           <div class="label"><span class="label-text font-normal text-sm sm:text-base">Motivo de inactividad</span></div>
-                          <select 
-                            class="select select-bordered w-full bg-base-200 text-sm" 
-                            formControlName="noWorkDayReason"
-                            [disabled]="!isEditMode()">
-                            <option value="">Seleccione un motivo...</option>
-                            <option value="Descanso Semanal">Descanso Semanal</option>
-                            <option value="En Taller / Mantenimiento">En Taller / Mantenimiento</option>
-                            <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
-                            <option value="Licencia Médica">Licencia Médica</option>
-                          </select>
+                          @if (isEditMode()) {
+                            <select 
+                              class="select select-bordered w-full bg-base-200 text-sm" 
+                              formControlName="noWorkDayReason"
+                              [attr.aria-disabled]="!isEditMode()"
+                              [attr.disabled]="!isEditMode() ? true : null">
+                              <option value="">Seleccione un motivo...</option>
+                              <option value="Descanso Semanal">Descanso Semanal</option>
+                              <option value="Vacaciones">Vacaciones</option>
+                              <option value="Licencia Médica">Licencia Médica</option>
+                              <option value="Permiso Personal">Permiso Personal</option>
+                              <option value="En Taller / Mantenimiento">En Taller / Mantenimiento</option>
+                              <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
+                            </select>
+                          } @else {
+                            <div class="input input-bordered w-full bg-base-200 text-sm text-base-content/80 font-medium select-none">
+                              {{ record()?.noWorkDayReason || 'Sin motivo asignado' }}
+                            </div>
+                          }
                         </label>
                       </div>
                     }
@@ -361,7 +531,9 @@ interface DailyRecordDetailView extends DailyRecord {
                     </div>
                     
                     @if (hasComprobanteRegistro() && !isEditMode()) {
-                      <div class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-zoom-in shadow-inner">
+                      <div 
+                        class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-pointer shadow-inner"
+                        (click)="openImageModal(getRegistroImageUrl(), 'Comprobante del Registro Diario', record()?.comprobanteRegistro?.uploadedAt || record()?.date)">
                         @if (canUseNgOptimizedImageRegistro()) {
                           <img 
                             [ngSrc]="getRegistroImageUrl()" 
@@ -377,7 +549,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             loading="lazy"
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         }
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm pointer-events-none">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
                           </svg>
@@ -393,14 +565,24 @@ interface DailyRecordDetailView extends DailyRecord {
                       </div>
                     }
                     
-                    @if (isEditMode() || !hasComprobanteRegistro()) {
+                    @if (!hasComprobanteRegistro() && !isEditMode()) {
+                      <div class="w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 flex items-center justify-center">
+                        <div class="flex flex-col items-center justify-center text-base-content/40">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span class="text-sm font-medium">No hay foto subida</span>
+                        </div>
+                      </div>
+                    }
+                    
+                    @if (isEditMode()) {
                       <label class="block w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 hover:bg-base-100 hover:border-primary/50 transition-all cursor-pointer relative overflow-hidden group">
                         <input 
                           type="file" 
                           class="hidden" 
                           accept="image/*" 
-                          (change)="onRegistroSelected($event)"
-                          [disabled]="!isEditMode()" />
+                          (change)="onRegistroSelected($event)" />
                         @if (registroPreview() || (hasComprobanteRegistro() && record()?.comprobanteRegistro?.imageUrl)) {
                           @if (canUseNgOptimizedImagePreviewRegistro()) {
                             <img 
@@ -417,15 +599,13 @@ interface DailyRecordDetailView extends DailyRecord {
                               loading="lazy"
                               class="object-cover w-full h-full" />
                           }
-                          @if (isEditMode()) {
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
-                              </svg>
-                              <span class="font-bold text-sm">Cambiar foto</span>
-                            </div>
-                          }
+                          <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
+                            </svg>
+                            <span class="font-bold text-sm">Cambiar foto</span>
+                          </div>
                         } @else {
                           <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 group-hover:text-primary transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -459,7 +639,9 @@ interface DailyRecordDetailView extends DailyRecord {
                     </div>
                     
                     @if (hasComprobante() && !isEditMode()) {
-                      <div class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-zoom-in shadow-inner">
+                      <div 
+                        class="relative group rounded-xl overflow-hidden border border-base-300 bg-base-200 aspect-[4/3] flex items-center justify-center cursor-pointer shadow-inner"
+                        (click)="openImageModal(getReceiptImageUrl(), 'Comprobante Diésel', record()?.receipt?.uploadedAt || record()?.date)">
                         @if (canUseNgOptimizedImage()) {
                           <img 
                             [ngSrc]="getReceiptImageUrl()" 
@@ -475,7 +657,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             loading="lazy"
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         }
-                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                        <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm pointer-events-none">
                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
                           </svg>
@@ -491,14 +673,24 @@ interface DailyRecordDetailView extends DailyRecord {
                       </div>
                     }
                     
-                    @if (isEditMode() || !hasComprobante()) {
+                    @if (!hasComprobante() && !isEditMode()) {
+                      <div class="w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 flex items-center justify-center">
+                        <div class="flex flex-col items-center justify-center text-base-content/40">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                          <span class="text-sm font-medium">No hay foto subida</span>
+                        </div>
+                      </div>
+                    }
+                    
+                    @if (isEditMode()) {
                       <label class="block w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 hover:bg-base-100 hover:border-primary/50 transition-all cursor-pointer relative overflow-hidden group">
                         <input 
                           type="file" 
                           class="hidden" 
                           accept="image/*" 
-                          (change)="onReceiptSelected($event)"
-                          [disabled]="!isEditMode()" />
+                          (change)="onReceiptSelected($event)" />
                         @if (receiptPreview() || (hasComprobante() && record()?.receipt?.imageUrl)) {
                           @if (canUseNgOptimizedImagePreview()) {
                             <img 
@@ -515,15 +707,13 @@ interface DailyRecordDetailView extends DailyRecord {
                               loading="lazy"
                               class="object-cover w-full h-full" />
                           }
-                          @if (isEditMode()) {
-                            <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
-                              </svg>
-                              <span class="font-bold text-sm">Cambiar foto</span>
-                            </div>
-                          }
+                          <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
+                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
+                            </svg>
+                            <span class="font-bold text-sm">Cambiar foto</span>
+                          </div>
                         } @else {
                           <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 group-hover:text-primary transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -548,20 +738,20 @@ interface DailyRecordDetailView extends DailyRecord {
                     <h3 class="text-[10px] sm:text-xs font-black text-base-content/30 uppercase tracking-widest mb-4 sm:mb-6">Desglose de Pago</h3>
                     
                           <div class="flex flex-col gap-1 mb-4 sm:mb-6">
-                            <span class="text-xs sm:text-sm font-normal italic text-base-content/60">A pagar al Chofer (30%)</span>
+                            <span class="text-xs sm:text-sm font-normal italic text-base-content/60">A pagar al Chofer ({{ currentPaymentBreakdown().percentage }}%)</span>
                       <span class="text-2xl sm:text-3xl lg:text-4xl font-black text-primary tabular-nums tracking-tight break-all">
-                        {{ (record()?.paymentBreakdown?.amount || 0) | currency:'CLP':'symbol':'1.0-0' }}
+                        {{ currentPaymentBreakdown().amount | currency:'CLP':'symbol':'1.0-0' }}
                       </span>
                     </div>
                     
                     <div class="w-full bg-base-300 h-1.5 rounded-full overflow-hidden mb-2">
                       <div 
                         class="bg-primary h-full shadow-[0_0_10px_rgba(var(--p),0.5)] transition-all duration-500"
-                        [style.width.%]="record()?.paymentBreakdown?.percentage || 0"></div>
+                        [style.width.%]="currentPaymentBreakdown().percentage"></div>
                     </div>
                     <div class="flex justify-between text-[9px] sm:text-[10px] text-base-content/40 font-mono uppercase tracking-wide">
                       <span>Cálculo</span>
-                      <span class="text-right break-all">Base: {{ (record()?.paymentBreakdown?.base || 0) | currency:'CLP':'symbol':'1.0-0' }}</span>
+                      <span class="text-right break-all">Base: {{ currentPaymentBreakdown().base | currency:'CLP':'symbol':'1.0-0' }}</span>
                     </div>
                   </div>
                 </div>
@@ -616,6 +806,22 @@ interface DailyRecordDetailView extends DailyRecord {
       </div>
     </main>
   `,
+  styles: [`
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RegistroDiarioDetail {
@@ -623,6 +829,8 @@ export class RegistroDiarioDetail {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private storageService = inject(StorageService);
+  private imageModalService = inject(ImageModalService);
 
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
@@ -657,9 +865,49 @@ export class RegistroDiarioDetail {
     const estado = this.record()?.estado;
     return estado === 'COMPLETO';
   });
-  hasComprobante = computed(() => !!this.record()?.receipt);
+  hasComprobante = computed(() => !!this.record()?.receipt?.imageUrl);
   hasComprobanteRegistro = computed(() => !!this.record()?.comprobanteRegistro?.imageUrl);
   historyItems = computed(() => this.record()?.history ?? []);
+
+  // Signal reactivo del valor de income del formulario
+  private incomeValue = toSignal(
+    this.recordForm.get('income')?.valueChanges.pipe(
+      startWith(this.recordForm.get('income')?.value || 0)
+    ) || of(0),
+    { initialValue: 0 }
+  );
+
+  // Desglose de pago calculado en tiempo real (se actualiza mientras se edita)
+  currentPaymentBreakdown = computed(() => {
+    const isEditing = this.isEditMode();
+    const noWorkDay = this.recordForm.get('noWorkDay')?.value;
+    
+    // Si es día no trabajado, no hay pago
+    if (noWorkDay) {
+      return {
+        base: 0,
+        percentage: 0,
+        amount: 0
+      };
+    }
+
+    // Obtener el porcentaje del chofer (del record original o 30% por defecto)
+    const percentage = this.record()?.paymentBreakdown?.percentage || 30;
+    
+    // Si está editando, usar el valor reactivo del formulario; si no, usar el valor del record
+    const base = isEditing 
+      ? (this.incomeValue() || 0)
+      : (this.record()?.paymentBreakdown?.base || this.record()?.income || 0);
+    
+    // Calcular el monto a pagar
+    const amount = Math.round(base * (percentage / 100));
+    
+    return {
+      base,
+      percentage,
+      amount
+    };
+  });
 
   // Effect para actualizar validación cuando cambia "Día No Trabajado"
   private updateValidation = effect(() => {
@@ -713,31 +961,36 @@ export class RegistroDiarioDetail {
   private loadRecord(id: string): void {
     this.isLoading.set(true);
     
-    this.dailyRecordService.getDailyRecordById(id).subscribe({
-      next: (unifiedRecord) => {
-        const viewRecord = this.mapToDetailView(unifiedRecord);
-        this.record.set(viewRecord);
+    forkJoin({
+      record: this.dailyRecordService.getDailyRecordById(id),
+      history: this.dailyRecordService.getDailyRecordHistory(id)
+    }).subscribe({
+      next: ({ record, history }) => {
+        const viewRecord = this.mapToDetailView(record);
+        const recordWithHistory = { ...viewRecord, history };
+
+        this.record.set(recordWithHistory);
         this.recordForm.patchValue({
-          noWorkDay: viewRecord.noWorkDay,
-          noWorkDayReason: viewRecord.noWorkDayReason || '',
-          isEmergency: viewRecord.isEmergency || false,
-          income: viewRecord.income,
-          dieselExpense: viewRecord.dieselExpense,
-          dieselLiters: viewRecord.dieselLiters || 0,
-          observations: viewRecord.observations || ''
+          noWorkDay: recordWithHistory.noWorkDay,
+          noWorkDayReason: recordWithHistory.noWorkDayReason || '',
+          isEmergency: recordWithHistory.isEmergency || false,
+          income: recordWithHistory.income,
+          dieselExpense: recordWithHistory.dieselExpense,
+          dieselLiters: recordWithHistory.dieselLiters || 0,
+          observations: recordWithHistory.observations || ''
         });
         
-        if (viewRecord.receipt?.imageUrl) {
-          this.receiptPreview.set(viewRecord.receipt.imageUrl);
+        if (recordWithHistory.receipt?.imageUrl) {
+          this.receiptPreview.set(recordWithHistory.receipt.imageUrl);
         }
-        if (viewRecord.comprobanteRegistro?.imageUrl) {
-          this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+        if (recordWithHistory.comprobanteRegistro?.imageUrl) {
+          this.registroPreview.set(recordWithHistory.comprobanteRegistro.imageUrl);
         }
         
         this.isLoading.set(false);
       },
       error: (error) => {
-        console.error('Error al cargar registro:', error);
+        console.error('Error al cargar registro o historial:', error);
         this.isLoading.set(false);
         // TODO: Mostrar mensaje de error al usuario
       }
@@ -847,28 +1100,107 @@ export class RegistroDiarioDetail {
       };
       this.record.set(optimisticRecord);
       
-      // Mapear formulario a DTO de actualización
-      const updateDto: any = {
-        recaudado: formValue.noWorkDay ? undefined : formValue.income,
-        costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
-        litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
-        dia_no_trabajado: formValue.noWorkDay || false,
-        motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
-        es_emergencia: formValue.isEmergency || false,
-        observaciones: formValue.observations || null
-      };
+      // 3. Subir imágenes si hay archivos nuevos
+      const registroFile = this.registroFile();
+      const receiptFile = this.receiptFile();
+      const uploads: Array<Observable<{ url: string; type: 'registro' | 'diesel' }>> = [];
       
-      // Actualizar comprobante si se subió una nueva imagen
-      if (this.receiptFile()) {
-        updateDto.comprobante_diesel = {
-          monto: formValue.dieselExpense || 0,
-          imagen: this.receiptFile()!
-        };
+      if (registroFile && currentRecord.chofer_id) {
+        uploads.push(
+          this.storageService.uploadDailyRecordImageAdmin(
+            registroFile,
+            currentRecord.chofer_id,
+            currentRecord.fecha
+          ).pipe(
+            map(result => ({ url: result.url, type: 'registro' as const })),
+            catchError((error) => {
+              console.error('Error subiendo comprobante del registro:', error);
+              this.showErrorToast('Error al subir comprobante del registro');
+              return EMPTY;
+            })
+          )
+        );
       }
       
-      this.dailyRecordService.updateDailyRecord(recordId, updateDto).pipe(
+      if (receiptFile && currentRecord.chofer_id) {
+        uploads.push(
+          this.storageService.uploadDailyRecordImageAdmin(
+            receiptFile,
+            currentRecord.chofer_id,
+            currentRecord.fecha
+          ).pipe(
+            map(result => ({ url: result.url, type: 'diesel' as const })),
+            catchError((error) => {
+              console.error('Error subiendo comprobante de diesel:', error);
+              this.showErrorToast('Error al subir comprobante de diesel');
+              return EMPTY;
+            })
+          )
+        );
+      }
+      
+      // 4. Esperar a que se suban las imágenes (si hay) y luego actualizar
+      const updateAfterUploads = uploads.length > 0 
+        ? forkJoin(uploads).pipe(
+            switchMap((results) => {
+              // Construir DTO con URLs de imágenes subidas
+              const updateDto: any = {
+                recaudado: formValue.noWorkDay ? undefined : formValue.income,
+                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+                dia_no_trabajado: formValue.noWorkDay || false,
+                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+                es_emergencia: formValue.isEmergency || false,
+                observaciones: formValue.observations || null
+              };
+              
+              // Agregar URLs de imágenes subidas
+              results.forEach(result => {
+                if (result.type === 'registro') {
+                  updateDto.comprobante_registro = { imagen: result.url };
+                } else if (result.type === 'diesel') {
+                  updateDto.comprobante_diesel = { imagen: result.url };
+                }
+              });
+              
+              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+            })
+          )
+        : of(null).pipe(
+            switchMap(() => {
+              // Sin archivos nuevos, solo actualizar datos
+              const updateDto: any = {
+                recaudado: formValue.noWorkDay ? undefined : formValue.income,
+                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+                dia_no_trabajado: formValue.noWorkDay || false,
+                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+                es_emergencia: formValue.isEmergency || false,
+                observaciones: formValue.observations || null,
+                // Mantener URLs existentes si no se cambiaron
+                comprobante_registro: currentRecord.comprobanteRegistro?.imageUrl 
+                  ? { imagen: currentRecord.comprobanteRegistro.imageUrl }
+                  : undefined,
+                comprobante_diesel: currentRecord.receipt?.imageUrl
+                  ? { imagen: currentRecord.receipt.imageUrl }
+                  : undefined
+              };
+              
+              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+            })
+          );
+      
+      updateAfterUploads.pipe(
+        // 5. Después de actualizar, recargar el registro completo y su historial
+        // para obtener todos los datos actualizados (historial, desglose de pago, etc.)
+        switchMap(() => {
+          return forkJoin({
+            record: this.dailyRecordService.getDailyRecordById(recordId),
+            history: this.dailyRecordService.getDailyRecordHistory(recordId)
+          });
+        }),
         catchError((error) => {
-          // 3. Rollback en caso de error
+          // 6. Rollback en caso de error
           if (this.previousRecordState) {
             this.record.set(this.previousRecordState);
             // Restaurar formulario al estado anterior
@@ -883,17 +1215,40 @@ export class RegistroDiarioDetail {
             });
           }
           
-          // 4. Notificar al usuario
+          // 7. Notificar al usuario
           this.showErrorToast('No se pudo guardar el registro. Intenta nuevamente.');
           
           return EMPTY;
         })
       ).subscribe({
-        next: (updatedRecord) => {
+        next: ({ record: updatedRecord, history }) => {
+          // 8. Actualizar con el registro e historial recargados del servidor
           const viewRecord = this.mapToDetailView(updatedRecord);
-          this.record.set(viewRecord);
+          const recordWithHistory = { ...viewRecord, history };
+          this.record.set(recordWithHistory);
+          
+          // 9. Actualizar el formulario con los valores del servidor
+          this.recordForm.patchValue({
+            noWorkDay: recordWithHistory.noWorkDay,
+            noWorkDayReason: recordWithHistory.noWorkDayReason || '',
+            isEmergency: recordWithHistory.isEmergency || false,
+            income: recordWithHistory.income,
+            dieselExpense: recordWithHistory.dieselExpense,
+            dieselLiters: recordWithHistory.dieselLiters || 0,
+            observations: recordWithHistory.observations || ''
+          });
+          
+          // 10. Actualizar previews de imágenes con las URLs del servidor
+          if (viewRecord.receipt?.imageUrl) {
+            this.receiptPreview.set(viewRecord.receipt.imageUrl);
+          }
+          if (viewRecord.comprobanteRegistro?.imageUrl) {
+            this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+          }
+          
           this.isEditMode.set(false);
           this.receiptFile.set(null);
+          this.registroFile.set(null);
           this.previousRecordState = null;
           this.showSuccessToast('Registro guardado exitosamente');
         },
@@ -1133,5 +1488,10 @@ export class RegistroDiarioDetail {
   // Helper para obtener la URL del preview del comprobante del registro
   getPreviewRegistroImageUrl(): string {
     return this.registroPreview() || this.record()?.comprobanteRegistro?.imageUrl || '';
+  }
+
+  // Funciones para el modal de imágenes
+  openImageModal(url: string, title: string, uploadedAt?: string): void {
+    this.imageModalService.show({ url, title, uploadedAt });
   }
 }

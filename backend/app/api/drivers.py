@@ -70,7 +70,7 @@ async def create_driver(data: DriverCreate, current_user: UserInDB = Depends(get
     Crear un chofer.
     """
     require_admin(current_user)
-
+    
     return await driver_service.create_driver(data)
 
 

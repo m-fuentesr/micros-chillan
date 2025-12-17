@@ -773,7 +773,8 @@ export class MiHistorial implements OnInit {
     const weekMap = new Map<string, HistoryItem[]>();
 
     data.forEach((item: HistoryItem) => {
-      const date = new Date(item.date);
+      const date = this.parseLocalDate(item.date);
+      if (!date) return;
       const weekStart = new Date(date);
       weekStart.setDate(date.getDate() - date.getDay());
       
@@ -787,15 +788,17 @@ export class MiHistorial implements OnInit {
 
     weekMap.forEach((items, title) => {
       const total = items.reduce((sum, item) => sum + item.revenue, 0);
-      groups.push({ title, total, items: items.sort((a, b) => 
-        new Date(b.date).getTime() - new Date(a.date).getTime()
-      ) });
+      groups.push({ title, total, items: items.sort((a, b) => {
+        const db = this.parseLocalDate(b.date);
+        const da = this.parseLocalDate(a.date);
+        return (db?.getTime() || 0) - (da?.getTime() || 0);
+      }) });
     });
 
     return groups.sort((a, b) => {
-      const dateA = new Date(a.items[0].date);
-      const dateB = new Date(b.items[0].date);
-      return dateB.getTime() - dateA.getTime();
+      const dateA = this.parseLocalDate(a.items[0].date);
+      const dateB = this.parseLocalDate(b.items[0].date);
+      return (dateB?.getTime() || 0) - (dateA?.getTime() || 0);
     });
   });
 
@@ -815,8 +818,8 @@ export class MiHistorial implements OnInit {
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
     const count = data.filter((item: HistoryItem) => {
-      const itemDate = new Date(item.date);
-      return itemDate >= weekAgo;
+      const itemDate = this.parseLocalDate(item.date);
+      return itemDate && itemDate >= weekAgo;
     }).length;
     return this.formatCount(count);
   });
@@ -826,8 +829,8 @@ export class MiHistorial implements OnInit {
     const data = this.allUnfilteredData();
     const today = new Date();
     const count = data.filter((item: HistoryItem) => {
-      const itemDate = new Date(item.date);
-      return itemDate.getMonth() === today.getMonth() && 
+      const itemDate = this.parseLocalDate(item.date);
+      return itemDate && itemDate.getMonth() === today.getMonth() && 
              itemDate.getFullYear() === today.getFullYear();
     }).length;
     return this.formatCount(count);
@@ -840,15 +843,16 @@ export class MiHistorial implements OnInit {
     const lastMonth = new Date(today);
     lastMonth.setMonth(lastMonth.getMonth() - 1);
     const count = data.filter((item: HistoryItem) => {
-      const itemDate = new Date(item.date);
-      return itemDate.getMonth() === lastMonth.getMonth() && 
+      const itemDate = this.parseLocalDate(item.date);
+      return itemDate && itemDate.getMonth() === lastMonth.getMonth() && 
              itemDate.getFullYear() === lastMonth.getFullYear();
     }).length;
     return this.formatCount(count);
   });
 
   getWeekDay(date: string): string {
-    const d = new Date(date);
+    const d = this.parseLocalDate(date);
+    if (!d) return '';
     const days = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
     return days[d.getDay()];
   }
@@ -858,10 +862,11 @@ export class MiHistorial implements OnInit {
   }
 
   getWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Calcular número de semana en zona local (estilo ISO aproximado)
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const dayNum = d.getDay() || 7;
+    d.setDate(d.getDate() + 4 - dayNum);
+    const yearStart = new Date(d.getFullYear(), 0, 1);
     return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
   }
 
@@ -869,5 +874,16 @@ export class MiHistorial implements OnInit {
     const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
                     'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return months[date.getMonth()];
+  }
+
+  private parseLocalDate(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 }

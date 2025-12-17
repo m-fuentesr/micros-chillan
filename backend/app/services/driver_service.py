@@ -3,6 +3,10 @@ from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
 from app.services import alert_service
+from app.utils.helpers import normalize_rut, validate_rut
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def get_summary():
     """
@@ -537,14 +541,17 @@ async def create_driver(data: DriverCreate):
     Crear un chofer nuevo + invitarlo vía correo usando Supabase Auth.
 
     Flujo:
-    1) Solo admin puede hacerlo.
-    2) Invita al usuario en Supabase Auth (auth.admin.invite_user_by_email).
-    3) Obtiene porcentaje_default desde configuracion_general.
-    4) Crea el registro en usuarios (vinculado al uid de Auth).
-    5) Crea el registro en choferes.
-    6) Enlaza usuarios.chofer_id.
-    7) (Opcional) Crea asignación inicial de máquina.
+    1) Solo admin puede hacerlo (validado en router).
+    2) Crear usuario en Supabase Auth con password inicial = RUT sin DV.
+    3) Usuario queda activo inmediatamente.
+    4) Enviar correo para forzar cambio de contraseña.
+    5) Obtener porcentaje_default desde configuracion_general.
+    6) Crear registro en usuarios (vinculado al uid de Auth).
+    7) Crear registro en choferes.
+    8) Enlazar usuarios.chofer_id.
+    9) (Opcional) Crear asignación inicial de máquina.
     """
+
     # Normalizar correo
     email = data.correo_electronico.strip().lower()
 
@@ -559,6 +566,7 @@ async def create_driver(data: DriverCreate):
         .limit(1)
         .execute()
     )
+
     if getattr(existing, "error", None):
         raise HTTPException(500, f"Error verificando correo: {existing.error}")
 
@@ -568,60 +576,101 @@ async def create_driver(data: DriverCreate):
             detail="Ya existe un usuario registrado con ese correo.",
         )
 
-    # --------------------------
-    # 1) Invitar al usuario en Supabase Auth
-    #     Esto crea el usuario en auth.users y envía el email de invitación.
-    # --------------------------
+    # Verificar si el correo ya existe en Supabase Auth para retornar
+    # un mensaje claro antes de intentar crear el usuario
     try:
-        # Puedes aprovechar user_metadata para guardar info útil
-        invite_res = supabase.auth.admin.invite_user_by_email(
-            email,
-            {
-                "data": {
-                    "rol": "chofer",
-                    "rut": data.rut,
-                    "primer_nombre": data.primer_nombre,
-                    "segundo_nombre": data.segundo_nombre,
-                    "apellido_paterno": data.apellido_paterno,
-                    "apellido_materno": data.apellido_materno,
-                    "telefono": data.telefono,
-                }
-            },
-        )
+        listado_auth = supabase.auth.admin.list_users()
+        if any(u.email and u.email.lower() == email for u in getattr(listado_auth, "users", [])):
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un usuario en Supabase Auth con este correo.",
+            )
+    except HTTPException:
+        # Reenviar directamente la excepción generada arriba
+        raise
     except Exception as e:
-        # Supabase Auth suele lanzar excepciones si hay problema
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error invitando usuario en Supabase Auth: {e}",
-        )
+        logger.warning(f"No se pudo verificar duplicado en Auth antes de crear usuario: {e}")
 
-    # Supabase-py para Auth devuelve un objeto con .user (no un dict de postgrest)
-    auth_user = getattr(invite_res, "user", None) if invite_res is not None else None
-    if auth_user is None:
-        # fallback defensivo por si la librería cambia la forma de respuesta
-        try:
-            auth_user = invite_res.get("user") if isinstance(invite_res, dict) else None
-        except Exception:
-            auth_user = None
+    # --------------------------
+    # 1) Crear usuario en Supabase Auth
+    # Password inicial = RUT sin dígito verificador
+    # --------------------------
 
-    if auth_user is None:
-        raise HTTPException(
-            status_code=500,
-            detail="Supabase no devolvió el usuario creado al invitar por correo.",
-        )
+    # Validar y normalizar RUT
+    try:
+        normalized_rut = normalize_rut(data.rut)
+    except ValueError:
+        raise HTTPException(400, "RUT inválido")
 
-    supabase_uid = getattr(auth_user, "id", None) or (
-        auth_user.get("id") if isinstance(auth_user, dict) else None
+    if not validate_rut(normalized_rut):
+        raise HTTPException(400, "RUT inválido")
+
+
+    # Validar RUT duplicado (tabla choferes)
+    existing_rut = (
+        supabase.table("choferes")
+        .select("id")
+        .eq("rut", normalized_rut)
+        .limit(1)
+        .execute()
     )
 
-    if not supabase_uid:
+    if getattr(existing_rut, "error", None):
         raise HTTPException(
-            status_code=500,
-            detail="No se pudo obtener el UID de Supabase Auth para el nuevo usuario.",
+            500, f"Error verificando RUT existente: {existing_rut.error}"
         )
 
+    if existing_rut.data:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un chofer registrado con este RUT.",
+        )
+
+    
+    rut_password = normalized_rut.replace(".", "").replace("-", "")[:-1]
+
+    supabase_uid = None
+
+    try:
+        auth_res = supabase.auth.admin.create_user(
+            {
+                "email": email,
+                "password": rut_password,
+                "email_confirm": True,  # activo desde su creación
+                "user_metadata": {
+                    "rol": "chofer",
+                    "rut": normalized_rut,
+                    "primer_nombre": data.primer_nombre,
+                    "apellido_paterno": data.apellido_paterno,
+                },
+            }
+        )
+    except Exception as e:
+        detalle = str(e)
+        if "already registered" in detalle.lower():
+            detalle = "Ya existe un usuario en Supabase Auth con este correo."
+        raise HTTPException(status_code=400, detail=f"Error creando usuario en Supabase Auth: {detalle}")
+
+    auth_user = getattr(auth_res, "user", None)
+    if not auth_user or not getattr(auth_user, "id", None):
+        raise HTTPException(
+            status_code=500,
+            detail="Supabase no devolvió el UID del usuario Auth creado.",
+        )
+
+    supabase_uid = auth_user.id
+
     # --------------------------
-    # 2) Obtener porcentaje default
+    # 2) Enviar correo para forzar cambio de contraseña
+    # --------------------------
+    try:
+        supabase.auth.reset_password_for_email(email)
+    except Exception as e:
+        # No rompemos el flujo completo si falla el correo
+        logger.error(f"Error enviando correo de cambio de contraseña: {e}")
+
+    # --------------------------
+    # 3) Obtener porcentaje default
     # --------------------------
     cfg = (
         supabase.table("configuracion_general")
@@ -629,27 +678,29 @@ async def create_driver(data: DriverCreate):
         .single()
         .execute()
     )
+
     if getattr(cfg, "error", None):
+        # rollback Auth
+        supabase.auth.admin.delete_user(supabase_uid)
         raise HTTPException(
             500, f"Error obteniendo configuración general: {cfg.error}"
         )
 
     porcentaje_default = cfg.data["porcentaje_default"]
 
-    # Para tener algo de "rollback" manual si fallan pasos posteriores
     usuario_id = None
     chofer_id = None
 
     try:
         # --------------------------
-        # 3) Crear usuario en tabla usuarios
+        # 4) Crear usuario en tabla usuarios
         # --------------------------
         usuario_payload = {
             "correo": email,
-            "supabase_uid": supabase_uid,  # <- clave del Auth
-            "rol_id": 2,      # rol chofer
+            "supabase_uid": supabase_uid,
+            "rol_id": 2,  # chofer
             "estado": "activo",
-            "chofer_id": None,             # lo enlazamos luego
+            "chofer_id": None,
         }
 
         usuario_res = (
@@ -666,14 +717,14 @@ async def create_driver(data: DriverCreate):
         usuario_id = usuario_res.data[0]["id"]
 
         # --------------------------
-        # 4) Crear chofer
+        # 5) Crear chofer
         # --------------------------
         chofer_payload = {
             "primer_nombre": data.primer_nombre,
             "segundo_nombre": data.segundo_nombre,
             "apellido_paterno": data.apellido_paterno,
             "apellido_materno": data.apellido_materno,
-            "rut": data.rut,
+            "rut": normalized_rut,
             "telefono": data.telefono,
             "porcentaje_pago": porcentaje_default,
             "estado": data.estado,
@@ -688,12 +739,14 @@ async def create_driver(data: DriverCreate):
         )
 
         if getattr(chofer_res, "error", None):
-            raise HTTPException(400, f"Error creando chofer: {chofer_res.error}")
+            raise HTTPException(
+                400, f"Error creando chofer: {chofer_res.error}"
+            )
 
         chofer_id = chofer_res.data[0]["id"]
 
         # --------------------------
-        # 5) Enlazar usuarios.chofer_id
+        # 6) Enlazar usuarios.chofer_id
         # --------------------------
         link_res = (
             supabase.table("usuarios")
@@ -703,19 +756,19 @@ async def create_driver(data: DriverCreate):
         )
 
         if getattr(link_res, "error", None):
-            # No reviento el flujo completo, pero lo informo
             raise HTTPException(
                 400,
                 f"Chofer creado, pero error enlazando usuario con chofer: {link_res.error}",
             )
 
         # --------------------------
-        # 6) Si se selecciona una, validar y asignar máquina inicial
+        # 7) Asignación inicial de máquina (opcional)
         # --------------------------
-        if data.maquina_asignada:
-            maquina_id = data.maquina_asignada
+        maquina_id = data.maquina_asignada
 
-            # Validar que la máquina exista y esté operativa
+        if maquina_id is not None:
+            maquina_id = int(maquina_id)
+
             maquina_res = (
                 supabase.table("maquinas")
                 .select("id, estado_operativo")
@@ -724,26 +777,18 @@ async def create_driver(data: DriverCreate):
                 .execute()
             )
 
-            if getattr(maquina_res, "error", None):
+            if getattr(maquina_res, "error", None) or not maquina_res.data:
                 raise HTTPException(
                     400,
-                    f"Error obteniendo máquina: {maquina_res.error}",
+                    "La máquina seleccionada no existe.",
                 )
 
-            maquina = maquina_res.data
-            if not maquina:
+            if maquina_res.data["estado_operativo"] != "operativa":
                 raise HTTPException(
                     400,
-                    "La máquina seleccionada no existe."
+                    "La máquina seleccionada no está operativa.",
                 )
 
-            if maquina["estado_operativo"] != "operativa":
-                raise HTTPException(
-                    400,
-                    "La máquina seleccionada no está operativa y no puede ser asignada."
-                )
-
-            # Validar que la máquina no tenga un chofer asignado activo
             asign_activa = (
                 supabase.table("asignaciones_chofer_maquina")
                 .select("id")
@@ -753,19 +798,12 @@ async def create_driver(data: DriverCreate):
                 .execute()
             )
 
-            if getattr(asign_activa, "error", None):
-                raise HTTPException(
-                    400,
-                    f"Error validando asignación activa: {asign_activa.error}",
-                )
-
             if asign_activa.data:
                 raise HTTPException(
                     400,
-                    "La máquina ya está asignada actualmente a otro chofer."
+                    "La máquina ya está asignada a otro chofer.",
                 )
 
-            # Crear asignación inicial
             asign_res = (
                 supabase.table("asignaciones_chofer_maquina")
                 .insert(
@@ -785,18 +823,24 @@ async def create_driver(data: DriverCreate):
                     f"Chofer creado, pero error asignando máquina: {asign_res.error}",
                 )
 
-        # Devuelvo el chofer creado (puedes adaptar a DriverRead si quieres)
+        # --------------------------
+        # OK
+        # --------------------------
         return chofer_res.data[0]
 
     except HTTPException:
-        # rollback manual muy básico
-        if chofer_id is not None:
+        # --------------------------
+        # Rollback manual consistente
+        # --------------------------
+        if chofer_id:
             supabase.table("choferes").delete().eq("id", chofer_id).execute()
-        if usuario_id is not None:
+
+        if usuario_id:
             supabase.table("usuarios").delete().eq("id", usuario_id).execute()
-        # OJO: no borro el usuario en Auth; puedes considerar:
-        # supabase.auth.admin.delete_user(supabase_uid)
-        # si quieres mantener consistencia total entre Auth y DB.
+
+        if supabase_uid:
+            supabase.auth.admin.delete_user(supabase_uid)
+
         raise
 
 

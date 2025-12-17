@@ -41,6 +41,9 @@ export class AuthService {
   private readonly _currentUser = signal<AuthUser | null>(this.hydrateUser());
   readonly currentUser = this._currentUser;
 
+  private readonly _isRecovering = signal(false);
+  readonly isRecovering = this._isRecovering.asReadonly();
+
   // Signal para indicar si estamos verificando la sesión inicial
   private readonly _isInitializing = signal(true);
   readonly isInitializing = this._isInitializing.asReadonly();
@@ -51,6 +54,8 @@ export class AuthService {
   private isInitialized = false;
   // Flag para indicar que estamos en proceso de login manual
   private isManualLogin = false;
+  // Flag para omitir la redirección automática al cerrar sesión (p.ej. flujo recovery)
+  private skipSignOutRedirect = false;
 
   constructor() {
     // Configurar el cliente de Supabase
@@ -97,6 +102,34 @@ export class AuthService {
 
     this.supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
+      // ===============================
+      // Recovery flow
+      // ===============================
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('PASSWORD_RECOVERY detectado');
+
+        this._isRecovering.set(true);
+
+        // Cortar cualquier flujo previo
+        this.isManualLogin = false;
+        this.isSyncing = false;
+
+        // Limpiar estado local (muy importante)
+        this._currentUser.set(null);
+        sessionStorage.removeItem(this.tokenStorageKey);
+        sessionStorage.removeItem(this.userStorageKey);
+
+        // NO persistir token
+        // NO llamar syncDomainUser
+        // NO dejar pasar guards
+
+        await this.router.navigateByUrl('/restablecer-clave', {
+          replaceUrl: true,
+        });
+
+        return; // No continuar
+      }
+
       // Evitar logs excesivos en producción
       if (event !== 'TOKEN_REFRESHED') {
         console.log('Auth event:', event, session);
@@ -143,6 +176,10 @@ export class AuthService {
 
         case 'SIGNED_OUT':
           this.clearSession();
+          if (this.skipSignOutRedirect) {
+            this.skipSignOutRedirect = false;
+            break;
+          }
           // Solo navegar si no estamos ya en login
           if (!this.router.url.startsWith('/login')) {
             await this.router.navigate(['/login']);
@@ -335,6 +372,25 @@ export class AuthService {
       }, 500);
     }
   }
+
+  async getSession() {
+    return this.supabase.auth.getSession();
+  }
+
+  async updatePassword(password: string) {
+    return this.supabase.auth.updateUser({ password });
+  }
+
+  async sendPasswordResetEmail(email: string) {
+    const redirectTo = typeof window !== 'undefined'
+      ? `${window.location.origin}/restablecer-clave`
+      : undefined;
+
+    return this.supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+  }
+
 
   private async syncDomainUser(retryCount = 0): Promise<void> {
     // Prevenir múltiples llamadas simultáneas
@@ -544,12 +600,25 @@ export class AuthService {
     return remaining;
   }
 
-  async logout(): Promise<void> {
-    // Mostrar spinner inmediatamente para la animación de salida
-    this.spinnerService.show();
-    
-    // Pequeño delay para que el spinner aparezca suavemente
-    await new Promise(resolve => setTimeout(resolve, 100));
+  finishRecovery(): void {
+    this._isRecovering.set(false);
+  }
+
+  async logout(options?: { redirect?: boolean; showSpinner?: boolean }): Promise<void> {
+    const redirect = options?.redirect ?? true;
+    const showSpinner = options?.showSpinner ?? true;
+
+    // Evitar la redirección automática del handler SIGNED_OUT si la llamada
+    // explícitamente pide no redirigir (p.ej., después de resetear contraseña).
+    this.skipSignOutRedirect = !redirect;
+
+    if (showSpinner) {
+      // Mostrar spinner inmediatamente para la animación de salida
+      this.spinnerService.show();
+
+      // Pequeño delay para que el spinner aparezca suavemente
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
     
     // Primero limpiar el estado local para evitar que otras pestañas restauren la sesión
     this.clearSession();
@@ -567,16 +636,22 @@ export class AuthService {
     // Asegurar que localStorage de Supabase esté limpio
     this.forceClearSupabaseStorage();
     
-    // Esperar un poco para que la animación de salida se complete
-    await new Promise(resolve => setTimeout(resolve, 400));
-    
-    // Navegar al login (el login tiene sus propias animaciones de entrada)
-    await this.router.navigate(['/login']);
-    
-    // Ocultar spinner después de que el login comience a aparecer
-    setTimeout(() => {
-      this.spinnerService.hide();
-    }, 300);
+    if (showSpinner) {
+      // Esperar un poco para que la animación de salida se complete
+      await new Promise(resolve => setTimeout(resolve, 400));
+    }
+
+    if (redirect) {
+      // Navegar al login (el login tiene sus propias animaciones de entrada)
+      await this.router.navigate(['/login']);
+    }
+
+    if (showSpinner) {
+      // Ocultar spinner después de que el login comience a aparecer
+      setTimeout(() => {
+        this.spinnerService.hide();
+      }, 300);
+    }
   }
 
   get token(): string | null {

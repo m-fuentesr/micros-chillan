@@ -4,16 +4,20 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, of } from 'rxjs';
+import { catchError, of, firstValueFrom } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
-import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters } from '../../shared/models/daily-record.models';
+import { DriverService } from '../../shared/services/driver.service';
+import { StorageService } from '../../shared/services/storage.service';
+import type { DailyRecord as UnifiedDailyRecord, DailyRecordStatus, DailyRecordFilters, CreateDailyRecordAdminDto } from '../../shared/models/daily-record.models';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { SearchFilters, FilterField } from '../../shared/components/search-filters/search-filters';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
+import { AlertModalService } from '../../shared/services/alert-modal.service';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -24,7 +28,7 @@ interface DailyRecordView {
   date: string; // Formateado para display
   machine: string; // maquina_identificador o derivado
   driver: string; // chofer_nombre
-  status: 'complete' | 'pending' | 'incident'; // Mapeo de DailyRecordStatus
+  status: 'complete' | 'pending' | 'incident' | 'no_worked'; // Mapeo de DailyRecordStatus
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
   hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
@@ -33,13 +37,11 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, LoadingOverlay, SearchFilters, DriverIcon],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon],
   template: `
     <div class="space-y-6 relative">
-        <app-loading-overlay [isLoading]="isLoading() && records().length === 0" message="Cargando bitácora..." />
-        
-        <!-- Hero Section Premium -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <!-- Hero Section Premium - Siempre visible primero -->
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -136,10 +138,73 @@ interface DailyRecordView {
         </div>
 
         <!-- Filtros y Búsqueda -->
-        @if (!sequentialState.canShowContent() && isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
-          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
+        @if (!sequentialState.canShowContent() && !sequentialState.contentError()) {
+          <!-- Skeleton personalizado del Card con Header y Filtros -->
           <div class="card bg-base-100 shadow-xl border border-base-200">
-            <app-loading-skeleton type="table" [count]="10" />
+            <!-- Skeleton del Card Header -->
+            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex-1 min-w-0 space-y-2">
+                  <div class="flex items-center gap-3">
+                    <div class="w-1 h-6 bg-primary border-l-4 border-l-primary"></div>
+                    <div class="h-8 sm:h-10 lg:h-12 w-48 skeleton-shimmer rounded"></div>
+                  </div>
+                  <div class="h-4 w-96 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="h-8 w-32 skeleton-shimmer rounded-full"></div>
+              </div>
+            </div>
+
+            <!-- Skeleton del Card Body con Filtros -->
+            <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+              <!-- Skeleton: Header de Filtros -->
+              <div class="bg-base-50/50 p-5 sm:p-6 rounded-xl border border-base-200/50 mb-6">
+                <div class="flex items-center justify-between gap-4 mb-5">
+                  <div class="flex items-center gap-2">
+                    <div class="w-1 h-4 rounded-full bg-primary"></div>
+                    <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                  </div>
+                </div>
+
+                <!-- Skeleton: Grid de Filtros (4 columnas en desktop) -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <!-- Skeleton: Filtro Chofer -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Desde -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Hasta -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  
+                  <!-- Skeleton: Filtro Orden -->
+                  <div class="form-control">
+                    <div class="label py-1.5">
+                      <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Skeleton: Tabla -->
+              <app-loading-skeleton type="table" [count]="10" />
+            </div>
           </div>
         } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
           <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
@@ -158,12 +223,13 @@ interface DailyRecordView {
           </div>
         } @else {
           <!-- Solo renderizar el contenido cuando canShowContent es true -->
-          <div 
-            class="card bg-base-100 shadow-xl border border-base-200 animate-card-enter"
-            [class.animate-fade-in]="sequentialState.canShowContent()" 
-            [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-            [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
-            [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
+          @if (sequentialState.canShowContent()) {
+            <div 
+              class="card bg-base-100 shadow-xl border border-base-200"
+              [class.animate-fade-in]="sequentialState.canShowContent()" 
+              [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+              [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
+              [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
             <!-- Header Premium con gradiente sutil -->
             <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -314,6 +380,13 @@ interface DailyRecordView {
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                                 Incidente
                               </div>
+                            } @else if (record.status === 'no_worked') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                                No Trabajado
+                              </div>
                             } @else {
                               <div class="badge badge-sm gap-1 badge-warning">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
@@ -458,6 +531,13 @@ interface DailyRecordView {
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
                                 Incidente
                               </div>
+                            } @else if (record.status === 'no_worked') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                                </svg>
+                                No Trabajado
+                              </div>
                             } @else {
                               <div class="badge badge-sm gap-1 badge-warning">
                                 <span class="w-1.5 h-1.5 rounded-full bg-current"></span>
@@ -536,44 +616,23 @@ interface DailyRecordView {
                 [class.border-l-error]="record.status === 'incident'"
                 [class.border-l-warning]="record.status === 'pending'"
                 [class.bg-error/5]="record.status === 'incident'"
-                [class.bg-warning/5]="record.status === 'pending'">
+                [class.bg-warning/5]="record.status === 'pending'"
+                [class.bg-base-200/30]="record.status === 'no_worked'">
                 <div class="card-body p-5">
                   <!-- Header: Avatares y Estado -->
                   <div class="flex items-start gap-4 mb-4">
                     <!-- Avatar Máquina -->
                     <div class="avatar placeholder shrink-0">
                       <div 
-                        class="rounded-lg w-12 h-12 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center"
+                        class="rounded-lg w-12 h-12 shadow-sm group-hover:scale-105 transition-transform flex items-center justify-center p-2"
                         [class.bg-error/10]="record.status === 'incident'"
                         [class.border]="record.status === 'incident'"
                         [class.border-error/20]="record.status === 'incident'"
                         [class.bg-gradient-to-br]="record.status !== 'incident'"
                         [class.from-primary/20]="record.status !== 'incident'"
                         [class.to-primary/10]="record.status !== 'incident'">
-                        <svg 
-                          class="w-7 h-7"
-                          [class.text-error]="record.status === 'incident'"
-                          [class.text-primary]="record.status !== 'incident'"
-                          viewBox="0 0 24 24" 
-                          fill="none" 
-                          xmlns="http://www.w3.org/2000/svg">
-                          <path 
-                            d="M4 7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V17C20 17.5523 19.5523 18 19 18H5C4.44772 18 4 17.5523 4 17V7Z" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round" 
-                            stroke-linejoin="round"/>
-                          <path 
-                            d="M4 10H20" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round"/>
-                          <path 
-                            d="M8 13H16" 
-                            stroke="currentColor" 
-                            stroke-width="1.5" 
-                            stroke-linecap="round"/>
-                        </svg>
+                        <app-bus-icon 
+                          [class]="record.status === 'incident' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
                       </div>
                     </div>
 
@@ -586,8 +645,8 @@ interface DailyRecordView {
                           </h3>
                           <div class="flex items-center gap-2 mt-1.5">
                             <div class="avatar placeholder shrink-0">
-                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200">
-                                <span class="text-[9px] font-bold">{{ getInitials(record.driver) }}</span>
+                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                                <app-driver-icon class="w-full h-full" />
                               </div>
                             </div>
                             <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
@@ -606,6 +665,13 @@ interface DailyRecordView {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
                               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
                               Incidente
+                            </div>
+                          } @else if (record.status === 'no_worked') {
+                            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
+                              </svg>
+                              No Trabajado
                             </div>
                           } @else {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/10">
@@ -686,6 +752,7 @@ interface DailyRecordView {
               </div>
             </div>
           </div>
+          }
         }
 
       <!-- Modal Nuevo Registro (renderizado de forma global en app.ts) -->
@@ -705,6 +772,21 @@ interface DailyRecordView {
     .animate-fade-in {
       animation: fade-in 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
+    
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -712,9 +794,12 @@ export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
+  private alertModalService = inject(AlertModalService);
+  private driverService = inject(DriverService);
   private destroyRef = inject(DestroyRef);
   private loadingStateService = inject(LoadingStateService);
   private newRecordModalService = inject(NewRecordModalService);
+  private storageService = inject(StorageService);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -782,25 +867,34 @@ export class BitacoraOperaciones implements OnInit {
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
+  private isManualReload = false; // Flag para indicar que estamos recargando manualmente (evita que el effect interfiera)
+  private isInitialLoad = true; // Flag para evitar que el effect se ejecute en la carga inicial
   showFiltersMobile = signal(false);
   
   // Filtros usando SearchFilters
   recordFilters = signal<{ chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
   
+  // Choferes cargados dinámicamente
+  private drivers = signal<Array<{ id: number; nombre_completo: string }>>([]);
+  
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
+    const choferes = this.drivers();
+    const choferOptions = [
+      { value: null, label: 'Todos los choferes' },
+      ...choferes.map(driver => ({
+        value: driver.id.toString(),
+        label: driver.nombre_completo
+      }))
+    ];
+    
     return [
       {
         key: 'chofer',
         label: 'Chofer',
         type: 'select',
         icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 9a3 3 0 100-6 3 3 0 000 6zM6 9a2 2 0 11-4 0 2 2 0 014 0zm12 0a2 2 0 11-4 0 2 2 0 014 0zm-6 1a2 2 0 100 4 2 2 0 000-4zm-6 1a4 4 0 100 8 4 4 0 000-8zm12 0a4 4 0 100 8 4 4 0 000-8z" /></svg>',
-        options: [
-          { value: null, label: 'Todos los choferes' },
-          { value: '1', label: 'Juan Pérez' },
-          { value: '2', label: 'Luis Martínez' },
-          { value: '3', label: 'Ana Gómez' }
-        ]
+        options: choferOptions
       },
       {
         key: 'desde',
@@ -864,14 +958,15 @@ export class BitacoraOperaciones implements OnInit {
   // Estado de carga para KPIs
   kpisLoading = signal(true);
   
-  // Cargar datos cuando cambian los filtros o la página
-  private loadRecords(): void {
-    // Evitar múltiples peticiones simultáneas
-    if (this.isLoadingRecords) {
-      return;
-    }
+  /**
+   * Recargar registros y mostrar mensaje de éxito después de crear un nuevo registro
+   */
+  private async reloadRecordsAndShowSuccess(choferId: number, fecha: string): Promise<void> {
+    // Marcar que estamos haciendo una recarga manual
+    this.isManualReload = true;
     
-    this.isLoadingRecords = true;
+    // Obtener filtros actuales
+    const recordFilters = this.recordFilters();
     
     // Mapear el filtro de estado del select a los estados del modelo
     let estadoFilter: DailyRecordStatus | undefined = undefined;
@@ -886,8 +981,97 @@ export class BitacoraOperaciones implements OnInit {
     
     const filters: DailyRecordFilters = {
       estado: estadoFilter,
-      fecha: this.dateFilter() || undefined,
+      fecha: this.dateFilter() || recordFilters.desde || undefined,
+      desde: recordFilters.desde || undefined,
+      hasta: recordFilters.hasta || undefined,
+      chofer_id: recordFilters.chofer ? parseInt(recordFilters.chofer, 10) : undefined,
       busqueda: this.searchQuery() || undefined,
+      orden: recordFilters.orden || 'mas_reciente',
+      pagina: this.currentPage(),
+      por_pagina: this.itemsPerPage
+    };
+    
+    try {
+      // Esperar un momento para asegurar que el backend haya procesado el nuevo registro
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Esperar a que se carguen los registros
+      const response = await firstValueFrom(
+        this.dailyRecordService.getDailyRecords(filters)
+      );
+      
+      // Actualizar los registros usando untracked para evitar que el effect se ejecute
+      untracked(() => {
+        this.recordsResponse.set(response);
+        this.isLoading.set(false);
+        this.isLoadingPage.set(false);
+        this.isLoadingRecords = false;
+      });
+      
+      // Esperar un momento más para asegurar que la UI se haya actualizado
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Mostrar mensaje de éxito después de que la tabla se haya actualizado
+      const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Creado Exitosamente',
+        message: `El registro diario para ${choferNombre} del ${fecha} ha sido creado correctamente.`,
+        buttonText: 'Entendido'
+      });
+      
+      // Mantener la bandera activa por un tiempo suficiente para evitar que el effect recargue
+      // La desactivaremos después de un tiempo razonable (3 segundos)
+      // Esto da tiempo suficiente para que el usuario vea y acepte el modal
+      setTimeout(() => {
+        this.isManualReload = false;
+      }, 3000);
+    } catch (error) {
+      console.error('Error al recargar registros:', error);
+      this.isManualReload = false;
+      
+      // Mostrar mensaje de éxito de todas formas
+      const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Creado Exitosamente',
+        message: `El registro diario para ${choferNombre} del ${fecha} ha sido creado correctamente.`,
+        buttonText: 'Entendido'
+      });
+    }
+  }
+
+  // Cargar datos cuando cambian los filtros o la página
+  private loadRecords(): void {
+    // Evitar múltiples peticiones simultáneas
+    if (this.isLoadingRecords) {
+      return;
+    }
+    
+    this.isLoadingRecords = true;
+    
+    // Obtener filtros de recordFilters (usado por SearchFilters)
+    const recordFilters = this.recordFilters();
+    
+    // Mapear el filtro de estado del select a los estados del modelo
+    let estadoFilter: DailyRecordStatus | undefined = undefined;
+    if (this.statusFilter() !== 'all') {
+      const statusMap: Record<string, DailyRecordStatus> = {
+        'complete': 'COMPLETO',
+        'pending': 'PENDIENTE_TRABAJADOR',
+        'incident': 'INCIDENTE_REPORTADO'
+      };
+      estadoFilter = statusMap[this.statusFilter()];
+    }
+    
+    const filters: DailyRecordFilters = {
+      estado: estadoFilter,
+      fecha: this.dateFilter() || recordFilters.desde || undefined,
+      desde: recordFilters.desde || undefined,
+      hasta: recordFilters.hasta || undefined,
+      chofer_id: recordFilters.chofer ? parseInt(recordFilters.chofer, 10) : undefined,
+      busqueda: this.searchQuery() || undefined,
+      orden: recordFilters.orden || 'mas_reciente',
       pagina: this.currentPage(),
       por_pagina: this.itemsPerPage
     };
@@ -927,9 +1111,8 @@ export class BitacoraOperaciones implements OnInit {
             
             // Si es la primera carga, marcar contenido como listo (incluso si está vacío)
             if (isFirstLoad && !this.sequentialState.contentError()) {
-              setTimeout(() => {
-                this.sequentialState.setContentReady(false);
-              }, 100);
+              // Llamar inmediatamente, sin setTimeout para evitar pestañeo
+              this.sequentialState.setContentReady(false);
             }
           });
         },
@@ -953,11 +1136,24 @@ export class BitacoraOperaciones implements OnInit {
     // Recargar cuando cambian los filtros o la página
     // El effect se ejecutará automáticamente al inicializar, así que no necesitamos llamar loadRecords() directamente
     effect(() => {
+      // Si estamos haciendo una recarga manual, no ejecutar el effect
+      if (this.isManualReload) {
+        return;
+      }
+      
+      // En la carga inicial, no ejecutar el effect (se carga manualmente en ngOnInit)
+      // Esto evita que el effect se ejecute cuando recordsResponse se actualiza por primera vez
+      if (this.isInitialLoad) {
+        this.isInitialLoad = false;
+        return;
+      }
+      
       // Leer los signals para que el effect reaccione a sus cambios
       const query = this.searchQuery();
       const status = this.statusFilter();
       const date = this.dateFilter();
       const page = this.currentPage();
+      const filters = this.recordFilters(); // También reaccionar a cambios en recordFilters
       
       // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
       untracked(() => {
@@ -968,16 +1164,20 @@ export class BitacoraOperaciones implements OnInit {
 
   // Helper para mapear desde el modelo unificado a la vista
   private mapToView(record: UnifiedDailyRecord): DailyRecordView {
-    // Formatear fecha
-    const date = new Date(record.fecha);
-    const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    // Formatear fecha usando zona local (evitar desfase UTC)
+    const date = this.parseLocalDate(record.fecha);
+    const formattedDate = date
+      ? date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
+      : record.fecha;
     
     // Mapear estado
-    let status: 'complete' | 'pending' | 'incident';
+    let status: 'complete' | 'pending' | 'incident' | 'no_worked';
     if (record.estado === 'COMPLETO') {
       status = 'complete';
     } else if (record.estado === 'INCIDENTE_REPORTADO') {
       status = 'incident';
+    } else if (record.estado === 'DIA_NO_TRABAJADO' || record.estado === 'NO_TRABAJADO') {
+      status = 'no_worked';
     } else {
       status = 'pending';
     }
@@ -1039,40 +1239,147 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   openNewRecordModal(): void {
-    this.newRecordModalService.open().then((formData) => {
-      if (formData) {
-        // Mapear formulario a DTO
-        const createDto = {
-          fecha: formData.date || '',
-          maquina_id: this.extractMachineId(formData.machine || ''),
-          chofer_id: this.extractDriverId(formData.driver || ''),
-          recaudado: formData.noWorkDay ? undefined : (formData.income ?? undefined),
-          costo_diesel: formData.noWorkDay ? undefined : (formData.dieselExpense ?? undefined),
-          litros_diesel: formData.noWorkDay ? undefined : (formData.dieselLiters ?? undefined),
-          dia_no_trabajado: formData.noWorkDay || false,
-          motivo_inactividad: formData.noWorkDay ? (formData.noWorkDayReason as any) : undefined,
-          es_emergencia: formData.hasIncident || false,
-          observaciones: formData.observations || null
+    this.newRecordModalService.open().then(async (formData) => {
+      if (!formData) return;
+
+      try {
+        // 1. Extraer IDs de máquina y chofer (ahora vienen como números del modal)
+        const maquinaId = typeof formData.machine === 'number' ? formData.machine : this.extractMachineId(String(formData.machine || ''));
+        const choferId = typeof formData.driver === 'number' ? formData.driver : this.extractDriverId(formData.driver || '');
+
+        // 2. Subir imágenes primero (solo si es día trabajado)
+        let imagenUrl: string | null = null;
+        let imagenDieselUrl: string | null = null;
+
+        if (!formData.noWorkDay) {
+          // Solo subir imágenes si NO es día no trabajado
+          if (formData.receiptPhoto) {
+            const uploadResult = await firstValueFrom(
+              this.storageService.uploadDailyRecordImageAdmin(
+                formData.receiptPhoto,
+                choferId,
+                formData.date
+              )
+            );
+            imagenUrl = uploadResult.url;
+          }
+
+          if (formData.fuelReceiptPhoto) {
+            const uploadResult = await firstValueFrom(
+              this.storageService.uploadDailyRecordImageAdmin(
+                formData.fuelReceiptPhoto,
+                choferId,
+                formData.date
+              )
+            );
+            imagenDieselUrl = uploadResult.url;
+          }
+        }
+
+        // 3. Preparar payload para admin
+        const adminPayload: CreateDailyRecordAdminDto = {
+          chofer_id: choferId,
+          maquina_id: maquinaId,
+          fecha: formData.date,
+          es_dia_no_trabajado: formData.noWorkDay,
+          motivo_no_trabajado: formData.noWorkDay ? (formData.noWorkDayReason === 'Otro' ? 'otro' : formData.noWorkDayReason) : null,
+          motivo_no_trabajado_otro: formData.noWorkDay && formData.noWorkDayReason === 'Otro' 
+            ? formData.noWorkDayReasonOther 
+            : null,
+          monto_recaudado: formData.noWorkDay ? null : (formData.income || null),
+          litros_diesel: formData.noWorkDay ? null : (formData.dieselLiters || null),
+          costo_total_diesel: formData.noWorkDay ? null : (formData.dieselExpense || null),
+          imagen_url: imagenUrl,
+          imagen_comprobante_diesel_url: imagenDieselUrl,
+          observaciones: formData.noWorkDay ? null : (formData.observations || null),
+          incidente_critico: formData.noWorkDay ? false : (formData.hasIncident || false)
         };
 
-        this.dailyRecordService.createDailyRecord(createDto)
-          .pipe(takeUntilDestroyed(this.destroyRef))
-          .subscribe({
-            next: (newRecord) => {
-              // Recargar datos después de crear
-              this.loadRecords();
-            },
-            error: (error) => {
+        // 4. Crear registro como admin
+        this.dailyRecordService.createDailyRecordAdmin(adminPayload)
+          .pipe(
+            takeUntilDestroyed(this.destroyRef),
+            catchError((error) => {
               console.error('Error al crear registro:', error);
-              // TODO: Mostrar mensaje de error al usuario
+              
+              // Determinar el mensaje de error según el tipo
+              let errorMessage = 'No se pudo crear el registro. Por favor, verifica los datos e intenta nuevamente.';
+              let errorTitle = 'Error al Crear Registro';
+              
+              // Verificar si es un error de registro duplicado
+              const errorDetail = error?.error?.detail || error?.message || '';
+              const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
+              
+              if (errorDetail.includes('Ya existe un registro diario') || 
+                  errorDetail.includes('registro diario para este chofer y fecha') ||
+                  errorDetail.toLowerCase().includes('duplicado')) {
+                errorTitle = 'Registro Duplicado';
+                errorMessage = `Ya existe un registro diario para ${choferNombre} en la fecha ${formData.date}. No se puede crear un registro duplicado.`;
+              } else if (errorDetail) {
+                errorMessage = errorDetail;
+              }
+              
+              // Cerrar el modal de creación en caso de error
+              this.newRecordModalService.finishSubmission();
+              
+              // Mostrar modal de error
+              this.alertModalService.show({
+                type: 'error',
+                title: errorTitle,
+                message: errorMessage,
+                buttonText: 'Entendido'
+              });
+              
+              return of(null);
+            })
+          )
+          .subscribe(async (response: any) => {
+            if (response) {
+              // Cerrar el modal de creación primero
+              this.newRecordModalService.finishSubmission();
+              
+              // Recargar datos después de crear exitosamente y esperar a que termine
+              await this.reloadRecordsAndShowSuccess(choferId, formData.date);
             }
           });
+
+      } catch (error) {
+        console.error('Error al subir imágenes o crear registro:', error);
+        
+        // Cerrar el modal de creación en caso de error
+        this.newRecordModalService.finishSubmission();
+        
+        // Mostrar mensaje de error genérico
+        this.alertModalService.show({
+          type: 'error',
+          title: 'Error al Crear Registro',
+          message: 'Ocurrió un error al procesar las imágenes o crear el registro. Por favor, intenta nuevamente.',
+          buttonText: 'Entendido'
+        });
       }
     });
   }
 
   ngOnInit(): void {
-    // Los datos se cargan automáticamente mediante loadRecords() en constructor
+    // Cargar datos iniciales manualmente (el effect no se ejecuta en la carga inicial)
+    this.loadRecords();
+    // Cargar choferes activos para el filtro
+    this.loadDrivers();
+  }
+
+  private loadDrivers(): void {
+    this.driverService.getActiveDrivers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (drivers) => {
+          this.drivers.set(drivers);
+        },
+        error: (error) => {
+          console.error('Error cargando choferes:', error);
+          // Mantener array vacío en caso de error
+          this.drivers.set([]);
+        }
+      });
   }
 
   // Función para reintentar carga
@@ -1081,6 +1388,7 @@ export class BitacoraOperaciones implements OnInit {
     this.sequentialState.reset();
     this.isLoading.set(true);
     this.currentPage.set(1);
+    this.isInitialLoad = false; // Asegurar que el effect funcione después de un retry
     this.loadRecords();
   }
 
@@ -1114,14 +1422,19 @@ export class BitacoraOperaciones implements OnInit {
     return match ? parseInt(match[0], 10) : 1;
   }
 
-  private extractDriverId(driverName: string): number {
-    // Mapeo temporal - en producción esto vendría de un select con IDs
-    const driverMap: Record<string, number> = {
-      'Juan Pérez': 1,
-      'Luis Martínez': 2,
-      'Ana Gómez': 3
-    };
-    return driverMap[driverName] || 1;
+  private extractDriverId(driverIdOrName: string | number): number {
+    // Si ya es un número, retornarlo directamente
+    if (typeof driverIdOrName === 'number') {
+      return driverIdOrName;
+    }
+    // Si es string y es un número, parsearlo
+    const parsed = parseInt(driverIdOrName, 10);
+    if (!isNaN(parsed)) {
+      return parsed;
+    }
+    // Si es un nombre, buscar en la lista de choferes cargados
+    const driver = this.drivers().find(d => d.nombre_completo === driverIdOrName);
+    return driver ? driver.id : 1;
   }
 
   getInitials(name: string): string {
@@ -1143,18 +1456,24 @@ export class BitacoraOperaciones implements OnInit {
   }
   
   formatDateFull(date: string): string {
-    if (!date) return '';
-    try {
-      const d = new Date(date);
-      if (isNaN(d.getTime())) return ''; // Validar fecha inválida
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
+    const d = this.parseLocalDate(date);
+    if (!d) return '';
+    return d.toLocaleDateString('es-CL', { 
+      weekday: 'short',
+      day: '2-digit', 
+      month: 'short'
+    });
+  }
+  
+  private parseLocalDate(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
     }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
   
   onViewRecordDetail(record: DailyRecordView): void {

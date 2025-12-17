@@ -1,105 +1,57 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, ChangeDetectorRef, input, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, input, output } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
-import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { DashboardService } from '../../services/dashboard.service';
 import { FinancialData, FinancialMetric } from '../../models/dashboard.models';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { LazyChartDirective } from '../../directives/lazy-chart.directive';
 
 @Component({
   selector: 'app-financial-summary',
-  imports: [BaseChartDirective, RouterLink, CommonModule, LazyChartDirective],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
-    <div class="card bg-base-100 shadow-xl animate-card-enter flex flex-col" [class.h-[424px]]="showChartOnly()">
-      @if (!showChartOnly()) {
-        <div class="card-header flex justify-between items-start mb-4">
-          <div>
-            <h2 class="card-title text-2xl">Resumen Financiero</h2>
-            <p class="text-sm text-base-content/70">
-              Vista rápida de ganancia neta e ingreso total por máquina (RF-018–RF-021, RF-030).
-            </p>
+    <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
+      <div class="px-6 pt-5 pb-3 mb-6 flex justify-between items-end border-b border-zinc-100 bg-zinc-50/60">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-500">Rendimiento Financiero (Periodo Actual)</h2>
+        <div class="flex gap-2 text-[10px] font-bold uppercase tracking-wider">
+          <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
+            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
+            Ganancia Neta
           </div>
-          <a routerLink="/reportes" class="btn btn-ghost btn-sm hover-scale">
-            Ver Reporte Contable
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-              <path fill-rule="evenodd" d="M4.646 1.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1 0 .708l-6 6a.5.5 0 0 1-.708-.708L10.293 8 4.646 2.354a.5.5 0 0 1 0-.708z"/>
-            </svg>
-          </a>
+          <div class="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg ring-1 ring-indigo-100/70 cursor-default">
+            <div class="w-2 h-2 rounded-full bg-indigo-400 opacity-50"></div>
+            Ingreso Bruto
+          </div>
         </div>
-      }
-      <div class="card-body flex flex-col flex-1 min-h-0">
-        @if (!showChartOnly()) {
-          <!-- KPI Total -->
-          <div class="mb-4">
-            <div class="text-sm text-base-content/70 mb-1">{{ kpiLabel() }}</div>
-            <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold tabular-nums transition-all duration-300" 
-                 [class.animate-scale-up]="kpiValueChanged()"
-                 [style.animation-fill-mode]="'both'">
-              {{ kpiValue() }}
-            </div>
-          </div>
-        }
+      </div>
 
-        <!-- Controles -->
-        <div class="flex flex-wrap items-center gap-4 mb-4 flex-shrink-0">
-          <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1">
-            <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
-              [class.bg-white]="currentMetric() === 'Ganancia Neta'"
-              [class.shadow-sm]="currentMetric() === 'Ganancia Neta'"
-              [class.text-primary]="currentMetric() === 'Ganancia Neta'"
-              [class.text-base-content/60]="currentMetric() !== 'Ganancia Neta'"
-              [class.hover:bg-base-200]="currentMetric() !== 'Ganancia Neta'"
-              [class.bg-transparent]="currentMetric() !== 'Ganancia Neta'"
-              (click)="setMetric('Ganancia Neta')">
-              Ganancia Neta
-            </button>
-            <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
-              [class.bg-white]="currentMetric() === 'Ingreso Total'"
-              [class.shadow-sm]="currentMetric() === 'Ingreso Total'"
-              [class.text-primary]="currentMetric() === 'Ingreso Total'"
-              [class.text-base-content/60]="currentMetric() !== 'Ingreso Total'"
-              [class.hover:bg-base-200]="currentMetric() !== 'Ingreso Total'"
-              [class.bg-transparent]="currentMetric() !== 'Ingreso Total'"
-              (click)="setMetric('Ingreso Total')">
-              Ingreso Total
-            </button>
-          </div>
-          @if (!showChartOnly()) {
-            <div class="form-control">
-              <input 
-                type="text" 
-                class="input input-bordered input-sm w-48" 
-                [value]="dateRange()"
-                readonly>
-            </div>
-          }
-        </div>
-
-        <!-- Gráfico -->
-        <div class="relative h-[280px] w-full flex-shrink-0" appLazyChart #lazyChart="lazyChart">
-          @if (lazyChart.isVisible()) {
+      <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative">
+        <div class="absolute inset-0 bg-gradient-to-b from-zinc-50/60 to-white pointer-events-none"></div>
+        <div class="relative h-full" appLazyChart #lazyChart="lazyChart">
+          @if (lazyChart.isVisible() && hasData()) {
             <canvas baseChart
+              class="w-full h-full"
               [data]="chartData()"
               [options]="chartOptions"
               [type]="chartType">
             </canvas>
-          } @else {
-            <div class="flex items-center justify-center h-full text-base-content/40">
-              <div class="text-left pl-4 border-l-4 border-l-primary">
-                <div class="loading loading-spinner loading-md mb-2"></div>
-                <p class="text-sm">Cargando gráfico...</p>
+          } @else if (lazyChart.isVisible() && !hasData()) {
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-400">
+              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6">
+                  <path d="M3 7h18M3 12h18M3 17h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                </svg>
               </div>
+              <div class="text-sm font-semibold text-zinc-500">Aún no hay datos para este periodo</div>
+              <div class="text-xs text-zinc-400">Conecta las fuentes o espera la primera carga.</div>
+            </div>
+          } @else {
+            <div class="flex items-center justify-center h-full text-zinc-300 font-bold text-sm uppercase tracking-widest">
+              Área de gráfico combinada
             </div>
           }
         </div>
-        <p class="text-xs text-base-content/70 mt-2 flex-shrink-0">
-          Eje Y: Valores monetarios exactos. Hover sobre cada barra para ver detalles completos (RF-030).
-        </p>
       </div>
     </div>
   `,
@@ -108,67 +60,112 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
 })
 export class FinancialSummary implements OnInit {
   private dashboardService = inject(DashboardService);
-  private cdr = inject(ChangeDetectorRef);
 
   showChartOnly = input(false);
   currentMetric = signal<FinancialMetric>('Ganancia Neta');
-  dateRange = signal('Ene 1 - Dic 31');
   metricChange = output<FinancialMetric>();
-  private previousKpiValue = signal<string>('');
-  kpiValueChanged = signal(false);
   
   // Datos de ejemplo (en producción vendrían del servicio)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({
     'Ganancia Neta': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 2450000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 3200000 },
-      { machineId: '03', driver: 'María López', value: 1800000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 4100000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 2800000 }
+      { machineId: '01', driver: 'Carlos Rodríguez', value: 245000 },
+      { machineId: '02', driver: 'Ana Gómez', value: 320000 },
+      { machineId: '03', driver: 'María López', value: 180000 },
+      { machineId: '05', driver: 'Juan Pérez', value: 410000 },
+      { machineId: '07', driver: 'Pedro Gómez', value: 280000 }
     ],
     'Ingreso Total': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 8500000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 9200000 },
-      { machineId: '03', driver: 'María López', value: 7200000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 10500000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 8800000 }
+      { machineId: '01', driver: 'Carlos Rodríguez', value: 850000 },
+      { machineId: '02', driver: 'Ana Gómez', value: 920000 },
+      { machineId: '03', driver: 'María López', value: 720000 },
+      { machineId: '05', driver: 'Juan Pérez', value: 1050000 },
+      { machineId: '07', driver: 'Pedro Gómez', value: 880000 }
     ]
   });
 
+  private summaryData = computed(() => {
+    const net = this.financialData()['Ganancia Neta'] ?? [];
+    const income = this.financialData()['Ingreso Total'] ?? [];
+    const byMachine = new Map<string, { machineId: string; driver: string; net: number; income: number }>();
+
+    income.forEach(item => {
+      byMachine.set(item.machineId, {
+        machineId: item.machineId,
+        driver: item.driver,
+        net: byMachine.get(item.machineId)?.net ?? 0,
+        income: item.value
+      });
+    });
+
+    net.forEach(item => {
+      byMachine.set(item.machineId, {
+        machineId: item.machineId,
+        driver: item.driver,
+        net: item.value,
+        income: byMachine.get(item.machineId)?.income ?? 0
+      });
+    });
+
+    return Array.from(byMachine.values());
+  });
+
+  private driversByMachine = computed(() => new Map(this.summaryData().map(item => [item.machineId, item.driver])));
+
+  netTotal = computed(() => this.summaryData().reduce((sum, item) => sum + item.net, 0));
+
+  incomeTotal = computed(() => this.summaryData().reduce((sum, item) => sum + item.income, 0));
+
+  margin = computed(() => {
+    const income = this.incomeTotal();
+    if (!income) return '0%';
+    const value = (this.netTotal() / income) * 100;
+    return `${value.toFixed(1)}%`;
+  });
+
+  hasData = computed(() => this.summaryData().length > 0);
+
+
   chartData = computed<ChartData<'bar'>>(() => {
-    const data = this.financialData()[this.currentMetric()];
-    const isGanancia = this.currentMetric() === 'Ganancia Neta';
-    
-    // Paleta de colores corporativa profesional
-    // Para ganancia: verde corporativo (success)
-    // Para ingreso: azul corporativo (primary)
-    const baseColor = isGanancia 
-      ? 'hsl(142, 71%, 50%)'  // Verde corporativo para ganancia
-      : 'hsl(217, 91%, 65%)'; // Azul corporativo para ingreso
-    
+    const data = this.summaryData();
+    const labels = data.map(item => item.machineId);
+
     return {
-      labels: data.map(item => item.machineId),
-      datasets: [{
-        label: this.currentMetric(),
-        data: data.map(item => item.value),
-        backgroundColor: baseColor,
-        borderColor: baseColor,
-        borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false
-      }]
+      labels,
+      datasets: [
+        {
+          type: 'bar' as const,
+          label: 'Ingreso Total',
+          data: data.map(item => item.income),
+          backgroundColor: 'rgba(124, 58, 237, 0.20)',
+          borderColor: 'rgba(124, 58, 237, 0.55)',
+          borderWidth: 2,
+          borderRadius: 12,
+          borderSkipped: false,
+          barThickness: 34,
+          maxBarThickness: 36,
+          categoryPercentage: 1,
+          barPercentage: 1,
+          grouped: false,
+          order: 1
+        },
+        {
+          type: 'bar' as const,
+          label: 'Ganancia Neta',
+          data: data.map(item => item.net),
+          backgroundColor: 'rgba(16, 185, 129, 0.9)',
+          borderColor: 'rgba(16, 185, 129, 1)',
+          borderWidth: 0,
+          borderRadius: 10,
+          borderSkipped: false,
+          barThickness: 18,
+          maxBarThickness: 20,
+          categoryPercentage: 1,
+          barPercentage: 1,
+          grouped: false,
+          order: 2
+        }
+      ]
     };
-  });
-
-  kpiLabel = computed(() => {
-    const metric = this.currentMetric();
-    return metric.includes('Total') ? metric : `${metric} Total`;
-  });
-
-  kpiValue = computed(() => {
-    const data = this.financialData()[this.currentMetric()];
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    return this.formatCurrency(total);
   });
 
   chartType = 'bar' as const;
@@ -176,6 +173,15 @@ export class FinancialSummary implements OnInit {
   chartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: {
+      padding: {
+        bottom: 24
+      }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
     animation: {
       duration: 800,
       easing: 'easeOutQuart' as const,
@@ -196,23 +202,24 @@ export class FinancialSummary implements OnInit {
       },
       tooltip: {
         enabled: true,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        backgroundColor: 'rgba(15, 23, 42, 0.92)',
         titleColor: '#ffffff',
-        bodyColor: '#ffffff',
-        borderColor: 'rgba(255, 255, 255, 0.2)',
+        bodyColor: '#e2e8f0',
+        borderColor: 'rgba(255, 255, 255, 0.08)',
         borderWidth: 1,
         padding: 12,
-        displayColors: true,
+        displayColors: false,
         callbacks: {
-          title: () => '',
+          title: (items) => {
+            if (!items?.length) return '';
+            const label = items[0].label ?? '';
+            const driver = this.driversByMachine().get(label) ?? '';
+            return driver ? `${driver} — Máquina ${label}` : `Máquina ${label}`;
+          },
           label: (context) => {
-            const index = context.dataIndex;
-            const currentData = this.financialData()[this.currentMetric()];
             const value = context.parsed.y;
-            return [
-              currentData[index]?.driver || '',
-              value !== null ? this.formatCurrency(value) : '$0'
-            ];
+            const label = context.dataset.label ?? '';
+            return `${label}: ${value !== null ? this.formatCurrency(value) : '$0'}`;
           }
         }
       }
@@ -221,13 +228,13 @@ export class FinancialSummary implements OnInit {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.05)'
         },
         border: {
           display: false
         },
         ticks: {
-          color: 'rgba(0, 0, 0, 0.7)',
+          color: 'rgba(0, 0, 0, 0.6)',
           callback: (value) => this.formatCurrency(value as number),
           font: {
             size: 11
@@ -239,7 +246,11 @@ export class FinancialSummary implements OnInit {
           display: false
         },
         ticks: {
-          color: 'rgba(0, 0, 0, 0.7)',
+          color: 'rgba(0, 0, 0, 0.6)',
+          callback: (_value: string | number, index: number): string => {
+            const labels = this.chartData().labels ?? [];
+            return String(labels[index] ?? '');
+          },
           font: {
             size: 11
           }
@@ -256,23 +267,9 @@ export class FinancialSummary implements OnInit {
         catchError(() => of(null))
       )
       .subscribe();
-  }
 
-  setMetric(metric: FinancialMetric): void {
-    if (this.currentMetric() !== metric) {
-      this.currentMetric.set(metric);
-      this.metricChange.emit(metric);
-      
-      // Trigger animation en KPI value
-      const newValue = this.kpiValue();
-      if (this.previousKpiValue() !== newValue) {
-        this.kpiValueChanged.set(true);
-        setTimeout(() => {
-          this.kpiValueChanged.set(false);
-        }, 300);
-        this.previousKpiValue.set(newValue);
-      }
-    }
+    // Emitimos la métrica inicial para mantener compatibilidad con el contenedor
+    this.metricChange.emit(this.currentMetric());
   }
 
   // Exponer datos para uso externo
@@ -293,5 +290,11 @@ export class FinancialSummary implements OnInit {
       maximumFractionDigits: 0
     }).format(value).replace('CLP', '$');
   }
+
+  formatHeaderValue(value: number): string {
+    // Evitamos abreviar en millones para reflejar montos más realistas de los choferes.
+    return this.formatCurrency(value);
+  }
+
 }
 

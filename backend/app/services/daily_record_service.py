@@ -13,6 +13,61 @@ from app.services import alert_service
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
 
+
+def _map_motivo_inactividad_to_enum(motivo: str) -> str:
+    """
+    Mapea el motivo de inactividad del frontend al valor del enum de la base de datos.
+    
+    Valores del enum en PostgreSQL:
+    - descanso_semanal
+    - vacaciones
+    - licencia_medica
+    - permiso_personal
+    - maquina_en_mantenimiento
+    - sin_asignacion_ruta
+    - otro
+    """
+    motivo_map = {
+        # Valores del frontend -> valores del enum
+        'Descanso Semanal': 'descanso_semanal',
+        'Vacaciones': 'vacaciones',
+        'Licencia Médica': 'licencia_medica',
+        'Permiso Personal': 'permiso_personal',
+        'En Taller / Mantenimiento': 'maquina_en_mantenimiento',
+        'Sin Chofer Asignado': 'sin_asignacion_ruta',
+        'Otro': 'otro',
+        # También aceptar valores que ya están en formato enum
+        'descanso_semanal': 'descanso_semanal',
+        'vacaciones': 'vacaciones',
+        'licencia_medica': 'licencia_medica',
+        'permiso_personal': 'permiso_personal',
+        'maquina_en_mantenimiento': 'maquina_en_mantenimiento',
+        'sin_asignacion_ruta': 'sin_asignacion_ruta',
+        'otro': 'otro',
+    }
+    
+    # Si el motivo está en el mapa, retornar el valor mapeado
+    if motivo in motivo_map:
+        return motivo_map[motivo]
+    
+    # Si no está en el mapa, intentar normalizarlo
+    # (por si acaso viene en otro formato)
+    motivo_normalized = motivo.lower().replace(' ', '_').replace('/', '').replace('-', '_').strip()
+    
+    # Validar que el valor normalizado sea uno de los valores válidos del enum
+    valores_validos = {
+        'descanso_semanal', 'vacaciones', 'licencia_medica', 
+        'permiso_personal', 'maquina_en_mantenimiento', 
+        'sin_asignacion_ruta', 'otro'
+    }
+    
+    if motivo_normalized in valores_validos:
+        return motivo_normalized
+    
+    # Si no se puede mapear, retornar el valor original (lanzará error en la BD)
+    return motivo
+
+
 async def _create_daily_record_core(
     *,
     chofer_id: int,
@@ -77,7 +132,10 @@ async def _create_daily_record_core(
                 detail="Debe indicar motivo de no trabajado"
             )
 
-        if motivo_no_trabajado == "otro" and not motivo_no_trabajado_otro:
+        # Mapear el motivo al formato del enum
+        motivo_enum = _map_motivo_inactividad_to_enum(motivo_no_trabajado)
+
+        if motivo_enum == "otro" and not motivo_no_trabajado_otro:
             raise HTTPException(
                 status_code=400,
                 detail="Debe especificar motivo cuando selecciona 'Otro'"
@@ -89,7 +147,7 @@ async def _create_daily_record_core(
             "fecha": fecha.isoformat(),
             "estado": "no_trabajado",
             "es_dia_no_trabajado": True,
-            "motivo_no_trabajado": motivo_no_trabajado,
+            "motivo_no_trabajado": motivo_enum,
             "motivo_no_trabajado_otro": motivo_no_trabajado_otro,
             "monto_recaudado": 0,
             "litros_diesel": 0,
@@ -690,10 +748,12 @@ async def update_daily_record(
                 detail="Debe indicar un motivo de no trabajado"
             )
 
-        updates["motivo_no_trabajado"] = payload.motivo_no_trabajado
+        # Mapear el motivo al formato del enum
+        motivo_enum = _map_motivo_inactividad_to_enum(payload.motivo_no_trabajado)
+        updates["motivo_no_trabajado"] = motivo_enum
 
         # motivo_no_trabajado_otro (Texto libre si se elige "Otro" en el selector)
-        if payload.motivo_no_trabajado == "otro":
+        if motivo_enum == "otro":
             if not payload.motivo_no_trabajado_otro:
                 raise HTTPException(
                     status_code=400,
@@ -793,3 +853,92 @@ async def update_daily_record(
             "campos_modificados": campos_modificados
         }
     }
+
+
+async def resolve_incident(
+    record_id: int,
+    current_user: UserInDB,
+):
+    """
+    Marca un incidente como resuelto cambiando el estado de 'incidente_reportado' a 'completo'.
+    TODO: Aquí se agregará lógica para alertas/notificaciones cuando se resuelva un incidente.
+    """
+    # ----------------------------------------
+    # 1. Obtener registro actual
+    # ----------------------------------------
+    record_res = (
+        supabase.table("registros_diarios")
+        .select("*")
+        .eq("id", record_id)
+        .single()
+        .execute()
+    )
+
+    if not record_res.data:
+        raise HTTPException(status_code=404, detail="Registro diario no encontrado")
+
+    original = record_res.data
+
+    # ----------------------------------------
+    # 2. Validar que el registro esté en estado de incidente
+    # ----------------------------------------
+    if original["estado"] != "incidente_reportado":
+        raise HTTPException(
+            status_code=400,
+            detail=f"El registro no está en estado de incidente. Estado actual: {original['estado']}"
+        )
+
+    # ----------------------------------------
+    # 3. Obtener versión para auditoría
+    # ----------------------------------------
+    version_res = (
+        supabase.table("registros_diarios_auditoria")
+        .select("version")
+        .eq("registro_diario_id", record_id)
+        .order("version", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    last_version = version_res.data[0]["version"] if version_res.data else 0
+    next_version = last_version + 1
+
+    # ----------------------------------------
+    # 4. Actualizar estado a 'completo'
+    # ----------------------------------------
+    updates = {
+        "estado": "completo"
+    }
+
+    upd_res = (
+        supabase.table("registros_diarios")
+        .update(updates)
+        .eq("id", record_id)
+        .execute()
+    )
+
+    if getattr(upd_res, "error", None):
+        raise HTTPException(400, f"Error actualizando registro: {upd_res.error}")
+
+    # ----------------------------------------
+    # 5. Registrar en auditoría
+    # ----------------------------------------
+    auditoria = {
+        "registro_diario_id": record_id,
+        "version": next_version,
+        "campo": "estado",
+        "valor_anterior": "incidente_reportado",
+        "valor_nuevo": "completo",
+        "modificado_por": current_user.id,
+        "comentario": "Incidente marcado como resuelto",
+    }
+
+    supabase.table("registros_diarios_auditoria").insert(auditoria).execute()
+
+    # TODO: Aquí se agregará lógica para alertas/notificaciones cuando se resuelva un incidente
+    # Ejemplo: enviar notificación al chofer, registrar en sistema de alertas, etc.
+
+    # ----------------------------------------
+    # 6. Retornar registro actualizado usando get_daily_record_detail
+    # ----------------------------------------
+    return await get_daily_record_detail(record_id)

@@ -9,131 +9,182 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
+import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-home',
-  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton],
+  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon],
   template: `
     <div class="space-y-6">
-      <!-- Header - Aparece primero -->
-      <div class="page-entry-header border-b-2 border-b-base-300 pb-4 mb-6">
-        <h1 class="text-4xl font-bold mb-3 border-l-4 border-l-primary pl-4">Dashboard del Administrador</h1>
-        <p class="text-base-content/70 italic">
-          Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
-        </p>
+      <!-- Header - coherente con el resto de la app -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+              Panel Principal
+            </h1>
+            <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
+              Vista rápida del estado operativo, alertas críticas y rendimiento financiero de la flota.
+            </p>
+          </div>
+          
+        </div>
       </div>
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 page-entry-content">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 page-entry-content">
         @if (isLoading()) {
           @for (i of [1,2,3,4]; track i) {
-            <app-loading-skeleton type="kpi" />
+            <app-loading-skeleton type="dashboard-kpi" />
           }
         } @else {
-          <!-- Card 1: Ganancia Neta Total -->
-          <!-- CORREGIDO: Usar animate-card-enter-in-context para respetar el contexto de page-entry-content -->
-          <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context group overflow-hidden relative">
-          <div class="absolute -right-4 -bottom-4 text-success/10 group-hover:text-success/20 transition-colors duration-300 pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Ganancia Neta Total</div>
-            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black tabular-nums break-words leading-tight">{{ gananciaNetaTotal() }}</div>
-            <div class="text-xs text-base-content/60 italic mt-2">Período actual</div>
-          </div>
-        </div>
-
-        <!-- Card 2: Ingreso Total -->
-        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-1 -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-1 group overflow-hidden relative">
-          <div class="absolute -right-4 -bottom-4 text-primary/10 group-hover:text-primary/20 transition-colors duration-300 pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Ingreso Total</div>
-            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black tabular-nums break-words leading-tight">{{ ingresoTotal() }}</div>
-            <div class="text-xs text-base-content/60 italic mt-2">Período actual</div>
-          </div>
-        </div>
-
-        <!-- Card 3: Estado de Flota -->
-        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-2 -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-2 group overflow-hidden relative">
-          <div class="absolute -right-4 -bottom-4 text-info/10 group-hover:text-info/20 transition-colors duration-300 pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-            </svg>
-          </div>
-          <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Máquinas Activas</div>
-            <div class="text-[clamp(1.5rem,3vw,2.5rem)] sm:text-[clamp(1.75rem,3.5vw,2.75rem)] font-black break-words leading-tight">{{ maquinasActivas() }}</div>
-            <div class="text-xs text-base-content/60 italic mt-2">En operación hoy</div>
-          </div>
-        </div>
-
-        <!-- Card 4: Resumen de Alertas -->
-        <!-- CORREGIDO: Usar animate-card-enter-in-context-delay-3 -->
-        <div class="card bg-base-100 shadow-xl hover-lift animate-card-enter-in-context-delay-3 group overflow-hidden relative">
-          <div class="absolute -right-4 -bottom-4 text-warning/10 group-hover:text-warning/20 transition-colors duration-300 pointer-events-none">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          </div>
-          <div class="card-body p-5 relative z-10 min-w-0">
-            <div class="text-sm text-base-content/70 font-normal mb-2 border-l-4 border-l-primary pl-2">Resumen de Alertas</div>
-            <div class="space-y-2">
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-                <span class="text-2xl font-black">{{ alertCounts().critical }}</span>
-                <span class="text-xs text-base-content/70 italic">críticas</span>
+          <!-- Card 1: Ganancia Neta (El Bolsillo) -->
+          <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context">
+            <div class="absolute right-0 top-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-emerald-50 opacity-50 blur-xl"></div>
+            
+            <div class="relative flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
               </div>
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-warning" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                </svg>
-                <span class="text-2xl font-black">{{ alertCounts().warning }}</span>
-                <span class="text-xs text-base-content/70 italic">advertencias</span>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Ganancia Neta</h3>
+                <p class="text-[10px] font-medium text-zinc-400">Después de operación</p>
               </div>
-              <div class="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-info" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
-                </svg>
-                <span class="text-2xl font-black">{{ alertCounts().info }}</span>
-                <span class="text-xs text-base-content/70 italic">informativas</span>
+            </div>
+
+            <div class="relative flex flex-col">
+              <div class="text-xl sm:text-3xl font-black tracking-tight text-zinc-900">{{ gananciaNetaTotal() }}</div>
+              <div class="mt-2 flex items-center gap-1.5">
+                <span class="flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                  <svg class="mr-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+                  Rentabilidad hoy
+                </span>
               </div>
             </div>
           </div>
-        </div>
+
+          <!-- Card 2: Ingreso Total (El Bruto) -->
+          <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context-delay-1">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+              </div>
+              <div>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Recaudación Total</h3>
+                <p class="text-[10px] font-medium text-zinc-400">Bruto sin descuentos</p>
+              </div>
+            </div>
+
+            <div class="flex flex-col w-full">
+              <div class="text-xl sm:text-3xl font-black tracking-tight text-zinc-900">{{ ingresoTotal() }}</div>
+              <div class="mt-2">
+                <span class="inline-flex items-center rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary ring-1 ring-inset ring-primary/15">
+                  Total hoy
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Card 3: Operación (El Monitor) -->
+          <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context-delay-2">
+            <div class="flex justify-between items-start">
+              <div class="flex items-center gap-3">
+                <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-50 text-violet-600 ring-1 ring-violet-100">
+                  <app-bus-icon class="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Flota en Ruta</h3>
+                  <div class="flex items-center gap-1.5 mt-0.5">
+                    <span class="relative flex h-2 w-2">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span class="text-sm font-bold text-zinc-700">{{ maquinasActivas() }} Activas</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <div class="flex justify-between items-end">
+                <span class="text-xs font-semibold text-zinc-500">Reportes diarios</span>
+                <span class="text-base sm:text-lg font-black tabular-nums text-zinc-900">{{ reportesHoyCompletos() }}<span class="text-zinc-300 mx-1">/</span>{{ reportesHoyTotales() }}</span>
+              </div>
+              
+              <div class="relative h-2.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                <div class="absolute left-0 top-0 h-full bg-violet-500 rounded-full" [style.width.%]="reportesHoyPorcentaje()"></div>
+              </div>
+              <p class="text-[10px] text-zinc-400 text-right">
+                @if (reportesHoyPendientes() > 0) {
+                  Falta {{ reportesHoyPendientes() }} registro(s) por cerrar
+                } @else {
+                  Todo cerrado hoy
+                }
+              </p>
+            </div>
+          </div>
+
+          <!-- Card 4: Alertas (El Semáforo) -->
+          <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context-delay-3">
+            <div class="px-5 pt-5 pb-2">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Resumen de Salud</h3>
+            </div>
+
+            <div class="flex flex-col flex-1 px-2 pb-2 gap-1">
+              <div class="flex-1 flex items-center justify-between px-4 rounded-2xl bg-red-50/60 border border-red-100/50">
+                <div class="flex items-center gap-2">
+                  <div class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></div>
+                  <span class="text-xs font-bold text-red-700">Críticas</span>
+                </div>
+                <span class="text-xl font-black text-red-600">{{ alertCounts().critical }}</span>
+              </div>
+
+              <div class="flex gap-1 h-16">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-amber-50/60 border border-amber-100/50">
+                  <span class="text-lg font-black text-amber-600 leading-none">{{ alertCounts().warning }}</span>
+                  <span class="text-[10px] font-bold text-amber-700/70 uppercase">Advertencias</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-blue-50/60 border border-blue-100/50">
+                  <span class="text-lg font-black text-blue-600 leading-none">{{ alertCounts().info }}</span>
+                  <span class="text-[10px] font-bold text-blue-700/70 uppercase">Info</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
         }
       </div>
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6 page-entry-content-delay-1">
-        <!-- Gráfico Financiero (2/3 del ancho) -->
-        <div class="xl:col-span-2">
-          <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
-        </div>
+        @if (isLoading()) {
+          <div class="xl:col-span-2">
+            <app-loading-skeleton type="dashboard-chart" />
+          </div>
+          <div class="xl:col-span-1">
+            <app-loading-skeleton type="dashboard-alerts" />
+          </div>
+        } @else {
+          <!-- Gráfico Financiero (2/3 del ancho) -->
+          <div class="xl:col-span-2">
+            <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
+          </div>
 
-        <!-- Alertas Compactas (1/3 del ancho) -->
-        <div class="xl:col-span-1">
-          <app-alert-list
-            [alerts]="alerts()"
-            [isExpanded]="true"
-            (deleteAlert)="onDeleteAlert($event)"
-            (deleteAllAlerts)="onDeleteAllAlerts()" />
-        </div>
+          <!-- Alertas Compactas (1/3 del ancho) -->
+          <div class="xl:col-span-1">
+            <app-alert-list
+              [alerts]="alerts()"
+              [isExpanded]="true"
+              (deleteAlert)="onDeleteAlert($event)"
+              (deleteAllAlerts)="onDeleteAllAlerts()" />
+          </div>
+        }
       </div>
 
       <!-- Zona de Detalle: Tabla Full Width -->
       <div class="border-t-2 border-t-base-300 pt-6 page-entry-content-delay-2">
         @if (isLoading()) {
-          <app-loading-skeleton type="table" [count]="5" />
+          <app-loading-skeleton type="dashboard-table" [count]="5" />
         } @else {
           <app-daily-records-table
             [records]="dailyRecords()"
@@ -266,6 +317,29 @@ export class Home implements OnInit {
     const data = this.financialData()['Ingreso Total'];
     const total = data.reduce((sum, item) => sum + item.value, 0);
     return this.formatCurrency(total);
+  });
+
+  reportesHoyTotales = computed(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return this.dailyRecords().filter(r => r.date === today).length;
+  });
+
+  reportesHoyCompletos = computed(() => {
+    const today = new Date().toISOString().split('T')[0];
+    return this.dailyRecords().filter(r => r.date === today && r.status === 'COMPLETO').length;
+  });
+
+  reportesHoyPendientes = computed(() => {
+    const total = this.reportesHoyTotales();
+    const completos = this.reportesHoyCompletos();
+    return Math.max(total - completos, 0);
+  });
+
+  reportesHoyPorcentaje = computed(() => {
+    const total = this.reportesHoyTotales();
+    if (total === 0) return 0;
+    const completos = this.reportesHoyCompletos();
+    return Math.round((completos / total) * 100);
   });
 
   maquinasActivas = computed(() => {

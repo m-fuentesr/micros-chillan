@@ -34,6 +34,139 @@ import { CommonModule } from '@angular/common';
             </div>
           </div>
         }
+        @case ('dashboard-kpi') {
+          <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-base-200/80 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.08)] min-h-[150px] md:min-h-[170px]">
+            <div class="absolute right-0 top-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/5 blur-2xl"></div>
+            <div class="relative flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+                <div class="w-5 h-5 skeleton-shimmer rounded-lg"></div>
+              </div>
+              <div class="space-y-1">
+                <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+              </div>
+            </div>
+            <div class="relative flex flex-col gap-2">
+              <div class="h-7 w-32 skeleton-shimmer rounded"></div>
+              <div class="h-4 w-24 skeleton-shimmer rounded-full"></div>
+            </div>
+          </div>
+        }
+        @case ('dashboard-chart') {
+          <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl">
+            <div class="px-6 pt-5 pb-3 mb-4 flex justify-between items-center border-b border-zinc-100 bg-zinc-50/60">
+              <div class="space-y-2">
+                <div class="h-3 w-44 skeleton-shimmer rounded"></div>
+                <div class="h-2.5 w-28 skeleton-shimmer rounded-full"></div>
+              </div>
+              <div class="flex gap-2">
+                <div class="h-3 w-16 skeleton-shimmer rounded-full"></div>
+                <div class="h-3 w-16 skeleton-shimmer rounded-full"></div>
+              </div>
+            </div>
+            <div class="relative flex-1 p-6">
+              <div class="absolute inset-0 bg-gradient-to-b from-zinc-50/60 to-white pointer-events-none"></div>
+              <div class="relative h-full w-full rounded-2xl border border-dashed border-zinc-200/80 overflow-hidden bg-white">
+                <div class="absolute inset-0 flex flex-col gap-3 p-6">
+                  <div class="h-4 w-1/3 skeleton-shimmer rounded self-start"></div>
+                  <div class="flex-1 rounded-2xl skeleton-shimmer"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        @case ('dashboard-alerts') {
+          <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-base-200/80 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.08)] min-h-[150px] md:min-h-[170px]">
+            <div class="px-5 pt-5 pb-3">
+              <div class="h-3 w-32 skeleton-shimmer rounded mb-2"></div>
+              <div class="h-2.5 w-20 skeleton-shimmer rounded-full"></div>
+            </div>
+            <div class="flex flex-col flex-1 px-4 pb-5 gap-2">
+              <div class="flex items-center justify-between rounded-2xl bg-base-200/60 border border-base-200/80 px-4 py-3">
+                <div class="flex items-center gap-2">
+                  <div class="h-2 w-2 rounded-full bg-base-content/40 skeleton-shimmer"></div>
+                  <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="h-5 w-10 skeleton-shimmer rounded"></div>
+              </div>
+              <div class="flex gap-2 h-16">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-base-200/40 border border-base-200/60 space-y-2">
+                  <div class="h-5 w-6 skeleton-shimmer rounded"></div>
+                  <div class="h-2.5 w-16 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-base-200/40 border border-base-200/60 space-y-2">
+                  <div class="h-5 w-6 skeleton-shimmer rounded"></div>
+                  <div class="h-2.5 w-10 skeleton-shimmer rounded"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+        @case ('dashboard-table') {
+          <div class="card bg-base-100 shadow-xl border border-base-200/70 rounded-3xl overflow-hidden">
+            <div class="card-header p-4 sm:p-6 lg:p-7 border-b border-base-200/70 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-start gap-3">
+                  <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
+                    <div class="w-6 h-6 skeleton-shimmer rounded-lg"></div>
+                  </div>
+                  <div class="space-y-2">
+                    <div class="h-4 w-40 skeleton-shimmer rounded"></div>
+                    <div class="h-3 w-56 skeleton-shimmer rounded hidden sm:block"></div>
+                  </div>
+                </div>
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/80 text-xs font-semibold text-base-content shadow-sm ring-1 ring-base-200/60">
+                  <div class="w-2 h-2 rounded-full skeleton-shimmer"></div>
+                  <div class="h-3 w-16 skeleton-shimmer rounded-full"></div>
+                </div>
+              </div>
+            </div>
+            <div class="card-body p-6">
+              <div class="hidden xl:block">
+                <div class="space-y-4">
+                  @for (row of rows(); track $index) {
+                    <div class="flex items-center gap-4 p-3 rounded-xl border border-base-200/70 bg-base-50/40">
+                      <div class="avatar placeholder shrink-0">
+                        <div class="rounded-lg w-10 h-10 skeleton-shimmer"></div>
+                      </div>
+                      <div class="flex-1 grid grid-cols-5 items-center gap-3">
+                        <div class="space-y-2">
+                          <div class="h-4 w-24 skeleton-shimmer rounded"></div>
+                          <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                        </div>
+                        <div class="h-4 w-28 skeleton-shimmer rounded"></div>
+                        <div class="h-4 w-20 skeleton-shimmer rounded mx-auto"></div>
+                        <div class="h-4 w-16 skeleton-shimmer rounded mx-auto"></div>
+                        <div class="h-8 w-24 skeleton-shimmer rounded-full justify-self-end"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+              <div class="block xl:hidden space-y-3">
+                @for (row of rows(); track $index) {
+                  <div class="card bg-base-100 border border-base-200/70 rounded-2xl">
+                    <div class="card-body p-4 space-y-3">
+                      <div class="flex items-start gap-3">
+                        <div class="rounded-lg w-12 h-12 skeleton-shimmer"></div>
+                        <div class="flex-1 space-y-2">
+                          <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                          <div class="h-3 w-24 skeleton-shimmer rounded"></div>
+                        </div>
+                        <div class="h-6 w-16 skeleton-shimmer rounded-full"></div>
+                      </div>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                        <div class="h-3 w-20 skeleton-shimmer rounded justify-self-end"></div>
+                      </div>
+                      <div class="h-9 w-full skeleton-shimmer rounded-xl"></div>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+        }
         @case ('table') {
           <div class="space-y-2">
             <!-- Header -->
@@ -297,10 +430,10 @@ import { CommonModule } from '@angular/common';
 })
 export class LoadingSkeleton implements OnInit {
   /**
-   * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form, machine-list
+ * Tipo de skeleton: kpi, table, card, list, text, avatar, custom, worker-header, worker-timeline, worker-stats, worker-form, machine-list, dashboard-kpi, dashboard-chart, dashboard-alerts, dashboard-table
    * @default 'card'
    */
-  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom' | 'worker-header' | 'worker-timeline' | 'worker-stats' | 'worker-form' | 'machine-list'>('card');
+  type = input<'kpi' | 'table' | 'card' | 'list' | 'text' | 'avatar' | 'custom' | 'worker-header' | 'worker-timeline' | 'worker-stats' | 'worker-form' | 'machine-list' | 'dashboard-kpi' | 'dashboard-chart' | 'dashboard-alerts' | 'dashboard-table'>('card');
 
   /**
    * Indica si el skeleton está en estado de salida (animación fade-out)

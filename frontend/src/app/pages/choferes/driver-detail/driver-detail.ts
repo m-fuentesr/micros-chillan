@@ -1852,30 +1852,24 @@ export class DriverDetail implements OnInit {
 
   formatDate(date: string | null): string {
     if (!date) return 'Sin fecha';
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        day: '2-digit', 
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return date;
-    }
+    const d = this.parseLocalDate(date);
+    if (!d) return date;
+    return d.toLocaleDateString('es-CL', { 
+      day: '2-digit', 
+      month: 'short',
+      year: 'numeric'
+    });
   }
 
   formatDateFull(date: string): string {
     if (!date) return '';
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
-    }
+    const d = this.parseLocalDate(date);
+    if (!d) return '';
+    return d.toLocaleDateString('es-CL', { 
+      weekday: 'short',
+      day: '2-digit', 
+      month: 'short'
+    });
   }
 
   formatCurrency(value: number): string {
@@ -1900,6 +1894,17 @@ export class DriverDetail implements OnInit {
   onViewRecordDetail(record: DriverDailyRecord): void {
     // Navegar al detalle del registro
     this.router.navigate(['/registro-diario', record.id]);
+  }
+
+  private parseLocalDate(value: string | null): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 
   private loadDailyRecords(): void {

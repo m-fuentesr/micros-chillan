@@ -3,9 +3,10 @@ import { Injectable, signal } from '@angular/core';
 export interface NewRecordFormData {
   noWorkDay: boolean;
   noWorkDayReason: string;
+  noWorkDayReasonOther: string; // Campo de texto cuando se selecciona "Otro"
   date: string;
-  machine: string;
-  driver: string;
+  machine: number | string; // ID de la máquina (número) o string para compatibilidad
+  driver: number | string; // ID del chofer (número) o string para compatibilidad
   income: number;
   dieselExpense: number;
   dieselLiters: number;
@@ -23,6 +24,7 @@ export class NewRecordModalService {
   private _formData = signal<NewRecordFormData>({
     noWorkDay: false,
     noWorkDayReason: '',
+    noWorkDayReasonOther: '',
     date: '',
     machine: '',
     driver: '',
@@ -35,9 +37,11 @@ export class NewRecordModalService {
     fuelReceiptPhoto: null
   });
   private _resolveCallback = signal<((record: NewRecordFormData | null) => void) | null>(null);
+  private _isSubmitting = signal(false);
 
   readonly isVisible = this._isVisible.asReadonly();
   readonly formData = this._formData.asReadonly();
+  readonly isSubmitting = this._isSubmitting.asReadonly();
 
   /**
    * Abre el modal de nuevo registro y retorna una Promise que se resuelve cuando el usuario guarda o cancela
@@ -48,6 +52,7 @@ export class NewRecordModalService {
       this._formData.set({
         noWorkDay: false,
         noWorkDayReason: '',
+        noWorkDayReasonOther: '',
         date: today,
         machine: '',
         driver: '',
@@ -72,13 +77,22 @@ export class NewRecordModalService {
   }
 
   /**
-   * Guarda el registro
+   * Guarda el registro (pero no cierra el modal, se cerrará cuando se complete la operación)
    */
   save(): void {
     const resolve = this._resolveCallback();
     if (resolve) {
+      this._isSubmitting.set(true);
       resolve(this._formData());
+      // No cerramos aquí, se cerrará cuando se complete la operación
     }
+  }
+
+  /**
+   * Marca que la operación ha terminado (éxito o error) y cierra el modal
+   */
+  finishSubmission(): void {
+    this._isSubmitting.set(false);
     this.close();
   }
 
@@ -95,9 +109,11 @@ export class NewRecordModalService {
 
   private close(): void {
     this._isVisible.set(false);
+    this._isSubmitting.set(false);
     this._formData.set({
       noWorkDay: false,
       noWorkDayReason: '',
+      noWorkDayReasonOther: '',
       date: '',
       machine: '',
       driver: '',
