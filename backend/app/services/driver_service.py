@@ -576,6 +576,21 @@ async def create_driver(data: DriverCreate):
             detail="Ya existe un usuario registrado con ese correo.",
         )
 
+    # Verificar si el correo ya existe en Supabase Auth para retornar
+    # un mensaje claro antes de intentar crear el usuario
+    try:
+        listado_auth = supabase.auth.admin.list_users()
+        if any(u.email and u.email.lower() == email for u in getattr(listado_auth, "users", [])):
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un usuario en Supabase Auth con este correo.",
+            )
+    except HTTPException:
+        # Reenviar directamente la excepción generada arriba
+        raise
+    except Exception as e:
+        logger.warning(f"No se pudo verificar duplicado en Auth antes de crear usuario: {e}")
+
     # --------------------------
     # 1) Crear usuario en Supabase Auth
     # Password inicial = RUT sin dígito verificador
@@ -631,10 +646,10 @@ async def create_driver(data: DriverCreate):
             }
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Error creando usuario en Supabase Auth: {e}",
-        )
+        detalle = str(e)
+        if "already registered" in detalle.lower():
+            detalle = "Ya existe un usuario en Supabase Auth con este correo."
+        raise HTTPException(status_code=400, detail=f"Error creando usuario en Supabase Auth: {detalle}")
 
     auth_user = getattr(auth_res, "user", None)
     if not auth_user or not getattr(auth_user, "id", None):

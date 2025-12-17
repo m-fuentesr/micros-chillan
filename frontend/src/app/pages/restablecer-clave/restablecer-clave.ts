@@ -1358,6 +1358,10 @@ export class RestablecerClave implements OnInit {
       // Éxito
       this.resetSuccess.set(true);
       this.error.set(null);
+
+      // Salir explícitamente del modo de recuperación y cerrar sesión temporal
+      this.auth.finishRecovery();
+      await this.auth.logout({ redirect: false, showSpinner: false });
       
       // Cambiar a paso de éxito después de un breve delay
       setTimeout(() => {

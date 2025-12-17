@@ -438,11 +438,11 @@ async def create_machine(data):
             .execute()
         )
 
-    if getattr(asign_res, "error", None):
-        raise HTTPException(
-            400,
-            f"Máquina creada pero ocurrió un error asignando el chofer: {asign_res.error}",
-        )
+        if getattr(asign_res, "error", None):
+            raise HTTPException(
+                400,
+                f"Máquina creada pero ocurrió un error asignando el chofer: {asign_res.error}",
+            )
 
     return {"id": maquina_id, "message": "Máquina creada correctamente"}
 

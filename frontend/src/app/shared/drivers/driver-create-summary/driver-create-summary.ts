@@ -39,15 +39,6 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           </div>
           
           <div class="summary-section">
-            <div class="summary-field" [class.is-updating]="updatingFields().estado">
-              <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Estado</span>
-              <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Estado: ' + (summary().estado || 'No seleccionado')">
-                {{ summary().estado || '--' }}
-              </div>
-            </div>
-          </div>
-          
-          <div class="summary-section">
             <div class="summary-field" [class.is-updating]="updatingFields().maquina">
               <span class="summary-label text-xs uppercase tracking-wide text-base-content/70">Máquina asignada</span>
               <div class="summary-value font-bold mt-1 truncate" [attr.aria-label]="'Máquina asignada: ' + (summary().maquina || 'Sin asignar')">
@@ -68,7 +59,6 @@ import { Component, ChangeDetectionStrategy, input, effect, signal, afterNextRen
           <li>• Campos con * son obligatorios.</li>
           <li>• RUT válido y formateado.</li>
           <li>• Email en formato correcto.</li>
-          <li>• Estado seleccionado.</li>
         </ul>
       </div>
     </div>

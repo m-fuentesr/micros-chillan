@@ -166,27 +166,6 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
 
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-bold">
-                Estado <span class="text-error">*</span>
-              </span>
-            </label>
-            <select formControlName="estado" class="select select-bordered w-full">
-              <option value="">Selecciona un estado</option>
-              <option value="activo">Activo</option>
-              <option value="inactivo">Inactivo</option>
-            </select>
-            <label class="label">
-              <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
-            </label>
-            @if (form.get('estado')?.invalid && form.get('estado')?.touched) {
-              <label class="label">
-                <span class="label-text-alt text-error">Este campo es obligatorio</span>
-              </label>
-            }
-          </div>
-
-          <div class="form-control">
-            <label class="label">
               <span class="label-text font-bold">Máquina Asignada</span>
             </label>
             <select formControlName="maquina_id" class="select select-bordered w-full">
@@ -210,12 +189,23 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div class="form-control">
             <label class="label">
-              <span class="label-text font-bold">Fecha Vencimiento Licencia</span>
+              <span class="label-text font-bold">
+                Fecha Vencimiento Licencia <span class="text-error">*</span>
+              </span>
             </label>
             <input
               type="date"
               formControlName="fecha_venc_licencia"
-              class="input input-bordered w-full">
+              class="input input-bordered w-full"
+              [class.input-error]="form.get('fecha_venc_licencia')?.invalid && form.get('fecha_venc_licencia')?.touched">
+            <label class="label">
+              <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
+            </label>
+            @if (form.get('fecha_venc_licencia')?.invalid && form.get('fecha_venc_licencia')?.touched) {
+              <label class="label">
+                <span class="label-text-alt text-error">La fecha de vencimiento es obligatoria</span>
+              </label>
+            }
           </div>
         </div>
       </div>
@@ -242,7 +232,6 @@ export class DriverForm implements OnDestroy {
     apellido_materno: ['', Validators.required],
     telefono: ['', Validators.required],
     correo: ['', [Validators.required, Validators.email]],
-    estado: ['', Validators.required],
     maquina_id: [null as number | null],
     fecha_venc_licencia: ['']
   });
@@ -265,7 +254,7 @@ export class DriverForm implements OnDestroy {
         segundo_apellido: value.apellido_materno || undefined,
         telefono: value.telefono || undefined,
         correo: value.correo || undefined,
-        estado: value.estado as 'activo' | 'inactivo' || undefined,
+        estado: 'activo',
         maquina_id: value.maquina_id ?? undefined,
         fecha_venc_licencia: value.fecha_venc_licencia || undefined
       });
@@ -283,7 +272,6 @@ export class DriverForm implements OnDestroy {
         apellido_materno: initial.segundo_apellido || '',
         telefono: initial.telefono || '',
         correo: initial.correo || '',
-        estado: initial.estado || '',
         fecha_venc_licencia: initial.fecha_venc_licencia || ''
       }, { emitEvent: false }); // No emitir eventos al cargar datos iniciales
     }
@@ -320,7 +308,7 @@ export class DriverForm implements OnDestroy {
       segundo_apellido: value.apellido_materno || undefined,
       telefono: value.telefono || undefined,
       correo: value.correo || undefined,
-      estado: value.estado as 'activo' | 'inactivo' || undefined,
+      estado: 'activo',
       fecha_venc_licencia: value.fecha_venc_licencia || undefined
     };
   }
