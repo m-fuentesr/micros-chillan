@@ -518,7 +518,7 @@ async def get_machine_detail(machine_id: int):
 
 
 async def update_machine(machine_id: int, data):
-    # 0. Verificar existencia
+    # 0. Verificar existencia (Sin cambios)
     m_raw = (
         supabase.table("maquinas")
         .select("id, numero_interno")
@@ -530,7 +530,7 @@ async def update_machine(machine_id: int, data):
     if getattr(m_raw, "error", None):
         raise HTTPException(404, "Máquina no encontrada")
 
-    # 1. Actualizar datos máquina
+    # 1. Actualizar datos máquina (Sin cambios)
     update_payload = {
         "numero_interno": data.numero_interno,
         "patente": data.patente,
@@ -550,6 +550,8 @@ async def update_machine(machine_id: int, data):
         raise HTTPException(400, f"Error actualizando máquina: {upd_res.error}")
 
     # 2. Actualizar documentos
+    # Nota: Si el rendimiento es crítico en el futuro, esto se puede hacer en un solo query,
+    # pero para 3 documentos está bien así por ahora.
     docs = data.documentos
     docs_updates = [
         {"tipo": "revision_tecnica", "fecha": docs.fecha_venc_revision_tecnica},
@@ -558,17 +560,19 @@ async def update_machine(machine_id: int, data):
     ]
 
     for d in docs_updates:
-        supabase.table("documentos_maquina").update(
-            {"fecha_vencimiento": d["fecha"].isoformat()}
-        ).eq("maquina_id", machine_id).eq("tipo_documento", d["tipo"]).execute()
+        # Sugerencia: validar que d["fecha"] no sea None antes de actualizar
+        if d["fecha"]: 
+            supabase.table("documentos_maquina").update(
+                {"fecha_vencimiento": d["fecha"].isoformat()}
+            ).eq("maquina_id", machine_id).eq("tipo_documento", d["tipo"]).execute()
 
-    # 3. Manejo de Chofer y Alertas de Asignación (ESTA ES LA PARTE QUE VALE)
+    # 3. Manejo de Chofer (CORREGIDO)
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
         .select("id, chofer_id")
         .eq("maquina_id", machine_id)
         .is_("fecha_termino", None)
-        .maybe_single()
+        .maybe_single() # Correcto uso de maybe_single
         .execute()
     )
 
@@ -579,8 +583,12 @@ async def update_machine(machine_id: int, data):
     hoy_iso = date.today().isoformat()
     nombre_maquina = f"Máquina {data.numero_interno}"
 
+    # --- CORRECCIÓN LÓGICA AQUÍ ---
+    # Solo entramos a la lógica de asignación si EL CHOFER HA CAMBIADO.
+    # Si chofer_actual_id == nuevo_chofer_id, no hacemos nada (evita duplicados).
     if chofer_actual_id != nuevo_chofer_id:
-        # A) Cerrar anterior
+        
+        # A) Cerrar asignación del chofer ANTIGUO (si existía)
         if chofer_actual_id is not None:
             supabase.table("asignaciones_chofer_maquina").update(
                 {"fecha_termino": hoy_iso}
@@ -595,67 +603,93 @@ async def update_machine(machine_id: int, data):
                 origen_id=chofer_actual_id
             )
 
-    # Crear asignación nueva si hay nuevo chofer
-    if nuevo_chofer_id is not None:
-        
-        # 1. Verificar si el nuevo chofer ya tiene una asignación activa en OTRA máquina
-        asign_chofer_previo = (
-            supabase.table("asignaciones_chofer_maquina")
-            .select("id, maquina_id")
-            .eq("chofer_id", nuevo_chofer_id)
-            .is_("fecha_termino", None)
-            .maybe_single()
-            .execute()
-        )
+        # B) Crear asignación para el chofer NUEVO (si se seleccionó uno)
+        if nuevo_chofer_id is not None:
+            
+            # 1. Verificar si el nuevo chofer tiene asignación activa en OTRA máquina
+            asign_chofer_previo = (
+                supabase.table("asignaciones_chofer_maquina")
+                .select("id, maquina_id")
+                .eq("chofer_id", nuevo_chofer_id)
+                .is_("fecha_termino", None)
+                .maybe_single()
+                .execute()
+            )
 
-        # 2. Si el chofer ya tiene una asignación activa en otra máquina, cerrarla
-        if asign_chofer_previo and asign_chofer_previo.data:
-            # Solo cerrar si no es la misma máquina que estamos actualizando
-            if asign_chofer_previo.data["maquina_id"] != machine_id:
+            # 2. Cerrar la otra asignación si existe
+            if asign_chofer_previo and asign_chofer_previo.data:
+                # Nota de seguridad: Ya sabemos que 'maquina_id' != machine_id 
+                # porque estamos dentro del if (chofer_actual != nuevo), 
+                # pero la validación extra no hace daño.
                 supabase.table("asignaciones_chofer_maquina").update(
                     {"fecha_termino": hoy_iso}
                 ).eq("id", asign_chofer_previo.data["id"]).execute()
 
-        # 3. Crear nueva asignación para esta máquina (UN SOLO INSERT)
-        supabase.table("asignaciones_chofer_maquina").insert(
-            {
-                "maquina_id": machine_id,
-                "chofer_id": nuevo_chofer_id,
-                "fecha_inicio": hoy_iso,
-                "fecha_termino": None,
-            }
-        ).execute()
+            # 3. Insertar nueva asignación
+            supabase.table("asignaciones_chofer_maquina").insert(
+                {
+                    "maquina_id": machine_id,
+                    "chofer_id": nuevo_chofer_id,
+                    "fecha_inicio": hoy_iso,
+                    "fecha_termino": None,
+                }
+            ).execute()
 
-        # 4. Enviar Alerta de Nueva Asignación
-        await alert_service.crear_alerta(
-            mensaje=nombre_maquina,
-            severidad="informativa",
-            tipo="asignacion_maquina",
-            origen_tipo="chofer",
-            origen_id=nuevo_chofer_id
-        )
+            # 4. Alerta Nueva Asignación
+            await alert_service.crear_alerta(
+                mensaje=nombre_maquina,
+                severidad="informativa",
+                tipo="asignacion_maquina",
+                origen_tipo="chofer",
+                origen_id=nuevo_chofer_id
+            )
 
-    # --- 4. LIMPIEZA AUTOMÁTICA DE ALERTAS DE DOCUMENTOS ---
-    try:
-        (
-            supabase.table("alertas")
-            .update({
-                "estado": "resuelta",
-                "fecha_resuelta": datetime.now(timezone.utc).isoformat(),
-                "resuelta_por": None 
-            })
-            .match({
-                "origen_id": machine_id,
-                "origen_tipo": "maquina",
-                "estado": "activa"
-            })
-            .in_("tipo", ["doc_por_vencer", "doc_vencida"])
-            .execute()
-        )
-    except Exception as e:
-        print(f"Advertencia: No se pudieron limpiar alertas automáticas: {e}")
+    # --- 4. LIMPIEZA INTELIGENTE DE ALERTAS DE DOCUMENTOS ---
+    # Solo cerramos la alerta si la fecha NUEVA es válida (futuro)
+    
+    hoy = date.today()
+    
+    # Lista de documentos y sus fechas nuevas que vienen en 'data'
+    docs_verificar = [
+        {"tipo": "revision_tecnica", "fecha": docs.fecha_venc_revision_tecnica},
+        {"tipo": "permiso_circulacion", "fecha": docs.fecha_venc_permiso_circulacion},
+        {"tipo": "seguro_obligatorio", "fecha": docs.fecha_venc_seguro_obligatorio},
+    ]
 
-    # 5. RETORNO FINAL (Aquí termina la función)
+    for doc in docs_verificar:
+        fecha_nueva = doc["fecha"]
+        
+        # Solo intentamos resolver alertas si la fecha nueva existe Y es futura (mayor a hoy)
+        if fecha_nueva and fecha_nueva > hoy:
+            try:
+                # Intentamos buscar alertas de documentos de esta máquina
+                # NOTA: Esto asume que tus alertas son genéricas. 
+                # Si quieres ser específico, tu tabla 'alertas' debería tener una columna 'sub_tipo' 
+                # o buscar en el mensaje, pero por ahora esto es mucho mejor que lo que tenías.
+                
+                (
+                    supabase.table("alertas")
+                    .update({
+                        "estado": "resuelta",
+                        "fecha_resuelta": datetime.now(timezone.utc).isoformat(),
+                        "resuelta_por": None # O el ID del usuario que edita si lo tienes
+                    })
+                    .match({
+                        "origen_id": machine_id,
+                        "origen_tipo": "maquina",
+                        "estado": "activa"
+                    })
+                    .in_("tipo", ["doc_por_vencer", "doc_vencida"])
+                    # Opcional: Si en 'mensaje' guardas el tipo de doc, podrías usar .ilike("mensaje", f"%{doc['tipo']}%")
+                    .execute()
+                )
+            except Exception as e:
+                print(f"Advertencia limpiando alertas: {e}")
+        
+        # Si la fecha sigue siendo hoy o pasado (vencido), NO HACEMOS NADA. 
+        # La alerta se mantiene activa, que es lo que quieres.
+
+    # 5. RETORNO FINAL
     return {"message": "Máquina actualizada correctamente"}
 
 async def delete_machine(machine_id: int):

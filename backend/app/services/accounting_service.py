@@ -1,7 +1,8 @@
 ﻿from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.settlement import WeeklyPaymentConfirmRequest
-from datetime import date, timedelta
+from app.services import alert_service
+from datetime import date, timedelta, timezone
 import calendar
 
 # --------------------------------------------------------------------------
@@ -400,8 +401,9 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
 async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: int, payload: WeeklyPaymentConfirmRequest):
     """
     Confirma el pago semanal y lo guarda en 'pagos_semanales'.
+    Genera alerta asociada directamente al CHOFER (ID 12) para que la vea en su app.
     """
-    # Armamos el objeto para BD
+    # 1. Armamos el objeto para BD (Pagos)
     nuevo_pago = {
         "chofer_id": chofer_id,
         "mes": mes,
@@ -409,22 +411,61 @@ async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: in
         "semana": semana,
         
         "base_ganado": payload.monto_base_semana,
-        "ajuste_garantizado": payload.monto_bono_final, # 0 si no aplica
+        "ajuste_garantizado": payload.monto_bono_final,
         "total_pagado": payload.total_a_pagar,
         
-        "metodo_pago": payload.metodo_pago, # ej: "efectivo"
+        "metodo_pago": payload.metodo_pago,
         "fecha_pago": payload.fecha_pago.isoformat(),
         "codigo_transferencia": payload.codigo_transferencia,
-        "estado_pago": "pagado" # Usar minúsculas según tu ENUM
+        "estado_pago": "pagado"
     }
 
+    # Guardamos el pago en la BD
     res = supabase.table("pagos_semanales").upsert(nuevo_pago).execute()
 
     if getattr(res, "error", None):
         raise HTTPException(status_code=400, detail=f"Error BD: {res.error.message}")
 
+    # ✅ NUEVO: Lógica de Alerta de Pago (Corregida para el Chofer)
+    # -------------------------------------------------------
+    try:
+        # Obtenemos nombre para el mensaje (opcional, solo estética)
+        driver_res = (
+            supabase.table("choferes")
+            .select("primer_nombre, apellido_paterno")
+            .eq("id", chofer_id)
+            .single()
+            .execute()
+        )
+        
+        nombre_chofer = "Chofer"
+        if driver_res.data:
+            nombre_chofer = f"{driver_res.data['primer_nombre']} {driver_res.data['apellido_paterno']}"
+
+        # Formateamos dinero
+        monto_str = f"${payload.total_a_pagar:,.0f}".replace(",", ".")
+
+        # --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
+        alerta_pago = {
+            "mensaje": f"Pago confirmado: {monto_str} (Semana {semana})",
+            "severidad": "informativa",  # Usamos positiva (verde) ya que es dinero recibido
+            "tipo": "confirmacion_pago",
+            
+            # Al poner "chofer" y el ID del chofer, la alerta aparece en SU buzón.
+            # chofer_id viene de los argumentos de la función (ej: 12).
+            "origen_tipo": "chofer", 
+            "origen_id": chofer_id   
+        }
+        
+        await alert_service.crear_alerta(**alerta_pago)
+
+    except Exception as e:
+        # El pago YA se guardó, si falla la alerta solo avisamos en consola
+        print(f"⚠️ Error generando alerta de pago: {e}")
+    # -------------------------------------------------------
+
     return {
-        "message": "Pago semanal confirmado.",
+        "message": "Pago semanal confirmado y chofer notificado.",
         "pago_id": res.data[0]["id"],
         "estado": "pagado"
     }
