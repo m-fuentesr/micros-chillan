@@ -1,41 +1,30 @@
 import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DailyRecord } from '../../models/dashboard.models';
+import { BusIcon } from '../../components/bus-icon/bus-icon';
+import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
 @Component({
   selector: 'app-daily-records-table',
-  imports: [RouterLink],
+  imports: [RouterLink, BusIcon, DriverIcon],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/50 overflow-hidden animate-scale-up">
-      <div class="card-header p-6 border-b border-base-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 class="card-title text-2xl font-bold text-base-content border-l-4 border-l-primary pl-3">Registros de Operación</h2>
-          <p class="text-xs text-base-content/50 italic mt-1">Visión general del rendimiento diario de la flota.</p>
-        </div>
-        
-        <div class="flex gap-2 bg-base-200/50 p-1 rounded-lg">
-          <button 
-            class="btn btn-xs btn-ghost rounded-md transition-all"
-            [class.bg-white]="!showOnlyPending()"
-            [class.shadow-sm]="!showOnlyPending()"
-            [class.text-base-content]="!showOnlyPending()"
-            [class.text-base-content/60]="showOnlyPending()"
-            (click)="onToggleFilter()"
-            type="button"
-            aria-label="Mostrar todos los registros">
-            Todos
-          </button>
-          <button 
-            class="btn btn-xs btn-ghost rounded-md transition-all"
-            [class.bg-white]="showOnlyPending()"
-            [class.shadow-sm]="showOnlyPending()"
-            [class.text-base-content]="showOnlyPending()"
-            [class.text-base-content/60]="!showOnlyPending()"
-            (click)="onToggleFilter()"
-            type="button"
-            aria-label="Filtrar solo pendientes e incidentes">
-            Pendientes
-          </button>
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div class="flex items-start gap-3">
+            <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
+              <app-bus-icon class="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+            </div>
+            <div class="space-y-1">
+              <h2 class="text-xl sm:text-2xl font-bold text-base-content leading-tight">Registros Diarios</h2>
+              <p class="text-sm sm:text-base text-base-content/70">Gestión y auditoría centralizada de todos los reportes operativos diarios.</p>
+            </div>
+          </div>
+
+          <div class="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/70 text-xs font-semibold text-base-content shadow-sm ring-1 ring-base-200/60">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+            {{ filteredRecords().length }} registros
+          </div>
         </div>
       </div>
       <div class="card-body p-6">
@@ -65,30 +54,8 @@ import { DailyRecord } from '../../models/dashboard.models';
                       [class.bg-gradient-to-br]="record.status !== 'INCIDENTE_REPORTADO'"
                       [class.from-primary/20]="record.status !== 'INCIDENTE_REPORTADO'"
                       [class.to-primary/10]="record.status !== 'INCIDENTE_REPORTADO'">
-                      <svg 
-                        class="w-7 h-7"
-                        [class.text-error]="record.status === 'INCIDENTE_REPORTADO'"
-                        [class.text-primary]="record.status !== 'INCIDENTE_REPORTADO'"
-                        viewBox="0 0 24 24" 
-                        fill="none" 
-                        xmlns="http://www.w3.org/2000/svg">
-                        <path 
-                          d="M4 7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V17C20 17.5523 19.5523 18 19 18H5C4.44772 18 4 17.5523 4 17V7Z" 
-                          stroke="currentColor" 
-                          stroke-width="1.5" 
-                          stroke-linecap="round" 
-                          stroke-linejoin="round"/>
-                        <path 
-                          d="M4 10H20" 
-                          stroke="currentColor" 
-                          stroke-width="1.5" 
-                          stroke-linecap="round"/>
-                        <path 
-                          d="M8 13H16" 
-                          stroke="currentColor" 
-                          stroke-width="1.5" 
-                          stroke-linecap="round"/>
-                      </svg>
+                      <app-bus-icon 
+                        [class]="record.status === 'INCIDENTE_REPORTADO' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
                     </div>
                   </div>
 
@@ -101,8 +68,8 @@ import { DailyRecord } from '../../models/dashboard.models';
                         </h3>
                         <div class="flex items-center gap-2 mt-1.5">
                           <div class="avatar placeholder shrink-0">
-                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200">
-                              <span class="text-[9px] font-bold">{{ getInitials(record.driver) }}</span>
+                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                              <app-driver-icon class="w-full h-full" />
                             </div>
                           </div>
                           <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
@@ -249,30 +216,8 @@ import { DailyRecord } from '../../models/dashboard.models';
                           [class.bg-gradient-to-br]="record.status !== 'INCIDENTE_REPORTADO'"
                           [class.from-primary/20]="record.status !== 'INCIDENTE_REPORTADO'"
                           [class.to-primary/10]="record.status !== 'INCIDENTE_REPORTADO'">
-                          <svg 
-                            class="w-5 h-5 xl:w-6 xl:h-6"
-                            [class.text-error]="record.status === 'INCIDENTE_REPORTADO'"
-                            [class.text-primary]="record.status !== 'INCIDENTE_REPORTADO'"
-                            viewBox="0 0 24 24" 
-                            fill="none" 
-                            xmlns="http://www.w3.org/2000/svg">
-                            <path 
-                              d="M4 7C4 5.89543 4.89543 5 6 5H18C19.1046 5 20 5.89543 20 7V17C20 17.5523 19.5523 18 19 18H5C4.44772 18 4 17.5523 4 17V7Z" 
-                              stroke="currentColor" 
-                              stroke-width="1.5" 
-                              stroke-linecap="round" 
-                              stroke-linejoin="round"/>
-                            <path 
-                              d="M4 10H20" 
-                              stroke="currentColor" 
-                              stroke-width="1.5" 
-                              stroke-linecap="round"/>
-                            <path 
-                              d="M8 13H16" 
-                              stroke="currentColor" 
-                              stroke-width="1.5" 
-                              stroke-linecap="round"/>
-                          </svg>
+                          <app-bus-icon
+                            [class]="record.status === 'INCIDENTE_REPORTADO' ? 'w-5 h-5 xl:w-6 xl:h-6 text-error' : 'w-5 h-5 xl:w-6 xl:h-6 text-primary'" />
                         </div>
                       </div>
                       <div class="flex flex-col min-w-0">
@@ -284,8 +229,8 @@ import { DailyRecord } from '../../models/dashboard.models';
                   <td class="min-w-0">
                     <div class="flex items-center gap-2">
                       <div class="avatar placeholder shrink-0">
-                        <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200">
-                          <span class="text-[9px] font-bold">{{ getInitials(record.driver) }}</span>
+                        <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                          <app-driver-icon class="w-full h-full" />
                         </div>
                       </div>
                       <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.driver">{{ record.driver }}</span>
