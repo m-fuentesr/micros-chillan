@@ -56,28 +56,25 @@ import { Alert } from '../../models/dashboard.models';
           @for (alert of displayedAlerts(); track alert.id; let i = $index) {
             <div
               role="alert"
-              class="group relative py-4 pr-4 pl-8 border-b border-base-200 hover:bg-white transition-all duration-200"
+              class="group relative py-4 pl-6 pr-4 border-b border-base-200 hover:bg-zinc-50/80 transition-all duration-200 cursor-default"
               [class.animate-list-item-enter]="i === 0"
               [class.animate-list-item-enter-delay]="i > 0"
               [style.animation-delay.ms]="i > 0 ? i * 50 : 0"
               [style.animation-fill-mode]="'both'">
               
-              <!-- Borde izquierdo siempre visible -->
               <div
-                class="absolute left-4 top-0 bottom-0 w-1 transition-opacity duration-200"
-                [class.opacity-70]="true"
-                [class.group-hover:opacity-100]="true"
+                class="absolute left-0 top-4 bottom-4 w-1 rounded-r-full transition-all group-hover:w-1.5"
                 [class.bg-error]="alert.severity === 'critical'"
                 [class.bg-warning]="alert.severity === 'warning'"
                 [class.bg-info]="alert.severity === 'info'"
                 [class.bg-success]="alert.severity === 'success'">
               </div>
 
-              <div class="flex flex-col sm:flex-row gap-4 items-start">
+              <div class="flex gap-4 items-start">
                 <!-- Icono Semántico -->
-                <div class="flex-shrink-0 mt-1">
+                <div class="flex-shrink-0 mt-0.5">
                   <div
-                    class="w-10 h-10 rounded-xl flex items-center justify-center ring-1"
+                    class="h-9 w-9 rounded-xl flex items-center justify-center"
                     [class.bg-error/10]="alert.severity === 'critical'"
                     [class.bg-warning/10]="alert.severity === 'warning'"
                     [class.bg-info/10]="alert.severity === 'info'"
@@ -85,11 +82,7 @@ import { Alert } from '../../models/dashboard.models';
                     [class.text-error]="alert.severity === 'critical'"
                     [class.text-warning]="alert.severity === 'warning'"
                     [class.text-info]="alert.severity === 'info'"
-                    [class.text-success]="alert.severity === 'success'"
-                    [class.ring-error/20]="alert.severity === 'critical'"
-                    [class.ring-warning/20]="alert.severity === 'warning'"
-                    [class.ring-info/20]="alert.severity === 'info'"
-                    [class.ring-success/20]="alert.severity === 'success'">
+                    [class.text-success]="alert.severity === 'success'">
                     @if (alert.severity === 'critical') {
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
@@ -111,18 +104,41 @@ import { Alert } from '../../models/dashboard.models';
                 </div>
 
                 <!-- Contenido Principal -->
-                <div class="flex-1 min-w-0 w-full">
-                  <!-- Título, Timestamp y Botón Eliminar -->
-                  <div class="flex justify-between items-start gap-2 mb-1">
-                    <h3 class="font-bold text-sm text-base-content truncate tooltip flex-1" [attr.data-tip]="alert.title">
+                <div class="flex-1 min-w-0">
+                  <div class="flex justify-between items-center mb-1 gap-2">
+                    <h3 class="font-bold text-sm text-base-content truncate tooltip" [attr.data-tip]="alert.title">
                       {{ alert.title }}
                     </h3>
-                    <div class="flex items-center gap-2 flex-shrink-0">
-                      @if (alert.date) {
-                        <span class="text-[10px] font-mono text-base-content/50 bg-base-200 px-1.5 py-0.5 rounded">
-                          {{ formatTime(alert.date) }}
-                        </span>
+                    @if (alert.date) {
+                      <span class="text-[10px] font-bold text-base-content/40">{{ formatTime(alert.date) }}</span>
+                    }
+                  </div>
+                  
+                  <p class="text-xs text-base-content/70 leading-relaxed line-clamp-2">
+                    @if (alert.description) {
+                      <span>{{ alert.description }}</span>
+                    }
+                    <span class="text-base-content/50">
+                      @if (alert.driverName) {
+                        • {{ alert.driverName }}
                       }
+                      @if (alert.machineId) {
+                        • Máquina {{ alert.machineId }}
+                      }
+                    </span>
+                  </p>
+
+                  <div class="mt-2 h-0 overflow-hidden group-hover:h-auto group-hover:mt-3 transition-all">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <a
+                        [routerLink]="alert.actionHref"
+                        class="btn btn-xs text-white gap-1 shadow-sm w-full sm:w-auto"
+                        [class.btn-error]="alert.severity === 'critical'"
+                        [class.btn-warning]="alert.severity === 'warning'"
+                        [class.btn-info]="alert.severity === 'info'"
+                        [class.btn-success]="alert.severity === 'success'">
+                        {{ alert.actionLabel }}
+                      </a>
                       <button
                         class="btn btn-ghost btn-xs btn-square text-base-content/40 hover:text-error transition-colors"
                         (click)="onDeleteAlert(alert.id)"
@@ -134,45 +150,6 @@ import { Alert } from '../../models/dashboard.models';
                         </svg>
                       </button>
                     </div>
-                  </div>
-
-                  <!-- Descripción -->
-                  <p class="text-xs text-base-content/70 line-clamp-2 leading-relaxed">
-                    @if (alert.machineId || alert.driverName) {
-                      @if (alert.machineId) {
-                        <span class="font-semibold text-base-content">Máquina {{ alert.machineId }}</span>
-                      }
-                      @if (alert.machineId && alert.driverName) {
-                        <span> • </span>
-                      }
-                      @if (alert.driverName) {
-                        <span>{{ alert.driverName }}</span>
-                      }
-                      @if (alert.description) {
-                        <span> • </span>
-                      }
-                    }
-                    @if (alert.description) {
-                      <span>{{ alert.description }}</span>
-                    }
-                  </p>
-
-                  <!-- Acciones -->
-                  <div class="mt-3 flex items-center gap-2 flex-wrap">
-                    <!-- Botón Principal -->
-                    <a
-                      [routerLink]="alert.actionHref"
-                      class="btn btn-xs text-white gap-1 shadow-sm flex-1 sm:flex-none"
-                      [class.btn-error]="alert.severity === 'critical'"
-                      [class.btn-warning]="alert.severity === 'warning'"
-                      [class.btn-info]="alert.severity === 'info'"
-                      [class.btn-success]="alert.severity === 'success'"
-                      [class.shadow-error/20]="alert.severity === 'critical'"
-                      [class.shadow-warning/20]="alert.severity === 'warning'"
-                      [class.shadow-info/20]="alert.severity === 'info'"
-                      [class.shadow-success/20]="alert.severity === 'success'">
-                      {{ alert.actionLabel }}
-                    </a>
                   </div>
                 </div>
               </div>

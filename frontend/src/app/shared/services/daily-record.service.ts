@@ -12,7 +12,8 @@ import {
   DailyRecordsKPIs,
   DailyRecordHistoryResponse,
   DailyRecordStatus,
-  InactivityReason
+  InactivityReason,
+  DailyRecordHistoryItem
 } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
 
@@ -49,6 +50,22 @@ interface DailyRecordDetailResponse {
     registro: string | null;
     diesel: string | null;
   };
+}
+
+/**
+ * Respuesta del endpoint de historial/auditoría por registro
+ * GET /api/daily-records/{id}/history
+ */
+interface DailyRecordAuditItem {
+  id: number;
+  fecha_cambio: string;
+  usuario_responsable: string | null;
+  tipo_cambio: string | null;
+  detalles?: Array<{
+    campo: string;
+    valor_anterior: string | null;
+    valor_nuevo: string | null;
+  }>;
 }
 
 /**
@@ -185,6 +202,37 @@ export class DailyRecordService {
           return of(this.getMockDailyRecord(id));
         })
       );
+  }
+
+  /**
+   * Obtener historial/auditoría de un registro diario (requiere admin)
+   * Endpoint: GET /api/daily-records/{id}/history
+   */
+  getDailyRecordHistory(id: string): Observable<DailyRecordHistoryItem[]> {
+    return this.http.get<DailyRecordAuditItem[]>(`${this.apiUrl}/api/daily-records/${id}/history`)
+      .pipe(
+        map((items) => (items || []).map((item) => this.mapAuditItemToHistory(item))),
+        catchError((error) => {
+          console.error('Error obteniendo historial del registro:', error);
+          return of([]);
+        })
+      );
+  }
+
+  private mapAuditItemToHistory(item: DailyRecordAuditItem): DailyRecordHistoryItem {
+    const cambios = item.detalles?.map((detalle) => {
+      const anterior = detalle.valor_anterior ?? '-';
+      const nuevo = detalle.valor_nuevo ?? '-';
+      return `${detalle.campo}: ${anterior} → ${nuevo}`;
+    }).join('; ');
+
+    return {
+      id: String(item.id),
+      usuario: item.usuario_responsable || 'Sistema',
+      accion: item.tipo_cambio || 'Edición',
+      timestamp: item.fecha_cambio,
+      cambios
+    };
   }
 
   /**

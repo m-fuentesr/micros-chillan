@@ -359,18 +359,25 @@ interface DailyRecordDetailView extends DailyRecord {
                       <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-base-200">
                         <label class="form-control w-full">
                           <div class="label"><span class="label-text font-normal text-sm sm:text-base">Motivo de inactividad</span></div>
-                          <select 
-                            class="select select-bordered w-full bg-base-200 text-sm" 
-                            formControlName="noWorkDayReason"
-                            [disabled]="!isEditMode()">
-                            <option value="">Seleccione un motivo...</option>
-                            <option value="Descanso Semanal">Descanso Semanal</option>
-                            <option value="Vacaciones">Vacaciones</option>
-                            <option value="Licencia Médica">Licencia Médica</option>
-                            <option value="Permiso Personal">Permiso Personal</option>
-                            <option value="En Taller / Mantenimiento">En Taller / Mantenimiento</option>
-                            <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
-                          </select>
+                          @if (isEditMode()) {
+                            <select 
+                              class="select select-bordered w-full bg-base-200 text-sm" 
+                              formControlName="noWorkDayReason"
+                              [attr.aria-disabled]="!isEditMode()"
+                              [attr.disabled]="!isEditMode() ? true : null">
+                              <option value="">Seleccione un motivo...</option>
+                              <option value="Descanso Semanal">Descanso Semanal</option>
+                              <option value="Vacaciones">Vacaciones</option>
+                              <option value="Licencia Médica">Licencia Médica</option>
+                              <option value="Permiso Personal">Permiso Personal</option>
+                              <option value="En Taller / Mantenimiento">En Taller / Mantenimiento</option>
+                              <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
+                            </select>
+                          } @else {
+                            <div class="input input-bordered w-full bg-base-200 text-sm text-base-content/80 font-medium select-none">
+                              {{ record()?.noWorkDayReason || 'Sin motivo asignado' }}
+                            </div>
+                          }
                         </label>
                       </div>
                     }
@@ -954,31 +961,36 @@ export class RegistroDiarioDetail {
   private loadRecord(id: string): void {
     this.isLoading.set(true);
     
-    this.dailyRecordService.getDailyRecordById(id).subscribe({
-      next: (unifiedRecord) => {
-        const viewRecord = this.mapToDetailView(unifiedRecord);
-        this.record.set(viewRecord);
+    forkJoin({
+      record: this.dailyRecordService.getDailyRecordById(id),
+      history: this.dailyRecordService.getDailyRecordHistory(id)
+    }).subscribe({
+      next: ({ record, history }) => {
+        const viewRecord = this.mapToDetailView(record);
+        const recordWithHistory = { ...viewRecord, history };
+
+        this.record.set(recordWithHistory);
         this.recordForm.patchValue({
-          noWorkDay: viewRecord.noWorkDay,
-          noWorkDayReason: viewRecord.noWorkDayReason || '',
-          isEmergency: viewRecord.isEmergency || false,
-          income: viewRecord.income,
-          dieselExpense: viewRecord.dieselExpense,
-          dieselLiters: viewRecord.dieselLiters || 0,
-          observations: viewRecord.observations || ''
+          noWorkDay: recordWithHistory.noWorkDay,
+          noWorkDayReason: recordWithHistory.noWorkDayReason || '',
+          isEmergency: recordWithHistory.isEmergency || false,
+          income: recordWithHistory.income,
+          dieselExpense: recordWithHistory.dieselExpense,
+          dieselLiters: recordWithHistory.dieselLiters || 0,
+          observations: recordWithHistory.observations || ''
         });
         
-        if (viewRecord.receipt?.imageUrl) {
-          this.receiptPreview.set(viewRecord.receipt.imageUrl);
+        if (recordWithHistory.receipt?.imageUrl) {
+          this.receiptPreview.set(recordWithHistory.receipt.imageUrl);
         }
-        if (viewRecord.comprobanteRegistro?.imageUrl) {
-          this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+        if (recordWithHistory.comprobanteRegistro?.imageUrl) {
+          this.registroPreview.set(recordWithHistory.comprobanteRegistro.imageUrl);
         }
         
         this.isLoading.set(false);
       },
       error: (error) => {
-        console.error('Error al cargar registro:', error);
+        console.error('Error al cargar registro o historial:', error);
         this.isLoading.set(false);
         // TODO: Mostrar mensaje de error al usuario
       }
@@ -1179,10 +1191,13 @@ export class RegistroDiarioDetail {
           );
       
       updateAfterUploads.pipe(
-        // 5. Después de actualizar, recargar el registro completo desde el servidor
+        // 5. Después de actualizar, recargar el registro completo y su historial
         // para obtener todos los datos actualizados (historial, desglose de pago, etc.)
         switchMap(() => {
-          return this.dailyRecordService.getDailyRecordById(recordId);
+          return forkJoin({
+            record: this.dailyRecordService.getDailyRecordById(recordId),
+            history: this.dailyRecordService.getDailyRecordHistory(recordId)
+          });
         }),
         catchError((error) => {
           // 6. Rollback en caso de error
@@ -1206,20 +1221,21 @@ export class RegistroDiarioDetail {
           return EMPTY;
         })
       ).subscribe({
-        next: (updatedRecord) => {
-          // 8. Actualizar con el registro completo recargado del servidor
+        next: ({ record: updatedRecord, history }) => {
+          // 8. Actualizar con el registro e historial recargados del servidor
           const viewRecord = this.mapToDetailView(updatedRecord);
-          this.record.set(viewRecord);
+          const recordWithHistory = { ...viewRecord, history };
+          this.record.set(recordWithHistory);
           
           // 9. Actualizar el formulario con los valores del servidor
           this.recordForm.patchValue({
-            noWorkDay: viewRecord.noWorkDay,
-            noWorkDayReason: viewRecord.noWorkDayReason || '',
-            isEmergency: viewRecord.isEmergency || false,
-            income: viewRecord.income,
-            dieselExpense: viewRecord.dieselExpense,
-            dieselLiters: viewRecord.dieselLiters || 0,
-            observations: viewRecord.observations || ''
+            noWorkDay: recordWithHistory.noWorkDay,
+            noWorkDayReason: recordWithHistory.noWorkDayReason || '',
+            isEmergency: recordWithHistory.isEmergency || false,
+            income: recordWithHistory.income,
+            dieselExpense: recordWithHistory.dieselExpense,
+            dieselLiters: recordWithHistory.dieselLiters || 0,
+            observations: recordWithHistory.observations || ''
           });
           
           // 10. Actualizar previews de imágenes con las URLs del servidor

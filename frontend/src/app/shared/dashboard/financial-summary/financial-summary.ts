@@ -13,7 +13,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   selector: 'app-financial-summary',
   imports: [BaseChartDirective, RouterLink, CommonModule, LazyChartDirective],
   template: `
-    <div class="card bg-base-100 shadow-xl animate-card-enter flex flex-col" [class.h-[424px]]="showChartOnly()">
+    <div class="card bg-base-100 shadow-xl animate-card-enter flex flex-col relative overflow-hidden" [class.h-[424px]]="showChartOnly()">
       @if (!showChartOnly()) {
         <div class="card-header flex justify-between items-start mb-4">
           <div>
@@ -31,69 +31,68 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
         </div>
       }
       <div class="card-body flex flex-col flex-1 min-h-0">
-        @if (!showChartOnly()) {
-          <!-- KPI Total -->
-          <div class="mb-4">
-            <div class="text-sm text-base-content/70 mb-1">{{ kpiLabel() }}</div>
-            <div class="text-[clamp(1.5rem,4vw,1.875rem)] font-bold tabular-nums transition-all duration-300" 
-                 [class.animate-scale-up]="kpiValueChanged()"
-                 [style.animation-fill-mode]="'both'">
-              {{ kpiValue() }}
-            </div>
-          </div>
-        }
-
-        <!-- Controles -->
-        <div class="flex flex-wrap items-center gap-4 mb-4 flex-shrink-0">
-          <div class="inline-flex bg-base-200/50 p-1 rounded-xl gap-1">
+        <!-- Header compacto premium -->
+        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div class="relative flex bg-base-200/70 p-1 rounded-2xl shadow-inner">
+            <span
+              class="absolute inset-y-1 w-1/2 rounded-xl bg-white shadow-sm transition-transform duration-300"
+              [style.transform]="currentMetric() === 'Ganancia Neta' ? 'translateX(0%)' : 'translateX(100%)'">
+            </span>
             <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
-              [class.bg-white]="currentMetric() === 'Ganancia Neta'"
-              [class.shadow-sm]="currentMetric() === 'Ganancia Neta'"
-              [class.text-primary]="currentMetric() === 'Ganancia Neta'"
+              class="relative z-10 px-4 py-1.5 text-xs font-semibold transition-colors"
+              [class.text-base-content]="currentMetric() === 'Ganancia Neta'"
               [class.text-base-content/60]="currentMetric() !== 'Ganancia Neta'"
-              [class.hover:bg-base-200]="currentMetric() !== 'Ganancia Neta'"
-              [class.bg-transparent]="currentMetric() !== 'Ganancia Neta'"
               (click)="setMetric('Ganancia Neta')">
               Ganancia Neta
             </button>
             <button 
-              class="btn btn-sm h-9 px-4 rounded-lg border-none transition-all font-normal"
-              [class.bg-white]="currentMetric() === 'Ingreso Total'"
-              [class.shadow-sm]="currentMetric() === 'Ingreso Total'"
-              [class.text-primary]="currentMetric() === 'Ingreso Total'"
+              class="relative z-10 px-4 py-1.5 text-xs font-semibold transition-colors"
+              [class.text-base-content]="currentMetric() === 'Ingreso Total'"
               [class.text-base-content/60]="currentMetric() !== 'Ingreso Total'"
-              [class.hover:bg-base-200]="currentMetric() !== 'Ingreso Total'"
-              [class.bg-transparent]="currentMetric() !== 'Ingreso Total'"
               (click)="setMetric('Ingreso Total')">
               Ingreso Total
             </button>
           </div>
-          @if (!showChartOnly()) {
-            <div class="form-control">
-              <input 
-                type="text" 
-                class="input input-bordered input-sm w-48" 
-                [value]="dateRange()"
-                readonly>
+
+          <div class="flex items-end gap-4 ml-auto">
+            @if (!showChartOnly()) {
+              <div class="text-right">
+                <p class="text-[10px] uppercase font-bold text-base-content/50 tracking-widest">Rango</p>
+                <p class="text-xs font-semibold text-base-content/70">{{ dateRange() }}</p>
+              </div>
+            }
+            <div class="text-right">
+              <p class="text-[10px] uppercase font-bold text-base-content/40 tracking-widest">{{ kpiLabel() }}</p>
+              <p class="text-lg sm:text-xl font-black text-base-content tabular-nums" 
+                 [class.animate-scale-up]="kpiValueChanged()"
+                 [style.animation-fill-mode]="'both'">
+                {{ kpiValue() }}
+              </p>
             </div>
-          }
+          </div>
         </div>
 
         <!-- Gráfico -->
-        <div class="relative h-[280px] w-full flex-shrink-0" appLazyChart #lazyChart="lazyChart">
+        <div class="relative h-[290px] w-full flex-shrink-0 rounded-2xl border border-base-200/70 bg-base-100/80 overflow-hidden" appLazyChart #lazyChart="lazyChart"
+             style="background-image: linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px); background-size: 100% 44px;">
+          <button
+            class="btn btn-ghost btn-xs btn-circle absolute right-2 top-2 text-base-content/60 hover:text-base-content tooltip tooltip-left"
+            [attr.data-tip]="'Eje Y: Valores monetarios exactos. Hover para detalles (RF-030)'"
+            type="button"
+            aria-label="Detalles del gráfico">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z" />
+            </svg>
+          </button>
+
           <!-- Skeleton del gráfico (barras horizontales) -->
           @if (!lazyChart.isVisible()) {
-            <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
+            <div class="w-full h-full bg-base-100/80 p-4 sm:p-6">
               <div class="h-full flex flex-col gap-3">
-                <!-- Barras horizontales -->
                 @for (i of [1,2,3,4,5]; track i) {
                   <div class="flex items-center gap-3">
-                    <!-- Etiqueta Y (izquierda) -->
                     <div class="w-16 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                    <!-- Barra horizontal -->
                     <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 15)"></div>
-                    <!-- Valor X (derecha) -->
                     <div class="w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
                   </div>
                 }
@@ -108,9 +107,6 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
             </canvas>
           }
         </div>
-        <p class="text-xs text-base-content/70 mt-2 flex-shrink-0">
-          Eje Y: Valores monetarios exactos. Hover sobre cada barra para ver detalles completos (RF-030).
-        </p>
       </div>
     </div>
   `,
@@ -161,29 +157,48 @@ export class FinancialSummary implements OnInit {
     ]
   });
 
-  chartData = computed<ChartData<'bar'>>(() => {
-    const data = this.financialData()[this.currentMetric()];
-    const isGanancia = this.currentMetric() === 'Ganancia Neta';
-    
+  chartData = computed<ChartData<'bar' | 'line'>>(() => {
+    const metric = this.currentMetric();
+    const primaryData = this.financialData()[metric];
+    const overlayMetric = metric === 'Ganancia Neta' ? 'Ingreso Total' : null;
+
     // Paleta de colores corporativa profesional
-    // Para ganancia: verde corporativo (success)
-    // Para ingreso: azul corporativo (primary)
-    const baseColor = isGanancia 
-      ? 'hsl(142, 71%, 50%)'  // Verde corporativo para ganancia
-      : 'hsl(217, 91%, 65%)'; // Azul corporativo para ingreso
+    const baseColor = metric === 'Ganancia Neta' 
+      ? 'hsl(142, 71%, 45%)'  // Verde corporativo para ganancia
+      : 'hsl(217, 91%, 60%)'; // Azul corporativo para ingreso
     
-    return {
-      labels: data.map(item => item.machineId),
-      datasets: [{
-        label: this.currentMetric(),
-        data: data.map(item => item.value),
-        backgroundColor: baseColor,
-        borderColor: baseColor,
+    const labels = primaryData.map(item => item.machineId);
+
+    const datasets: ChartData<'bar' | 'line'>['datasets'] = [{
+      label: metric,
+      data: primaryData.map(item => item.value),
+      backgroundColor: baseColor,
+      borderColor: baseColor,
+      borderWidth: 2,
+      borderRadius: 6,
+      borderSkipped: false,
+      barThickness: 28
+    }];
+
+    // Overlay de referencia (línea gris con ingreso total cuando miramos ganancia)
+    if (overlayMetric) {
+      const overlayData = this.financialData()[overlayMetric];
+      const overlayValues = labels.map(label => overlayData.find(item => item.machineId === label)?.value ?? 0);
+      datasets.push({
+        type: 'line',
+        label: overlayMetric,
+        data: overlayValues,
+        borderColor: 'rgba(107, 114, 128, 0.7)',
+        backgroundColor: 'rgba(107, 114, 128, 0.08)',
         borderWidth: 2,
-        borderRadius: 6,
-        borderSkipped: false
-      }]
-    };
+        tension: 0.35,
+        pointRadius: 2.5,
+        pointHoverRadius: 4,
+        fill: false,
+      } as any);
+    }
+
+    return { labels, datasets };
   });
 
   kpiLabel = computed(() => {
@@ -202,6 +217,10 @@ export class FinancialSummary implements OnInit {
   chartOptions: ChartConfiguration<'bar'>['options'] = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: {
+      mode: 'index',
+      intersect: false
+    },
     animation: {
       duration: 800,
       easing: 'easeOutQuart' as const,
@@ -247,7 +266,7 @@ export class FinancialSummary implements OnInit {
       y: {
         beginAtZero: true,
         grid: {
-          color: 'rgba(0, 0, 0, 0.1)'
+          color: 'rgba(0, 0, 0, 0.08)'
         },
         border: {
           display: false
