@@ -593,29 +593,34 @@ export class MachineDailyRecords {
   }
 
   formatDate(date: string): string {
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        day: '2-digit', 
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return date;
-    }
+    const d = this.parseLocalDate(date);
+    if (!d) return date;
+    return d.toLocaleDateString('es-CL', { 
+      day: '2-digit', 
+      month: 'short',
+      year: 'numeric'
+    });
   }
 
   formatDateFull(date: string): string {
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
+    const d = this.parseLocalDate(date);
+    if (!d) return '';
+    return d.toLocaleDateString('es-CL', { 
+      weekday: 'short',
+      day: '2-digit', 
+      month: 'short'
+    });
+  }
+
+  private parseLocalDate(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
     }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 
   formatCurrency(value: number): string {
