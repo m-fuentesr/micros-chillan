@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/cor
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { AuthService } from '../../shared/services/auth.service';
 
 @Component({
   selector: 'app-recuperar-clave',
@@ -185,6 +186,11 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
                     </span>
                   </button>
                 </div>
+                @if (error()) {
+                  <p class="text-error text-sm mt-2 animate-entrance-fade-up delay-500">
+                    {{ error() }}
+                  </p>
+                }
               </form>
             </div>
           }
@@ -1082,6 +1088,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 })
 export class RecuperarClave {
   private readonly fb = inject(FormBuilder);
+  private readonly auth = inject(AuthService);
   form = this.fb.group({
     email: ['', [Validators.required, Validators.email]],
   });
@@ -1090,6 +1097,7 @@ export class RecuperarClave {
   submittedEmail = signal('');
   loading = signal(false);
   submitSuccess = signal(false);
+  error = signal<string | null>(null);
 
   async onSubmit(): Promise<void> {
     if (this.form.invalid) {
@@ -1099,14 +1107,31 @@ export class RecuperarClave {
 
     this.loading.set(true);
     this.submitSuccess.set(false);
-
-    // Simular envío (aquí se integrará la llamada real a Supabase en futuras versiones)
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    this.error.set(null);
 
     const email = this.form.value.email ?? '';
-    this.submittedEmail.set(email);
-    this.submitSuccess.set(true);
-    this.loading.set(false);
+
+    try {
+      const { error } = await this.auth.sendPasswordResetEmail(email);
+
+      if (error) {
+        throw new Error(error.message || 'No se pudo enviar el correo de recuperación.');
+      }
+
+      this.submittedEmail.set(email);
+      this.submitSuccess.set(true);
+
+      // Dar tiempo a la animación de éxito antes de mostrar el paso final
+      await new Promise(resolve => setTimeout(resolve, 800));
+      this.currentStep.set('success');
+    } catch (err: any) {
+      this.error.set(
+        err?.message || 'No pudimos enviar el correo de recuperación. Inténtalo nuevamente más tarde.'
+      );
+      this.submitSuccess.set(false);
+    } finally {
+      this.loading.set(false);
+    }
 
     // Esperar un momento para mostrar el éxito, luego cambiar al paso de éxito
     await new Promise(resolve => setTimeout(resolve, 800));
