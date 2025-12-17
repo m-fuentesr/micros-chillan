@@ -8,12 +8,16 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
   selector: 'app-daily-records-table',
   imports: [RouterLink, BusIcon, DriverIcon],
   template: `
-    <div class="card bg-base-100 shadow-xl border border-base-200/50 overflow-hidden animate-scale-up">
-      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+    <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/60 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div class="flex items-start gap-3">
             <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
-              <app-bus-icon class="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
+                <path d="M7 4a2 2 0 0 1 2-2h1.172a2 2 0 0 1 1.414.586l.828.828H15a2 2 0 0 1 2 2v1h-2V5H9v14h6v-2h2v1a2 2 0 0 1-2 2h-3.586a2 2 0 0 1-1.414-.586l-.828-.828H9a2 2 0 0 1-2-2V4Z"/>
+                <path d="M16 10.5a1 1 0 0 1 1-1h4.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Zm0 3.5a1 1 0 0 1 1-1h4.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h2.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Z"/>
+                <path d="M4.03 13.97a.75.75 0 0 1 1.06 0L6.5 15.38l2.41-2.41a.75.75 0 0 1 1.06 1.06l-2.94 2.94a.75.75 0 0 1-1.06 0l-1.94-1.94a.75.75 0 0 1 0-1.06Zm0-6a.75.75 0 0 1 1.06 0L6.5 9.38l2.41-2.41a.75.75 0 1 1 1.06 1.06l-2.94 2.94a.75.75 0 0 1-1.06 0L4.03 9.03a.75.75 0 0 1 0-1.06Z"/>
+              </svg>
             </div>
             <div class="space-y-1">
               <h2 class="text-xl sm:text-2xl font-bold text-base-content leading-tight">Registros Diarios</h2>
@@ -32,7 +36,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
+              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
@@ -142,36 +146,15 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                 
                 <!-- Botón de Acción -->
                 <div class="mt-2" (click)="$event.stopPropagation()">
-                  @if (record.status === 'INCIDENTE_REPORTADO') {
-                    <a 
-                      [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-xs h-9 w-full rounded-lg border-0 bg-error/10 text-error hover:bg-error hover:text-white transition-all duration-200 gap-1.5 shadow-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                      </svg>
-                      Resolver
-                    </a>
-                  } @else if (record.status === 'PENDIENTE_TRABAJADOR') {
-                    <a 
-                      [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-xs h-9 w-full rounded-lg border-0 bg-warning/15 text-warning-content hover:bg-warning hover:text-warning-content transition-all duration-200 gap-1.5 shadow-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                        <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                        <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                      </svg>
-                      Completar
-                    </a>
-                  } @else {
-                    <a 
-                      [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                      </svg>
-                      Ver detalle
-                    </a>
-                  }
+                  <a 
+                    [routerLink]="['/registro-diario', record.id]"
+                    class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+                      <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                      <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                    </svg>
+                    Ver detalle
+                  </a>
                 </div>
               </div>
             </div>
@@ -287,39 +270,16 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     }
                   </td>
                   <td class="pr-4 xl:pr-6 text-right" (click)="$event.stopPropagation()">
-                    @if (record.status === 'INCIDENTE_REPORTADO') {
-                      <a 
-                        [routerLink]="['/registro-diario', record.id]"
-                        class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg border-0 bg-error/10 text-error hover:bg-error hover:text-white transition-all duration-200 gap-1 xl:gap-1.5 shadow-sm"
-                        [attr.aria-label]="'Resolver incidente de ' + record.driver">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="hidden 2xl:inline">Resolver</span>
-                      </a>
-                    } @else if (record.status === 'PENDIENTE_TRABAJADOR') {
-                      <a 
-                        [routerLink]="['/registro-diario', record.id]"
-                        class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg border-0 bg-warning/15 text-warning-content hover:bg-warning hover:text-warning-content transition-all duration-200 gap-1 xl:gap-1.5 shadow-sm"
-                        [attr.aria-label]="'Completar registro pendiente de ' + record.driver">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                          <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                          <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                        </svg>
-                        <span class="hidden 2xl:inline">Completar</span>
-                      </a>
-                    } @else {
-                      <a 
-                        [routerLink]="['/registro-diario', record.id]"
-                        class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
-                        [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                          <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                          <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                        </svg>
-                        <span class="hidden 2xl:inline">Ver detalle</span>
-                      </a>
-                    }
+                  <a 
+                    [routerLink]="['/registro-diario', record.id]"
+                    class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
+                    [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
+                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
+                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
+                      </svg>
+                      <span class="hidden 2xl:inline">Ver detalle</span>
+                  </a>
                   </td>
                 </tr>
               } @empty {
@@ -332,10 +292,6 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
             </tbody>
           </table>
         </div>
-        
-        <p class="text-xs text-base-content/70 mt-6">
-          Los registros "PENDIENTE_TRABAJADOR" e "INCIDENTE_REPORTADO" generan alertas en tiempo real (RF-038, RF-039).
-        </p>
       </div>
     </div>
   `,

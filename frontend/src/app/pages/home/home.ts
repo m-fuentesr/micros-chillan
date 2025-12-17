@@ -35,7 +35,7 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
       <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 page-entry-content">
         @if (isLoading()) {
           @for (i of [1,2,3,4]; track i) {
-            <app-loading-skeleton type="kpi" />
+            <app-loading-skeleton type="dashboard-kpi" />
           }
         } @else {
           <!-- Card 1: Ganancia Neta (El Bolsillo) -->
@@ -157,25 +157,34 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6 page-entry-content-delay-1">
-        <!-- Gráfico Financiero (2/3 del ancho) -->
-        <div class="xl:col-span-2">
-          <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
-        </div>
+        @if (isLoading()) {
+          <div class="xl:col-span-2">
+            <app-loading-skeleton type="dashboard-chart" />
+          </div>
+          <div class="xl:col-span-1">
+            <app-loading-skeleton type="dashboard-alerts" />
+          </div>
+        } @else {
+          <!-- Gráfico Financiero (2/3 del ancho) -->
+          <div class="xl:col-span-2">
+            <app-financial-summary [showChartOnly]="true" (metricChange)="onMetricChange($event)" />
+          </div>
 
-        <!-- Alertas Compactas (1/3 del ancho) -->
-        <div class="xl:col-span-1">
-          <app-alert-list
-            [alerts]="alerts()"
-            [isExpanded]="true"
-            (deleteAlert)="onDeleteAlert($event)"
-            (deleteAllAlerts)="onDeleteAllAlerts()" />
-        </div>
+          <!-- Alertas Compactas (1/3 del ancho) -->
+          <div class="xl:col-span-1">
+            <app-alert-list
+              [alerts]="alerts()"
+              [isExpanded]="true"
+              (deleteAlert)="onDeleteAlert($event)"
+              (deleteAllAlerts)="onDeleteAllAlerts()" />
+          </div>
+        }
       </div>
 
       <!-- Zona de Detalle: Tabla Full Width -->
       <div class="border-t-2 border-t-base-300 pt-6 page-entry-content-delay-2">
         @if (isLoading()) {
-          <app-loading-skeleton type="table" [count]="5" />
+          <app-loading-skeleton type="dashboard-table" [count]="5" />
         } @else {
           <app-daily-records-table
             [records]="dailyRecords()"
