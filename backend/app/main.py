@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
+from contextlib import asynccontextmanager
+from app.api.scheduler import start_scheduler
 # Importar los routers
 from app.api.auth import router as auth_router
 from app.api.alerts import router as alerts_router
@@ -16,7 +17,19 @@ from app.api.test import router as test_router
 from app.api.worker import router as worker_router
 from app.api.storage import router as storage_router
 
-app = FastAPI(title="MicrosChillán Backend")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- CÓDIGO DE INICIO ---
+    print("🚀 Iniciando servicios de fondo (Scheduler)...")
+    start_scheduler()
+    
+    yield  # La aplicación corre aquí
+    
+    # --- CÓDIGO DE CIERRE (Opcional) ---
+    # Aquí podrías poner scheduler.shutdown() si fuera necesario
+    print("🛑 Apagando servicios...")
+
+app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
 # CORS para permitir llamadas desde Angular (localhost:4200)
 origins = [

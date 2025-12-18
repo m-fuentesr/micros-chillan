@@ -116,6 +116,8 @@ async def get_alerts_by_worker(chofer_id: int):
             .eq("estado", "activa")
             .eq("origen_tipo", "chofer")
             .eq("origen_id", chofer_id)
+            .neq("tipo", "licencia_por_vencer")
+            .neq("tipo", "licencia_vencida")
             .order("created_at", desc=True)
             .execute()
         )
