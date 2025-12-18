@@ -106,7 +106,7 @@ async def _create_daily_record_core(
     # --------------------------------------------------
     # 2. Obtener porcentaje del chofer Y NOMBRE (Para la alerta)
     # --------------------------------------------------
-    # ✅ CAMBIO: Agregamos primer_nombre y apellido_paterno a la consulta
+    # ✅ CAMBIO: Traemos nombre y apellido para usarlo en el mensaje de la alerta
     chofer_res = (
         supabase.table("choferes")
         .select("porcentaje_pago, primer_nombre, apellido_paterno")
@@ -118,9 +118,12 @@ async def _create_daily_record_core(
     if not chofer_res.data:
         raise HTTPException(status_code=404, detail="Chofer no encontrado")
 
-    porcentaje = chofer_res.data["porcentaje_pago"] or 0
-    # Guardamos el nombre para usarlo en la alerta al final
-    nombre_chofer = f"{chofer_res.data.get('primer_nombre', '')} {chofer_res.data.get('apellido_paterno', '')}".strip()
+    porcentaje = chofer_res.data.get("porcentaje_pago") or 0
+    
+    # Construimos el nombre completo (ej: "Juan Perez")
+    p_nombre = chofer_res.data.get("primer_nombre", "")
+    a_paterno = chofer_res.data.get("apellido_paterno", "")
+    nombre_chofer = f"{p_nombre} {a_paterno}".strip()
 
     # --------------------------------------------------
     # 3. Construir payload según estado operativo
@@ -132,7 +135,7 @@ async def _create_daily_record_core(
                 detail="Debe indicar motivo de no trabajado"
             )
 
-        # Mapear el motivo al formato del enum
+        # Mapear el motivo al formato del enum (asumiendo que tienes esta función helper)
         motivo_enum = _map_motivo_inactividad_to_enum(motivo_no_trabajado)
 
         if motivo_enum == "otro" and not motivo_no_trabajado_otro:
@@ -160,6 +163,7 @@ async def _create_daily_record_core(
         }
 
     else:
+        # Lógica para día trabajado
         if monto_recaudado is None:
             raise HTTPException(
                 status_code=400,
@@ -167,13 +171,15 @@ async def _create_daily_record_core(
             )
 
         monto_pago = int(monto_recaudado * porcentaje)
-        estado = "incidente_reportado" if incidente_critico else "completo"
+        
+        # ✅ Lógica de estado en BD: Si hay incidente, el estado cambia
+        estado_bd = "incidente_reportado" if incidente_critico else "completo"
 
         nuevo_registro = {
             "chofer_id": chofer_id,
             "maquina_id": maquina_id,
             "fecha": fecha.isoformat(),
-            "estado": estado,
+            "estado": estado_bd, # Guardamos el estado correcto
             "es_dia_no_trabajado": False,
             "motivo_no_trabajado": None,
             "motivo_no_trabajado_otro": None,
@@ -214,37 +220,44 @@ async def _create_daily_record_core(
         "comentario": observaciones,
     }).execute()
 
-    # ✅ NUEVO: Lógica de Alerta para el Admin
+    # ✅ 6. LÓGICA DE ALERTAS: REGISTRO NORMAL vs INCIDENTE
     # -------------------------------------------------------
-    # Solo alertamos si el registro lo creó un chofer ("worker")
+    # Solo generamos alerta si fue creado por el chofer (worker)
     if tipo_creador == "worker":
         try:
-            # Determinamos si es una alerta normal o crítica (Incidente)
-            # Aunque pediste la "sencilla", ya dejé preparada la lógica 
-            # para que detecte si el toggle "incidente_critico" viene en True.
-            
             if incidente_critico:
-                msj = f"⚠️ Incidente reportado por {nombre_chofer}"
-                severidad = "critica" 
-            else:
-                msj = f"Nuevo registro diario de {nombre_chofer}"
-                severidad = "informativa"
+                # --- CASO 1: INCIDENTE CRÍTICO (ROJO) ---
+                # Preparamos el detalle de la observación
+                detalle = f": {observaciones}" if observaciones else ""
+                
+                # Cortamos si es muy largo para no romper la UI de la alerta
+                if len(detalle) > 60:
+                    detalle = detalle[:57] + "..."
 
-            alerta_payload = {
-                "mensaje": msj,
-                "severidad": severidad,
-                "tipo": "registro_diario",
-                "origen_tipo": "registro_diario", # Para poder linkear al detalle si clickean
-                "origen_id": registro["id"],
-                # NOTA: No ponemos "chofer_id" ni "origen_tipo='chofer'" porque
-                # esta alerta es PARA EL ADMIN, no para el chofer.
-                # Al no tener destinatario específico, la verán los admins.
-            }
+                alert_payload = {
+                    "mensaje": f"⚠️ Incidente reportado por {nombre_chofer}{detalle}",
+                    "severidad": "critica",          # ROJO en el panel
+                    "tipo": "incidente_critico",     # Usamos el ENUM existente
+                    "origen_tipo": "registro_diario",
+                    "origen_id": registro["id"]
+                }
             
-            await alert_service.crear_alerta(**alerta_payload)
+            else:
+                # --- CASO 2: REGISTRO NORMAL (INFORMATIVO) ---
+                alert_payload = {
+                    "mensaje": f"Nuevo registro diario de {nombre_chofer}",
+                    "severidad": "informativa",      # AZUL/GRIS en el panel
+                    "tipo": "registro_diario",       # Tipo estándar
+                    "origen_tipo": "registro_diario",
+                    "origen_id": registro["id"]
+                }
+
+            # Llamada al servicio de alertas
+            await alert_service.crear_alerta(**alert_payload)
             
         except Exception as e:
-            print(f"⚠️ Error enviando alerta de registro diario: {e}")
+            # No detenemos el proceso si falla la alerta, solo lo logueamos
+            print(f"⚠️ Error enviando alerta de registro: {e}")
     # -------------------------------------------------------
 
     return registro
