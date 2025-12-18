@@ -36,9 +36,9 @@ import { CommonModule } from '@angular/common';
         }
         @case ('dashboard-kpi') {
           <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-base-200/80 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.08)] min-h-[150px] md:min-h-[170px]">
-            <div class="absolute right-0 top-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/5 blur-2xl"></div>
+            <div class="absolute right-0 top-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-base-200/30 blur-2xl"></div>
             <div class="relative flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-base-200/50 ring-1 ring-base-200/60">
                 <div class="w-5 h-5 skeleton-shimmer rounded-lg"></div>
               </div>
               <div class="space-y-1">
@@ -103,8 +103,8 @@ import { CommonModule } from '@angular/common';
           </div>
         }
         @case ('dashboard-table') {
-          <div class="card bg-base-100 shadow-xl border border-base-200/70 rounded-3xl overflow-hidden">
-            <div class="card-header p-4 sm:p-6 lg:p-7 border-b border-base-200/70 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+          <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+            <div class="card-header p-4 sm:p-6 lg:p-7 border-b border-base-200/70">
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-start gap-3">
                   <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">

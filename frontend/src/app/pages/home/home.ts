@@ -10,10 +10,11 @@ import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 @Component({
   selector: 'app-home',
-  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon],
+  imports: [AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon, KpiCard],
   template: `
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
@@ -39,29 +40,18 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
           }
         } @else {
           <!-- Card 1: Ganancia Neta (El Bolsillo) -->
-          <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context">
-            <div class="absolute right-0 top-0 -mt-4 -mr-4 h-24 w-24 rounded-full bg-emerald-50 opacity-50 blur-xl"></div>
-            
-            <div class="relative flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>
-              </div>
-              <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Ganancia Neta</h3>
-                <p class="text-[10px] font-medium text-zinc-400">Después de operación</p>
-              </div>
-            </div>
-
-            <div class="relative flex flex-col">
-              <div class="text-xl sm:text-3xl font-black tracking-tight text-zinc-900">{{ gananciaNetaTotal() }}</div>
-              <div class="mt-2 flex items-center gap-1.5">
-                <span class="flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
-                  <svg class="mr-1 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
-                  Rentabilidad hoy
-                </span>
-              </div>
-            </div>
-          </div>
+          <app-kpi-card
+            title="Ganancia Neta"
+            [subtitle]="'Neto con descuentos'"
+            [value]="gananciaNetaTotal()"
+            type="success"
+            badgeText="Rentabilidad hoy"
+            [animationDelay]="0">
+            <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+              <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+            </svg>
+          </app-kpi-card>
 
           <!-- Card 2: Ingreso Total (El Bruto) -->
           <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context-delay-1">
@@ -70,7 +60,7 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
               </div>
               <div>
-                <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Recaudación Total</h3>
+                <h3 class="text-xs font-bold uppercase tracking-wider text-base-content">Recaudación Total</h3>
                 <p class="text-[10px] font-medium text-zinc-400">Bruto sin descuentos</p>
               </div>
             </div>
@@ -93,7 +83,7 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
                   <app-bus-icon class="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Flota en Ruta</h3>
+                  <h3 class="text-xs font-bold uppercase tracking-wider text-base-content">Flota en Ruta</h3>
                   <div class="flex items-center gap-1.5 mt-0.5">
                     <span class="relative flex h-2 w-2">
                       <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -127,7 +117,7 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
           <!-- Card 4: Alertas (El Semáforo) -->
           <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] min-h-[150px] md:min-h-[170px] animate-card-enter-in-context-delay-3">
             <div class="px-5 pt-5 pb-2">
-              <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Resumen de Salud</h3>
+              <h3 class="text-xs font-bold uppercase tracking-wider text-base-content">Resumen de Salud</h3>
             </div>
 
             <div class="flex flex-col flex-1 px-2 pb-2 gap-1">

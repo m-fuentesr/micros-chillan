@@ -18,6 +18,7 @@ import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 /**
  * Vista simplificada de DailyRecord para uso en Bitácora de Operaciones
@@ -37,7 +38,7 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon, KpiCard],
   template: `
     <div class="space-y-6 relative">
         <!-- Hero Section Premium - Siempre visible primero -->
@@ -96,43 +97,45 @@ interface DailyRecordView {
               [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
               [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
             <!-- Card 1: Recaudación (Periodo) -->
-            <div class="bg-base-100 border border-base-200 rounded-xl p-4 md:p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200 animate-card-enter h-full">
-              <div class="flex items-start justify-between mb-2">
-                <span class="text-base-content/60 text-xs md:text-sm font-medium leading-tight">Recaudación (Periodo)</span>
-                <div class="p-1.5 md:p-2 bg-primary/10 rounded-md md:rounded-lg text-primary flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818l.818.182a2.25 2.25 0 002.364 0l.818-.182m-3-2.818h6m-6-2.25h6m-9 2.25v6.75a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 2.25z" />
-                  </svg>
-                </div>
-              </div>
-              <span class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-base-content tracking-tight tabular-nums break-words min-w-0">{{ formatCurrency(totalRevenue()) }}</span>
-            </div>
+            <app-kpi-card
+              title="Recaudación (Periodo)"
+              [subtitle]="'Total del período'"
+              [value]="formatCurrency(totalRevenue())"
+              type="financial"
+              [badgeText]="currentMonthName()"
+              [animationDelay]="0">
+              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 6v12m-3-2.818l.818.182a2.25 2.25 0 002.364 0l.818-.182m-3-2.818h6m-6-2.25h6m-9 2.25v6.75a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 2.25z" />
+              </svg>
+            </app-kpi-card>
 
             <!-- Card 2: Registros Faltantes -->
-            <div class="bg-base-100 border border-base-200 rounded-xl p-4 md:p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200 animate-card-enter-delay-1 h-full">
-              <div class="flex items-start justify-between mb-2">
-                <span class="text-base-content/60 text-xs md:text-sm font-medium leading-tight">Registros Faltantes</span>
-                <div class="p-1.5 md:p-2 bg-error/10 rounded-md md:rounded-lg text-error flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                  </svg>
-                </div>
-              </div>
-              <span class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-base-content tracking-tight tabular-nums">{{ missingRecords() }}</span>
-            </div>
+            <app-kpi-card
+              title="Registros Faltantes"
+              [subtitle]="'Pendientes de completar'"
+              [value]="missingRecords().toString()"
+              type="warning"
+              [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
+              [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
+              [animationDelay]="1">
+              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+              </svg>
+            </app-kpi-card>
 
             <!-- Card 3: Con Incidentes -->
-            <div class="bg-base-100 border border-base-200 rounded-xl p-4 md:p-5 flex flex-col justify-between shadow-sm hover:shadow-md transition-shadow duration-200 animate-card-enter-delay-2 h-full">
-              <div class="flex items-start justify-between mb-2">
-                <span class="text-base-content/60 text-xs md:text-sm font-medium leading-tight">Con Incidentes</span>
-                <div class="p-1.5 md:p-2 bg-warning/10 rounded-md md:rounded-lg text-warning flex-shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 md:w-5 md:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                  </svg>
-                </div>
-              </div>
-              <span class="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-base-content tracking-tight tabular-nums">{{ recordsWithIncidents() }}</span>
-            </div>
+            <app-kpi-card
+              title="Con Incidentes"
+              [subtitle]="'Requieren atención'"
+              [value]="recordsWithIncidents().toString()"
+              type="danger"
+              [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
+              [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
+              [animationDelay]="2">
+              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+              </svg>
+            </app-kpi-card>
             </div>
           }
         </div>
@@ -140,9 +143,9 @@ interface DailyRecordView {
         <!-- Filtros y Búsqueda -->
         @if (!sequentialState.canShowContent() && !sequentialState.contentError()) {
           <!-- Skeleton personalizado del Card con Header y Filtros -->
-          <div class="card bg-base-100 shadow-xl border border-base-200">
+          <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
             <!-- Skeleton del Card Header -->
-            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex-1 min-w-0 space-y-2">
                   <div class="flex items-center gap-3">
@@ -225,13 +228,13 @@ interface DailyRecordView {
           <!-- Solo renderizar el contenido cuando canShowContent es true -->
           @if (sequentialState.canShowContent()) {
             <div 
-              class="card bg-base-100 shadow-xl border border-base-200"
+              class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up"
               [class.animate-fade-in]="sequentialState.canShowContent()" 
               [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
               [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
               [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            <!-- Header Premium con gradiente sutil -->
-            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+            <!-- Header -->
+            <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div class="flex-1 min-w-0">
                   <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -840,6 +843,13 @@ export class BitacoraOperaciones implements OnInit {
   missingRecords = computed(() => this.kpisResponse()?.registros_faltantes || 0);
   recordsWithIncidents = computed(() => this.kpisResponse()?.registros_con_incidentes || 0);
   
+  // Nombre del mes actual en español con primera letra mayúscula
+  currentMonthName = computed(() => {
+    const hoy = new Date();
+    const monthName = hoy.toLocaleDateString('es-CL', { month: 'long' });
+    return monthName.charAt(0).toUpperCase() + monthName.slice(1);
+  });
+  
   // Effect para detectar cuando los KPIs están listos
   private kpisEffect = effect(() => {
     const kpis = this.kpisResponse();
@@ -871,7 +881,24 @@ export class BitacoraOperaciones implements OnInit {
   private isInitialLoad = true; // Flag para evitar que el effect se ejecute en la carga inicial
   showFiltersMobile = signal(false);
   
-  // Filtros usando SearchFilters
+  // Función helper para obtener fechas del mes actual
+  private getCurrentMonthDates(): { desde: string; hasta: string } {
+    const hoy = new Date();
+    const año = hoy.getFullYear();
+    const mes = hoy.getMonth(); // 0-11
+    
+    // Primer día del mes actual
+    const primerDia = new Date(año, mes, 1);
+    const desde = primerDia.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Último día del mes actual
+    const ultimoDia = new Date(año, mes + 1, 0);
+    const hasta = ultimoDia.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    return { desde, hasta };
+  }
+  
+  // Filtros usando SearchFilters - Inicializados vacíos, se configuran en ngOnInit
   recordFilters = signal<{ chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
   
   // Choferes cargados dinámicamente
@@ -1361,6 +1388,14 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   ngOnInit(): void {
+    // Inicializar filtros con el mes actual por defecto
+    const { desde, hasta } = this.getCurrentMonthDates();
+    this.recordFilters.set({
+      desde,
+      hasta,
+      orden: 'mas_reciente'
+    });
+    
     // Cargar datos iniciales manualmente (el effect no se ejecuta en la carga inicial)
     this.loadRecords();
     // Cargar choferes activos para el filtro

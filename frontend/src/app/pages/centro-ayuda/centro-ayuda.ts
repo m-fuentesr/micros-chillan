@@ -395,7 +395,7 @@ export class CentroAyuda implements OnInit, OnDestroy {
         { title: 'Perfil Trabajador', body: 'Experiencia pensada para el día a día: reportar trabajos, adjuntar gastos y revisar tu historial personal desde el móvil.' }
       ],
       list: [
-        '<strong>Barra lateral inteligente:</strong> Los accesos están organizados por áreas (Operación, Finanzas, Soporte). Usa el botón de colapsar si necesitas más espacio.',
+        '<strong>Barra lateral inteligente:</strong> Los accesos están organizados por áreas (Administración, Gestión de Flota, Finanzas). Usa el botón de colapsar si necesitas más espacio.',
         '<strong>Diseño responsivo:</strong> En escritorio tienes la vista completa; en tablets y móviles los tableros se transforman en tarjetas fáciles de leer.',
         '<strong>Flujo recomendado:</strong> Revisa el Dashboard → atiende alertas → registra/valida operaciones → cierra el período contable.'
       ]

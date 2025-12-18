@@ -5,15 +5,16 @@ import { MaintenanceRecord, MaintenanceFilters } from '../../models/machine-deta
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
 import { ConfirmModalService } from '../../services/confirm-modal.service';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
+import { KpiCard } from '../../components/kpi-card/kpi-card';
 
 @Component({
   selector: 'app-machine-maintenance',
-  imports: [CommonModule, FormsModule, SearchFilters],
+  imports: [CommonModule, FormsModule, SearchFilters, KpiCard],
   template: `
 
-    <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
+    <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
       <!-- Header -->
-      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
         <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 sm:gap-6">
           <div class="flex-1 min-w-0">
             <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -34,20 +35,17 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               </span>
               
               <!-- KPI de Gastos en Repuestos -->
-              <div class="px-4 sm:px-5 py-2.5 sm:py-3 rounded-lg border border-error/20 bg-gradient-to-br from-error/10 via-error/5 to-transparent flex items-center gap-3 sm:gap-4">
-                <div class="p-2 sm:p-2.5 bg-error/20 rounded-lg shrink-0">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 sm:w-5 sm:h-5 text-error" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" clip-rule="evenodd" />
-                  </svg>
-                </div>
-                <div class="flex flex-col min-w-0">
-                  <div class="text-[10px] sm:text-xs font-bold text-base-content/50 uppercase tracking-wider leading-tight">Gastos en Repuestos</div>
-                  <div class="text-base sm:text-lg lg:text-xl font-black text-error tabular-nums tracking-tight leading-none">
-                    {{ formatCurrency(monthTotal()) }}
-                  </div>
-                  <div class="text-[9px] sm:text-[10px] text-base-content/60 leading-tight mt-0.5">Acumulado del mes actual</div>
-                </div>
-              </div>
+              <app-kpi-card
+                title="Gastos en Repuestos"
+                [subtitle]="'Acumulado del mes actual'"
+                [value]="formatCurrency(monthTotal())"
+                type="danger"
+                badgeText="Inversión activos"
+                [animationDelay]="0">
+                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
+                </svg>
+              </app-kpi-card>
             </div>
             
             <!-- Botón Registrar Nueva Compra -->

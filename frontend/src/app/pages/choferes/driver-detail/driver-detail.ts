@@ -523,9 +523,9 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
           <!-- Registros diarios -->
         @if (activeTab() === 'records' && loadedTabs().has('records')) {
             <div class="animate-tab-enter">
-              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
-                <!-- Header Premium con gradiente sutil -->
-                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+                <!-- Header -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex-1 min-w-0">
                       <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -777,9 +777,9 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
         <!-- Liquidaciones -->
         @if (activeTab() === 'liquidations' && loadedTabs().has('liquidations')) {
             <div class="animate-tab-enter">
-              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
-                <!-- Header Premium con gradiente sutil -->
-                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+                <!-- Header -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex-1 min-w-0">
                       <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
