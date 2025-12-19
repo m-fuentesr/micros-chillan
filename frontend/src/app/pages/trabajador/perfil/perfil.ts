@@ -24,15 +24,15 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
           </div>
         </div>
       } @else {
-      <header class="perfil-header-enter relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
-        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0"></div>
+      <header class="perfil-header-enter relative pt-0 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0 rounded-b-[3rem]"></div>
         <div
-          class="absolute inset-0 opacity-10 z-0"
+          class="absolute inset-0 opacity-10 z-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
         ></div>
         <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/30 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="relative z-10 flex flex-col items-center text-white text-center">
+        <div class="relative z-10 flex flex-col items-center text-white text-center" [style.padding-top]="'calc(40px + env(safe-area-inset-top, 0px))'">
           <div class="avatar online mb-3">
             <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-primary">
               <app-driver-icon class="w-10 h-10 text-white drop-shadow-md"></app-driver-icon>

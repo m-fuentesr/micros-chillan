@@ -22,12 +22,13 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
   template: `
     <div class="reportar-background-enter bg-slate-50 font-sans">
       <header 
-        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-12 pb-24 px-6 relative overflow-hidden shadow-lg"
+        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-0 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
         [class.reportar-header-fade-out]="expanding()"
       >
         <a
           routerLink="/trabajador"
-          class="absolute top-12 left-4 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
+          class="absolute left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
+          [style.top]="'calc(12px + env(safe-area-inset-top, 0px))'"
           aria-label="Volver"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
@@ -35,12 +36,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           </svg>
         </a>
 
-        <div class="relative z-10 text-left pl-4 border-l-4 border-l-white/30">
+        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30" [style.padding-top]="'calc(48px + env(safe-area-inset-top, 0px))'">
           <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.35em] mb-1">Nuevo registro</p>
           <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Reporte diario</h1>
         </div>
         <div
-          class="absolute top-0 left-0 w-full h-full opacity-10"
+          class="absolute top-0 left-0 w-full h-full opacity-10 rounded-b-3xl overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
         ></div>
       </header>
