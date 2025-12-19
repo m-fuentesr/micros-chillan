@@ -2,7 +2,7 @@
 
 from app.core.realtime import dashboard_realtime
 from app.db.supabase_client import supabase
-from app.schemas.dashboard import DashboardResponse
+from app.schemas.dashboard import DashboardDailyRecords, DashboardResponse
 from app.services import dashboard_service
 from app.utils.auth import decode_jwt_token, get_current_user, require_admin
 
@@ -14,6 +14,14 @@ async def get_dashboard_overview(current_user=Depends(get_current_user)):
 
     require_admin(current_user)
     return await dashboard_service.get_today_overview()
+
+
+@router.get("/daily-records", response_model=DashboardDailyRecords)
+async def get_dashboard_daily_records(current_user=Depends(get_current_user)):
+    """Devuelve la tabla de registros diarios para el día actual (choferes activos)."""
+
+    require_admin(current_user)
+    return await dashboard_service.get_today_daily_records()
 
 
 @router.websocket("/ws")

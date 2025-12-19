@@ -1,6 +1,6 @@
 ﻿from collections import defaultdict
 from datetime import date
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import HTTPException
 
@@ -11,6 +11,10 @@ from app.schemas.dashboard import (
     DashboardAlerts,
     DashboardFleetKpi,
     DashboardKpis,
+    DashboardDailyRecordDriver,
+    DashboardDailyRecordMachine,
+    DashboardDailyRecordItem,
+    DashboardDailyRecords,
     DashboardMachinePerformance,
     DashboardResponse,
 )
@@ -184,3 +188,111 @@ async def get_today_overview() -> DashboardResponse:
         rendimiento=rendimiento_list,
         alertas=alertas,
     )
+
+async def get_today_daily_records() -> DashboardDailyRecords:
+    """Lista registros diarios (o faltantes) para todos los choferes activos del día."""
+
+    hoy = date.today()
+    fecha_iso = hoy.isoformat()
+
+    # Choferes activos
+    choferes_res = (
+        supabase.table("choferes")
+        .select("id, primer_nombre, apellido_paterno, apellido_materno, estado")
+        .eq("estado", "activo")
+        .execute()
+    )
+
+    if getattr(choferes_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo choferes activos: {choferes_res.error}")
+
+    choferes = choferes_res.data or []
+
+    # Asignaciones vigentes
+    asignaciones_res = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("chofer_id, maquinas(id, numero_interno, patente)")
+        .is_("fecha_termino", "null")
+        .execute()
+    )
+
+    if getattr(asignaciones_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo asignaciones activas: {asignaciones_res.error}")
+
+    asignaciones = {
+        row["chofer_id"]: row.get("maquinas") or {}
+        for row in (asignaciones_res.data or [])
+        if row.get("chofer_id")
+    }
+
+    # Registros diarios de hoy
+    registros_res = (
+        supabase.table("registros_diarios")
+        .select(
+            "id, chofer_id, fecha, estado, monto_recaudado, "
+            "maquinas(id, numero_interno, patente)"
+        )
+        .eq("fecha", fecha_iso)
+        .execute()
+    )
+
+    if getattr(registros_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo registros diarios de hoy: {registros_res.error}")
+
+    registros_por_chofer = {
+        row["chofer_id"]: row
+        for row in (registros_res.data or [])
+        if row.get("chofer_id")
+    }
+
+    items: List[DashboardDailyRecordItem] = []
+
+    for chofer in choferes:
+        chofer_id = chofer.get("id")
+        registro = registros_por_chofer.get(chofer_id)
+        asignacion_maquina: Optional[dict] = asignaciones.get(chofer_id)
+        maquina_registro: Optional[dict] = (registro or {}).get("maquinas")
+
+        maquina_info = maquina_registro or asignacion_maquina
+        maquina = (
+            DashboardDailyRecordMachine(
+                id=maquina_info.get("id"),
+                numero_interno=maquina_info.get("numero_interno"),
+                patente=maquina_info.get("patente"),
+            )
+            if maquina_info
+            else None
+        )
+
+        nombre = " ".join(
+            filter(
+                None,
+                [
+                    chofer.get("primer_nombre"),
+                    chofer.get("apellido_paterno"),
+                    chofer.get("apellido_materno"),
+                ],
+            )
+        )
+
+        tiene_registro = registro is not None
+        fecha_registro = (registro or {}).get("fecha") or fecha_iso
+        estado = (registro or {}).get("estado") or "en_espera"
+        monto_recaudado = (registro or {}).get("monto_recaudado")
+
+        items.append(
+            DashboardDailyRecordItem(
+                chofer=DashboardDailyRecordDriver(
+                    id=chofer_id,
+                    nombre=nombre,
+                ),
+                maquina=maquina,
+                fecha=fecha_registro,
+                estado=estado,
+                monto_recaudado=monto_recaudado,
+                puede_ver_detalle=tiene_registro,
+                registro_id=(registro or {}).get("id"),
+            )
+        )
+
+    return DashboardDailyRecords(total=len(items), items=items)

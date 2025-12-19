@@ -56,3 +56,29 @@ class DashboardResponse(BaseModel):
     kpis: DashboardKpis
     rendimiento: List[DashboardMachinePerformance]
     alertas: DashboardAlerts
+
+
+class DashboardDailyRecordDriver(BaseModel):
+    id: int
+    nombre: str
+
+
+class DashboardDailyRecordMachine(BaseModel):
+    id: Optional[int]
+    numero_interno: Optional[int]
+    patente: Optional[str]
+
+
+class DashboardDailyRecordItem(BaseModel):
+    chofer: DashboardDailyRecordDriver
+    maquina: Optional[DashboardDailyRecordMachine]
+    fecha: date
+    estado: str
+    monto_recaudado: Optional[float]
+    puede_ver_detalle: bool
+    registro_id: Optional[int]
+
+
+class DashboardDailyRecords(BaseModel):
+    total: int
+    items: List[DashboardDailyRecordItem]
