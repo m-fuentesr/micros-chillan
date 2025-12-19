@@ -12,8 +12,8 @@ import { Subject } from 'rxjs';
       class="fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-200 shadow-lg shadow-base-300/40" 
       [class.trabajador-navbar-enter]="hasAnimated() === false"
       [class.trabajador-navbar-static]="hasAnimated() === true"
-      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
-      <div class="flex justify-around items-end px-3" style="height: calc(5rem + env(safe-area-inset-bottom, 0px)); min-height: 5rem;">
+      style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);">
+      <div class="flex justify-around items-end px-3" style="height: calc(4rem + env(safe-area-inset-bottom, 0px)); min-height: 4rem; padding-bottom: 0.5rem;">
         <a
           routerLink="/trabajador"
           routerLinkActive="text-primary font-bold"
@@ -33,7 +33,7 @@ import { Subject } from 'rxjs';
             routerLinkActive="text-primary"
             class="flex flex-col items-center justify-center w-full h-full mt-2"
           >
-            <div class="w-14 h-14 bg-primary text-primary-content rounded-full shadow-xl border-4 border-base-100 flex items-center justify-center transition-transform active:scale-95">
+            <div class="bg-primary text-primary-content rounded-full shadow-xl border-4 border-base-100 flex items-center justify-center transition-transform active:scale-95" style="width: 3.5rem; height: 3.5rem; min-width: 3.5rem; min-height: 3.5rem; aspect-ratio: 1; border-radius: 50%;">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                 <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
               </svg>
@@ -45,7 +45,7 @@ import { Subject } from 'rxjs';
             class="flex flex-col items-center justify-center w-full h-full mt-2 cursor-not-allowed opacity-60"
             title="Ya has registrado tu reporte diario para hoy"
           >
-            <div class="w-14 h-14 bg-base-300 text-base-content/40 rounded-full shadow-lg border-4 border-base-100 flex items-center justify-center">
+            <div class="bg-base-300 text-base-content/40 rounded-full shadow-lg border-4 border-base-100 flex items-center justify-center" style="width: 3.5rem; height: 3.5rem; min-width: 3.5rem; min-height: 3.5rem; aspect-ratio: 1; border-radius: 50%;">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-7 h-7">
                 <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
               </svg>

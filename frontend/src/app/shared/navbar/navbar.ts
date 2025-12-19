@@ -26,7 +26,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
     @if (isMobileMenuOpen()) {
       <div 
         class="fixed z-40 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in"
-        style="top: 0; left: 0; right: 0; bottom: 0; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);"
+        style="top: 0; left: 0; right: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px);"
         (click)="closeMobileMenu()">
       </div>
     }
