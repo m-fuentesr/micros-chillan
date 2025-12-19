@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,6 +14,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
 import { StorageService, UploadResult } from '../../../shared/services/storage.service';
+import type { MachineSelect } from '../../../shared/models/machine.models';
 
 @Component({
   selector: 'app-reportar',
@@ -73,7 +74,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="machine"
                 >
                   <option [value]="null" disabled selected>Selecciona una máquina</option>
-                  @for (machine of machines(); track machine.id) {
+                  @for (machine of sortedMachines(); track machine.id) {
                     <option [value]="machine.id">{{ machine.display_name }}</option>
                   }
                 </select>
@@ -103,7 +104,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
               formControlName="amount"
               class="w-full text-4xl font-black text-slate-800 placeholder:text-slate-200 focus:outline-none border-none p-0 tabular-nums h-12 bg-transparent"
               aria-label="Total recaudado"
+              max="999999"
               (keydown)="preventInvalidNumberInput($event)"
+              (input)="limitAmountDigits($event)"
             />
           </div>
           <p class="text-xs text-slate-400 mt-2">Ingresa el monto final del día.</p>
@@ -125,7 +128,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="fuelLiters"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  max="999"
                   (keydown)="preventInvalidNumberInput($event)"
+                  (input)="limitFieldDigits($event, 'fuelLiters', 3)"
                 />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">L</span>
               </div>
@@ -138,7 +143,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="fuelCost"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl pl-8 pr-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  max="999999"
                   (keydown)="preventInvalidNumberInput($event)"
+                  (input)="limitFieldDigits($event, 'fuelCost', 6)"
                 />
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">$</span>
               </div>
@@ -972,25 +979,79 @@ export class Reportar implements OnInit {
     { initialValue: [] }
   );
 
+  // Obtener perfil del trabajador para saber la máquina asignada
+  workerProfile = toSignal(
+    this.workerService.getProfile().pipe(
+      catchError(() => {
+        return of(null);
+      })
+    ),
+    { initialValue: null }
+  );
+
+  // Máquinas ordenadas: primero la asignada al chofer, luego las demás
+  sortedMachines = computed(() => {
+    const allMachines = this.machines();
+    const profile = this.workerProfile();
+    
+    if (allMachines.length === 0) {
+      return [];
+    }
+
+    // Si no hay perfil o no tiene máquina asignada, retornar las máquinas tal cual
+    if (!profile || !profile.maquina_detalle || profile.maquina_detalle === 'Sin Asignar') {
+      return allMachines;
+    }
+
+    // Extraer el número de máquina del maquina_detalle
+    // Formato del backend: "20 - Mercedes-Benz" (número antes del primer guion)
+    const maquinaDetalle = profile.maquina_detalle.trim();
+    const match = maquinaDetalle.match(/^(\d+)\s*-\s*/);
+    
+    if (!match) {
+      // Si no se puede extraer el número, retornar las máquinas tal cual
+      console.warn('No se pudo extraer el número de máquina del formato:', maquinaDetalle);
+      return allMachines;
+    }
+
+    const numeroAsignado = match[1];
+    
+    // Buscar la máquina asignada por numero_interno (es un string)
+    const assignedMachineIndex = allMachines.findIndex(
+      m => String(m.numero_interno) === String(numeroAsignado)
+    );
+
+    if (assignedMachineIndex === -1) {
+      // Si no se encuentra la máquina asignada en la lista, retornar las máquinas tal cual
+      console.warn('Máquina asignada no encontrada en la lista de máquinas activas:', numeroAsignado);
+      return allMachines;
+    }
+
+    // Reordenar: poner la máquina asignada primero
+    const sorted = [...allMachines];
+    const [assignedMachine] = sorted.splice(assignedMachineIndex, 1);
+    return [assignedMachine, ...sorted];
+  });
+
   // Effect como inicializador de campo (contexto de inyección válido)
   private machinesEffect = effect(() => {
     // Monitorear cuando el observable emite
     if (this.machinesEmitted() && this.machinesLoadingState.isLoading()) {
       this.machinesLoadingState.setDataLoaded();
       
-      // Establecer máquina por defecto si hay alguna disponible
-      const currentMachines = this.machines();
-      if (currentMachines.length > 0) {
-        this.reportForm.patchValue({ machine: currentMachines[0].id });
+      // Establecer máquina por defecto: primero la asignada, si no hay ninguna asignada, la primera disponible
+      const sortedMachines = this.sortedMachines();
+      if (sortedMachines.length > 0) {
+        this.reportForm.patchValue({ machine: sortedMachines[0].id });
       }
     }
   });
 
   reportForm = this.fb.group({
     machine: [null as number | null, Validators.required],
-    amount: [null as number | null, Validators.required],
-    fuelLiters: [null as number | null],
-    fuelCost: [null as number | null],
+    amount: [null as number | null, [Validators.required, this.maxDigitsValidator(6)]],
+    fuelLiters: [null as number | null, this.maxDigitsValidator(3)],
+    fuelCost: [null as number | null, this.maxDigitsValidator(6)],
     notes: [''],
     incident: [false],
   });
@@ -1369,6 +1430,63 @@ export class Reportar implements OnInit {
       event.preventDefault();
       return;
     }
+
+    // Prevenir entrada según el límite de dígitos del campo (excepto teclas de control)
+    const input = event.target as HTMLInputElement;
+    const formControlName = input.getAttribute('formcontrolname');
+    const currentValue = input.value || '';
+    const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    
+    // Determinar el límite según el campo
+    let maxDigits = 6; // Por defecto
+    if (formControlName === 'fuelLiters') {
+      maxDigits = 3;
+    } else if (formControlName === 'fuelCost' || formControlName === 'amount') {
+      maxDigits = 6;
+    }
+    
+    if (!controlKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
+      // Si el valor actual tiene el máximo de dígitos y no es una tecla de control, prevenir entrada
+      const digitsOnly = currentValue.replace(/[^0-9]/g, '');
+      if (digitsOnly.length >= maxDigits && /[0-9]/.test(event.key)) {
+        event.preventDefault();
+        return;
+      }
+    }
+  }
+
+  limitAmountDigits(event: Event): void {
+    this.limitFieldDigits(event, 'amount', 6);
+  }
+
+  limitFieldDigits(event: Event, fieldName: 'amount' | 'fuelLiters' | 'fuelCost', maxDigits: number): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/[^0-9]/g, ''); // Solo números
+    
+    // Limitar a maxDigits dígitos
+    if (value.length > maxDigits) {
+      value = value.substring(0, maxDigits);
+    }
+    
+    // Actualizar el valor del input y del formulario
+    const numericValue = value === '' ? null : parseInt(value, 10);
+    input.value = value === '' ? '' : value;
+    this.reportForm.patchValue({ [fieldName]: numericValue }, { emitEvent: false });
+  }
+
+  private maxDigitsValidator(maxDigits: number) {
+    return (control: any) => {
+      if (!control.value) {
+        return null; // Permitir valores vacíos, el required se encarga de eso
+      }
+      
+      const value = control.value.toString().replace(/[^0-9]/g, '');
+      if (value.length > maxDigits) {
+        return { maxDigits: { maxDigits, actual: value.length } };
+      }
+      
+      return null;
+    };
   }
 
   private getErrorMessage(error: any): string {

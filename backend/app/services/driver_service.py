@@ -8,6 +8,37 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+def build_nombre_completo(primer_nombre: str | None, segundo_nombre: str | None, 
+                         apellido_paterno: str | None, apellido_materno: str | None) -> str:
+    """
+    Construye el nombre completo de un chofer manejando correctamente valores None.
+    Evita que aparezca "None" como texto en el nombre.
+    """
+    parts = []
+    
+    # Agregar primer nombre (requerido)
+    if primer_nombre:
+        parts.append(primer_nombre.strip())
+    
+    # Agregar segundo nombre si existe
+    if segundo_nombre:
+        parts.append(segundo_nombre.strip())
+    
+    # Agregar apellido paterno (requerido)
+    if apellido_paterno:
+        parts.append(apellido_paterno.strip())
+    
+    # Agregar apellido materno si existe
+    if apellido_materno:
+        parts.append(apellido_materno.strip())
+    
+    # Si no hay partes, retornar un valor por defecto
+    if not parts:
+        return "Sin nombre"
+    
+    return " ".join(parts)
+
 async def get_summary():
     """
     Resumen superior de choferes:
@@ -165,7 +196,12 @@ async def list_drivers(estado: str | None):
     items = []
 
     for c in choferes:
-        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+        nombre = build_nombre_completo(
+            c.get('primer_nombre'),
+            c.get('segundo_nombre'),
+            c.get('apellido_paterno'),
+            c.get('apellido_materno')
+        )
         cid = c["id"]
 
         if c["fecha_venc_licencia"]:
@@ -185,9 +221,17 @@ async def list_drivers(estado: str | None):
                 severidad = "critica" if estado_lic == "danger" else "advertencia"
                 msg_inicio = "Licencia VENCIDA" if estado_lic == "danger" else "Licencia por vencer"
                 
+                # Construir nombre del chofer para el mensaje
+                nombre_chofer = build_nombre_completo(
+                    c.get('primer_nombre'),
+                    None,  # No incluir segundo nombre en alertas
+                    c.get('apellido_paterno'),
+                    None   # No incluir apellido materno en alertas
+                )
+                
                 # Diccionario EXACTO con los 5 argumentos que pide tu función
                 nueva_alerta = {
-                    "mensaje": f"{msg_inicio}: Chofer {c['primer_nombre']} {c['apellido_paterno']}",
+                    "mensaje": f"{msg_inicio}: Chofer {nombre_chofer}",
                     "severidad": severidad,
                     "origen_tipo": "chofer",
                     "origen_id": cid,
@@ -243,7 +287,12 @@ async def list_active_drivers():
     items = []
 
     for c in res.data:
-        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+        nombre = build_nombre_completo(
+            c.get('primer_nombre'),
+            c.get('segundo_nombre'),
+            c.get('apellido_paterno'),
+            c.get('apellido_materno')
+        )
 
         items.append({
             "id": c["id"],
@@ -316,9 +365,12 @@ async def get_driver_detail(driver_id: int):
     # ---------------------------------------------------------
     # 4) Construcción de respuesta final
     # ---------------------------------------------------------
-    nombre_completo = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
-    if c.get('segundo_nombre'):
-        nombre_completo = f"{c['primer_nombre']} {c['segundo_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+    nombre_completo = build_nombre_completo(
+        c.get('primer_nombre'),
+        c.get('segundo_nombre'),
+        c.get('apellido_paterno'),
+        c.get('apellido_materno')
+    )
 
     return {
         "id": c["id"],

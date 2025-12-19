@@ -1,11 +1,14 @@
-import { inject, Injectable } from '@angular/core';
+import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
-import { Alert, DailyRecord, FinancialSummary } from '../models/dashboard.models';
+import { Observable, of, Subject, EMPTY, throwError } from 'rxjs';
+import { catchError, map, filter, tap, debounceTime, shareReplay } from 'rxjs/operators';
+import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { Alert, DailyRecord, FinancialSummary, DashboardResponse } from '../models/dashboard.models';
 import { DailyRecordService } from './daily-record.service';
 import type { DailyRecord as UnifiedDailyRecord } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
+import { AuthService } from './auth.service';
+import { Router } from '@angular/router';
 
 /**
  * Servicio para el Dashboard
@@ -17,9 +20,27 @@ import { environment } from '../../../environments/environment.development';
 export class DashboardService {
   private http = inject(HttpClient);
   private dailyRecordService = inject(DailyRecordService);
+  private authService = inject(AuthService);
+  private router = inject(Router);
   private apiUrl = environment.apiBaseUrl;
   
-  // Caché simple en memoria
+  // ========== Signals para estado reactivo (nuevo endpoint /api/dashboard/overview) ==========
+  private _dashboardData = signal<DashboardResponse | null>(null);
+  public readonly dashboardData = this._dashboardData.asReadonly();
+  
+  // Signal para estado de conexión WebSocket
+  private _isConnected = signal<boolean>(false);
+  public readonly isConnected = this._isConnected.asReadonly();
+  
+  // Signal para errores de conexión
+  private _connectionError = signal<string | null>(null);
+  public readonly connectionError = this._connectionError.asReadonly();
+  
+  // WebSocket connection
+  private socket$: WebSocketSubject<any> | null = null;
+  private socketSubscription: any = null;
+  
+  // Caché simple en memoria (para métodos legacy)
   private alertsCache: { data: Alert[]; timestamp: number } | null = null;
   private financialSummaryCache: Map<string, { data: FinancialSummary; timestamp: number }> = new Map();
   private dailyRecordsCache: Map<string, { data: DailyRecord[]; timestamp: number }> = new Map();
@@ -83,10 +104,9 @@ export class DashboardService {
                 this.financialSummaryCache.set(cacheKey, { data: summary, timestamp: Date.now() });
                 return summary;
               }),
-              catchError(() => {
-                const mock = this.getMockFinancialSummary(mes, anio);
-                this.financialSummaryCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-                return of(mock);
+              catchError((error) => {
+                console.error('Error obteniendo resumen financiero:', error);
+                return throwError(() => error);
               })
             );
         })
@@ -109,7 +129,10 @@ export class DashboardService {
           // Fallback al endpoint de accounting si el de dashboard no existe
           return this.http.get<any[]>(`${this.apiUrl}/accounting/machines`, { params })
             .pipe(
-              catchError(() => of(this.getMockFinancialDataByMachine()))
+              catchError((error) => {
+                console.error('Error obteniendo datos financieros por máquina:', error);
+                return throwError(() => error);
+              })
             );
         })
       );
@@ -132,10 +155,10 @@ export class DashboardService {
       map(response => {
         // Mapear desde el modelo unificado al formato simplificado del dashboard
         if (!response || !response.datos || !Array.isArray(response.datos)) {
-          // Si la respuesta no tiene datos válidos, devolver mocks
-          const mock = this.getMockDailyRecords();
-          this.dailyRecordsCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-          return mock;
+          // Si la respuesta no tiene datos válidos, retornar array vacío
+          const empty: DailyRecord[] = [];
+          this.dailyRecordsCache.set(cacheKey, { data: empty, timestamp: Date.now() });
+          return empty;
         }
         const records = response.datos.map(record => this.mapToDashboardDailyRecord(record));
         // Guardar en caché
@@ -143,10 +166,10 @@ export class DashboardService {
         return records;
       }),
       catchError((error) => {
-        console.warn('Error al cargar registros diarios, usando datos mock:', error);
-        const mock = this.getMockDailyRecords();
-        this.dailyRecordsCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-        return of(mock);
+        console.error('Error al cargar registros diarios:', error);
+        const empty: DailyRecord[] = [];
+        this.dailyRecordsCache.set(cacheKey, { data: empty, timestamp: Date.now() });
+        return of(empty);
       })
     );
   }
@@ -158,6 +181,147 @@ export class DashboardService {
     this.alertsCache = null;
     this.financialSummaryCache.clear();
     this.dailyRecordsCache.clear();
+  }
+
+  // ========== Nuevos métodos para WebSocket y endpoint /api/dashboard/overview ==========
+
+  /**
+   * Obtiene los datos del dashboard del día actual desde el endpoint /api/dashboard/overview
+   * Este método actualiza el Signal dashboardData que los componentes pueden consumir
+   */
+  fetchOverview(): void {
+    this.http.get<DashboardResponse>(`${this.apiUrl}/api/dashboard/overview`)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al obtener datos del dashboard:', error);
+          // No actualizar el signal si hay error, mantener datos anteriores
+          return EMPTY;
+        })
+      )
+      .subscribe({
+        next: (data) => {
+          this._dashboardData.set(data);
+          this._connectionError.set(null);
+        },
+        error: (error) => {
+          console.error('Error en fetchOverview:', error);
+          this._connectionError.set('Error al cargar datos del dashboard');
+        }
+      });
+  }
+
+  /**
+   * Conecta al WebSocket para recibir notificaciones de actualización
+   * Implementa el patrón "Signal-Triggered Refetch"
+   */
+  connectToUpdates(): void {
+    // Si ya hay una conexión activa, no crear otra
+    if (this.socket$ && this._isConnected()) {
+      console.log('WebSocket ya está conectado');
+      return;
+    }
+
+    const token = this.authService.token;
+    if (!token) {
+      console.error('No hay token disponible para conectar WebSocket');
+      this._connectionError.set('No hay sesión activa');
+      return;
+    }
+
+    // Construir URL WebSocket
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = this.apiUrl.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}//${wsHost}/api/dashboard/ws?token=${encodeURIComponent(token)}`;
+
+    try {
+      // Crear conexión WebSocket
+      this.socket$ = webSocket({
+        url: wsUrl,
+        openObserver: {
+          next: () => {
+            console.log('WebSocket conectado');
+            this._isConnected.set(true);
+            this._connectionError.set(null);
+          }
+        },
+        closeObserver: {
+          next: (event: CloseEvent) => {
+            console.log('WebSocket cerrado', event.code, event.reason);
+            this._isConnected.set(false);
+            
+            // Si el cierre es por error de autenticación (código 1008), redirigir al login
+            if (event.code === 1008) {
+              this._connectionError.set('Sesión expirada. Redirigiendo al login...');
+              setTimeout(() => {
+                this.authService.logout().catch(() => {
+                  this.router.navigateByUrl('/login');
+                });
+              }, 1000);
+            } else if (event.code !== 1000) {
+              // Cierre inesperado (no es normal), intentar reconectar después de un delay
+              this._connectionError.set('Conexión perdida. Reintentando...');
+              setTimeout(() => {
+                if (!this._isConnected()) {
+                  this.connectToUpdates();
+                }
+              }, 3000);
+            }
+          }
+        }
+      });
+
+      // Suscribirse a mensajes del WebSocket
+      this.socketSubscription = this.socket$.pipe(
+        // Filtrar solo mensajes de tipo dashboard_refresh
+        filter((msg: any) => msg && msg.type === 'dashboard_refresh'),
+        // Debounce para evitar múltiples peticiones HTTP simultáneas
+        debounceTime(500),
+        // Disparar refetch cuando se recibe el mensaje
+        tap(() => {
+          console.log('⚡ Actualización recibida, recargando datos del dashboard...');
+          this.fetchOverview();
+        }),
+        shareReplay(1)
+      ).subscribe({
+        next: () => {
+          // El tap ya maneja la lógica
+        },
+        error: (error) => {
+          console.error('Error en WebSocket:', error);
+          this._isConnected.set(false);
+          // El closeObserver ya maneja la reconexión, aquí solo registramos el error
+        }
+      });
+
+      // Cargar datos iniciales
+      this.fetchOverview();
+    } catch (error) {
+      console.error('Error al crear conexión WebSocket:', error);
+      this._connectionError.set('Error al conectar con el servidor');
+      this._isConnected.set(false);
+    }
+  }
+
+  /**
+   * Desconecta el WebSocket y limpia recursos
+   */
+  disconnect(): void {
+    if (this.socketSubscription) {
+      this.socketSubscription.unsubscribe();
+      this.socketSubscription = null;
+    }
+    
+    if (this.socket$) {
+      try {
+        this.socket$.complete();
+      } catch (error) {
+        console.warn('Error al cerrar WebSocket:', error);
+      }
+      this.socket$ = null;
+    }
+    
+    this._isConnected.set(false);
+    console.log('WebSocket desconectado');
   }
 
   /**
@@ -175,55 +339,5 @@ export class DashboardService {
     };
   }
 
-  // ========== Mocks temporales ==========
-
-  private getMockFinancialSummary(mes: number, anio: number): FinancialSummary {
-    return {
-      periodo: { mes, anio },
-      totales: {
-        total_recaudado: 15123456,
-        total_costo_diesel: 4158024,
-        total_pago_choferes: 2200000,
-        ganancia_liquida: 8110432
-      }
-    };
-  }
-
-  private getMockFinancialDataByMachine(): any[] {
-    return [
-      { machineId: 'Máquina 01', driver: 'Juan Pérez', value: 2700000 },
-      { machineId: 'Máquina 02', driver: 'Ana Gómez', value: 2600000 },
-      { machineId: 'Máquina 03', driver: 'Luis Martínez', value: 2810544 }
-    ];
-  }
-
-  private getMockDailyRecords(): DailyRecord[] {
-    return [
-      {
-        id: 'mock-1',
-        machineId: 'Máquina 05',
-        driver: 'Juan Pérez',
-        date: '2025-11-28',
-        status: 'COMPLETO',
-        recaudacion: 120000
-      },
-      {
-        id: 'mock-2',
-        machineId: 'Máquina 04',
-        driver: 'Luis Martínez',
-        date: '2025-11-28',
-        status: 'INCIDENTE_REPORTADO',
-        recaudacion: 85000
-      },
-      {
-        id: 'mock-3',
-        machineId: 'Máquina 02',
-        driver: 'Ana Gómez',
-        date: '2025-11-28',
-        status: 'PENDIENTE_TRABAJADOR',
-        recaudacion: 95000
-      }
-    ];
-  }
 }
 

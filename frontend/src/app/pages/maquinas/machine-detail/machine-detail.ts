@@ -963,7 +963,7 @@ export class MachineDetail implements OnInit {
     this.driverService.getActiveDrivers().pipe(
       catchError((error) => {
         console.error('Error cargando choferes activos:', error);
-        // Retornar array vacío si hay error - el servicio ya maneja datos mock
+        // Retornar array vacío si hay error
         return of([]);
       })
     ),
@@ -1001,10 +1001,10 @@ export class MachineDetail implements OnInit {
   
   choferes = computed(() => this.choferesData() ?? []);
 
-  // Registros diarios (mock por ahora)
+  // Registros diarios
   dailyRecords = signal<MachineDailyRecord[]>([]);
 
-  // Asignaciones (mock por ahora)
+  // Asignaciones
   assignments = signal<MachineAssignment[]>([]);
   
   // Rastrear qué tabs han sido cargados
@@ -1536,96 +1536,5 @@ export class MachineDetail implements OnInit {
       });
   }
 
-  // Métodos mock para desarrollo UI
-  private getMockMachine(): Machine {
-    const id = this.machineId() || 1;
-    return {
-      id: id,
-      numero: '05',
-      marca: 'Mercedes-Benz',
-      patente: 'ABCD-12',
-      año: 2018,
-      estado_operativo: 'Operativa',
-      chofer_actual: {
-        id: 1,
-        nombre_completo: 'Juan Pérez'
-      },
-      documentos: {
-        revision_tecnica: '2025-12-31',
-        permiso_circulacion: '2025-12-31',
-        seguro_obligatorio: '2025-12-31'
-      }
-    };
-  }
-
-  private getMockDrivers(): any[] {
-    return [
-      {
-        id: 1,
-        nombre_completo: 'Juan Pérez',
-        rut: '12.345.678-9',
-        estado: 'activo'
-      },
-      {
-        id: 2,
-        nombre_completo: 'María Gómez',
-        rut: '23.456.789-0',
-        estado: 'activo'
-      },
-      {
-        id: 3,
-        nombre_completo: 'Pedro López',
-        rut: '34.567.890-1',
-        estado: 'activo'
-      },
-      {
-        id: 4,
-        nombre_completo: 'Ana Martínez',
-        rut: '45.678.901-2',
-        estado: 'activo'
-      }
-    ];
-  }
-
-  private getMockDailyRecords(): MachineDailyRecord[] {
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const twoDaysAgo = new Date(today);
-    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
-
-    return [
-      {
-        id: 1,
-        fecha: today.toISOString().split('T')[0],
-        chofer: 'Juan Pérez',
-        chofer_id: 1,
-        recaudado: 120000,
-        diesel: 45000,
-        observaciones: null,
-        estado: 'COMPLETO'
-      },
-      {
-        id: 2,
-        fecha: yesterday.toISOString().split('T')[0],
-        chofer: 'Juan Pérez',
-        chofer_id: 1,
-        recaudado: 115000,
-        diesel: 42000,
-        observaciones: 'Sin observaciones',
-        estado: 'COMPLETO'
-      },
-      {
-        id: 3,
-        fecha: twoDaysAgo.toISOString().split('T')[0],
-        chofer: 'Juan Pérez',
-        chofer_id: 1,
-        recaudado: 110000,
-        diesel: 40000,
-        observaciones: null,
-        estado: 'COMPLETO'
-      }
-    ];
-  }
 }
 

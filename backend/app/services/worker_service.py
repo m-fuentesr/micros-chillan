@@ -56,8 +56,18 @@ async def get_profile(current_user: UserInDB):
                 maquina_str = f"{numero} - {marca}"
 
     # --- PASO 4: Formatear Respuesta ---
-    segundo = f" {chofer.get('segundo_nombre')}" if chofer.get('segundo_nombre') else ""
-    nombre_completo = f"{chofer['primer_nombre']}{segundo} {chofer['apellido_paterno']} {chofer['apellido_materno']}"
+    # Construir nombre completo manejando valores None
+    parts = []
+    if chofer.get('primer_nombre'):
+        parts.append(chofer['primer_nombre'].strip())
+    if chofer.get('segundo_nombre'):
+        parts.append(chofer['segundo_nombre'].strip())
+    if chofer.get('apellido_paterno'):
+        parts.append(chofer['apellido_paterno'].strip())
+    if chofer.get('apellido_materno'):
+        parts.append(chofer['apellido_materno'].strip())
+    
+    nombre_completo = " ".join(parts) if parts else "Sin nombre"
 
     # Fecha
     fecha_ingreso_raw = chofer.get("created_at")

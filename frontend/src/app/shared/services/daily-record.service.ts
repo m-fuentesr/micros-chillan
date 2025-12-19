@@ -184,7 +184,7 @@ export class DailyRecordService {
         })),
         catchError((error) => {
           console.error('Error obteniendo registros diarios:', error);
-          return of(this.getMockDailyRecordsResponse(filters));
+          return throwError(() => error);
         })
       );
   }
@@ -199,7 +199,7 @@ export class DailyRecordService {
         map((backendResponse) => this.mapDetailResponseToDailyRecord(backendResponse)),
         catchError((error) => {
           console.error('Error obteniendo registro diario:', error);
-          return of(this.getMockDailyRecord(id));
+          return throwError(() => error);
         })
       );
   }
@@ -462,9 +462,7 @@ export class DailyRecordService {
       .pipe(
         catchError((error) => {
           console.error('Error creando registro diario:', error);
-          // Mock response para desarrollo
-          const mockRecord = this.getMockDailyRecord('new-' + Date.now());
-          return of(mockRecord);
+          return throwError(() => error);
         })
       );
   }
@@ -577,218 +575,10 @@ export class DailyRecordService {
         })),
         catchError((error) => {
           console.error('Error obteniendo KPIs de registros diarios:', error);
-          return of(this.getMockKPIs());
+          return throwError(() => error);
         })
       );
   }
 
-  // ========== Mocks temporales (para desarrollo) ==========
-
-  private getMockDailyRecordsResponse(filters?: DailyRecordFilters): DailyRecordsResponse {
-    const today = new Date();
-    const mockRecords: DailyRecord[] = [
-      {
-        id: '1',
-        fecha: today.toISOString().split('T')[0],
-        maquina_id: 5,
-        maquina_identificador: 'Máquina 05',
-        chofer_id: 1,
-        chofer_nombre: 'Juan Pérez',
-        recaudado: 120000,
-        costo_diesel: 45000,
-        litros_diesel: 120,
-        dia_no_trabajado: false,
-        es_emergencia: false,
-        estado: 'COMPLETO',
-        observaciones: 'Registro completo del día.'
-      },
-      {
-        id: '2',
-        fecha: new Date(today.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maquina_id: 4,
-        maquina_identificador: 'Máquina 04',
-        chofer_id: 2,
-        chofer_nombre: 'Luis Martínez',
-        recaudado: 85000,
-        costo_diesel: 38000,
-        litros_diesel: 100,
-        dia_no_trabajado: false,
-        es_emergencia: true,
-        estado: 'INCIDENTE_REPORTADO',
-        observaciones: 'Choque leve en parachoques trasero.'
-      },
-      {
-        id: '3',
-        fecha: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maquina_id: 2,
-        maquina_identificador: 'Máquina 02',
-        chofer_id: 3,
-        chofer_nombre: 'Ana Gómez',
-        recaudado: 95000,
-        costo_diesel: 0,
-        dia_no_trabajado: false,
-        es_emergencia: false,
-        estado: 'PENDIENTE_TRABAJADOR',
-        observaciones: null
-      },
-      {
-        id: '4',
-        fecha: new Date(today.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maquina_id: 1,
-        maquina_identificador: 'Máquina 01',
-        chofer_id: 4,
-        chofer_nombre: 'Carlos Ramírez',
-        recaudado: 150000,
-        costo_diesel: 52000,
-        litros_diesel: 130,
-        dia_no_trabajado: false,
-        es_emergencia: false,
-        estado: 'COMPLETO',
-        observaciones: 'Excelente jornada de trabajo.'
-      },
-      {
-        id: '5',
-        fecha: new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maquina_id: 3,
-        maquina_identificador: 'Máquina 03',
-        chofer_id: 5,
-        chofer_nombre: 'María Silva',
-        recaudado: 110000,
-        costo_diesel: 40000,
-        litros_diesel: 110,
-        dia_no_trabajado: false,
-        es_emergencia: false,
-        estado: 'COMPLETO',
-        observaciones: 'Todo normal.'
-      },
-      {
-        id: '6',
-        fecha: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        maquina_id: 5,
-        maquina_identificador: 'Máquina 05',
-        chofer_id: 1,
-        chofer_nombre: 'Juan Pérez',
-        recaudado: 0,
-        costo_diesel: 0,
-        dia_no_trabajado: true,
-        es_emergencia: false,
-        estado: 'DIA_NO_TRABAJADO',
-        observaciones: 'Descanso semanal.'
-      }
-    ];
-
-    // Aplicar filtros básicos
-    let filtered = [...mockRecords];
-    if (filters) {
-      // Filtrar por estado solo si está definido y no es 'all'
-      if (filters.estado) {
-        filtered = filtered.filter(r => r.estado === filters.estado);
-      }
-      if (filters.es_emergencia !== undefined) {
-        filtered = filtered.filter(r => r.es_emergencia === filters.es_emergencia);
-      }
-      if (filters.busqueda) {
-        const query = filters.busqueda.toLowerCase();
-        filtered = filtered.filter(r =>
-          r.maquina_identificador?.toLowerCase().includes(query) ||
-          r.chofer_nombre?.toLowerCase().includes(query) ||
-          r.id.toLowerCase().includes(query)
-        );
-      }
-      // Filtrar por fecha si está definida
-      if (filters.fecha) {
-        filtered = filtered.filter(r => r.fecha === filters.fecha);
-      }
-    }
-
-    const pagina = filters?.pagina || 1;
-    const porPagina = filters?.por_pagina || 20;
-    const start = (pagina - 1) * porPagina;
-    const end = start + porPagina;
-
-    const response = {
-      datos: filtered.slice(start, end),
-      total: filtered.length,
-      pagina,
-      por_pagina: porPagina,
-      total_paginas: Math.ceil(filtered.length / porPagina)
-    };
-
-    // Debug: Log para verificar que se están devolviendo datos
-    console.log('📊 Mock Daily Records Response:', {
-      total: response.total,
-      datos: response.datos.length,
-      pagina: response.pagina,
-      filtros: filters
-    });
-
-    return response;
-  }
-
-  private getMockDailyRecord(id: string): DailyRecord {
-    return {
-      id,
-      fecha: '2025-11-28',
-      maquina_id: 5,
-      maquina_identificador: 'Máquina 05',
-      chofer_id: 1,
-      chofer_nombre: 'Juan Pérez',
-      recaudado: 450000,
-      costo_diesel: 80000,
-      litros_diesel: 120,
-      dia_no_trabajado: false,
-      es_emergencia: false,
-      estado: 'COMPLETO',
-      observaciones: 'Registro completo del día. Todo en orden.',
-      desglose_pago: {
-        base: 450000,
-        porcentaje: 30,
-        monto: 135000
-      },
-      comprobante_diesel: {
-        monto: 80000,
-        imagen_url: 'https://via.placeholder.com/400x300?text=Comprobante',
-        subido_en: new Date().toISOString(),
-        validado: true
-      },
-      historial: [
-        {
-          id: '1',
-          usuario: 'Admin',
-          accion: 'Modificado por Admin',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-          cambios: 'Ajuste Monto'
-        },
-        {
-          id: '2',
-          usuario: 'Juan Pérez',
-          accion: 'Creado por Juan Pérez',
-          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
-        }
-      ],
-      creado_por: 'Juan Pérez',
-      creado_en: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-      actualizado_por: 'Admin',
-      actualizado_en: new Date(Date.now() - 5 * 60 * 1000).toISOString()
-    };
-  }
-
-  private getMockKPIs(): DailyRecordsKPIs {
-    const today = new Date();
-    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-    
-    return {
-      recaudacion_periodo: 665000, // Suma de los registros mock
-      registros_faltantes: 1,
-      registros_con_incidentes: 1,
-      total_registros: 6,
-      registros_completos: 3,
-      registros_pendientes: 1,
-      periodo: {
-        desde: firstDayOfMonth.toISOString().split('T')[0],
-        hasta: today.toISOString().split('T')[0]
-      }
-    };
-  }
 }
 

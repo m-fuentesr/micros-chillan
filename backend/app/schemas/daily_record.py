@@ -48,7 +48,7 @@ class DailyRecordResponse(BaseModel):
     monto_recaudado: int
     litros_diesel: Optional[float]
     costo_total_diesel: Optional[float]
-    imagen_url: str  # Comprobante del registro diario
+    imagen_url: Optional[str] = None # Comprobante del registro diario
     imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
     observaciones: Optional[str]
     estado: str
