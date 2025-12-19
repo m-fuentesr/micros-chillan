@@ -34,7 +34,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
     <!-- Sidebar Premium -->
     <aside 
       class="sidebar-container fixed left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out overflow-hidden lg:translate-x-0 w-72"
-      style="top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px); height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));"
+      style="top: 0; bottom: env(safe-area-inset-bottom, 0px); height: calc(100dvh - env(safe-area-inset-bottom, 0px));"
       [class.sidebar-enter]="shouldAnimate()"
       [class.sidebar-start-hidden]="shouldStartHidden()"
       [class.lg:w-72]="!isCollapsed()"
@@ -44,7 +44,8 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
       [class.translate-x-0]="isMobileMenuOpen()">
       
       <!-- Header con Branding -->
-      <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
+      <div class="flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
+           style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(5rem + env(safe-area-inset-top, 0px));"
            [class.lg:justify-center]="isCollapsed()"
            [class.lg:justify-between]="!isCollapsed()">
         <div class="flex flex-col justify-center sidebar-brand-text"
