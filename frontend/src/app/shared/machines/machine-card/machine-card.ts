@@ -11,10 +11,10 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
     <!-- La tarjeta completa actúa como CTA principal -->
     <a
       [routerLink]="['/maquinas', machine().id]"
-      class="block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 rounded-xl"
+      class="block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 rounded-3xl"
     >
       <div
-        class="card bg-base-100 border border-base-200 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] cursor-pointer relative overflow-hidden h-full flex group"
+        class="card bg-base-100 border border-base-200 rounded-3xl transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] cursor-pointer relative overflow-hidden h-full flex group"
       >
         <!-- Banda lateral de estado (estilo carnet) -->
         <div

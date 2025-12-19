@@ -10,6 +10,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 interface MachineProfit {
   rank: number;
@@ -32,11 +33,11 @@ interface DriverProfit {
 
 @Component({
   selector: 'app-reportes',
-  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, BusIcon],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, BusIcon, KpiCard],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
         <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
           <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
             Análisis y Reportes
@@ -108,17 +109,26 @@ interface DriverProfit {
                     <div class="h-10 w-48 skeleton-shimmer rounded"></div>
                   </div>
                 } @else {
-                  <div 
+                  <app-kpi-card
+                    title="Ganancia Neta Total"
+                    [subtitle]="'Rentabilidad neta'"
+                    [value]="(totalProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                    type="success"
+                    size="compact"
+                    badgeText="Resultado final"
+                    [animationDelay]="0"
                     [class.opacity-0]="!profitSequentialState.canShowKPIs()" 
                     [class.animate-fade-in]="profitSequentialState.canShowKPIs()" 
                     [style.transition]="profitSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="profitSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total</div>
-                    <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                  </div>
+                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
+                      <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
+                    </svg>
+                  </app-kpi-card>
                 }
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -164,19 +174,33 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #profitChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales) -->
-                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && !profitChart.isVisible()) {
-                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
-                    <div class="h-full flex flex-col gap-3">
-                      <!-- Barras horizontales -->
+                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
+                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && !hasProfitData()) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                    <!-- Gradiente de fondo -->
+                    <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
+                    <!-- Grid de líneas verticales para gráfico horizontal -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="h-full w-px bg-base-200/50"></div>
+                      }
+                    </div>
+                    <!-- Contenedor del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-2.5">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3">
-                          <!-- Etiqueta Y (izquierda) -->
-                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal -->
-                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
-                          <!-- Valor X (derecha) -->
-                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
+                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal con gradiente -->
+                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[25, 45, 35, 65, 50, 70, 40, 80][i-1]">
+                            <div 
+                              class="absolute inset-0 rounded-lg"
+                              [style.background]="'linear-gradient(90deg, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0.35) 100%)'">
+                            </div>
+                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                          </div>
+                          <!-- Valor X (derecha) - monto -->
+                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
                         </div>
                       }
                     </div>
@@ -184,7 +208,7 @@ interface DriverProfit {
                 }
                 <!-- Overlay de carga solo en el gráfico -->
                 @else if (profitLoadingState.isLoading() && !profitLoadingState.showSkeleton() && !profitChart.isVisible()) {
-                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
@@ -223,7 +247,7 @@ interface DriverProfit {
                       [count]="5"
                       [isExiting]="profitLoadingState.isSkeletonExiting()" />
                   } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -246,7 +270,7 @@ interface DriverProfit {
                     [style.transition]="profitSequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="profitSequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
                     [style.opacity]="profitSequentialState.canShowContent() ? '1' : '0'"
-                    class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    class="rounded-3xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
                       <div class="flex items-center gap-2">
                         <span class="badge badge-primary badge-outline text-xs">Ranking</span>
@@ -369,7 +393,7 @@ interface DriverProfit {
                         [isExiting]="profitLoadingState.isSkeletonExiting()" />
                     }
                   } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -395,7 +419,7 @@ interface DriverProfit {
                     [style.opacity]="profitSequentialState.canShowContent() ? '1' : '0'"
                     class="space-y-4">
                     @for (item of profitVisibleMachines(); track item.rank) {
-                      <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
+                      <div class="bg-base-100 rounded-3xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
                     <div class="pl-2">
                       <div class="flex justify-between items-start mb-3 gap-3">
@@ -438,7 +462,7 @@ interface DriverProfit {
                         </div>
                       </div>
                     } @empty {
-                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-3xl">
                         Sin resultados. Ajusta los filtros.
                       </div>
                     }
@@ -479,17 +503,27 @@ interface DriverProfit {
                     <div class="h-10 w-48 skeleton-shimmer rounded"></div>
                   </div>
                 } @else {
-                  <div 
+                  <app-kpi-card
+                    title="Ingreso Total Bruto"
+                    [subtitle]="'Producción bruta'"
+                    [value]="(totalIncome() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                    type="financial"
+                    size="compact"
+                    badgeText="Volumen total"
+                    [animationDelay]="0"
                     [class.opacity-0]="!revenueSequentialState.canShowKPIs()" 
                     [class.animate-fade-in]="revenueSequentialState.canShowKPIs()" 
                     [style.transition]="revenueSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="revenueSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ingreso Total Bruto</div>
-                    <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalIncome() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                  </div>
+                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="2" y="6" width="20" height="12" rx="2"/>
+                      <circle cx="12" cy="12" r="2"/>
+                      <path d="M6 12h.01M18 12h.01"/>
+                    </svg>
+                  </app-kpi-card>
                 }
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -535,19 +569,33 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #revenueChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales) -->
-                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && !revenueChart.isVisible()) {
-                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
-                    <div class="h-full flex flex-col gap-3">
-                      <!-- Barras horizontales -->
+                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
+                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && !hasRevenueData()) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                    <!-- Gradiente de fondo -->
+                    <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
+                    <!-- Grid de líneas verticales para gráfico horizontal -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="h-full w-px bg-base-200/50"></div>
+                      }
+                    </div>
+                    <!-- Contenedor del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-2.5">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3">
-                          <!-- Etiqueta Y (izquierda) -->
-                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal -->
-                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
-                          <!-- Valor X (derecha) -->
-                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
+                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal con gradiente verde -->
+                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[30, 50, 40, 70, 55, 75, 45, 85][i-1]">
+                            <div 
+                              class="absolute inset-0 rounded-lg"
+                              [style.background]="'linear-gradient(90deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.35) 100%)'">
+                            </div>
+                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                          </div>
+                          <!-- Valor X (derecha) - monto -->
+                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
                         </div>
                       }
                     </div>
@@ -555,7 +603,7 @@ interface DriverProfit {
                 }
                 <!-- Overlay de carga solo en el gráfico -->
                 @else if (revenueLoadingState.isLoading() && !revenueLoadingState.showSkeleton() && !revenueChart.isVisible()) {
-                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
@@ -594,7 +642,7 @@ interface DriverProfit {
                       [count]="5"
                       [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                   } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -617,7 +665,7 @@ interface DriverProfit {
                     [style.transition]="revenueSequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="revenueSequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
                     [style.opacity]="revenueSequentialState.canShowContent() ? '1' : '0'"
-                    class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    class="rounded-3xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
                       <div class="flex items-center gap-2">
                         <span class="badge badge-success badge-outline text-xs">Ranking</span>
@@ -696,7 +744,7 @@ interface DriverProfit {
                         [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                     }
                   } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -722,7 +770,7 @@ interface DriverProfit {
                     [style.opacity]="revenueSequentialState.canShowContent() ? '1' : '0'"
                     class="space-y-4">
                     @for (item of revenueVisible(); track item.rank) {
-                      <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
+                      <div class="bg-base-100 rounded-3xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-success]="item.rank === 1" [class.bg-success/70]="item.rank === 2" [class.bg-success/50]="item.rank > 2"></div>
                     <div class="pl-2">
                       <div class="flex justify-between items-start gap-3">
@@ -743,7 +791,7 @@ interface DriverProfit {
                         </div>
                       </div>
                     } @empty {
-                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-3xl">
                         Sin resultados. Ajusta los filtros.
                       </div>
                     }
@@ -784,17 +832,27 @@ interface DriverProfit {
                     <div class="h-10 w-48 skeleton-shimmer rounded"></div>
                   </div>
                 } @else {
-                  <div 
+                  <app-kpi-card
+                    title="Ganancia Neta Total Choferes"
+                    [subtitle]="'Retribución neta'"
+                    [value]="(totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                    type="info"
+                    size="compact"
+                    badgeText="Compensación final"
+                    [animationDelay]="0"
                     [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
                     [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
                     [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <div class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-1">Ganancia Neta Total Choferes</div>
-                    <div class="text-3xl lg:text-4xl font-bold text-base-content tabular-nums">{{ totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0' }}</div>
-                  </div>
+                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                      <circle cx="9" cy="7" r="4"/>
+                      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                  </app-kpi-card>
                 }
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
                       <select 
                         class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
@@ -840,19 +898,33 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full" appLazyChart #driverChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales) -->
-                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && !driverChart.isVisible()) {
-                  <div class="w-full h-full rounded-xl bg-base-100 border border-base-200 p-4 sm:p-6">
-                    <div class="h-full flex flex-col gap-3">
-                      <!-- Barras horizontales -->
+                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
+                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && !hasDriverData()) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                    <!-- Gradiente de fondo -->
+                    <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
+                    <!-- Grid de líneas verticales para gráfico horizontal -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="h-full w-px bg-base-200/50"></div>
+                      }
+                    </div>
+                    <!-- Contenedor del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-2.5">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3">
-                          <!-- Etiqueta Y (izquierda) -->
-                          <div class="w-20 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal -->
-                          <div class="flex-1 h-6 skeleton-shimmer rounded" [style.width.%]="20 + (i * 10)"></div>
-                          <!-- Valor X (derecha) -->
-                          <div class="w-16 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
+                          <!-- Etiqueta Y (izquierda) - nombre de chofer -->
+                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
+                          <!-- Barra horizontal con gradiente púrpura -->
+                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[28, 48, 38, 68, 53, 73, 43, 83][i-1]">
+                            <div 
+                              class="absolute inset-0 rounded-lg"
+                              [style.background]="'linear-gradient(90deg, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0.35) 100%)'">
+                            </div>
+                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                          </div>
+                          <!-- Valor X (derecha) - monto -->
+                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
                         </div>
                       }
                     </div>
@@ -860,7 +932,7 @@ interface DriverProfit {
                 }
                 <!-- Overlay de carga solo en el gráfico -->
                 @else if (driverLoadingState.isLoading() && !driverLoadingState.showSkeleton() && !driverChart.isVisible()) {
-                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-xl">
+                  <div class="absolute inset-0 bg-base-100/80 backdrop-blur-sm z-50 flex items-center justify-center rounded-3xl">
                     <app-loading-spinner size="lg" text="Cargando datos..." />
                   </div>
                 }
@@ -899,7 +971,7 @@ interface DriverProfit {
                       [count]="5"
                       [isExiting]="driverLoadingState.isSkeletonExiting()" />
                   } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -922,7 +994,7 @@ interface DriverProfit {
                     [style.transition]="driverSequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                     [style.transform]="driverSequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
                     [style.opacity]="driverSequentialState.canShowContent() ? '1' : '0'"
-                    class="rounded-xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
+                    class="rounded-3xl border border-base-200 overflow-hidden bg-base-100 shadow-sm">
                     <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
                       <div class="flex items-center gap-2">
                         <span class="badge badge-secondary badge-outline text-xs">Ranking</span>
@@ -1021,7 +1093,7 @@ interface DriverProfit {
                         [isExiting]="driverLoadingState.isSkeletonExiting()" />
                     }
                   } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                       <div class="flex flex-col items-center gap-4 text-center">
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1047,7 +1119,7 @@ interface DriverProfit {
                     [style.opacity]="driverSequentialState.canShowContent() ? '1' : '0'"
                     class="space-y-4">
                     @for (item of driverVisible(); track item.rank) {
-                      <div class="bg-base-100 rounded-xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
+                      <div class="bg-base-100 rounded-3xl border border-base-200 p-4 shadow-sm relative overflow-hidden">
                         <div class="absolute left-0 top-0 bottom-0 w-1" [class.bg-primary]="item.rank === 1" [class.bg-primary/70]="item.rank === 2" [class.bg-primary/50]="item.rank > 2"></div>
                       <div class="pl-2">
                         <div class="flex justify-between items-start mb-3 gap-3">
@@ -1077,7 +1149,7 @@ interface DriverProfit {
                         </div>
                       </div>
                     } @empty {
-                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-lg">
+                      <div class="py-8 text-center text-base-content/60 border border-dashed border-base-200 rounded-3xl">
                         Sin resultados. Ajusta los filtros.
                       </div>
                     }

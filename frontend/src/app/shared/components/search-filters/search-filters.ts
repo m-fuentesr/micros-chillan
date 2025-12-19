@@ -18,7 +18,7 @@ export interface FilterField {
   selector: 'app-search-filters',
   imports: [CommonModule, FormsModule, DatePicker],
   template: `
-    <div class="bg-base-50/50 p-5 sm:p-6 rounded-xl border border-base-200/50 mb-6">
+    <div class="bg-base-50/50 p-5 sm:p-6 rounded-3xl border border-base-200/50 mb-6">
       <!-- Header de Filtros -->
       <div class="flex items-center justify-between gap-4 mb-5">
         <div class="flex items-center gap-2">

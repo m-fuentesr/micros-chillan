@@ -43,15 +43,14 @@ interface FaqItem {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="min-h-screen bg-base-200 pb-16">
-      <!-- Hero -->
-      <div class="bg-base-100 border-b border-base-200 py-12 px-6 mb-10 shadow-sm">
-        <div class="max-w-4xl mx-auto text-left page-entry-header space-y-8 pl-4 border-l-4 border-l-primary">
-          <div>
-            <p class="text-xs font-bold uppercase tracking-[0.4em] text-primary mb-3">Knowledge Base Pro</p>
-            <h1 class="text-4xl lg:text-5xl font-black text-base-content tracking-tight">
-              ¿Cómo podemos ayudarte hoy?
+      <!-- Hero Section Premium -->
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="max-w-4xl mx-auto space-y-6">
+          <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
+            <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
+              Centro de Ayuda
             </h1>
-            <p class="text-base-content/70 text-lg italic mt-4">
+            <p class="text-base-content/70 text-xs md:text-sm mt-1 max-w-2xl">
               Explora documentación accionable para dashboard, contabilidad, reportes y flujos diarios.
             </p>
           </div>
@@ -64,18 +63,15 @@ interface FaqItem {
             </div>
             <input
               type="text"
-              class="input input-lg w-full pl-12 pr-16 rounded-2xl shadow-xl border-base-200 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
-              placeholder="Buscar temas, ej: 'Liquidación', 'Exportar reporte', 'Registrar chofer'..."
+              class="input input-lg w-full pl-12 pr-4 rounded-3xl shadow-xl border-base-200 focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+              placeholder="Buscar temas, ej: 'Liquidación', 'Exportar reporte'..."
               [ngModel]="searchQuery()"
               (ngModelChange)="searchQuery.set($event)"
             />
-            <div class="absolute inset-y-0 right-3 flex items-center">
-              <kbd class="kbd kbd-sm hidden md:flex">Ctrl K</kbd>
-            </div>
           </div>
 
           @if (searchQuery().trim()) {
-            <div class="max-w-xl mx-auto bg-base-100 border border-base-200 rounded-2xl p-4 text-left animate-card-enter shadow-md">
+            <div class="max-w-xl mx-auto bg-base-100 border border-base-200 rounded-3xl p-4 text-left animate-card-enter shadow-md">
               <p class="text-xs font-bold text-base-content/50 uppercase tracking-widest mb-3">Resultados sugeridos</p>
               <ul class="space-y-2">
                 @for (item of filteredNav(); track item.id) {
@@ -164,7 +160,7 @@ interface FaqItem {
                 <div class="card-body space-y-6">
                   <header class="flex flex-col gap-3">
                     <div class="flex items-center gap-4">
-                      <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                      <div class="w-12 h-12 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
                         <svg
                           class="w-7 h-7"
                           viewBox="0 0 24 24"
@@ -193,7 +189,7 @@ interface FaqItem {
                   @if (section.highlights?.length) {
                     <div class="grid sm:grid-cols-2 gap-4">
                       @for (item of section.highlights; track item.title) {
-                        <div class="p-4 rounded-2xl border border-base-200 bg-base-200/40">
+                        <div class="p-4 rounded-3xl border border-base-200 bg-base-200/40">
                           <h3 class="font-bold mb-1">{{ item.title }}</h3>
                           <p class="text-sm text-base-content/70">{{ item.body }}</p>
                         </div>
@@ -304,6 +300,43 @@ interface FaqItem {
     </div>
   `,
   styles: [`
+    @keyframes fadeInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-fade-in-down {
+      animation: fadeInDown 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+    
+    .hero-section {
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(var(--p) / 0.03) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .animate-fade-in-down {
+        animation: none;
+      }
+    }
+    
     .custom-scrollbar::-webkit-scrollbar { width: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background-color: rgba(0, 0, 0, 0.1); border-radius: 20px; }
@@ -374,12 +407,12 @@ export class CentroAyuda implements OnInit, OnDestroy {
 
   readonly navItems = signal<HelpNavItem[]>([
     { id: 'introduccion', title: 'Introducción', icon: 'introduccion', description: 'Conceptos y roles' },
-    { id: 'dashboard', title: 'Dashboard', icon: 'dashboard', description: 'KPIs, alertas, registros' },
-    { id: 'maquinas', title: 'Máquinas', icon: 'maquinas', description: 'Estados, documentos, filtros' },
-    { id: 'choferes', title: 'Choferes', icon: 'choferes', description: 'Datos, licencias, desempeño' },
-    { id: 'registro-diario', title: 'Registro Diario', icon: 'registro-diario', description: 'Bitácora operativa' },
-    { id: 'contabilidad', title: 'Contabilidad', icon: 'contabilidad', description: 'KPIs financieros, nómina' },
-    { id: 'reportes', title: 'Reportes', icon: 'reportes', description: 'Insights y exportaciones' },
+    { id: 'dashboard', title: 'Panel Principal', icon: 'dashboard', description: 'KPIs, alertas, registros' },
+    { id: 'registro-diario', title: 'Registros Diarios', icon: 'registro-diario', description: 'Bitácora operativa' },
+    { id: 'maquinas', title: 'Flota de Vehículos', icon: 'maquinas', description: 'Estados, documentos, filtros' },
+    { id: 'choferes', title: 'Conductores', icon: 'choferes', description: 'Datos, licencias, desempeño' },
+    { id: 'contabilidad', title: 'Finanzas y Nómina', icon: 'contabilidad', description: 'KPIs financieros, nómina' },
+    { id: 'reportes', title: 'Análisis y Reportes', icon: 'reportes', description: 'Insights y exportaciones' },
     { id: 'configuracion', title: 'Configuración', icon: 'configuracion', description: 'Parámetros y alertas' },
     { id: 'faq', title: 'FAQ', icon: 'faq', description: 'Problemas comunes' }
   ]);
@@ -395,14 +428,14 @@ export class CentroAyuda implements OnInit, OnDestroy {
         { title: 'Perfil Trabajador', body: 'Experiencia pensada para el día a día: reportar trabajos, adjuntar gastos y revisar tu historial personal desde el móvil.' }
       ],
       list: [
-        '<strong>Barra lateral inteligente:</strong> Los accesos están organizados por áreas (Operación, Finanzas, Soporte). Usa el botón de colapsar si necesitas más espacio.',
+        '<strong>Barra lateral inteligente:</strong> Los accesos están organizados por áreas (Administración, Gestión de Flota, Finanzas). Usa el botón de colapsar si necesitas más espacio.',
         '<strong>Diseño responsivo:</strong> En escritorio tienes la vista completa; en tablets y móviles los tableros se transforman en tarjetas fáciles de leer.',
-        '<strong>Flujo recomendado:</strong> Revisa el Dashboard → atiende alertas → registra/valida operaciones → cierra el período contable.'
+        '<strong>Flujo recomendado:</strong> Revisa el Panel Principal → atiende alertas → registra/valida operaciones → cierra el período contable.'
       ]
     },
     {
       id: 'dashboard',
-      title: 'Dashboard',
+      title: 'Panel Principal',
       icon: 'dashboard',
       description: 'Tu panel de control diario.',
       context: 'Ideal para comenzar la jornada: te muestra ingresos, gastos, alertas y registros recientes en segundos.',
@@ -411,18 +444,37 @@ export class CentroAyuda implements OnInit, OnDestroy {
         { title: 'Centro de alertas', body: 'Colores tipo semáforo: rojo = urgente, amarillo = revisa hoy, verde = todo al día.' }
       ],
       list: [
-        'Haz clic sobre cualquier KPI para ir al módulo relacionado (por ejemplo, “Máquinas con documentos por vencer”).',
+        'Los KPIs muestran información resumida del estado actual. Son informativos y te ayudan a tener una vista rápida de la operación.',
         'Usa las tarjetas de registros diarios para abrir rápidamente el detalle y corregir datos si hace falta.',
-        'Tip operativo: revisa el Dashboard a primera hora. Resolver alertas aquí evita sorpresas al cerrar el mes.'
+        'Tip operativo: revisa el Panel Principal a primera hora. Resolver alertas aquí evita sorpresas al cerrar el mes.'
+      ]
+    },
+    {
+      id: 'registro-diario',
+      title: 'Registros Diarios',
+      icon: 'registro-diario',
+      description: 'Bitácora del día a día (combustible, horas y cobros).',
+      context: 'Disponible para choferes y administradores. En móvil se abre en "modo enfoque" para escribir rápido.',
+      steps: [
+        { title: 'Seleccionar la máquina asignada' },
+        { title: 'Seleccionar la fecha del reporte' },
+        { title: 'Ingresar los datos operativos del día' },
+        { title: 'Adjuntar la imagen del comprobante' },
+        { title: 'Confirmar los montos registrados' }
+      ],
+      list: [
+        'Si te equivocaste en un dato, vuelve a la tarjeta y edítalo; los administradores pueden revisar todas las jornadas.',
+        'Los campos de dinero muestran el símbolo $ y están alineados para que comparar sea más fácil.',
+        'El historial del trabajador se presenta como un panel con filtros por meses para que identifique rápidamente jornadas pendientes o en revisión.'
       ]
     },
     {
       id: 'maquinas',
-      title: 'Gestión de Máquinas',
+      title: 'Flota de Vehículos',
       icon: 'maquinas',
       description: 'Estado de la flota, documentos y mantenimientos.',
       highlights: [
-        { title: 'Tarjetas detalladas', body: 'Cada máquina muestra su chofer asignado, fecha del último servicio y documentos próximos a vencer.' },
+        { title: 'Tarjetas detalladas', body: 'Cada máquina muestra su chofer asignado, estado operativo y documentos próximos a vencer.' },
         { title: 'Filtros rápidos', body: 'Filtra por estado (operativa, en taller, inactiva) o por tipo de alerta documental.' }
       ],
       list: [
@@ -433,12 +485,12 @@ export class CentroAyuda implements OnInit, OnDestroy {
     },
     {
       id: 'choferes',
-      title: 'Gestión de Choferes',
+      title: 'Gestión de Conductores',
       icon: 'choferes',
       description: 'Información personal y desempeño de cada operador.',
       highlights: [
         { title: 'Ficha resumida', body: 'Incluye datos de contacto, licencias, certificaciones y máquinas que puede operar.' },
-        { title: 'Seguimiento continuo', body: 'Pronto se habilitarán evaluaciones y métricas de productividad en el mismo módulo.' }
+        { title: 'Historial completo', body: 'Revisa todos los registros diarios y el historial de liquidaciones del conductor en un solo lugar.' }
       ],
       list: [
         'Para agregar un chofer necesitarás sus datos básicos, licencia y máquinas habilitadas. El sistema te guía paso a paso.',
@@ -447,49 +499,30 @@ export class CentroAyuda implements OnInit, OnDestroy {
       ]
     },
     {
-      id: 'registro-diario',
-      title: 'Registro Diario',
-      icon: 'registro-diario',
-      description: 'Bitácora del día a día (combustible, horas y cobros).',
-      context: 'Disponible para choferes y administradores. En móvil se abre en “modo enfoque” para escribir rápido.',
-      steps: [
-        { title: 'Selecciona fecha y máquina' },
-        { title: 'Describe el trabajo realizado' },
-        { title: 'Ingresa horarios de inicio y fin' },
-        { title: 'Registra combustible y otros costos' },
-        { title: 'Confirma montos cobrados y pago al chofer' }
-      ],
-      list: [
-        'Si te equivocaste en un dato, vuelve a la tarjeta y edítalo; los administradores pueden revisar todas las jornadas.',
-        'Los campos de dinero muestran el símbolo $ y están alineados para que comparar sea más fácil.',
-        'El historial del trabajador se presenta como línea de tiempo para que identifique rápidamente jornadas pendientes o en revisión.'
-      ]
-    },
-    {
       id: 'contabilidad',
-      title: 'Contabilidad',
+      title: 'Finanzas y Nómina',
       icon: 'contabilidad',
       description: 'Todo lo relacionado con ingresos, gastos y liquidaciones.',
       context: 'Organizado en pestañas: Resumen general, Semanal, Liquidación de choferes e Historial.',
       highlights: [
         { title: 'Tabs intuitivas', body: 'Cada pestaña tiene un propósito claro y puedes alternar sin perder los filtros seleccionados.' },
-        { title: 'Botón Confirmar', body: 'Cuando un chofer tiene pago pendiente verás el botón “Confirmar” en modo outline (ligero) y opciones extra en el menú de tres puntos.' }
+        { title: 'Botón Confirmar', body: 'Cuando un chofer tiene pago pendiente verás el botón "Confirmar" en modo outline (ligero).' }
       ],
       list: [
         'Resumen general: revisa los KPIs y el gráfico de tendencia antes de tomar decisiones.',
-        'Liquidación: edita montos faltantes, confirma pagos y usa el menú lateral para descargar reportes o ver detalles.',
+        'Liquidación: edita montos faltantes y confirma pagos.',
         'Historial de cierres: cada período cerrado aparece como “recibo” con la información clave y acciones de exportación.'
       ]
     },
     {
       id: 'reportes',
-      title: 'Reportes',
+      title: 'Análisis y Reportes',
       icon: 'reportes',
       description: 'Análisis visual para entender la rentabilidad.',
       context: 'Incluye rentabilidad por máquina, ranking de ingresos y rentabilidad por chofer.',
       highlights: [
         { title: 'Tablas legibles', body: 'Columnas importantes (ganancia neta) se resaltan con un fondo suave y números alineados a la derecha.' },
-        { title: 'Tab panels animados', body: 'Cada cambio de pestaña aplica una animación corta para entender que cambiaste de contexto.' }
+        { title: 'Rankings comparativos', body: 'Compara el rendimiento de máquinas e ingresos brutos, y analiza la rentabilidad por conductor para tomar decisiones estratégicas.' }
       ],
       list: [
         'Los gráficos se adaptan al ancho disponible y limitan la cantidad de etiquetas para que siempre puedas leerlos.',

@@ -18,9 +18,9 @@ import { catchError, of } from 'rxjs';
       [class.modal-open]="modalService.isVisible()"
       class="modal"
       id="new-record-modal">
-      <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-2xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
+      <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-3xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
         <!-- Header -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
           <div class="p-3 sm:p-3.5 bg-primary/10 rounded-xl text-primary shrink-0 border border-primary/20 shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
               <path fill-rule="evenodd" d="M5.625 3A2.625 2.625 0 003 5.625v12.75A2.625 2.625 0 005.625 21h12.75A2.625 2.625 0 0021 18.375V9.75a.75.75 0 00-1.5 0v8.625c0 .621-.504 1.125-1.125 1.125H5.625c-.621 0-1.125-.504-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125h8.625a.75.75 0 000-1.5H5.625z" clip-rule="evenodd" />
@@ -50,7 +50,7 @@ import { catchError, of } from 'rxjs';
         <div class="overflow-y-auto overscroll-contain flex-1 min-h-0 pr-1 custom-scrollbar">
           <form (ngSubmit)="onSubmit($event)" #form="ngForm" class="grid grid-cols-1 gap-4 sm:gap-6">
             <!-- Estado de operación -->
-            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm">
+            <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm">
               <div class="p-4 sm:p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl"
                 [class.ring-1]="modalService.formData().noWorkDay"
                 [class.ring-primary/30]="modalService.formData().noWorkDay"
