@@ -84,7 +84,8 @@ class DailyRecordListItem(BaseModel):
     maquina: DailyRecordListMachine
     monto_recaudado: int
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
-    neto: int                      # monto_recaudado - costo_total_diesel
+    pago_chofer: int
+    neto: int                      # monto_recaudado - costo_total_diesel - pago_chofer
     estado: str
     tiene_observaciones: bool = False
 
