@@ -12,23 +12,23 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
     <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
-      <div class="px-6 pt-5 pb-3 mb-6 flex justify-between items-end border-b border-zinc-100 bg-zinc-50/60">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
-        <div class="flex gap-2 text-[10px] font-bold uppercase tracking-wider">
-          <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
-            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-            Ganancia Neta
+      <div class="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 sm:gap-0 border-b border-zinc-100 bg-zinc-50/60">
+        <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
+        <div class="flex gap-1.5 sm:gap-2 flex-wrap">
+          <div class="flex items-center gap-1 sm:gap-1.5 bg-emerald-50 text-emerald-700 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
+            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Ganancia Neta</span>
           </div>
-          <div class="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg ring-1 ring-indigo-100/70 cursor-default">
-            <div class="w-2 h-2 rounded-full bg-indigo-400 opacity-50"></div>
-            Ingreso Bruto
+          <div class="flex items-center gap-1 sm:gap-1.5 bg-indigo-50 text-indigo-700 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg ring-1 ring-indigo-100/70 cursor-default">
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-indigo-400 opacity-50 flex-shrink-0"></div>
+            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Ingreso Bruto</span>
           </div>
         </div>
       </div>
 
-      <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative">
+      <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative" style="min-height: 200px;">
         <div class="absolute inset-0 bg-gradient-to-b from-zinc-50/60 to-white pointer-events-none"></div>
-        <div class="relative h-full" appLazyChart #lazyChart="lazyChart">
+        <div class="relative h-full min-h-[200px]" appLazyChart #lazyChart="lazyChart">
           @if (lazyChart.isVisible() && hasData()) {
             <canvas baseChart
               class="w-full h-full"
@@ -37,14 +37,14 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
               [type]="chartType">
             </canvas>
           } @else if (lazyChart.isVisible() && !hasData()) {
-            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-400">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6">
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-400 px-4 py-8 sm:py-12">
+              <div class="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6 sm:h-7 sm:w-7">
                   <path d="M3 21h18M6 18v-6M10 18v-10M14 18v-4M18 18v-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </div>
-              <div class="text-sm font-semibold text-zinc-500">Aún no hay datos para este periodo</div>
-              <div class="text-xs text-zinc-400">Conecta las fuentes o espera la primera carga.</div>
+              <div class="text-sm sm:text-base font-semibold text-zinc-500 text-center">Aún no hay datos para este periodo</div>
+              <div class="text-xs sm:text-sm text-zinc-400 text-center max-w-xs">Espera la primera carga de datos</div>
             </div>
           } @else {
             <div class="flex items-center justify-center h-full text-zinc-300 font-bold text-sm uppercase tracking-widest">

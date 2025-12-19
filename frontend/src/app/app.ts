@@ -49,7 +49,7 @@ import { filter, map, startWith } from 'rxjs';
         <main 
           [attr.class]="adminMainClasses()"
           class="admin-main-content"
-          style="padding-bottom: env(safe-area-inset-bottom, 0px); padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);">
+          style="padding-bottom: env(safe-area-inset-bottom, 0px);">
           <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
             <app-route-transition-outlet></app-route-transition-outlet>
           </div>
@@ -58,7 +58,7 @@ import { filter, map, startWith } from 'rxjs';
     } @else if (shouldShowWorkerNav()) {
       <!-- Layout con Navbar Móvil (Trabajador) -->
       <div class="flex flex-col min-h-screen bg-base-200">
-        <main class="flex-1 bg-base-200 p-4" style="padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)); padding-top: calc(env(safe-area-inset-top, 0px) + 1rem);">
+        <main class="flex-1 bg-base-200 p-4" style="padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);">
           <router-outlet></router-outlet>
         </main>
         @if (!hideWorkerNav()) {
@@ -92,7 +92,6 @@ import { filter, map, startWith } from 'rxjs';
     `
     @media (max-width: 1023px) {
       .mobile-pt-adjust {
-        padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important; 
         padding-bottom: env(safe-area-inset-bottom, 0px) !important;
       }
       /* Asegurar que no haya margen o padding adicional en el contenido */
