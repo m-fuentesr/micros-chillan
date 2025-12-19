@@ -12,8 +12,8 @@ import { Subject } from 'rxjs';
       class="fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-200 shadow-lg shadow-base-300/40" 
       [class.trabajador-navbar-enter]="hasAnimated() === false"
       [class.trabajador-navbar-static]="hasAnimated() === true"
-      style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.35rem);">
-      <div class="flex justify-around items-end h-20 px-3">
+      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="flex justify-around items-end px-3" style="height: calc(5rem + env(safe-area-inset-bottom, 0px)); min-height: 5rem;">
         <a
           routerLink="/trabajador"
           routerLinkActive="text-primary font-bold"
@@ -93,7 +93,10 @@ import { Subject } from 'rxjs';
       width: 100vw !important;
       max-width: 100vw !important;
       margin: 0 !important;
-      padding: 0 !important;
+      padding-left: 0 !important;
+      padding-right: 0 !important;
+      padding-top: 0 !important;
+      /* padding-bottom se maneja con inline style para área segura */
       transform: translateZ(0); /* Force GPU acceleration */
       backface-visibility: hidden; /* Prevent flickering */
       -webkit-backface-visibility: hidden;

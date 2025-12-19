@@ -9,8 +9,8 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
   imports: [RouterLink, RouterLinkActive, BusIcon],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
-      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors absolute left-4" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú">
+    <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative" style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(4rem + env(safe-area-inset-top, 0px));">
+      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors absolute left-4" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú" style="top: calc(env(safe-area-inset-top, 0px) + 0.5rem);">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-base-content/70">
           <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
         </svg>
@@ -25,14 +25,16 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
     <!-- Backdrop Móvil (solo visible cuando el menú está abierto) -->
     @if (isMobileMenuOpen()) {
       <div 
-        class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity animate-in fade-in"
+        class="fixed z-40 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in"
+        style="top: 0; left: 0; right: 0; bottom: 0; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);"
         (click)="closeMobileMenu()">
       </div>
     }
 
     <!-- Sidebar Premium -->
     <aside 
-      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      class="sidebar-container fixed left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out overflow-hidden lg:translate-x-0 w-72"
+      style="top: env(safe-area-inset-top, 0px); bottom: env(safe-area-inset-bottom, 0px); height: calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));"
       [class.sidebar-enter]="shouldAnimate()"
       [class.sidebar-start-hidden]="shouldStartHidden()"
       [class.lg:w-72]="!isCollapsed()"
