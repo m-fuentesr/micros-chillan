@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, output, EventEmitter, signal, computed, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { isPlatformBrowser } from '@angular/common';
+import { AnimatedCounterDirective } from '../../directives/animated-counter.directive';
 
 export type KpiCardType = 'financial' | 'danger' | 'warning' | 'success' | 'info';
 export type KpiCardSize = 'default' | 'compact' | 'medium';
@@ -8,7 +9,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
 @Component({
   selector: 'app-kpi-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, AnimatedCounterDirective],
   template: `
     <div 
       class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]"
@@ -88,7 +89,14 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
             'text-[10px] sm:text-xs md:text-sm lg:text-base pl-[39px]': effectiveSize() === 'medium',
             'text-[9px] sm:text-[10px] md:text-xs lg:text-sm pl-[28px]': effectiveSize() === 'compact'
           }">
-          {{ value() }}
+          @if (numericValue() !== undefined) {
+            <span 
+              [appAnimatedCounter]="numericValue()!" 
+              [format]="valueFormat()"
+              [duration]="animationDuration()"></span>
+          } @else {
+            {{ value() }}
+          }
         </div>
         
         <!-- Footer: Badge, Success Text, or Action -->
@@ -187,7 +195,10 @@ export class KpiCard implements OnInit, OnDestroy {
 
   title = input.required<string>();
   subtitle = input<string>('');
-  value = input.required<string>();
+  value = input<string>('');  // Cambiar a opcional para permitir usar numericValue
+  numericValue = input<number | undefined>(undefined);  // Nuevo input para valores numéricos animados
+  valueFormat = input<'number' | 'currency'>('currency');  // Formato para la animación
+  animationDuration = input<number>(1500);  // Duración de la animación en ms
   type = input<KpiCardType>('financial');
   size = input<KpiCardSize>('default');
   responsive = input<boolean>(false);

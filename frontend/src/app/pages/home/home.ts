@@ -14,10 +14,11 @@ import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
+import { AnimatedCounterDirective } from '../../shared/directives/animated-counter.directive';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon, KpiCard],
+  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon, KpiCard, AnimatedCounterDirective],
   template: `
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
@@ -68,7 +69,9 @@ import { CommonModule } from '@angular/common';
               <app-kpi-card
                 title="Ganancia Neta"
                 [subtitle]="'Neto con descuentos'"
-                [value]="gananciaNetaTotal()"
+                [numericValue]="gananciaNetaTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
                 type="success"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
@@ -199,7 +202,9 @@ import { CommonModule } from '@angular/common';
                             'text-sm': cardSize() === 'default',
                             'text-xs': cardSize() === 'medium',
                             'text-[10px]': cardSize() === 'compact'
-                          }">{{ maquinasActivas() }} Activas</span>
+                          }">
+                          <span [appAnimatedCounter]="maquinasActivas()" format="number" [duration]="1000"></span> Activas
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -225,7 +230,11 @@ import { CommonModule } from '@angular/common';
                         'text-base sm:text-lg': cardSize() === 'default',
                         'text-sm sm:text-base': cardSize() === 'medium',
                         'text-xs sm:text-sm': cardSize() === 'compact'
-                      }">{{ reportesHoyCompletos() }}<span class="text-zinc-300 mx-1">/</span>{{ reportesHoyTotales() }}</span>
+                      }">
+                      <span [appAnimatedCounter]="reportesHoyCompletos()" format="number" [duration]="1000"></span>
+                      <span class="text-zinc-300 mx-1">/</span>
+                      <span [appAnimatedCounter]="reportesHoyTotales()" format="number" [duration]="1000"></span>
+                    </span>
                   </div>
                   
                   <div 
@@ -316,7 +325,9 @@ import { CommonModule } from '@angular/common';
                         'text-xl': cardSize() === 'default',
                         'text-lg': cardSize() === 'medium',
                         'text-base': cardSize() === 'compact'
-                      }">{{ alertCounts().critical }}</span>
+                      }">
+                      <span [appAnimatedCounter]="alertCounts().critical" format="number" [duration]="800"></span>
+                    </span>
                   </div>
 
                   <div 
@@ -333,7 +344,9 @@ import { CommonModule } from '@angular/common';
                           'text-lg': cardSize() === 'default',
                           'text-base': cardSize() === 'medium',
                           'text-sm': cardSize() === 'compact'
-                        }">{{ alertCounts().warning }}</span>
+                        }">
+                        <span [appAnimatedCounter]="alertCounts().warning" format="number" [duration]="800"></span>
+                      </span>
                       <span 
                         class="font-bold text-amber-700/70 uppercase"
                         [ngClass]="{
@@ -349,7 +362,9 @@ import { CommonModule } from '@angular/common';
                           'text-lg': cardSize() === 'default',
                           'text-base': cardSize() === 'medium',
                           'text-sm': cardSize() === 'compact'
-                        }">{{ alertCounts().info }}</span>
+                        }">
+                        <span [appAnimatedCounter]="alertCounts().info" format="number" [duration]="800"></span>
+                      </span>
                       <span 
                         class="font-bold text-blue-700/70 uppercase"
                         [ngClass]="{
@@ -374,7 +389,9 @@ import { CommonModule } from '@angular/common';
               <app-kpi-card
                 title="Ganancia Neta"
                 [subtitle]="'Neto con descuentos'"
-                [value]="gananciaNetaTotal()"
+                [numericValue]="gananciaNetaTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
                 type="success"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
@@ -438,7 +455,9 @@ import { CommonModule } from '@angular/common';
                       'text-base sm:text-lg md:text-xl lg:text-2xl': cardSize() === 'default',
                       'text-[10px] sm:text-xs md:text-sm lg:text-base': cardSize() === 'medium',
                       'text-[9px] sm:text-[10px] md:text-xs lg:text-sm': cardSize() === 'compact'
-                    }">{{ ingresoTotal() }}</div>
+                    }">
+                    <span [appAnimatedCounter]="ingresoTotalNumeric()" format="currency" [duration]="1500"></span>
+                  </div>
                   <div 
                     [ngClass]="{
                       'mt-2': cardSize() === 'default',
@@ -505,7 +524,9 @@ import { CommonModule } from '@angular/common';
                             'text-sm': cardSize() === 'default',
                             'text-xs': cardSize() === 'medium',
                             'text-[10px]': cardSize() === 'compact'
-                          }">{{ maquinasActivas() }} Activas</span>
+                          }">
+                          <span [appAnimatedCounter]="maquinasActivas()" format="number" [duration]="1000"></span> Activas
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -531,7 +552,11 @@ import { CommonModule } from '@angular/common';
                         'text-base sm:text-lg': cardSize() === 'default',
                         'text-sm sm:text-base': cardSize() === 'medium',
                         'text-xs sm:text-sm': cardSize() === 'compact'
-                      }">{{ reportesHoyCompletos() }}<span class="text-zinc-300 mx-1">/</span>{{ reportesHoyTotales() }}</span>
+                      }">
+                      <span [appAnimatedCounter]="reportesHoyCompletos()" format="number" [duration]="1000"></span>
+                      <span class="text-zinc-300 mx-1">/</span>
+                      <span [appAnimatedCounter]="reportesHoyTotales()" format="number" [duration]="1000"></span>
+                    </span>
                   </div>
                   
                   <div 
@@ -622,7 +647,9 @@ import { CommonModule } from '@angular/common';
                         'text-xl': cardSize() === 'default',
                         'text-lg': cardSize() === 'medium',
                         'text-base': cardSize() === 'compact'
-                      }">{{ alertCounts().critical }}</span>
+                      }">
+                      <span [appAnimatedCounter]="alertCounts().critical" format="number" [duration]="800"></span>
+                    </span>
                   </div>
 
                   <div 
@@ -639,7 +666,9 @@ import { CommonModule } from '@angular/common';
                           'text-lg': cardSize() === 'default',
                           'text-base': cardSize() === 'medium',
                           'text-sm': cardSize() === 'compact'
-                        }">{{ alertCounts().warning }}</span>
+                        }">
+                        <span [appAnimatedCounter]="alertCounts().warning" format="number" [duration]="800"></span>
+                      </span>
                       <span 
                         class="font-bold text-amber-700/70 uppercase"
                         [ngClass]="{
@@ -655,7 +684,9 @@ import { CommonModule } from '@angular/common';
                           'text-lg': cardSize() === 'default',
                           'text-base': cardSize() === 'medium',
                           'text-sm': cardSize() === 'compact'
-                        }">{{ alertCounts().info }}</span>
+                        }">
+                        <span [appAnimatedCounter]="alertCounts().info" format="number" [duration]="800"></span>
+                      </span>
                       <span 
                         class="font-bold text-blue-700/70 uppercase"
                         [ngClass]="{
@@ -857,9 +888,15 @@ export class Home implements OnInit, OnDestroy {
       this.mobileMediaQuery.addEventListener('change', this.mobileMediaQueryHandler);
       this.mediumMediaQuery.addEventListener('change', this.mediumMediaQueryHandler);
     }
+
+    // Conectar al WebSocket para actualizaciones en tiempo real
+    this.dashboardService.connectToUpdates();
   }
   
   ngOnDestroy(): void {
+    // Desconectar WebSocket al salir del componente
+    this.dashboardService.disconnect();
+    
     if (this.mobileMediaQuery && this.mobileMediaQueryHandler) {
       this.mobileMediaQuery.removeEventListener('change', this.mobileMediaQueryHandler);
     }
@@ -870,7 +907,7 @@ export class Home implements OnInit, OnDestroy {
   
   // Effects para detectar cuando los datos están listos
   private kpisEffect = effect(() => {
-    // Los KPIs se calculan desde financialData (mock) y dailyRecords
+    // Los KPIs se calculan desde financialData y dailyRecords
     // Consideramos que están listos cuando dailyRecords tiene datos o después de un tiempo mínimo
     const hasRecords = this.dailyRecords().length > 0;
     const isLoading = this.kpisLoadingState.isLoading();
@@ -956,6 +993,16 @@ export class Home implements OnInit, OnDestroy {
   });
 
   alertCounts = computed(() => {
+    // Usar datos del nuevo servicio cuando estén disponibles
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.alertas?.resumen) {
+      return {
+        critical: dashboardData.alertas.resumen.criticas,
+        warning: dashboardData.alertas.resumen.advertencias,
+        info: dashboardData.alertas.resumen.informativas
+      };
+    }
+    // Fallback a alertas existentes
     const alerts = this.alerts();
     return {
       critical: alerts.filter(a => a.severity === 'critical').length,
@@ -968,8 +1015,8 @@ export class Home implements OnInit, OnDestroy {
   dailyRecordsData = toSignal(
     this.dashboardService.getDailyRecords().pipe(
       catchError((error) => {
-        console.warn('Error al cargar registros diarios en home, usando mocks:', error);
-        return of<DailyRecord[]>(this.getMockDailyRecords());
+        console.error('Error al cargar registros diarios en home:', error);
+        return of<DailyRecord[]>([]);
       })
     ),
     { initialValue: [] }
@@ -977,57 +1024,68 @@ export class Home implements OnInit, OnDestroy {
 
   dailyRecords = computed(() => {
     const records = this.dailyRecordsData() ?? [];
-    // Si tenemos datos del servicio, usarlos
-    if (records.length > 0) {
-      return records;
-    }
-    // Si no hay datos, usar mocks como fallback para desarrollo
-    // Esto asegura que siempre haya datos para mostrar
-    return this.getMockDailyRecords();
+    return records;
   });
 
-  // Datos financieros (mismos que usa financial-summary)
+  // Datos financieros (se obtienen del backend)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({
-    'Ganancia Neta': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 2450000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 3200000 },
-      { machineId: '03', driver: 'María López', value: 1800000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 4100000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 2800000 }
-    ],
-    'Ingreso Total': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 8500000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 9200000 },
-      { machineId: '03', driver: 'María López', value: 7200000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 10500000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 8800000 }
-    ]
+    'Ganancia Neta': [],
+    'Ingreso Total': []
   });
 
-  // KPIs calculados
+  // KPIs calculados - Usar datos del nuevo servicio cuando estén disponibles, sino usar fallback
+  // Signals numéricos para animación
+  gananciaNetaTotalNumeric = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.ganancia_neta !== undefined) {
+      return dashboardData.kpis.ganancia_neta;
+    }
+    return 0;
+  });
+
+  ingresoTotalNumeric = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.recaudacion_total !== undefined) {
+      return dashboardData.kpis.recaudacion_total;
+    }
+    return 0;
+  });
+
+  // Signals formateados (mantener para compatibilidad)
   gananciaNetaTotal = computed(() => {
-    const data = this.financialData()['Ganancia Neta'];
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    return this.formatCurrency(total);
+    return this.formatCurrency(this.gananciaNetaTotalNumeric());
   });
 
   ingresoTotal = computed(() => {
-    const data = this.financialData()['Ingreso Total'];
-    const total = data.reduce((sum, item) => sum + item.value, 0);
-    return this.formatCurrency(total);
+    return this.formatCurrency(this.ingresoTotalNumeric());
   });
 
   reportesHoyTotales = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.flota_en_ruta?.reportes_totales !== undefined) {
+      return dashboardData.kpis.flota_en_ruta.reportes_totales;
+    }
+    // Fallback
     const today = new Date().toISOString().split('T')[0];
     return this.dailyRecords().filter(r => r.date === today).length;
   });
 
   reportesHoyCompletos = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.flota_en_ruta?.reportes_recibidos !== undefined) {
+      return dashboardData.kpis.flota_en_ruta.reportes_recibidos;
+    }
+    // Fallback
     const today = new Date().toISOString().split('T')[0];
     return this.dailyRecords().filter(r => r.date === today && r.status === 'COMPLETO').length;
   });
 
   reportesHoyPendientes = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.flota_en_ruta?.reportes_pendientes !== undefined) {
+      return dashboardData.kpis.flota_en_ruta.reportes_pendientes;
+    }
+    // Fallback
     const total = this.reportesHoyTotales();
     const completos = this.reportesHoyCompletos();
     return Math.max(total - completos, 0);
@@ -1041,6 +1099,11 @@ export class Home implements OnInit, OnDestroy {
   });
 
   maquinasActivas = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    if (dashboardData?.kpis?.flota_en_ruta?.activas !== undefined) {
+      return dashboardData.kpis.flota_en_ruta.activas;
+    }
+    // Fallback
     const records = this.dailyRecords();
     const today = new Date().toISOString().split('T')[0];
     const activeMachines = new Set(
@@ -1068,77 +1131,6 @@ export class Home implements OnInit, OnDestroy {
     }).format(value).replace('CLP', '$');
   }
 
-  private getMockDailyRecords(): DailyRecord[] {
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    return [
-      {
-        id: 'mock-1',
-        machineId: '02',
-        driver: 'Ana Gómez',
-        date: yesterday,
-        status: 'PENDIENTE_TRABAJADOR',
-        recaudacion: 100000
-      },
-      {
-        id: 'mock-2',
-        machineId: '04',
-        driver: 'Luis Martínez',
-        date: today,
-        status: 'INCIDENTE_REPORTADO',
-        recaudacion: 85000
-      },
-      {
-        id: 'mock-3',
-        machineId: '01',
-        driver: 'Carlos Rodríguez',
-        date: today,
-        status: 'COMPLETO',
-        recaudacion: 100000
-      },
-      {
-        id: 'mock-4',
-        machineId: '05',
-        driver: 'Juan Pérez',
-        date: yesterday,
-        status: 'NO_TRABAJADO',
-        motivo: 'Descanso Semanal'
-      },
-      {
-        id: 'mock-5',
-        machineId: '03',
-        driver: 'María López',
-        date: today,
-        status: 'COMPLETO',
-        recaudacion: 100000
-      },
-      {
-        id: 'mock-6',
-        machineId: '07',
-        driver: 'Pedro Gómez',
-        date: today,
-        status: 'COMPLETO',
-        recaudacion: 100000
-      },
-      {
-        id: 'mock-7',
-        machineId: '08',
-        driver: 'Juan Pérez',
-        date: today,
-        status: 'COMPLETO',
-        recaudacion: 100000
-      },
-      {
-        id: 'mock-8',
-        machineId: '09',
-        driver: 'Juan Pérez',
-        date: today,
-        status: 'COMPLETO',
-        recaudacion: 100000
-      }
-    ];
-  }
 
   onDeleteAlert(alertId: string): void {
     // Prevenir múltiples eliminaciones simultáneas

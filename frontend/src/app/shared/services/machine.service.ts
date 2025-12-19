@@ -115,7 +115,7 @@ export class MachineService {
       ),
       catchError((error) => {
         console.error('Error obteniendo máquinas:', error);
-        return of(this.getMockMachines());
+        return throwError(() => error);
       })
     );
   }
@@ -165,86 +165,11 @@ export class MachineService {
       }),
       catchError((error) => {
         console.error('Error obteniendo detalle de máquina:', error);
-        const mockMachine = this.getMockMachineById(id);
-        return mockMachine ? of(mockMachine) : throwError(() => error);
+        return throwError(() => error);
       })
     );
   }
 
-  private getMockMachineById(id: number): Machine | null {
-    const mockMachines = this.getMockMachines();
-    return mockMachines.find(m => m.id === id) || null;
-  }
-
-  private getMockMachines(): Machine[] {
-    return [
-      {
-        id: 1,
-        numero: '05',
-        marca: 'Mercedes-Benz',
-        patente: 'ABCD-12',
-        año: 2018,
-        estado_operativo: 'Operativa',
-        chofer_actual: {
-          id: 1,
-          nombre_completo: 'Juan Pérez'
-        },
-        documentos: {
-          revision_tecnica: '2023-11-20',
-          permiso_circulacion: '2024-03-31',
-          seguro_obligatorio: '2024-01-15'
-        }
-      },
-      {
-        id: 2,
-        numero: '02',
-        marca: 'Caio',
-        patente: 'EFGH-34',
-        año: 2019,
-        estado_operativo: 'Operativa',
-        chofer_actual: {
-          id: 2,
-          nombre_completo: 'María Gómez'
-        },
-        documentos: {
-          revision_tecnica: '2024-12-31',
-          permiso_circulacion: '2024-12-31',
-          seguro_obligatorio: '2024-12-31'
-        }
-      },
-      {
-        id: 3,
-        numero: '07',
-        marca: 'Mercedes-Benz',
-        patente: 'IJKL-56',
-        año: 2020,
-        estado_operativo: 'En Taller',
-        chofer_actual: {
-          id: 3,
-          nombre_completo: 'Pedro López'
-        },
-        documentos: {
-          revision_tecnica: '2024-11-30',
-          permiso_circulacion: '2024-11-30',
-          seguro_obligatorio: '2024-11-30'
-        }
-      },
-      {
-        id: 4,
-        numero: '03',
-        marca: 'Marcopolo',
-        patente: 'MNOP-78',
-        año: 2017,
-        estado_operativo: 'Inactiva',
-        chofer_actual: null,
-        documentos: {
-          revision_tecnica: '2024-10-15',
-          permiso_circulacion: '2024-10-15',
-          seguro_obligatorio: '2024-10-15'
-        }
-      }
-    ];
-  }
 
   // POST /api/machines - Crear nueva máquina
   // Transformamos los datos del frontend al formato que espera el backend

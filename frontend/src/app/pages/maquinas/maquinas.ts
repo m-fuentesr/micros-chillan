@@ -213,7 +213,7 @@ export class Maquinas implements OnInit, OnDestroy {
         setTimeout(() => {
           this.machinesLoadingState.setDataLoaded();
         }, 100);
-        return of<Machine[]>(this.getMockMachines());
+        return of<Machine[]>([]);
       })
     ),
     { initialValue: [] }
@@ -230,7 +230,7 @@ export class Maquinas implements OnInit, OnDestroy {
         setTimeout(() => {
           this.kpisLoadingState.setDataLoaded();
         }, 100);
-        return of<MachineKPIsType>(this.calculateMockKPIs());
+        return of<MachineKPIsType>({ operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 });
       })
     ),
     { initialValue: null }
@@ -238,15 +238,11 @@ export class Maquinas implements OnInit, OnDestroy {
 
   kpis = computed(() => {
     const kpisData = this.kpisData();
-    // Si hay error, usar datos calculados localmente
-    if (this.sequentialState.kpisError()) {
-      return this.calculateMockKPIs();
-    }
     // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
     if (kpisData === null && this.kpisLoadingState.isLoading()) {
       return { operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 };
     }
-    return kpisData ?? this.calculateMockKPIs();
+    return kpisData ?? { operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 };
   });
 
   // Effects simplificados (siguiendo patrón de driver-detail)
@@ -359,7 +355,7 @@ export class Maquinas implements OnInit, OnDestroy {
           setTimeout(() => {
             this.machinesLoadingState.setDataLoaded();
           }, 100);
-          return of<Machine[]>(this.getMockMachines());
+          return of<Machine[]>([]);
         })
       ),
       { initialValue: [] }
@@ -491,84 +487,4 @@ export class Maquinas implements OnInit, OnDestroy {
     this.documentFilter.set(filter);
   }
 
-  private calculateMockKPIs(): MachineKPIsType {
-    const machines = this.machines();
-    return {
-      operativas: machines.filter(m => m.estado_operativo === 'Operativa').length,
-      en_taller: machines.filter(m => m.estado_operativo === 'En Taller').length,
-      inactivas: machines.filter(m => m.estado_operativo === 'Inactiva').length,
-      documentos_por_vencer: machines.filter(m => {
-        const status = calculateMachineDocumentStatus(m);
-        return status.revision_tecnica?.estado !== 'ok' ||
-               status.permiso_circulacion?.estado !== 'ok' ||
-               status.seguro_obligatorio?.estado !== 'ok';
-      }).length
-    };
-  }
-
-  private getMockMachines(): Machine[] {
-    return [
-      {
-        id: 1,
-        numero: '05',
-        marca: 'Mercedes-Benz',
-        patente: 'ABCD-12',
-        estado_operativo: 'Operativa',
-        chofer_actual: {
-          id: 1,
-          nombre_completo: 'Juan Pérez'
-        },
-        documentos: {
-          revision_tecnica: '2023-11-20',
-          permiso_circulacion: '2024-03-31',
-          seguro_obligatorio: '2024-01-15'
-        }
-      },
-      {
-        id: 2,
-        numero: '02',
-        marca: 'Caio',
-        patente: 'EFGH-34',
-        estado_operativo: 'Operativa',
-        chofer_actual: {
-          id: 2,
-          nombre_completo: 'María Gómez'
-        },
-        documentos: {
-          revision_tecnica: '2024-12-31',
-          permiso_circulacion: '2024-12-31',
-          seguro_obligatorio: '2024-12-31'
-        }
-      },
-      {
-        id: 3,
-        numero: '07',
-        marca: 'Mercedes-Benz',
-        patente: 'IJKL-56',
-        estado_operativo: 'En Taller',
-        chofer_actual: {
-          id: 3,
-          nombre_completo: 'Pedro López'
-        },
-        documentos: {
-          revision_tecnica: '2024-11-30',
-          permiso_circulacion: '2024-11-30',
-          seguro_obligatorio: '2024-11-30'
-        }
-      },
-      {
-        id: 4,
-        numero: '03',
-        marca: 'Marcopolo',
-        patente: 'MNOP-78',
-        estado_operativo: 'Inactiva',
-        chofer_actual: null,
-        documentos: {
-          revision_tecnica: '2024-10-15',
-          permiso_circulacion: '2024-10-15',
-          seguro_obligatorio: '2024-10-15'
-        }
-      }
-    ];
-  }
 }

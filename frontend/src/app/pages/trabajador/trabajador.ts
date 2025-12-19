@@ -453,7 +453,7 @@ export class Trabajador implements OnInit, OnDestroy {
       });
     });
 
-    // Agregar actividad de asignación (mock por ahora)
+    // Agregar actividad de asignación
     if (activities.length < 3) {
       activities.push({
         id: 'assignment-1',

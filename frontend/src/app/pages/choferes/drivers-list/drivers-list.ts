@@ -211,7 +211,7 @@ export class DriversList implements OnInit, OnDestroy {
         setTimeout(() => {
           this.driversLoadingState.setDataLoaded();
         }, 100);
-        return of<Driver[]>(this.getMockDrivers());
+        return of<Driver[]>([]);
       })
     ),
     { initialValue: [] }
@@ -222,15 +222,34 @@ export class DriversList implements OnInit, OnDestroy {
   // Calcular KPIs
   kpis = computed(() => {
     const drivers = this.drivers();
-    // Si hay error, usar datos calculados localmente
-    if (this.sequentialState.kpisError()) {
-      return this.calculateMockKPIs();
-    }
     // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
     if (drivers.length === 0 && this.kpisLoadingState.isLoading()) {
       return { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
     }
-    return this.calculateMockKPIs();
+    
+    let activos = 0;
+    let inactivos = 0;
+    let con_maquina = 0;
+    let licencias_por_vencer = 0;
+
+    drivers.forEach(driver => {
+      if (driver.estado === 'activo') activos++;
+      else if (driver.estado === 'inactivo') inactivos++;
+
+      if (driver.maquina_actual) con_maquina++;
+
+      const licenseStatus = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
+      if (licenseStatus.estado !== 'ok') {
+        licencias_por_vencer++;
+      }
+    });
+
+    return {
+      activos,
+      inactivos,
+      con_maquina,
+      licencias_por_vencer
+    };
   });
 
   // Effects simplificados (siguiendo patrón de driver-detail)
@@ -343,7 +362,7 @@ export class DriversList implements OnInit, OnDestroy {
           setTimeout(() => {
             this.driversLoadingState.setDataLoaded();
           }, 100);
-          return of<Driver[]>(this.getMockDrivers());
+          return of<Driver[]>([]);
         })
       ),
       { initialValue: [] }
@@ -371,32 +390,6 @@ export class DriversList implements OnInit, OnDestroy {
     return { vencidas, por_vencer, al_dia };
   });
 
-  private calculateMockKPIs(): DriverKPIsType {
-    const drivers = this.drivers();
-    let activos = 0;
-    let inactivos = 0;
-    let con_maquina = 0;
-    let licencias_por_vencer = 0;
-
-    drivers.forEach(driver => {
-      if (driver.estado === 'activo') activos++;
-      else if (driver.estado === 'inactivo') inactivos++;
-
-      if (driver.maquina_actual) con_maquina++;
-
-      const licenseStatus = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
-      if (licenseStatus.estado !== 'ok') {
-        licencias_por_vencer++;
-      }
-    });
-
-    return {
-      activos,
-      inactivos,
-      con_maquina,
-      licencias_por_vencer
-    };
-  }
 
   private isFirstLoad = true;
 
@@ -476,78 +469,5 @@ export class DriversList implements OnInit, OnDestroy {
     this.licenseFilter.set(filter);
   }
 
-  private getMockDrivers(): Driver[] {
-    return [
-      {
-        id: 1,
-        nombre_completo: 'Juan Pérez González',
-        rut: '12.345.678-9',
-        telefono: '+56 9 1234 5678',
-        correo: 'juan.perez@ejemplo.cl',
-        porcentaje_pago: 16.5,
-        fecha_venc_licencia: '2024-12-15',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 1,
-          identificador: 'MÁQUINA 01'
-        }
-      },
-      {
-        id: 2,
-        nombre_completo: 'María López Silva',
-        rut: '18.765.432-1',
-        telefono: '+56 9 8765 4321',
-        correo: 'maria.lopez@ejemplo.cl',
-        porcentaje_pago: 15.0,
-        fecha_venc_licencia: '2025-06-20',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 3,
-          identificador: 'MÁQUINA 03'
-        }
-      },
-      {
-        id: 3,
-        nombre_completo: 'Pedro Ramírez Torres',
-        rut: '15.987.654-3',
-        telefono: '+56 9 5987 6543',
-        correo: 'pedro.ramirez@ejemplo.cl',
-        porcentaje_pago: 16.0,
-        fecha_venc_licencia: '2024-11-25',
-        alerta_licencia: true,
-        estado: 'inactivo',
-        maquina_actual: null
-      },
-      {
-        id: 4,
-        nombre_completo: 'Ana Fernández Muñoz',
-        rut: '14.258.963-7',
-        telefono: '+56 9 4258 9637',
-        correo: 'ana.fernandez@ejemplo.cl',
-        porcentaje_pago: 15.5,
-        fecha_venc_licencia: '2025-03-10',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 5,
-          identificador: 'MÁQUINA 05'
-        }
-      },
-      {
-        id: 5,
-        nombre_completo: 'Carlos Soto Bravo',
-        rut: '16.357.159-2',
-        telefono: '+56 9 6357 1592',
-        correo: 'carlos.soto@ejemplo.cl',
-        porcentaje_pago: 16.0,
-        fecha_venc_licencia: '2025-08-15',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: null
-      }
-    ];
-  }
 }
 

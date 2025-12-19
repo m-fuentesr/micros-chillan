@@ -854,7 +854,7 @@ export class BitacoraOperaciones implements OnInit {
   private kpisEffect = effect(() => {
     const kpis = this.kpisResponse();
     if (kpis !== null) {
-      // Los KPIs están listos (pueden ser mocks o datos reales)
+      // Los KPIs están listos
       if (this.kpisLoading()) {
         this.kpisLoading.set(false);
       }
