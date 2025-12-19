@@ -31,17 +31,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
-# CORS para permitir llamadas desde Angular (localhost:4200)
-origins = [
-    "http://localhost:4200",
-]
-
+# CORS ampliado para permitir llamadas desde móvil (Capacitor) y web local
+# NOTA: Usar orígenes abiertos solo en desarrollo
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # Incluir los routers
