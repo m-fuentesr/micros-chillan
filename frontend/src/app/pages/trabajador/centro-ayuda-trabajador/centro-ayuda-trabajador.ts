@@ -41,8 +41,9 @@ interface FaqItem {
   template: `
     <div class="min-h-screen bg-slate-50 pb-16">
       <!-- Hero -->
-      <div class="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white py-12 px-6 mb-10 shadow-lg">
-        <div class="max-w-4xl mx-auto text-left page-entry-header space-y-6 pl-4 border-l-4 border-l-white/30">
+      <div class="relative bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white pt-0 pb-12 px-6 mb-10 shadow-lg rounded-3xl overflow-hidden">
+        <div class="absolute top-0 left-0 w-full h-full opacity-10 rounded-3xl overflow-hidden pointer-events-none" style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"></div>
+        <div class="relative max-w-4xl mx-auto text-left page-entry-header space-y-6 pl-4 border-l-4 border-l-white/30" [style.padding-top]="'calc(48px + env(safe-area-inset-top, 0px))'">
           <div>
             <p class="text-xs font-bold uppercase tracking-[0.4em] text-blue-200 mb-3">Centro de Ayuda</p>
             <h1 class="text-3xl lg:text-4xl font-black tracking-tight">

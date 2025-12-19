@@ -20,15 +20,15 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
       @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
         <app-loading-skeleton type="worker-header" />
       } @else {
-      <header class="trabajador-header-enter relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
-        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0"></div>
+      <header class="trabajador-header-enter relative pt-0 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0 rounded-b-[3rem]"></div>
         <div
-          class="absolute inset-0 opacity-10 z-0"
+          class="absolute inset-0 opacity-10 z-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
         ></div>
         <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/30 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="relative z-10 text-white flex justify-between items-start">
+        <div class="relative z-10 text-white flex justify-between items-start" [style.padding-top]="'calc(40px + env(safe-area-inset-top, 0px))'">
           <div>
             <p class="text-blue-100 text-xs font-bold uppercase tracking-[0.35em] mb-1 opacity-80">Bienvenido</p>
             <h1 class="text-3xl font-black tracking-tight drop-shadow-sm">{{ workerName() }}</h1>
