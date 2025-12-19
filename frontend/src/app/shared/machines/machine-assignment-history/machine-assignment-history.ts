@@ -32,7 +32,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
       <div class="card-body p-4 sm:p-6">
         <!-- Filtros Mejorados -->
-        <div class="bg-base-50/50 px-5 sm:px-6 py-1 sm:py-4 rounded-xl border border-base-200/50 mb-6">
+        <div class="bg-base-50/50 px-5 sm:px-6 py-1 sm:py-4 rounded-3xl border border-base-200/50 mb-6">
           <div class="flex items-center gap-2 mb-2 sm:mb-3">
             <div class="w-1 h-4 rounded-full bg-primary"></div>
             <p class="text-xs font-semibold text-base-content/60 uppercase tracking-wider">
@@ -204,7 +204,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         </div>
 
         <!-- Vista Desktop: Tabla -->
-        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>

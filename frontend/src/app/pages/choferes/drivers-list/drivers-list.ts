@@ -17,7 +17,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
         <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
             <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -49,7 +49,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
             }
           </div>
         } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-xl p-4 mb-4">
+          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
             <div class="flex items-center gap-3">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -89,7 +89,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
               [count]="6"
               [isExiting]="driversLoadingState.isSkeletonExiting()" />
           } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
               <div class="flex flex-col items-center gap-4 text-center">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -118,7 +118,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
             @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

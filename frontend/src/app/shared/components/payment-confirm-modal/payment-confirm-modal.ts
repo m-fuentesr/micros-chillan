@@ -13,7 +13,7 @@ import { PaymentConfirmModalService, PaymentConfirmFormData } from '../../servic
       [class.modal-open]="modalService.isVisible()"
       class="modal"
       id="payment-confirm-modal">
-      <div class="modal-box max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-2xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-6 gap-4 sm:gap-5">
+      <div class="modal-box max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-3xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-6 gap-4 sm:gap-5">
         <!-- Header Compacto -->
         <div class="flex items-start justify-between gap-4 flex-shrink-0 pb-3 border-b border-base-200">
           <div class="flex items-center gap-3 min-w-0 flex-1">
@@ -41,7 +41,7 @@ import { PaymentConfirmModalService, PaymentConfirmFormData } from '../../servic
           <!-- Body con scroll -->
           <div class="overflow-y-auto overscroll-contain flex-1 min-h-0 pr-1 custom-scrollbar">
             <!-- Bento Grid: Resumen del Pago -->
-            <div class="rounded-2xl border border-base-200 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30 shadow-sm p-4 sm:p-5 mb-4 sm:mb-5">
+            <div class="rounded-3xl border border-base-200 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30 shadow-sm p-4 sm:p-5 mb-4 sm:mb-5">
               <div class="flex items-center gap-3 mb-4">
                 <div class="bg-primary/10 text-primary rounded-xl w-10 h-10 flex items-center justify-center border border-primary/20 shadow-sm">
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
@@ -83,7 +83,7 @@ import { PaymentConfirmModalService, PaymentConfirmFormData } from '../../servic
             <!-- Bento Grid: Formulario -->
             <form id="payment-form" (ngSubmit)="onSubmit($event)" #form="ngForm" class="grid grid-cols-1 gap-4">
               <!-- Método de Pago y Fecha -->
-              <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 grid gap-4 sm:grid-cols-2">
+              <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 grid gap-4 sm:grid-cols-2">
                 <div class="form-control">
                   <label class="label pb-2 pt-0">
                     <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
@@ -119,7 +119,7 @@ import { PaymentConfirmModalService, PaymentConfirmFormData } from '../../servic
 
               <!-- Código de Transferencia (solo si es transferencia) -->
               @if (modalService.formData().metodo_pago === 'transferencia') {
-                <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5">
+                <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5">
                   <div class="form-control">
                     <label class="label pb-2 pt-0">
                       <span class="label-text text-xs uppercase tracking-wide text-base-content/60">

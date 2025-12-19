@@ -55,7 +55,7 @@ interface DailyRecordDetailView extends DailyRecord {
         <!-- Hero alineado al estilo de flota/choferes -->
         @if (isLoading()) {
           <!-- Skeleton del Hero Section -->
-          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
             <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex-1 min-w-0 space-y-3">
                 <!-- Skeleton: Breadcrumb -->
@@ -89,7 +89,7 @@ interface DailyRecordDetailView extends DailyRecord {
             </div>
           </section>
         } @else {
-          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-2xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
             <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex-1 min-w-0 space-y-3">
                 <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">

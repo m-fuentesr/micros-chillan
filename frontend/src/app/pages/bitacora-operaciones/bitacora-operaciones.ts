@@ -42,7 +42,7 @@ interface DailyRecordView {
   template: `
     <div class="space-y-6 relative">
         <!-- Hero Section Premium - Siempre visible primero -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -70,7 +70,7 @@ interface DailyRecordView {
               <app-loading-skeleton type="kpi" />
             }
           } @else if (sequentialState.kpisError()) {
-            <div class="col-span-full card bg-error/10 border border-error/20 rounded-xl p-4 mb-4">
+            <div class="col-span-full card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
               <div class="flex items-center gap-3">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -161,7 +161,7 @@ interface DailyRecordView {
             <!-- Skeleton del Card Body con Filtros -->
             <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
               <!-- Skeleton: Header de Filtros -->
-              <div class="bg-base-50/50 p-5 sm:p-6 rounded-xl border border-base-200/50 mb-6">
+              <div class="bg-base-50/50 p-5 sm:p-6 rounded-3xl border border-base-200/50 mb-6">
                 <div class="flex items-center justify-between gap-4 mb-5">
                   <div class="flex items-center gap-2">
                     <div class="w-1 h-4 rounded-full bg-primary"></div>
@@ -210,7 +210,7 @@ interface DailyRecordView {
             </div>
           </div>
         } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-          <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+          <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
             <div class="flex flex-col items-center gap-4 text-center">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -274,7 +274,7 @@ interface DailyRecordView {
                   </button>
                 </div>
                 @if (showFiltersMobile()) {
-                  <div class="mt-3 bg-base-50/70 rounded-xl border border-base-200/70 shadow-sm">
+                  <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm">
                     <app-search-filters
                       [fields]="filterFields()"
                       [filters]="recordFilters()"
@@ -293,7 +293,7 @@ interface DailyRecordView {
               </div>
 
               <!-- Vista Desktop: Tabla Completa (≥ 1024px) con scroll horizontal seguro -->
-              <div class="hidden lg:block overflow-x-auto rounded-xl border border-base-200">
+              <div class="hidden lg:block overflow-x-auto rounded-3xl border border-base-200">
                 @if (isLoadingPage()) {
                   <div class="flex justify-center items-center py-12">
                     <app-loading-spinner size="md" text="Cargando registros..." />
@@ -301,7 +301,7 @@ interface DailyRecordView {
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
                 } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                     <div class="flex flex-col items-center gap-4 text-center">
                       <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -455,7 +455,7 @@ interface DailyRecordView {
           <!-- Vista Tablet: Tabla Simplificada (768px - 1023px) -->
           <div class="hidden md:block lg:hidden overflow-x-auto -mx-4 px-4">
             <div class="min-w-[800px]">
-              <div class="overflow-hidden rounded-xl border border-base-200">
+              <div class="overflow-hidden rounded-3xl border border-base-200">
                 @if (isLoadingPage()) {
                   <div class="flex justify-center items-center py-12">
                     <app-loading-spinner size="md" text="Cargando registros..." />
@@ -463,7 +463,7 @@ interface DailyRecordView {
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
                 } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                     <div class="flex flex-col items-center gap-4 text-center">
                       <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -597,7 +597,7 @@ interface DailyRecordView {
                 <app-loading-skeleton type="card" />
               }
             } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

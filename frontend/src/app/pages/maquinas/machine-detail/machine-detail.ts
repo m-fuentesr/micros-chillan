@@ -19,17 +19,16 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
-import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, LoadingSkeleton, BusIcon],
+  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, BusIcon],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
         <!-- Hero Section Premium -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
             <div class="relative">
@@ -133,7 +132,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
         </div>
 
         <!-- Sección de Tabs (separada del card principal) -->
-        <div class="bg-base-50/50 rounded-2xl p-4 border border-base-200/50 animate-fade-in-up" [style.animation-delay]="'200ms'">
+        <div class="bg-base-50/50 rounded-3xl p-4 border border-base-200/50 animate-fade-in-up" [style.animation-delay]="'200ms'">
           <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1">
             <button
               class="tab px-6 h-10 font-medium transition-all rounded-lg"
@@ -184,7 +183,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           @if (activeTab() === 'general') {
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 animate-tab-enter">
               <!-- Ficha Técnica -->
-              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
                 <div class="card-body p-6">
                   <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -193,7 +192,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     Ficha Técnica
                   </h3>
                   <div class="grid grid-cols-1 gap-4">
-                    <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
+                    <div class="bg-base-200/50 p-4 rounded-3xl border border-base-200">
                       <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
                         Marca / Modelo
                       </span>
@@ -211,7 +210,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                       }
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                         <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
                           Año
                         </span>
@@ -230,7 +229,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                           </div>
                         }
                       </div>
-                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                         <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
                           Patente
                         </span>
@@ -248,7 +247,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                         }
                       </div>
                     </div>
-                    <div class="bg-base-200/50 p-4 rounded-xl border border-base-200 flex justify-between items-center">
+                    <div class="bg-base-200/50 p-4 rounded-3xl border border-base-200 flex justify-between items-center">
                       <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest">
                         Estado
                       </span>
@@ -545,15 +544,120 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           }
         </div>
       } @else {
-        @if (machineLoadingState.showSkeleton() && machineLoadingState.isLoading()) {
-          <app-loading-skeleton 
-            type="card" 
-            [isExiting]="machineLoadingState.isSkeletonExiting()" />
-        } @else {
-          <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl">
-            <div class="card-body p-6 sm:p-8">
-              <span class="loading loading-spinner loading-sm mr-2"></span>
-              Cargando información de la máquina...
+        @if (machineLoadingState.isLoading()) {
+          <!-- Skeleton completo de la estructura de detalle de máquina -->
+          <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
+          <div class="space-y-6 lg:space-y-8 animate-fade-in">
+            <!-- Hero Section Skeleton -->
+            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
+              <div class="flex flex-col gap-6">
+                <!-- Header con Botón Volver -->
+                <div class="relative">
+                  <div class="border-l-4 border-l-primary pl-3 md:pl-4 pr-12 sm:pr-0 mb-4">
+                    <div class="h-8 w-64 skeleton-shimmer rounded mb-3"></div>
+                    <div class="h-4 w-96 skeleton-shimmer rounded hidden sm:block"></div>
+                  </div>
+                  <div class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto">
+                    <div class="h-9 w-20 skeleton-shimmer rounded"></div>
+                  </div>
+                </div>
+                
+                <!-- Información destacada de la máquina -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+                  <!-- Información de la máquina -->
+                  <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
+                    <div class="flex items-center gap-3 shrink-0">
+                      <div class="w-12 h-12 skeleton-shimmer rounded-xl"></div>
+                      <div class="min-w-0">
+                        <div class="h-7 w-48 skeleton-shimmer rounded mb-2"></div>
+                        <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                          <div class="h-4 w-32 skeleton-shimmer rounded"></div>
+                          <div class="w-1 h-1 skeleton-shimmer rounded-full"></div>
+                          <div class="h-4 w-24 skeleton-shimmer rounded"></div>
+                          <div class="w-1 h-1 skeleton-shimmer rounded-full"></div>
+                          <div class="h-4 w-16 skeleton-shimmer rounded"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="h-8 w-24 skeleton-shimmer rounded-full"></div>
+                  </div>
+                  
+                  <!-- Botones de Acción -->
+                  <div class="flex flex-wrap items-center gap-2 shrink-0">
+                    <div class="h-10 w-24 skeleton-shimmer rounded-xl"></div>
+                    <div class="h-10 w-20 skeleton-shimmer rounded-xl"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sección de Tabs Skeleton -->
+            <div class="bg-base-50/50 rounded-3xl p-4 border border-base-200/50">
+              <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1">
+                <div class="h-10 w-24 skeleton-shimmer rounded-lg"></div>
+                <div class="h-10 w-36 skeleton-shimmer rounded-lg"></div>
+                <div class="h-10 w-28 skeleton-shimmer rounded-lg"></div>
+                <div class="h-10 w-32 skeleton-shimmer rounded-lg"></div>
+              </div>
+            </div>
+
+            <!-- Contenido de Tabs Skeleton -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+              <!-- Ficha Técnica Skeleton -->
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full">
+                <div class="card-body p-6">
+                  <div class="h-6 w-40 skeleton-shimmer rounded mb-4"></div>
+                  <div class="grid grid-cols-1 gap-4">
+                    <div class="bg-base-200/50 p-4 rounded-3xl border border-base-200">
+                      <div class="h-3 w-32 skeleton-shimmer rounded mb-2"></div>
+                      <div class="h-6 w-full skeleton-shimmer rounded"></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                        <div class="h-3 w-16 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-full skeleton-shimmer rounded"></div>
+                      </div>
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                        <div class="h-3 w-20 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-full skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                    <div class="bg-base-200/50 p-4 rounded-3xl border border-base-200 flex justify-between items-center">
+                      <div class="h-3 w-16 skeleton-shimmer rounded"></div>
+                      <div class="h-6 w-24 skeleton-shimmer rounded-full"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Documentación Skeleton -->
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full">
+                <div class="card-header px-6 py-4 border-b border-base-200 bg-base-50 rounded-t-2xl">
+                  <div class="h-6 w-48 skeleton-shimmer rounded"></div>
+                </div>
+                <div class="p-4 space-y-3">
+                  @for (i of [1,2,3]; track i) {
+                    <div class="p-3 border border-base-200 rounded-xl flex items-center gap-4 bg-base-50/30">
+                      <div class="w-10 h-10 skeleton-shimmer rounded-lg"></div>
+                      <div class="flex-1 min-w-0">
+                        <div class="h-3 w-40 skeleton-shimmer rounded mb-2"></div>
+                        <div class="h-5 w-32 skeleton-shimmer rounded"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+              
+              <!-- Conductor responsable Skeleton -->
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden h-full">
+                <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
+                  <div class="w-24 h-24 skeleton-shimmer rounded-full mb-4"></div>
+                  <div class="h-6 w-40 skeleton-shimmer rounded mb-2"></div>
+                  <div class="h-4 w-32 skeleton-shimmer rounded mb-6"></div>
+                  <div class="h-10 w-full max-w-xs skeleton-shimmer rounded"></div>
+                </div>
+              </div>
             </div>
           </div>
         }
@@ -605,6 +709,26 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
       }
     }
     
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
     .animate-fade-in-down {
       animation: fadeInDown 600ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
     }
@@ -621,11 +745,26 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
       animation: cardStagger 500ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
     
+    .animate-fade-in {
+      animation: fadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+    
     @media (prefers-reduced-motion: reduce) {
       .animate-fade-in-down,
       .animate-fade-in-up,
       .animate-tab-enter,
-      .animate-card-stagger {
+      .animate-card-stagger,
+      .animate-fade-in {
+        animation: none;
+      }
+      
+      .skeleton-shimmer {
         animation: none;
       }
     }

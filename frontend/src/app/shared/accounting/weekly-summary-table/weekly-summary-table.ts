@@ -35,9 +35,11 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [subtitle]="'Producción bruta'"
             [value]="(totalRecaudado() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
             type="financial"
+            size="medium"
+            [responsive]="true"
             badgeText="Volumen real"
             [animationDelay]="0">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" />
             </svg>
           </app-kpi-card>
@@ -48,9 +50,11 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [subtitle]="'Compensación flota'"
             [value]="(totalPagos() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
             type="warning"
+            size="medium"
+            [responsive]="true"
             badgeText="Por procesar"
             [animationDelay]="1">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
             </svg>
           </app-kpi-card>
@@ -61,9 +65,11 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [subtitle]="'Costos de ejecución'"
             [value]="(totalGastos() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
             type="danger"
+            size="medium"
+            [responsive]="true"
             badgeText="Impacto margen"
             [animationDelay]="2">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
             </svg>
           </app-kpi-card>
@@ -74,16 +80,18 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [subtitle]="'Eficiencia media'"
             [value]="(promedioSemanal() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
             type="success"
+            size="medium"
+            [responsive]="true"
             badgeText="Ritmo actual"
             [animationDelay]="3">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 11.586 15.293 7.293A1 1 0 0115.586 7H12z" />
             </svg>
           </app-kpi-card>
         </div>
 
         <!-- Vista Desktop: Tabla (md y arriba) -->
-        <div class="hidden md:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden md:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-100 border-b border-base-200">
               <tr>
@@ -210,7 +218,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
         <div class="md:hidden space-y-3">
           @for (summary of summariesWithDrivers(); track summary.semana) {
               <div 
-              class="border border-base-200 rounded-xl overflow-hidden transition-all duration-200"
+              class="border border-base-200 rounded-3xl overflow-hidden transition-all duration-200"
               [class.shadow-md]="expandedWeeks().has(summary.semana)"
               [class.border-primary]="expandedWeeks().has(summary.semana)"
               (click)="toggleWeek(summary.semana)">

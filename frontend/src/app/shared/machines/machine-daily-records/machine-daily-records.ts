@@ -155,7 +155,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         </div>
 
         <!-- Vista Desktop: Tabla -->
-        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full table-min-height">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>

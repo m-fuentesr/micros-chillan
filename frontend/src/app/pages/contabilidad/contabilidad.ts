@@ -22,7 +22,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
         <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
           <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
             Finanzas y Nómina
@@ -146,6 +146,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
             <div class="space-y-8 animate-tab-panel">
+              <!-- KPIs: Skeleton o datos reales -->
               @if (summaryLoadingState.showSkeleton() && summaryLoadingState.isLoading()) {
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 skeleton-container">
                   @for (i of [1,2,3,4]; track i) {
@@ -155,17 +156,16 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </div>
               } @else {
-                <!-- KPIs: Contenedor independiente -->
                 @if (summary()) {
                   <app-accounting-kpis [summary]="summary()!" />
                 }
-
-                <!-- Separador Visual y Gráfico: Contexto independiente -->
-                @if (dailyData().length > 0) {
-                  <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
-                  <app-accounting-chart [dailyData]="dailyData()" />
-                }
               }
+
+              <!-- Separador Visual y Gráfico: Siempre visible (con skeleton si está cargando) -->
+              <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
+              <app-accounting-chart 
+                [dailyData]="dailyData()" 
+                [isLoading]="summaryLoadingState.isLoading()" />
             </div>
           }
 
@@ -197,7 +197,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               <!-- Skeleton personalizado cuando hay datos antiguos pero se están recargando -->
               <app-liquidation-table-skeleton [isExiting]="payrollLoadingState.isSkeletonExiting()" />
             } @else if (payrollError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -226,7 +226,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               </div>
             } @else {
               <!-- Solo mostrar "No hay datos" si NO está cargando -->
-              <div class="card bg-base-100 border border-base-200 rounded-xl p-6">
+              <div class="card bg-base-100 border border-base-200 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />

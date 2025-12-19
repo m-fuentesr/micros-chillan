@@ -18,7 +18,7 @@ import { ImageModalService } from '../../services/image-modal.service';
       <!-- Contenido del modal centrado - Solo se muestra cuando hay config -->
       @if (modalService.isVisible() && modalService.config()) {
         <div class="modal-content-wrapper">
-          <div class="bg-base-100 rounded-2xl shadow-2xl max-w-7xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
+          <div class="bg-base-100 rounded-3xl shadow-2xl max-w-7xl w-full mx-4 max-h-[90vh] flex flex-col overflow-hidden" (click)="$event.stopPropagation()">
             <!-- Header del modal -->
             <div class="flex items-center justify-between p-4 sm:p-6 border-b border-base-200 flex-shrink-0">
               <div class="flex-1 min-w-0 pr-4">

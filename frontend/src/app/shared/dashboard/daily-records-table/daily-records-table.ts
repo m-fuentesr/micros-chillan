@@ -36,7 +36,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
+              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-3xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
