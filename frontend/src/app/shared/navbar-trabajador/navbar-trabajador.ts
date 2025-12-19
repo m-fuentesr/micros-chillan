@@ -12,8 +12,8 @@ import { Subject } from 'rxjs';
       class="fixed bottom-0 left-0 right-0 z-50 bg-base-100 border-t border-base-200 shadow-lg shadow-base-300/40" 
       [class.trabajador-navbar-enter]="hasAnimated() === false"
       [class.trabajador-navbar-static]="hasAnimated() === true"
-      style="padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.25rem);">
-      <div class="flex justify-around items-end px-3" style="height: calc(4rem + env(safe-area-inset-bottom, 0px)); min-height: 4rem; padding-bottom: 0.5rem;">
+      style="padding-bottom: env(safe-area-inset-bottom, 0px);">
+      <div class="flex justify-around items-end px-3" style="height: 4rem; min-height: 4rem; padding-bottom: 0.5rem;">
         <a
           routerLink="/trabajador"
           routerLinkActive="text-primary font-bold"
