@@ -59,8 +59,8 @@ class DashboardResponse(BaseModel):
 
 
 class DashboardDailyRecordDriver(BaseModel):
-    id: int
-    nombre: str
+    id: Optional[int]
+    nombre: Optional[str]
 
 
 class DashboardDailyRecordMachine(BaseModel):
