@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, EventEmitter, signal, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, EventEmitter, signal, computed, OnInit, OnDestroy, inject, PLATFORM_ID } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -179,8 +179,11 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
 export class KpiCard implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private isMobile = signal<boolean>(false);
-  private mediaQuery: MediaQueryList | null = null;
-  private mediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
+  private isMedium = signal<boolean>(false);
+  private mobileMediaQuery: MediaQueryList | null = null;
+  private mediumMediaQuery: MediaQueryList | null = null;
+  private mobileMediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
+  private mediumMediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
 
   title = input.required<string>();
   subtitle = input<string>('');
@@ -188,6 +191,8 @@ export class KpiCard implements OnInit, OnDestroy {
   type = input<KpiCardType>('financial');
   size = input<KpiCardSize>('default');
   responsive = input<boolean>(false);
+  // Si se proporciona externalSize, se usa en lugar de la detección interna
+  externalSize = input<KpiCardSize | undefined>(undefined);
   badgeText = input<string>('');
   successText = input<string>('');
   actionText = input<string>('');
@@ -196,41 +201,76 @@ export class KpiCard implements OnInit, OnDestroy {
   onActionClick = output<void>();
 
   // Computed size que considera el modo responsive
-  // Inicializar con 'default', se actualizará en ngOnInit
-  effectiveSize = signal<KpiCardSize>('default');
+  // Si externalSize está disponible, usarlo; si no, usar la detección interna
+  private internalSize = signal<KpiCardSize>('default');
+  
+  effectiveSize = computed<KpiCardSize>(() => {
+    const external = this.externalSize();
+    if (external !== undefined) {
+      return external;
+    }
+    return this.internalSize();
+  });
 
   ngOnInit(): void {
+    // Si se proporciona externalSize, no hacer detección interna
+    if (this.externalSize() !== undefined) {
+      return;
+    }
+    
     // Inicializar con el tamaño actual
-    this.effectiveSize.set(this.size());
+    this.internalSize.set(this.size());
     
     if (this.responsive() && isPlatformBrowser(this.platformId)) {
-      // Detectar viewport móvil (menor a md breakpoint de Tailwind: 768px)
-      this.mediaQuery = window.matchMedia('(max-width: 767px)');
-      this.isMobile.set(this.mediaQuery.matches);
+      // Detectar viewport móvil (< 768px)
+      this.mobileMediaQuery = window.matchMedia('(max-width: 767px)');
+      this.isMobile.set(this.mobileMediaQuery.matches);
       
-      this.updateEffectiveSize();
+      // Detectar viewport mediano (>= 768px y < 1024px)
+      this.mediumMediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
+      this.isMedium.set(this.mediumMediaQuery.matches);
       
-      this.mediaQueryHandler = (e: MediaQueryListEvent) => {
+      this.updateInternalSize();
+      
+      this.mobileMediaQueryHandler = (e: MediaQueryListEvent) => {
         this.isMobile.set(e.matches);
-        this.updateEffectiveSize();
+        this.updateInternalSize();
       };
       
-      this.mediaQuery.addEventListener('change', this.mediaQueryHandler);
+      this.mediumMediaQueryHandler = (e: MediaQueryListEvent) => {
+        this.isMedium.set(e.matches);
+        this.updateInternalSize();
+      };
+      
+      this.mobileMediaQuery.addEventListener('change', this.mobileMediaQueryHandler);
+      this.mediumMediaQuery.addEventListener('change', this.mediumMediaQueryHandler);
     }
   }
 
   ngOnDestroy(): void {
-    if (this.mediaQuery && this.mediaQueryHandler) {
-      this.mediaQuery.removeEventListener('change', this.mediaQueryHandler);
+    if (this.mobileMediaQuery && this.mobileMediaQueryHandler) {
+      this.mobileMediaQuery.removeEventListener('change', this.mobileMediaQueryHandler);
+    }
+    if (this.mediumMediaQuery && this.mediumMediaQueryHandler) {
+      this.mediumMediaQuery.removeEventListener('change', this.mediumMediaQueryHandler);
     }
   }
 
-  private updateEffectiveSize(): void {
+  private updateInternalSize(): void {
     if (this.responsive()) {
-      this.effectiveSize.set(this.isMobile() ? 'compact' : 'default');
+      if (this.isMobile()) {
+        // Móvil: < 768px -> compact
+        this.internalSize.set('compact');
+      } else if (this.isMedium()) {
+        // Mediano: >= 768px y < 1024px -> medium
+        this.internalSize.set('medium');
+      } else {
+        // Desktop: >= 1024px -> default
+        this.internalSize.set('default');
+      }
     } else {
-      // Si el tamaño es 'medium', mantenerlo siempre (no cambia con responsive)
-      this.effectiveSize.set(this.size());
+      // Si no es responsive, usar el tamaño especificado
+      this.internalSize.set(this.size());
     }
   }
 }
