@@ -28,7 +28,7 @@ async def get_today_overview() -> DashboardResponse:
         .select(
             """
             id, fecha, estado, monto_recaudado, costo_total_diesel,
-            maquina_id, chofer_id, es_dia_no_trabajado,
+            monto_porcentaje_chofer, maquina_id, chofer_id, es_dia_no_trabajado,
             maquinas(numero_interno, patente),
             choferes(primer_nombre, apellido_paterno)
             """
@@ -58,7 +58,8 @@ async def get_today_overview() -> DashboardResponse:
 
     total_recaudado = sum((row.get("monto_recaudado") or 0) for row in registros)
     gasto_diesel = sum((row.get("costo_total_diesel") or 0) for row in registros)
-    ganancia_neta = total_recaudado - gasto_diesel
+    pago_choferes = sum((row.get("monto_porcentaje_chofer") or 0) for row in registros)
+    ganancia_neta = total_recaudado - gasto_diesel - pago_choferes
 
     maquinas_reportadas = {
         row.get("maquina_id")
@@ -73,6 +74,7 @@ async def get_today_overview() -> DashboardResponse:
         lambda: {
             "monto_recaudado": 0,
             "costo_total_diesel": 0,
+            "monto_porcentaje_chofer": 0,
             "estado": None,
             "maquina": {},
             "chofer": {},
@@ -85,6 +87,7 @@ async def get_today_overview() -> DashboardResponse:
 
         data["monto_recaudado"] += row.get("monto_recaudado") or 0
         data["costo_total_diesel"] += row.get("costo_total_diesel") or 0
+        data["monto_porcentaje_chofer"] += row.get("monto_porcentaje_chofer") or 0
         data["estado"] = row.get("estado")
         data["maquina"] = row.get("maquinas") or {}
         data["chofer"] = row.get("choferes") or {}
@@ -102,8 +105,13 @@ async def get_today_overview() -> DashboardResponse:
                 patente=info["maquina"].get("patente"),
                 chofer=chofer_nombre,
                 monto_recaudado=info["monto_recaudado"],
+                monto_porcentaje_chofer=info["monto_porcentaje_chofer"],
                 costo_total_diesel=info["costo_total_diesel"],
-                ganancia_neta=info["monto_recaudado"] - info["costo_total_diesel"],
+                ganancia_neta=(
+                    info["monto_recaudado"] 
+                    - info["costo_total_diesel"] 
+                    - info["monto_porcentaje_chofer"]
+                    ),
                 estado=info.get("estado"),
             )
         )

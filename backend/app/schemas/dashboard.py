@@ -13,7 +13,7 @@ class DashboardFleetKpi(BaseModel):
 
 class DashboardKpis(BaseModel):
     recaudacion_total: float = Field(..., description="Total recaudado del día")
-    ganancia_neta: float = Field(..., description="Recaudación menos gasto de combustible")
+    ganancia_neta: float = Field(..., description="Recaudación menos gasto de combustible y pagos de choferes")
     flota_en_ruta: DashboardFleetKpi
 
 
@@ -23,6 +23,7 @@ class DashboardMachinePerformance(BaseModel):
     patente: Optional[str]
     chofer: Optional[str]
     monto_recaudado: float
+    monto_porcentaje_chofer: float
     costo_total_diesel: float
     ganancia_neta: float
     estado: Optional[str]
