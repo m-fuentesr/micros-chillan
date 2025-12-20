@@ -1,4 +1,4 @@
-﻿
+﻿from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from datetime import datetime, timezone, timedelta
 
@@ -43,17 +43,42 @@ async def crear_alerta(
 
 async def marcar_como_leida(alerta_id: int):
     """
-    Cambia el estado de una alerta de 'activa' a 'resuelta'
-    y registra la fecha exacta en que se cerró.
+    Cambia el estado de una alerta de 'activa' a 'resuelta'.
+    🛡️ GUARDIÁN: Bloquea la acción si es un Incidente Crítico.
     """
     try:
-        # Preparamos los datos: Estado Y Fecha
+        # 1. LEER PRIMERO: Necesitamos saber qué tipo de alerta es
+        alerta_res = (
+            supabase.table("alertas")
+            .select("tipo, origen_tipo")
+            .eq("id", alerta_id)
+            .single()
+            .execute()
+        )
+        
+        if not alerta_res.data:
+            # Si no existe, retornamos False o error 404
+            return False 
+
+        alerta = alerta_res.data
+
+        # 2. VALIDAR REGLA DE NEGOCIO (El Guardián)
+        # Si es crítica Y viene de un registro diario, PROHIBIDO cerrar aquí.
+        if (alerta.get("tipo") == "incidente_critico" and 
+            alerta.get("origen_tipo") == "registro_diario"):
+            
+            # Lanzamos una excepción que tu Frontend pueda capturar para mostrar un Toast/Alerta
+            raise HTTPException(
+                status_code=409, 
+                detail="⚠️ Los incidentes críticos no se pueden cerrar desde aquí. Debes ir al Registro Diario y resolver el incidente."
+            )
+
+        # 3. SI PASA LA VALIDACIÓN, ACTUALIZAMOS
         datos_actualizar = {
             "estado": "resuelta",
             "fecha_resuelta": datetime.now(timezone.utc).isoformat()
         }
 
-        # Ejecutamos el update
         res = (
             supabase.table("alertas")
             .update(datos_actualizar)
@@ -61,19 +86,23 @@ async def marcar_como_leida(alerta_id: int):
             .execute()
         )
         
-        # Verificamos si la lista de datos devuelta no está vacía
         if res.data and len(res.data) > 0:
             return True
         return False
         
+    except HTTPException as he:
+        # Re-lanzamos la excepción HTTP para que llegue al endpoint
+        raise he
     except Exception as e:
         print(f"Error marcando alerta como leída: {e}")
         return False
     
 async def marcar_todas_admin_como_resueltas():
     """
-    Marca como 'resuelta' TODAS las alertas activas que corresponden al Administrador.
-    EXCLUYE las alertas personales de los choferes (como asignacion_maquina).
+    Marca como 'resuelta' TODAS las alertas activas del Admin.
+    🛡️ EXCEPCIONES DE SEGURIDAD: 
+       - No borra alertas personales de choferes.
+       - No borra INCIDENTES CRÍTICOS (deben resolverse manualmente).
     """
     try:
         from datetime import datetime, timezone
@@ -83,20 +112,25 @@ async def marcar_todas_admin_como_resueltas():
             "fecha_resuelta": datetime.now(timezone.utc).isoformat()
         }
 
-        # Ejecutamos el update masivo
+        # Ejecutamos el update masivo con FILTROS DE SEGURIDAD
         res = (
             supabase.table("alertas")
             .update(datos_actualizar)
-            .eq("estado", "activa")             # Solo las activas
-            .neq("tipo", "asignacion_maquina")  # <--- EL FILTRO DE SEGURIDAD
-            # Si en el futuro tienes más alertas solo de chofer, agrégalas al filtro
+            .eq("estado", "activa")              
+            
+            # Filtro 1: No tocar alertas privadas del chofer
+            .neq("tipo", "asignacion_maquina")   
+            
+            # Filtro 2: GUARDÍAN - No tocar incidentes críticos
+            # Esto hace que aunque le den a "Borrar todo", los incidentes persistan.
+            .neq("tipo", "incidente_critico")    
+            
             .execute()
         )
         
-        # Verificamos si hubo cambios (res.data devuelve la lista de filas afectadas)
         if res.data:
-            print(f"Se resolvieron {len(res.data)} alertas de administrador.")
-            return len(res.data) # Retornamos cantidad de alertas borradas
+            print(f"Se resolvieron {len(res.data)} alertas de administrador (respetando incidentes críticos).")
+            return len(res.data) 
         
         return 0
         
