@@ -1,5 +1,5 @@
 ﻿from fastapi import HTTPException
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import Optional
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
@@ -13,6 +13,25 @@ from app.core.realtime import dashboard_realtime
 from app.services import alert_service
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
+
+
+def _format_timestamp(timestamp) -> Optional[str]:
+    """
+    Formatea un timestamp a string ISO para serialización JSON.
+    Maneja datetime objects, strings y None.
+    """
+    if timestamp is None:
+        return None
+    if isinstance(timestamp, str):
+        return timestamp
+    if isinstance(timestamp, datetime):
+        # Asegurar que el datetime tenga timezone info
+        if timestamp.tzinfo is None:
+            # Si no tiene timezone, asumir UTC
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return timestamp.isoformat()
+    # Intentar convertir a string
+    return str(timestamp)
 
 
 def _map_motivo_inactividad_to_enum(motivo: str) -> str:
@@ -561,22 +580,53 @@ async def list_daily_records_for_admin(
 
 async def get_daily_record_detail(record_id: int):
     
-    registro = (
-        supabase.table("registros_diarios")
-        .select("""
-            id, fecha, estado,
-            monto_recaudado, litros_diesel, costo_total_diesel,
-            porcentaje_aplicado, monto_porcentaje_chofer,
-            observaciones,
-            es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
-            imagen_url, imagen_comprobante_diesel_url,
-            choferes(id, primer_nombre, apellido_paterno),
-            maquinas(id, numero_interno)
-        """)
-        .eq("id", record_id)
-        .single()
-        .execute()
-    )
+    # Intentar obtener los campos de timestamp de imágenes si existen
+    # Si no existen, usar created_at/updated_at como fallback
+    from postgrest.exceptions import APIError
+    
+    try:
+        registro = (
+            supabase.table("registros_diarios")
+            .select("""
+                id, fecha, estado,
+                monto_recaudado, litros_diesel, costo_total_diesel,
+                porcentaje_aplicado, monto_porcentaje_chofer,
+                observaciones,
+                es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                imagen_url, imagen_comprobante_diesel_url,
+                imagen_url_updated_at, imagen_comprobante_diesel_url_updated_at,
+                created_at, updated_at,
+                choferes(id, primer_nombre, apellido_paterno),
+                maquinas(id, numero_interno)
+            """)
+            .eq("id", record_id)
+            .single()
+            .execute()
+        )
+    except APIError as e:
+        # Si los campos de timestamp no existen (error 42703), hacer SELECT sin ellos
+        # Esto puede pasar si la migración aún no se ha ejecutado
+        if '42703' in str(e) or 'does not exist' in str(e).lower():
+            registro = (
+                supabase.table("registros_diarios")
+                .select("""
+                    id, fecha, estado,
+                    monto_recaudado, litros_diesel, costo_total_diesel,
+                    porcentaje_aplicado, monto_porcentaje_chofer,
+                    observaciones,
+                    es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                    imagen_url, imagen_comprobante_diesel_url,
+                    created_at, updated_at,
+                    choferes(id, primer_nombre, apellido_paterno),
+                    maquinas(id, numero_interno)
+                """)
+                .eq("id", record_id)
+                .single()
+                .execute()
+            )
+        else:
+            # Si es otro error, relanzarlo
+            raise
 
     if not registro.data:
         raise HTTPException(status_code=404, detail="Registro diario no encontrado")
@@ -619,8 +669,10 @@ async def get_daily_record_detail(record_id: int):
         "incidente_critico": row["estado"] == "incidente_reportado",
 
         "imagenes": {
-            "registro": row["imagen_url"],
-            "diesel": row["imagen_comprobante_diesel_url"],
+            "registro": row.get("imagen_url"),
+            "diesel": row.get("imagen_comprobante_diesel_url"),
+            "registro_updated_at": _format_timestamp(row.get("imagen_url_updated_at") or row.get("updated_at") or row.get("created_at")),
+            "diesel_updated_at": _format_timestamp(row.get("imagen_comprobante_diesel_url_updated_at") or row.get("updated_at") or row.get("created_at")),
         },
     }
 
@@ -813,18 +865,79 @@ async def update_daily_record(
     if payload.observaciones is not None:
         updates["observaciones"] = payload.observaciones
 
+    # Actualizar URLs de imágenes si se proporcionan
+    # También actualizar los timestamps de cuando se subieron las imágenes
+    # Nota: Los campos imagen_url_updated_at e imagen_comprobante_diesel_url_updated_at
+    # deben existir en la tabla registros_diarios. Si no existen, se debe crear una migración.
+    if payload.imagen_url is not None:
+        updates["imagen_url"] = payload.imagen_url
+        # Actualizar timestamp solo si la URL realmente cambió
+        # Guardar en UTC para mantener consistencia
+        if original.get("imagen_url") != payload.imagen_url:
+            updates["imagen_url_updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if payload.imagen_comprobante_diesel_url is not None:
+        updates["imagen_comprobante_diesel_url"] = payload.imagen_comprobante_diesel_url
+        # Actualizar timestamp solo si la URL realmente cambió
+        # Guardar en UTC para mantener consistencia
+        if original.get("imagen_comprobante_diesel_url") != payload.imagen_comprobante_diesel_url:
+            updates["imagen_comprobante_diesel_url_updated_at"] = datetime.now(timezone.utc).isoformat()
+
     # ----------------------------------------
     # 4. Auditoría campo a campo
     # ----------------------------------------
+    # Campos que no deben aparecer en la auditoría (son técnicos o redundantes)
+    campos_excluidos_auditoria = {
+        'imagen_url_updated_at',
+        'imagen_comprobante_diesel_url_updated_at',
+        'updated_at'  # Ya se maneja automáticamente
+    }
+    
+    # Mapeo de nombres de campos técnicos a nombres amigables
+    nombres_amigables = {
+        'imagen_url': 'Comprobante del Registro Diario',
+        'imagen_comprobante_diesel_url': 'Comprobante Diésel',
+        'monto_recaudado': 'Monto Recaudado',
+        'litros_diesel': 'Litros de Diésel',
+        'costo_total_diesel': 'Costo de Diésel',
+        'observaciones': 'Observaciones',
+        'es_dia_no_trabajado': 'Día No Trabajado',
+        'motivo_no_trabajado': 'Motivo de Inactividad',
+        'motivo_no_trabajado_otro': 'Motivo de Inactividad (Otro)',
+        'incidente_critico': 'Incidente Crítico',
+        'estado': 'Estado'
+    }
+    
+    def formatear_valor_imagen(valor):
+        """Formatea URLs de imágenes para mostrar solo que cambió, no la URL completa"""
+        if valor and isinstance(valor, str) and ('http' in valor or 'supabase' in valor.lower()):
+            return 'Imagen actualizada'
+        return valor
+    
     for campo, nuevo_valor in updates.items():
+        # Saltar campos excluidos
+        if campo in campos_excluidos_auditoria:
+            continue
+            
         valor_anterior = original.get(campo)
         if normalize_value(valor_anterior) != normalize_value(nuevo_valor):
+            # Obtener nombre amigable del campo
+            nombre_campo = nombres_amigables.get(campo, campo.replace('_', ' ').title())
+            
+            # Formatear valores para imágenes
+            if campo in ('imagen_url', 'imagen_comprobante_diesel_url'):
+                valor_anterior_str = 'Sin imagen' if not valor_anterior else formatear_valor_imagen(valor_anterior)
+                valor_nuevo_str = 'Sin imagen' if not nuevo_valor else formatear_valor_imagen(nuevo_valor)
+            else:
+                valor_anterior_str = str(valor_anterior) if valor_anterior is not None else '-'
+                valor_nuevo_str = str(nuevo_valor) if nuevo_valor is not None else '-'
+            
             auditoria.append({
                 "registro_diario_id": record_id,
                 "version": next_version,
-                "campo": campo,
-                "valor_anterior": str(valor_anterior),
-                "valor_nuevo": str(nuevo_valor),
+                "campo": nombre_campo,  # Usar nombre amigable
+                "valor_anterior": valor_anterior_str,
+                "valor_nuevo": valor_nuevo_str,
                 "modificado_por": current_user.id,
                 "comentario": payload.observaciones,
             })

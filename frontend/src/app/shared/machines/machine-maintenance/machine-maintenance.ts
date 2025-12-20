@@ -25,8 +25,29 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             </p>
           </div>
           
-          <!-- Derecha: Botón, Badge y KPI -->
+          <!-- Derecha: Badge, KPI y Botón -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-5 lg:gap-6 shrink-0 w-full sm:w-auto">
+            <!-- Badge de conteo y KPI en fila -->
+            <div class="flex items-center gap-4 sm:gap-5 flex-wrap">
+              <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-primary"></span>
+                {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
+              </span>
+              
+              <!-- KPI de Gastos en Repuestos -->
+              <app-kpi-card
+                title="Gastos en Repuestos"
+                [subtitle]="'Acumulado del mes actual'"
+                [value]="formatCurrency(monthTotal())"
+                type="danger"
+                badgeText="Inversión activos"
+                [animationDelay]="0">
+                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
+                </svg>
+              </app-kpi-card>
+            </div>
+            
             <!-- Botón Registrar Nueva Compra -->
             <button
               class="btn btn-primary gap-2 font-bold shadow-lg hover:shadow-xl transition-all whitespace-nowrap w-full sm:w-auto"
@@ -36,26 +57,6 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
               </svg>
               Nueva compra
             </button>
-            
-            <!-- Badge de conteo -->
-            <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
-              <span class="w-2 h-2 rounded-full bg-primary"></span>
-              {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
-            </span>
-            
-            <!-- KPI de Gastos en Repuestos -->
-            <app-kpi-card
-              title="Gastos en Repuestos"
-              [subtitle]="'Acumulado del mes actual'"
-              [value]="formatCurrency(monthTotal())"
-              type="danger"
-              size="compact"
-              badgeText="Inversión activos"
-              [animationDelay]="0">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
-              </svg>
-            </app-kpi-card>
           </div>
         </div>
       </div>
@@ -164,7 +165,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
         </div>
 
         <!-- Vista Desktop: Tabla -->
-        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
+        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>

@@ -15,7 +15,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
   imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, DriverIcon],
   template: `
     <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
-      @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+      @if (profileLoadingState.isLoading()) {
         <div class="relative bg-gradient-to-br from-slate-200 to-slate-300 pb-24 pt-8 px-6 rounded-b-[2.5rem] shadow-lg">
           <div class="flex flex-col items-center">
             <div class="w-20 h-20 skeleton-shimmer rounded-full mb-3"></div>
@@ -57,7 +57,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       }
 
       <div class="perfil-stats-enter px-4 mt-4 mb-6 relative z-10">
-        @if (statsLoadingState.showSkeleton() && statsLoadingState.isLoading()) {
+        @if (statsLoadingState.isLoading()) {
           <app-loading-skeleton type="worker-stats" />
           @if (statsLoadingState.showFeedback()) {
             <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
@@ -80,7 +80,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
       </div>
 
       <div class="perfil-content-enter px-6 mt-6 space-y-6">
-        @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+        @if (profileLoadingState.isLoading()) {
           <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-4">
             <div class="h-4 w-full skeleton-shimmer rounded"></div>
             <div class="h-4 w-full skeleton-shimmer rounded"></div>
@@ -173,9 +173,9 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
                   <p class="text-sm text-base-content/70 mt-1">Confirma para salir de tu cuenta.</p>
                 </div>
               </div>
-              <div class="pt-4 flex flex-col sm:flex-row gap-3 sm:justify-end">
-                <button class="btn btn-ghost w-full sm:w-auto" type="button" (click)="closeLogoutModal()">Cancelar</button>
-                <button class="btn btn-error text-white w-full sm:w-auto shadow-error/20" type="button" (click)="confirmLogout()">Cerrar sesión</button>
+              <div class="pt-4 flex flex-col-reverse sm:flex-row gap-3 sm:justify-end">
+                <button class="btn btn-ghost w-full sm:w-auto rounded-xl border border-base-300 hover:border-base-content/20 font-semibold" type="button" (click)="closeLogoutModal()">Cancelar</button>
+                <button class="btn btn-error text-white w-full sm:w-auto shadow-error/20 rounded-xl border border-error/30 font-semibold" type="button" (click)="confirmLogout()">Cerrar sesión</button>
               </div>
             </div>
           </div>

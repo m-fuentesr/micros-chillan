@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, computed, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Alert } from '../../models/dashboard.models';
+import { getTodayInChile, getYesterdayInChile, getDateInChileTime, getDaysDifferenceInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-alert-list',
@@ -232,10 +233,11 @@ export class AlertList {
 
   // Agrupar alertas por recencia (Hoy, Ayer, resto por fecha)
   groupedAlerts = computed(() => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    // Usar fechas en zona horaria de Chile
+    const todayParts = getTodayInChile();
+    const yesterdayParts = getYesterdayInChile();
+    const startOfToday = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day));
+    const startOfYesterday = new Date(Date.UTC(yesterdayParts.year, yesterdayParts.month - 1, yesterdayParts.day));
 
     const sortedAlerts = [...this.activeAlerts()].sort((a, b) => {
       const aTime = a.date ? new Date(a.date).getTime() : 0;
@@ -255,20 +257,23 @@ export class AlertList {
         continue;
       }
 
-      const alertDate = new Date(alert.date);
-      if (alertDate >= startOfToday) {
+      // Convertir fecha de alerta a zona horaria de Chile para comparación
+      const alertDateChile = getDateInChileTime(alert.date);
+      
+      // Comparar solo la parte de la fecha (sin hora)
+      if (alertDateChile.getTime() === startOfToday.getTime()) {
         today.push(alert);
         continue;
       }
 
-      if (alertDate >= startOfYesterday) {
+      if (alertDateChile.getTime() === startOfYesterday.getTime()) {
         yesterday.push(alert);
         continue;
       }
 
-      const dateKey = this.getDateKey(alertDate);
+      const dateKey = this.getDateKey(alertDateChile);
       if (!olderByDay.has(dateKey)) {
-        olderByDay.set(dateKey, { date: alertDate, alerts: [] });
+        olderByDay.set(dateKey, { date: alertDateChile, alerts: [] });
       }
       olderByDay.get(dateKey)!.alerts.push(alert);
     }
@@ -306,18 +311,20 @@ export class AlertList {
 
   formatRelativeTime(date: string): string {
     try {
-      const alertDate = new Date(date);
-      const now = new Date();
+      const alertDate = getDateInChileTime(date);
+      const now = getDateInChileTime(new Date().toISOString());
       const diffMs = now.getTime() - alertDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
+      
+      // Para días, usar la función que compara solo fechas (sin horas)
+      const diffDays = getDaysDifferenceInChile(date);
 
       if (diffMins < 1) {
         return 'Ahora';
       } else if (diffMins < 60) {
         return `Hace ${diffMins}m`;
-      } else if (diffHours < 24) {
+      } else if (diffHours < 24 && diffDays === 0) {
         return `Hace ${diffHours}h`;
       } else if (diffDays === 1) {
         return 'Ayer';

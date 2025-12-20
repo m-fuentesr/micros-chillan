@@ -20,6 +20,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
 import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
 
 @Component({
   selector: 'app-machine-detail',
@@ -1373,12 +1374,8 @@ export class MachineDetail implements OnInit {
   getDaysAgo(date: string | null): string {
     if (!date) return '';
     try {
-      const d = new Date(date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      d.setHours(0, 0, 0, 0);
-      const diffTime = today.getTime() - d.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      // Usar función helper que considera zona horaria de Chile
+      const diffDays = getDaysDifferenceInChile(date);
       
       if (diffDays === 0) return 'Hoy';
       if (diffDays === 1) return 'Hace 1 día';

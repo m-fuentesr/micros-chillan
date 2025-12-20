@@ -10,6 +10,7 @@ import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import type { DailyRecord } from '../../shared/models/daily-record.models';
+import { formatRelativeDate } from '../../shared/utils/date.utils';
 
 @Component({
   selector: 'app-trabajador',
@@ -17,7 +18,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
   imports: [CommonModule, RouterLink, LoadingSkeleton, BusIcon],
   template: `
     <div class="trabajador-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
-      @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+      @if (profileLoadingState.isLoading()) {
         <app-loading-skeleton type="worker-header" />
       } @else {
       <header class="trabajador-header-enter relative pt-0 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
@@ -46,7 +47,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
       }
 
       <div class="px-5 mt-4 relative z-20 trabajador-content-enter">
-        @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+        @if (profileLoadingState.isLoading() || statusLoadingState.isLoading()) {
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
             <div class="p-6 space-y-4">
@@ -55,7 +56,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
               <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
             </div>
           </div>
-        } @else if (todayRecordStatus() === null || (statusLoadingState.showSkeleton() && statusLoadingState.isLoading())) {
+        } @else if (todayRecordStatus() === null) {
           <!-- Skeleton mientras carga el estado del reporte -->
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
@@ -121,7 +122,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
         <div class="flex justify-between items-end mb-6">
           <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.35em]">Actividad reciente</h3>
         </div>
-        @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+        @if (historyLoadingState.isLoading()) {
           <app-loading-skeleton type="worker-timeline" />
           @if (historyLoadingState.showFeedback()) {
             <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
@@ -421,21 +422,8 @@ export class Trabajador implements OnInit, OnDestroy {
 
     // Agregar registros recientes
     recentRecords.forEach((record) => {
-      const date = new Date(record.fecha);
-      const now = new Date();
-      const diffTime = Math.abs(now.getTime() - date.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      let timeLabel = '';
-      if (diffDays === 0) {
-        timeLabel = 'Hoy';
-      } else if (diffDays === 1) {
-        timeLabel = 'Ayer';
-      } else if (diffDays < 7) {
-        timeLabel = `Hace ${diffDays} días`;
-      } else {
-        timeLabel = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-      }
+      // Usar función helper que considera zona horaria de Chile
+      const timeLabel = formatRelativeDate(record.fecha);
 
       const estadoLower = record.estado.toLowerCase();
       const statusText = estadoLower.includes('completo')

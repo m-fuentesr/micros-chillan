@@ -115,10 +115,8 @@ import { AccountingService } from '../../services/accounting.service';
                   </div>
                   <div class="truncate">
                     <div class="font-bold text-sm sm:text-base truncate">{{ liquidation.periodo }}</div>
-                    <div class="text-[11px] sm:text-xs text-base-content/50 flex items-center gap-1 flex-wrap">
+                    <div class="text-[11px] sm:text-xs text-base-content/50">
                       <span>{{ formatDate(liquidation.fecha_cierre) }}</span>
-                      <span>•</span>
-                      <span class="truncate max-w-[100px]">{{ liquidation.cerrado_por }}</span>
                     </div>
                   </div>
                 </div>

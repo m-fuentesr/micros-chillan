@@ -95,9 +95,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
         <!-- Filtros Globales (solo para Resumen General y Resumen Semanal) -->
         @if (activeTab() === 'summary' || activeTab() === 'weekly') {
-          <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
-              <div class="relative w-full">
+          <div class="flex flex-row items-center gap-2 w-full lg:w-auto">
+            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+              <div class="relative w-full min-w-0">
                 <select 
                   class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedMonth()" 
@@ -115,9 +115,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
               <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
 
-              <div class="relative w-full">
+              <div class="relative w-full min-w-0">
                 <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedYear()" 
                   (change)="onYearChange($event)">
                   @for (year of years(); track year.value) {
@@ -131,7 +131,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                 </div>
               </div>
             </div>
-            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0" (click)="applyFilters()" title="Actualizar">
+            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
               </svg>

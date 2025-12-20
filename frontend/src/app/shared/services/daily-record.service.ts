@@ -220,11 +220,46 @@ export class DailyRecordService {
   }
 
   private mapAuditItemToHistory(item: DailyRecordAuditItem): DailyRecordHistoryItem {
-    const cambios = item.detalles?.map((detalle) => {
-      const anterior = detalle.valor_anterior ?? '-';
-      const nuevo = detalle.valor_nuevo ?? '-';
-      return `${detalle.campo}: ${anterior} → ${nuevo}`;
-    }).join('; ');
+    // Campos técnicos que no deben mostrarse (filtrar también registros antiguos)
+    const camposExcluidos = [
+      'imagen_url_updated_at',
+      'imagen_comprobante_diesel_url_updated_at',
+      'updated_at',
+      'Imagen Url Updated At',
+      'Imagen Comprobante Diesel Url Updated At',
+      'Updated At'
+    ];
+    
+    // Filtrar detalles excluidos y mapear a mensajes amigables
+    const cambios = item.detalles
+      ?.filter((detalle) => {
+        const campoLower = detalle.campo.toLowerCase();
+        return !camposExcluidos.some(excluido => campoLower.includes(excluido.toLowerCase()));
+      })
+      ?.map((detalle) => {
+        const campo = detalle.campo;
+        const anterior = detalle.valor_anterior ?? '-';
+        const nuevo = detalle.valor_nuevo ?? '-';
+        
+        // Mensajes más amigables para cambios de imágenes
+        if (campo.includes('Comprobante') || campo.toLowerCase().includes('imagen')) {
+          if (anterior === '-' || anterior === 'Sin imagen' || anterior === 'None') {
+            return `${campo}: Agregada`;
+          } else if (nuevo === '-' || nuevo === 'Sin imagen' || nuevo === 'None') {
+            return `${campo}: Eliminada`;
+          } else {
+            return `${campo}: Actualizada`;
+          }
+        }
+        
+        // Para otros campos, mostrar cambio normal pero limitar longitud
+        const valorAnterior = anterior.length > 50 ? anterior.substring(0, 47) + '...' : anterior;
+        const valorNuevo = nuevo.length > 50 ? nuevo.substring(0, 47) + '...' : nuevo;
+        
+        return `${campo}: ${valorAnterior} → ${valorNuevo}`;
+      })
+      .filter(cambio => cambio) // Filtrar cambios vacíos
+      .join('; ') || '';
 
     return {
       id: String(item.id),
@@ -288,12 +323,16 @@ export class DailyRecordService {
       // Comprobantes
       comprobante_registro: imagenes.registro ? {
         imagen_url: imagenes.registro,
-        subido_en: undefined // El backend no devuelve esta fecha en el detalle
+        subido_en: (imagenes as any).registro_updated_at && (imagenes as any).registro_updated_at !== 'null' 
+          ? (imagenes as any).registro_updated_at 
+          : undefined
       } : null,
       comprobante_diesel: imagenes.diesel ? {
         monto: datosFinancieros.costo_total_diesel || 0,
         imagen_url: imagenes.diesel,
-        subido_en: undefined // El backend no devuelve esta fecha en el detalle
+        subido_en: (imagenes as any).diesel_updated_at && (imagenes as any).diesel_updated_at !== 'null'
+          ? (imagenes as any).diesel_updated_at 
+          : undefined
       } : null,
       
       // Desglose de pago

@@ -12,6 +12,7 @@ import { map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
 import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
+import { getDateInChileTime, getDaysDifferenceInChile } from '../../shared/utils/date.utils';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -773,11 +774,11 @@ interface DailyRecordDetailView extends DailyRecord {
                             <div class="timeline-middle">
                               <div class="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20" [class.bg-base-300]="!last"></div>
                             </div>
-                            <div class="timeline-end timeline-box bg-transparent border-none shadow-none p-0 pl-3 mb-4">
-                              <div class="text-xs font-bold text-base-content">{{ item.usuario }}</div>
-                              <div class="text-[10px] text-base-content/50">{{ item.accion }} • {{ formatTimeAgo(item.timestamp) }}</div>
+                            <div class="timeline-end timeline-box bg-transparent border-none shadow-none p-0 pl-3 mb-4 min-w-0 flex-1">
+                              <div class="text-xs font-bold text-base-content break-words">{{ item.usuario }}</div>
+                              <div class="text-[10px] text-base-content/50 break-words">{{ item.accion }} • {{ formatTimeAgo(item.timestamp) }}</div>
                               @if (item.cambios) {
-                                <div class="text-[10px] text-base-content/40 mt-1">{{ item.cambios }}</div>
+                                <div class="text-[10px] text-base-content/40 mt-1 break-words overflow-wrap-anywhere">{{ item.cambios }}</div>
                               }
                             </div>
                             @if (!last) {
@@ -820,6 +821,39 @@ interface DailyRecordDetailView extends DailyRecord {
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
       animation: shimmer 2s infinite;
+    }
+    
+    /* Mejoras de responsividad para el timeline del historial */
+    .timeline {
+      max-width: 100%;
+      overflow-x: hidden;
+    }
+    
+    .timeline li {
+      max-width: 100%;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    
+    .timeline-end {
+      max-width: 100%;
+      min-width: 0;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+    }
+    
+    .break-words {
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      max-width: 100%;
+    }
+    
+    .overflow-wrap-anywhere {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      hyphens: auto;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1009,22 +1043,17 @@ export class RegistroDiarioDetail {
     const receipt = record.comprobante_diesel ? {
       amount: record.comprobante_diesel.monto,
       uploadedAt: record.comprobante_diesel.subido_en 
-        ? new Date(record.comprobante_diesel.subido_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        ? this.formatDateToChileTime(record.comprobante_diesel.subido_en)
         : undefined,
       imageUrl: record.comprobante_diesel.imagen_url
     } : undefined;
 
     // Mapear comprobante del registro diario (desde imagen_url del backend)
     // El backend devuelve imagen_url directamente, no en un objeto anidado
-    const comprobanteRegistro = (record as any).imagen_url ? {
-      imageUrl: (record as any).imagen_url,
-      uploadedAt: (record as any).imagen_updated_at 
-        ? new Date((record as any).imagen_updated_at).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-        : undefined
-    } : record.comprobante_registro ? {
+    const comprobanteRegistro = record.comprobante_registro ? {
       imageUrl: record.comprobante_registro.imagen_url,
       uploadedAt: record.comprobante_registro.subido_en 
-        ? new Date(record.comprobante_registro.subido_en).toLocaleDateString('es-CL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+        ? this.formatDateToChileTime(record.comprobante_registro.subido_en)
         : undefined
     } : undefined;
 
@@ -1103,6 +1132,9 @@ export class RegistroDiarioDetail {
       // 3. Subir imágenes si hay archivos nuevos
       const registroFile = this.registroFile();
       const receiptFile = this.receiptFile();
+      // Guardar si se subieron archivos nuevos para actualizar uploadedAt después
+      const hasNewRegistroFile = !!registroFile;
+      const hasNewReceiptFile = !!receiptFile;
       const uploads: Array<Observable<{ url: string; type: 'registro' | 'diesel' }>> = [];
       
       if (registroFile && currentRecord.chofer_id) {
@@ -1154,7 +1186,7 @@ export class RegistroDiarioDetail {
                 observaciones: formValue.observations || null
               };
               
-              // Agregar URLs de imágenes subidas
+              // Agregar URLs de imágenes subidas (nuevas)
               results.forEach(result => {
                 if (result.type === 'registro') {
                   updateDto.comprobante_registro = { imagen: result.url };
@@ -1162,6 +1194,18 @@ export class RegistroDiarioDetail {
                   updateDto.comprobante_diesel = { imagen: result.url };
                 }
               });
+              
+              // Si solo se cambió una imagen, mantener la URL existente de la otra
+              const hasRegistroUpload = results.some(r => r.type === 'registro');
+              const hasDieselUpload = results.some(r => r.type === 'diesel');
+              
+              if (!hasRegistroUpload && currentRecord.comprobanteRegistro?.imageUrl) {
+                updateDto.comprobante_registro = { imagen: currentRecord.comprobanteRegistro.imageUrl };
+              }
+              
+              if (!hasDieselUpload && currentRecord.receipt?.imageUrl) {
+                updateDto.comprobante_diesel = { imagen: currentRecord.receipt.imageUrl };
+              }
               
               return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
             })
@@ -1223,6 +1267,7 @@ export class RegistroDiarioDetail {
       ).subscribe({
         next: ({ record: updatedRecord, history }) => {
           // 8. Actualizar con el registro e historial recargados del servidor
+          // El backend ahora devuelve los timestamps de actualización de imágenes
           const viewRecord = this.mapToDetailView(updatedRecord);
           const recordWithHistory = { ...viewRecord, history };
           this.record.set(recordWithHistory);
@@ -1347,17 +1392,79 @@ export class RegistroDiarioDetail {
     setTimeout(() => toast.remove(), 3000);
   }
 
+  /**
+   * Formatea una fecha UTC a hora de Chile (America/Santiago)
+   * Maneja correctamente la conversión de zona horaria
+   */
+  formatDateToChileTime(dateString: string | null | undefined): string {
+    // Manejar valores nulos, undefined o vacíos
+    if (!dateString || dateString === 'null' || dateString === 'undefined') {
+      return '';
+    }
+    
+    try {
+      // Asegurarnos de que es un string
+      if (typeof dateString !== 'string') {
+        console.warn('Expected string but got:', typeof dateString, dateString);
+        return '';
+      }
+      
+      // Limpiar el string
+      let dateStr = dateString.trim();
+      
+      // Si está vacío después de trim, retornar vacío
+      if (!dateStr) {
+        return '';
+      }
+      
+      // Si la fecha viene sin 'Z' al final y no tiene offset, asumimos que es UTC
+      // Si viene con 'Z', JavaScript la interpretará correctamente como UTC
+      // Si viene con offset (+00:00, -03:00, etc), JavaScript la interpretará correctamente
+      if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+        // Si no tiene timezone info, agregar 'Z' para indicar UTC
+        dateStr = dateStr + 'Z';
+      }
+      
+      const date = new Date(dateStr);
+      
+      // Validar que la fecha sea válida
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date received:', dateString);
+        return '';
+      }
+      
+      // Formatear en hora de Chile usando la zona horaria específica
+      const formatted = date.toLocaleString('es-CL', {
+        timeZone: 'America/Santiago',
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      return formatted;
+    } catch (error) {
+      console.error('Error formatting date:', error, dateString);
+      return '';
+    }
+  }
+
   formatTimeAgo(timestamp: string): string {
-    const now = new Date();
-    const time = new Date(timestamp);
+    // Convertir a zona horaria de Chile para cálculos correctos
+    const time = getDateInChileTime(timestamp);
+    const now = getDateInChileTime(new Date().toISOString());
     const diffMs = now.getTime() - time.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
+    
+    // Para días, usar función que compara solo fechas (sin horas)
+    const diffDays = getDaysDifferenceInChile(timestamp);
 
     if (diffMins < 60) {
       return `Hace ${diffMins} min`;
-    } else if (diffHours < 24) {
+    } else if (diffHours < 24 && diffDays === 0) {
       return `Hace ${diffHours} h`;
     } else if (diffDays < 7) {
       return `Hace ${diffDays} días`;

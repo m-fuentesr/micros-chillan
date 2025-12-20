@@ -9,7 +9,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
   imports: [RouterLink, BusIcon, DriverIcon],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
-      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/60">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/60 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div class="flex items-start gap-3">
             <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
@@ -36,7 +36,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-3xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
+              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"

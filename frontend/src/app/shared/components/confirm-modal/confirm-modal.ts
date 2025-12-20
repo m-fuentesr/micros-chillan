@@ -35,21 +35,15 @@ import { ConfirmModalService } from '../../services/confirm-modal.service';
         <div class="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4 mt-8">
           <button 
             type="button"
-            class="btn btn-ghost gap-2 font-semibold order-2 sm:order-1 cursor-pointer"
+            class="btn btn-ghost w-full sm:w-auto rounded-xl border border-base-300 hover:border-base-content/20 font-semibold order-2 sm:order-1 cursor-pointer"
             (click)="modalService.cancel()">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-            </svg>
             {{ modalService.config()?.cancelText || 'Cancelar' }}
           </button>
           <button 
             type="button"
-            class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer order-1 sm:order-2"
+            class="btn btn-error text-white w-full sm:w-auto shadow-error/20 rounded-xl border border-error/30 font-semibold order-1 sm:order-2 cursor-pointer"
             (click)="modalService.confirm()">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-              <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-            </svg>
-            <span class="whitespace-nowrap">{{ modalService.config()?.confirmText || 'Confirmar' }}</span>
+            {{ modalService.config()?.confirmText || 'Confirmar' }}
           </button>
         </div>
       </div>
@@ -75,26 +69,6 @@ import { ConfirmModalService } from '../../services/confirm-modal.service';
     .modal-backdrop {
       background: rgba(0, 0, 0, 0.3);
       backdrop-filter: blur(4px);
-    }
-
-    /* Estilos para botón de eliminar con efecto shimmer */
-    .btn-action-delete {
-      position: relative;
-    }
-    
-    .btn-action-delete::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: -100%;
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-      transition: left 0.5s;
-    }
-    
-    .btn-action-delete:hover::before {
-      left: 100%;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush

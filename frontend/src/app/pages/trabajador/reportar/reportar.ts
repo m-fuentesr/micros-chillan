@@ -22,13 +22,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
   template: `
     <div class="reportar-background-enter bg-slate-50 font-sans">
       <header 
-        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-0 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
+        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-12 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
         [class.reportar-header-fade-out]="expanding()"
       >
         <a
           routerLink="/trabajador"
-          class="absolute left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
-          [style.top]="'calc(12px + env(safe-area-inset-top, 0px))'"
+          class="absolute top-12 left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
           aria-label="Volver"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
@@ -36,7 +35,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           </svg>
         </a>
 
-        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30" [style.padding-top]="'calc(48px + env(safe-area-inset-top, 0px))'">
+        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30">
           <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.35em] mb-1">Nuevo registro</p>
           <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Reporte diario</h1>
         </div>
@@ -280,8 +279,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
         </div>
 
         <div
-          class="reportar-button-enter fixed bottom-0 left-0 right-0 p-4 bg-white rounded-t-3xl shadow-xl shadow-blue-900/5 border-t border-slate-100 z-[60]"
-          style="padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 1rem);"
+          class="reportar-button-enter p-4 bg-white rounded-2xl shadow-xl shadow-blue-900/5"
         >
           <button
             #submitButton

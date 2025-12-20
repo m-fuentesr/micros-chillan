@@ -1119,23 +1119,21 @@ export class RecuperarClave {
       }
 
       this.submittedEmail.set(email);
+      // Primero detener el loading para mostrar el checkmark
+      this.loading.set(false);
+      // Luego mostrar el estado de éxito
       this.submitSuccess.set(true);
 
-      // Dar tiempo a la animación de éxito antes de mostrar el paso final
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Dar tiempo suficiente para mostrar el checkmark antes de cambiar al paso final
+      await new Promise(resolve => setTimeout(resolve, 1500));
       this.currentStep.set('success');
     } catch (err: any) {
       this.error.set(
         err?.message || 'No pudimos enviar el correo de recuperación. Inténtalo nuevamente más tarde.'
       );
       this.submitSuccess.set(false);
-    } finally {
       this.loading.set(false);
     }
-
-    // Esperar un momento para mostrar el éxito, luego cambiar al paso de éxito
-    await new Promise(resolve => setTimeout(resolve, 800));
-    this.currentStep.set('success');
   }
 }
 
