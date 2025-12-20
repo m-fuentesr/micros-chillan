@@ -240,3 +240,31 @@ async def existe_alerta_reciente(origen_id: int, tipo: str, horas: int = 24) -> 
     except Exception as e:
         print(f"Error verificando duplicados: {e}")
         return False # Ante la duda, dejamos pasar (fail-safe)
+    
+async def limpiar_alertas_antiguas():
+    """
+    Busca alertas informativas con más de 24 horas de antigüedad
+    y cambia su estado a 'resuelta' para que no ensucien la vista.
+    """
+    try:
+        # 1. Definir el límite de tiempo (Hace 24 horas exactas)
+        limite_tiempo = (datetime.now() - timedelta(hours=24)).isoformat()
+
+        # 2. Ejecutar actualización masiva
+        # "Pon en estado 'archivada' todas las alertas informativas, activas y viejas"
+        response = (
+            supabase.table("alertas")
+            .update({"estado": "resuelta",
+                     "fecha_resuelta": datetime.now().isoformat()}) 
+            .eq("estado", "activa")              # Solo las que siguen activas
+            .eq("severidad", "informativa")      # Solo las informativas (no borrar críticas!)
+            .lt("fecha_generada", limite_tiempo) # lt = less than (menor que / más vieja que)
+            .execute()
+        )
+        
+        # Opcional: ver cuántas se limpiaron
+        # if response.data:
+        #     print(f"🧹 Se archivaron {len(response.data)} alertas antiguas.")
+            
+    except Exception as e:
+        print(f"⚠️ Error intentando limpiar alertas antiguas: {e}")
