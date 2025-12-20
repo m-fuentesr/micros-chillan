@@ -1,6 +1,6 @@
 ﻿from collections import defaultdict
 from datetime import date
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from fastapi import HTTPException
 
@@ -11,6 +11,10 @@ from app.schemas.dashboard import (
     DashboardAlerts,
     DashboardFleetKpi,
     DashboardKpis,
+    DashboardDailyRecordDriver,
+    DashboardDailyRecordMachine,
+    DashboardDailyRecordItem,
+    DashboardDailyRecords,
     DashboardMachinePerformance,
     DashboardResponse,
 )
@@ -28,7 +32,7 @@ async def get_today_overview() -> DashboardResponse:
         .select(
             """
             id, fecha, estado, monto_recaudado, costo_total_diesel,
-            maquina_id, chofer_id, es_dia_no_trabajado,
+            monto_porcentaje_chofer, maquina_id, chofer_id, es_dia_no_trabajado,
             maquinas(numero_interno, patente),
             choferes(primer_nombre, apellido_paterno)
             """
@@ -58,7 +62,8 @@ async def get_today_overview() -> DashboardResponse:
 
     total_recaudado = sum((row.get("monto_recaudado") or 0) for row in registros)
     gasto_diesel = sum((row.get("costo_total_diesel") or 0) for row in registros)
-    ganancia_neta = total_recaudado - gasto_diesel
+    pago_choferes = sum((row.get("monto_porcentaje_chofer") or 0) for row in registros)
+    ganancia_neta = total_recaudado - gasto_diesel - pago_choferes
 
     maquinas_reportadas = {
         row.get("maquina_id")
@@ -73,6 +78,7 @@ async def get_today_overview() -> DashboardResponse:
         lambda: {
             "monto_recaudado": 0,
             "costo_total_diesel": 0,
+            "monto_porcentaje_chofer": 0,
             "estado": None,
             "maquina": {},
             "chofer": {},
@@ -85,6 +91,7 @@ async def get_today_overview() -> DashboardResponse:
 
         data["monto_recaudado"] += row.get("monto_recaudado") or 0
         data["costo_total_diesel"] += row.get("costo_total_diesel") or 0
+        data["monto_porcentaje_chofer"] += row.get("monto_porcentaje_chofer") or 0
         data["estado"] = row.get("estado")
         data["maquina"] = row.get("maquinas") or {}
         data["chofer"] = row.get("choferes") or {}
@@ -102,8 +109,13 @@ async def get_today_overview() -> DashboardResponse:
                 patente=info["maquina"].get("patente"),
                 chofer=chofer_nombre,
                 monto_recaudado=info["monto_recaudado"],
+                monto_porcentaje_chofer=info["monto_porcentaje_chofer"],
                 costo_total_diesel=info["costo_total_diesel"],
-                ganancia_neta=info["monto_recaudado"] - info["costo_total_diesel"],
+                ganancia_neta=(
+                    info["monto_recaudado"] 
+                    - info["costo_total_diesel"] 
+                    - info["monto_porcentaje_chofer"]
+                    ),
                 estado=info.get("estado"),
             )
         )
@@ -176,3 +188,132 @@ async def get_today_overview() -> DashboardResponse:
         rendimiento=rendimiento_list,
         alertas=alertas,
     )
+
+async def get_today_daily_records() -> DashboardDailyRecords:
+    """Lista registros diarios (o faltantes) para todas las máquinas activas del día."""
+
+    hoy = date.today()
+    fecha_iso = hoy.isoformat()
+
+    # Máquinas activas
+    maquinas_res = (
+        supabase.table("maquinas")
+        .select("id, numero_interno, patente")
+        .eq("estado_operativo", "operativa")
+        .execute()
+    )
+
+    if getattr(maquinas_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo máquinas activas: {maquinas_res.error}")
+
+    maquinas = maquinas_res.data or []
+
+    # Asignaciones vigentes (por máquina)
+    asignaciones_res = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select(
+            "maquina_id, chofer_id, fecha_inicio, fecha_termino, "
+            "choferes(id, primer_nombre, apellido_paterno, apellido_materno)"
+        )
+        .lte("fecha_inicio", fecha_iso)
+        .or_(f"fecha_termino.is.null,fecha_termino.gte.{fecha_iso}")
+        .execute()
+    )
+
+    if getattr(asignaciones_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo asignaciones activas: {asignaciones_res.error}")
+
+    asignaciones: Dict[int, Dict[str, dict]] = {}
+    asignaciones_data = asignaciones_res.data or []
+    for row in asignaciones_data:
+        maquina_id = row.get("maquina_id")
+        if not maquina_id:
+            continue
+
+        # Si hay múltiples asignaciones vigentes, usamos la de inicio más reciente
+        fecha_inicio_row = row.get("fecha_inicio") or ""
+        fecha_inicio_guardada = asignaciones.get(maquina_id, {}).get("fecha_inicio") or ""
+        if not fecha_inicio_guardada or fecha_inicio_row >= fecha_inicio_guardada:
+            asignaciones[maquina_id] = {
+                "fecha_inicio": fecha_inicio_row,
+                "chofer": row.get("choferes") or {},
+            }
+
+    # Registros diarios de hoy
+    registros_res = (
+        supabase.table("registros_diarios")
+        .select(
+            "id, chofer_id, fecha, estado, monto_recaudado, maquina_id,"
+            "maquinas(id, numero_interno, patente), "
+            "choferes(id, primer_nombre, apellido_paterno, apellido_materno)"
+        )
+        .eq("fecha", fecha_iso)
+        .execute()
+    )
+
+    if getattr(registros_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo registros diarios de hoy: {registros_res.error}")
+
+    registros_por_maquina = {
+        row["maquina_id"]: row
+        for row in (registros_res.data or [])
+        if row.get("maquina_id")
+    }
+
+    items: List[DashboardDailyRecordItem] = []
+
+    for maquina_activa in maquinas:
+        maquina_id = maquina_activa.get("id")
+        registro = registros_por_maquina.get(maquina_id)
+        chofer_registro: Optional[dict] = (registro or {}).get("choferes")
+        chofer_asignado_entry: Optional[dict] = asignaciones.get(maquina_id)
+        chofer_asignado: Optional[dict] = (chofer_asignado_entry or {}).get("chofer")
+        maquina_registro: Optional[dict] = (registro or {}).get("maquinas")
+
+        maquina_info = maquina_registro or maquina_activa
+        maquina = (
+            DashboardDailyRecordMachine(
+                id=maquina_info.get("id"),
+                numero_interno=maquina_info.get("numero_interno"),
+                patente=maquina_info.get("patente"),
+            )
+            if maquina_info
+            else None
+        )
+        tiene_registro = registro is not None
+        fecha_registro = (registro or {}).get("fecha") or fecha_iso
+        estado = (registro or {}).get("estado") or "en_espera"
+        monto_recaudado = (registro or {}).get("monto_recaudado")
+
+        chofer_usado = chofer_registro or chofer_asignado
+        nombre = (
+            " ".join(
+                filter(
+                    None,
+                    [
+                        chofer_usado.get("primer_nombre"),
+                        chofer_usado.get("apellido_paterno"),
+                        chofer_usado.get("apellido_materno"),
+                    ],
+                )
+            )
+            if chofer_usado
+            else None
+        )
+
+        items.append(
+            DashboardDailyRecordItem(
+                chofer=DashboardDailyRecordDriver(
+                    id=(chofer_usado or {}).get("id"),
+                    nombre=nombre,
+                ),
+                maquina=maquina,
+                fecha=fecha_registro,
+                estado=estado,
+                monto_recaudado=monto_recaudado,
+                puede_ver_detalle=tiene_registro,
+                registro_id=(registro or {}).get("id"),
+            )
+        )
+
+    return DashboardDailyRecords(total=len(items), items=items)
