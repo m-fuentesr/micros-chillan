@@ -841,7 +841,7 @@ export class BitacoraOperaciones implements OnInit {
   statusFilter = signal('all');
   dateFilter = signal('');
   currentPage = signal(1);
-  itemsPerPage = 20; // Paginación real del backend
+  itemsPerPage = 15; // Paginación real del backend
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
@@ -919,12 +919,30 @@ export class BitacoraOperaciones implements OnInit {
   });
   
   onRecordFilterChange(newFilters: Record<string, any>): void {
-    const filters = {
-      chofer: newFilters['chofer'] || null,
-      desde: newFilters['desde'] || null,
-      hasta: newFilters['hasta'] || null,
-      orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
-    };
+    // Si se recibe un objeto vacío (al limpiar filtros), restaurar valores por defecto del mes actual
+    const isClearing = Object.keys(newFilters).length === 0;
+    
+    let filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' };
+    
+    if (isClearing) {
+      // Restaurar filtros por defecto (mes actual)
+      const { desde, hasta } = this.getCurrentMonthDates();
+      filters = {
+        chofer: null,
+        desde,
+        hasta,
+        orden: 'mas_reciente'
+      };
+    } else {
+      // Aplicar los nuevos filtros
+      filters = {
+        chofer: newFilters['chofer'] || null,
+        desde: newFilters['desde'] || null,
+        hasta: newFilters['hasta'] || null,
+        orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+      };
+    }
+    
     this.recordFilters.set(filters);
     // NO cerrar automáticamente el panel móvil - dejar que el usuario lo cierre manualmente
     // Esto permite seleccionar múltiples filtros sin que el panel se cierre
@@ -938,6 +956,12 @@ export class BitacoraOperaciones implements OnInit {
     
     // Resetear a página 1 cuando cambian los filtros
     this.currentPage.set(1);
+    
+    // Asegurar que se carguen los registros con los nuevos filtros
+    // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
+    untracked(() => {
+      this.loadRecords();
+    });
   }
 
   toggleFiltersMobile(): void {
@@ -1071,6 +1095,14 @@ export class BitacoraOperaciones implements OnInit {
       pagina: this.currentPage(),
       por_pagina: this.itemsPerPage
     };
+    
+    // Debug: Log para verificar filtros aplicados
+    console.log('🔍 Filtros aplicados:', {
+      recordFilters,
+      filters,
+      currentPage: this.currentPage(),
+      itemsPerPage: this.itemsPerPage
+    });
     
     // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
     if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
@@ -1221,17 +1253,33 @@ export class BitacoraOperaciones implements OnInit {
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadRecords();
+      });
     }
   }
 
   goToNextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadRecords();
+      });
     }
   }
 
   goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return; // Ya estamos en esa página
+    }
     this.currentPage.set(page);
+    // Asegurar que se carguen los registros de la nueva página
+    // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
+    untracked(() => {
+      this.loadRecords();
+    });
   }
 
   openNewRecordModal(): void {

@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Driver } from '../models/driver.models';
+import { Driver, DriverKPIs } from '../models/driver.models';
 import { environment } from '../../../environments/environment.development';
 import { calculateLicenseStatus } from '../utils/license.utils';
 
@@ -13,21 +13,37 @@ export class DriverService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
 
-  // GET /api/drivers - Listar choferes
+  // GET /api/drivers - Listar choferes con paginación
   getDrivers(filters?: {
     search?: string;
-    estado?: 'activo' | 'inactivo';
-  }): Observable<Driver[]> {
+    estado?: 'todos' | 'activos' | 'inactivos';
+    licencia_estado?: 'vencidas' | 'por_vencer' | 'vigentes';
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    datos: Driver[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.search) {
       params = params.set('search', filters.search);
     }
-    if (filters?.estado) {
-      // Backend espera "activos" / "inactivos"
-      const estadoMap: Record<string, string> = { activo: 'activos', inactivo: 'inactivos' };
-      const mapped = estadoMap[filters.estado] || filters.estado;
-      params = params.set('estado', mapped);
+    if (filters?.estado && filters.estado !== 'todos') {
+      params = params.set('estado', filters.estado);
     }
+    if (filters?.licencia_estado) {
+      params = params.set('licencia_estado', filters.licencia_estado);
+    }
+    
+    // Paginación por defecto: 12 registros por página
+    const pagina = filters?.page || 1;
+    const porPagina = filters?.per_page || 12;
+    
+    params = params.set('page', pagina.toString());
+    params = params.set('per_page', porPagina.toString());
     
     // El backend retorna DriverListItem[] con el formato:
     // { id, nombre_completo, rut, telefono, correo_electronico, estado, maquina_actual, licencia_estado }
@@ -48,16 +64,17 @@ export class DriverService {
         dias_restantes: number;
       };
     }
-    
-    return this.http.get<any>(`${this.apiUrl}/api/drivers`, { params }).pipe(
-      map((response) => {
-        // El backend responde con un array
-        const backendItems: BackendDriver[] = Array.isArray(response)
-          ? response
-          : (response?.items || []);
 
-        // Transformar los datos del backend al formato del frontend
-        let drivers: Driver[] = backendItems.map((backendDriver): Driver => {
+    interface BackendPaginatedResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendDriver[];
+    }
+    
+    return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/drivers`, { params }).pipe(
+      map((response) => ({
+        datos: response.items.map((backendDriver): Driver => {
           // Calcular alerta de licencia desde el estado que viene del backend
           const alertaLicencia = backendDriver.licencia_estado.estado === 'danger' || backendDriver.licencia_estado.estado === 'warning';
           
@@ -73,33 +90,69 @@ export class DriverService {
             estado: backendDriver.estado,
             maquina_actual: backendDriver.maquina_actual || null
           };
-        });
-        
-        // Eliminar duplicados por ID (por si el backend devuelve duplicados)
-        const uniqueDrivers = drivers.filter((driver, index, self) => 
-          index === self.findIndex(d => d.id === driver.id)
-        );
-        drivers = uniqueDrivers;
-        
-        // Aplicar filtros en el frontend si el backend no los soporta
-        if (filters?.estado) {
-          drivers = drivers.filter(d => d.estado === filters.estado);
-        }
-        if (filters?.search) {
-          const search = filters.search.toLowerCase();
-          drivers = drivers.filter(d => 
-            d.nombre_completo?.toLowerCase().includes(search) ||
-            d.rut?.includes(search)
-          );
-        }
-        
-        return drivers;
-      }),
+        }),
+        total: response.total,
+        pagina: response.page,
+        por_pagina: response.per_page,
+        total_paginas: Math.ceil(response.total / response.per_page)
+      })),
       catchError((error) => {
         console.error('Error obteniendo choferes:', error);
         return throwError(() => error);
       })
     );
+  }
+
+  // GET /api/drivers/summary - Obtener KPIs de conductores
+  getKPIs(): Observable<DriverKPIs> {
+    return this.http.get<{
+      estados: {
+        activos: number;
+        inactivos: number;
+      };
+      operatividad: {
+        con_maquina_asignada: number;
+        sin_asignar: number;
+      };
+      documentos: {
+        licencias_con_alerta: number;
+      };
+    }>(`${this.apiUrl}/api/drivers/summary`).pipe(
+      map((response) => ({
+        activos: response.estados.activos,
+        inactivos: response.estados.inactivos,
+        con_maquina: response.operatividad.con_maquina_asignada,
+        licencias_por_vencer: response.documentos.licencias_con_alerta
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo KPIs de conductores:', error);
+        return of({
+          activos: 0,
+          inactivos: 0,
+          con_maquina: 0,
+          licencias_por_vencer: 0
+        });
+      })
+    );
+  }
+
+  // GET /api/drivers/license-alerts - Obtener alertas de licencia
+  getLicenseAlerts(filters?: {
+    estado?: 'todos' | 'activos' | 'inactivos';
+  }): Observable<{
+    vencidas: number;
+    por_vencer: number;
+    vigentes: number;
+  }> {
+    let params = new HttpParams();
+    if (filters?.estado && filters.estado !== 'todos') {
+      params = params.set('estado', filters.estado);
+    }
+    return this.http.get<{
+      vencidas: number;
+      por_vencer: number;
+      vigentes: number;
+    }>(`${this.apiUrl}/api/drivers/license-alerts`, { params });
   }
 
   // GET /api/drivers/active - Lista choferes activos para selects

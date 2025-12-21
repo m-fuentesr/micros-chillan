@@ -1,6 +1,7 @@
 ﻿from pydantic import BaseModel, EmailStr, Field
 from typing import Literal, Optional
 from datetime import date
+from app.core.pagination import PaginationParams
 
 
 class DriverBase(BaseModel):
@@ -93,4 +94,16 @@ class DriverCreate(DriverBase):
         None,
         description="ID de la máquina a asignar"
     )
+
+
+class DriverListFilters(PaginationParams):
+    estado: Optional[Literal["todos", "activos", "inactivos"]] = None
+    licencia_estado: Optional[Literal["vencidas", "por_vencer", "vigentes"]] = None
+    search: Optional[str] = None
+
+
+class DriverLicenseAlerts(BaseModel):
+    vencidas: int
+    por_vencer: int
+    vigentes: int
 

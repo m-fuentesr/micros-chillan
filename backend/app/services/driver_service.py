@@ -1,4 +1,5 @@
 ﻿from datetime import date, timedelta, datetime, timezone
+from typing import Optional
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
@@ -125,32 +126,69 @@ async def get_summary():
     }
 
 
-async def list_drivers(estado: str | None):
+async def list_drivers(filters):
     """
-    Lista principal de choferes para ADMIN.
+    Lista principal de choferes para ADMIN con paginación.
     Genera alertas automáticas si la licencia está por vencer.
     """
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
 
     # ---------------------------------------------------------
-    # 1) Obtener choferes + correo
+    # 1) Construir query base con filtros
     # ---------------------------------------------------------
-    query = (
+    base_query = (
         supabase.table("choferes")
-        .select("*, usuarios:usuarios!inner(correo)")
+        .select("*, usuarios:usuarios!inner(correo)", count="exact")
     )
 
-    if estado == "activos":
-        query = query.eq("estado", "activo")
-    elif estado == "inactivos":
-        query = query.eq("estado", "inactivo")
-    elif estado == "eliminados":
-        query = query.eq("estado", "eliminado")
+    # Aplicar filtro de estado
+    if filters.estado == "activos":
+        base_query = base_query.eq("estado", "activo")
+    elif filters.estado == "inactivos":
+        base_query = base_query.eq("estado", "inactivo")
+    elif filters.estado == "eliminados":
+        base_query = base_query.eq("estado", "eliminado")
 
-    res = query.execute()
-    if getattr(res, "error", None):
-        raise HTTPException(400, f"Error obteniendo choferes: {res.error}")
+    # Aplicar búsqueda si existe
+    if filters.search:
+        search_term = f"%{filters.search}%"
+        base_query = base_query.or_(f"primer_nombre.ilike.{search_term},apellido_paterno.ilike.{search_term},rut.ilike.{search_term}")
 
-    choferes = res.data
+    # Si hay filtro de licencia, necesitamos obtener TODOS los choferes primero
+    if filters.licencia_estado:
+        # Obtener todas las choferes sin paginar
+        choferes_raw = base_query.execute()
+        
+        if getattr(choferes_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+        
+        choferes = choferes_raw.data
+    else:
+        # Sin filtro de licencia, podemos paginar directamente
+        # Obtener total primero
+        count_res = base_query.execute()
+        if getattr(count_res, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {count_res.error}")
+        
+        total = count_res.count or 0
+        
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page - 1
+        
+        # Obtener choferes paginados
+        choferes_raw = (
+            base_query
+            .order("apellido_paterno")
+            .range(start, end)
+            .execute()
+        )
+
+        if getattr(choferes_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+
+        choferes = choferes_raw.data
 
     # ---------------------------------------------------------
     # 2) Obtener asignaciones activas
@@ -250,6 +288,18 @@ async def list_drivers(estado: str | None):
             dias = 0
             estado_lic = "unknown"
 
+        # Verificar si pasa el filtro de licencia
+        if filters.licencia_estado:
+            if filters.licencia_estado == "vencidas":
+                if estado_lic != "danger":
+                    continue
+            elif filters.licencia_estado == "por_vencer":
+                if estado_lic != "warning":
+                    continue
+            elif filters.licencia_estado == "vigentes":
+                if estado_lic != "ok":
+                    continue
+
         items.append({
             "id": cid,
             "nombre_completo": nombre,
@@ -265,7 +315,77 @@ async def list_drivers(estado: str | None):
             },
         })
 
-    return items
+    # Si hay filtro de licencia, calcular total después del filtro y aplicar paginación
+    if filters.licencia_estado:
+        total = len(items)
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page
+        items = items[start:end]
+    else:
+        # Sin filtro de licencia, el total ya se calculó antes
+        pass
+
+    from app.core.pagination import PaginatedResponse
+    return PaginatedResponse(
+        total=total,
+        page=filters.page,
+        per_page=filters.per_page,
+        items=items
+    )
+
+
+async def get_license_alerts(estado: Optional[str] = None):
+    """
+    Obtiene conteos de conductores por estado de licencia.
+    Opcionalmente filtra por estado del conductor.
+    Por defecto excluye conductores eliminados (solo activos e inactivos).
+    """
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
+
+    # 1) Obtener choferes (con filtro de estado si aplica)
+    base_query = supabase.table("choferes").select("id, fecha_venc_licencia")
+    
+    if estado == "activos":
+        base_query = base_query.eq("estado", "activo")
+    elif estado == "inactivos":
+        base_query = base_query.eq("estado", "inactivo")
+    else:
+        # Por defecto (todos o None), excluir eliminados (solo activos e inactivos)
+        # Esto coincide con el comportamiento de list_drivers cuando estado es "todos"
+        base_query = base_query.in_("estado", ["activo", "inactivo"])
+    
+    choferes_raw = base_query.execute()
+    if getattr(choferes_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+    
+    choferes = choferes_raw.data
+
+    # 2) Calcular estados de licencia
+    vencidas = 0
+    por_vencer = 0
+    vigentes = 0
+    
+    for c in choferes:
+        if not c.get("fecha_venc_licencia"):
+            continue
+            
+        fv = date.fromisoformat(c["fecha_venc_licencia"])
+        dias = (fv - hoy).days
+
+        if dias < 0:
+            vencidas += 1
+        elif dias <= 30:
+            por_vencer += 1
+        else:
+            vigentes += 1
+
+    return {
+        "vencidas": vencidas,
+        "por_vencer": por_vencer,
+        "vigentes": vigentes
+    }
 
 
 async def list_active_drivers():

@@ -4,10 +4,11 @@ import { MachineCard } from '../machine-card/machine-card';
 import { MachineTable } from '../machine-table/machine-table';
 import { DocumentStatus } from '../../models/machine.models';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-machine-list',
-  imports: [MachineCard, MachineTable, UiIconComponent],
+  imports: [MachineCard, MachineTable, UiIconComponent, LoadingSpinner],
   template: `
     <div class="card bg-base-100 shadow-xl">
       <div class="card-header p-4 sm:p-6 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-4 sm:pb-6 relative">
@@ -198,8 +199,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         
       </div>
       <div class="card-body">
-        <!-- En ≤1183px solo mostrar tarjetas (sin selector) -->
-        <div class="min-[1184px]:hidden">
+        @if (isLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <app-loading-spinner size="md" text="Cargando máquinas..." />
+          </div>
+        } @else {
+          <!-- En ≤1183px solo mostrar tarjetas (sin selector) -->
+          <div class="min-[1184px]:hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @for (machine of filteredMachines(); track machine.id; let i = $index) {
               @if (getDocStatus(machine.id)) {
@@ -263,6 +269,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
             </div>
           }
         </div>
+        }
       </div>
     </div>
   `,
@@ -295,6 +302,8 @@ export class MachineList {
   viewMode = input<ViewMode>('cards');
   statusFilter = input<StatusFilter>('all');
   documentFilter = input<DocumentFilter>('all');
+  isLoading = input<boolean>(false);
+  totalOperativas = input<number>(0); // Total de máquinas operativas sin filtros
   docStatusMap = input.required<Map<number, {
     revision_tecnica?: DocumentStatus;
     permiso_circulacion?: DocumentStatus;
@@ -306,54 +315,14 @@ export class MachineList {
   documentFilterChange = output<DocumentFilter>();
 
   filteredMachines = computed(() => {
-    const machines = this.machines();
-    const statusFilter = this.statusFilter();
-    const documentFilter = this.documentFilter();
-    const docStatusMap = this.docStatusMap();
-
-    let filtered = machines;
-
-    // Filtrar por estado operativo
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(m => m.estado_operativo === statusFilter);
-    }
-
-    // Filtrar por estado documental
-    if (documentFilter !== 'all') {
-      filtered = filtered.filter(machine => {
-        const docStatus = docStatusMap.get(machine.id);
-        if (!docStatus) return false;
-
-        const docs = [
-          docStatus.revision_tecnica,
-          docStatus.permiso_circulacion,
-          docStatus.seguro_obligatorio
-        ].filter(Boolean) as DocumentStatus[];
-
-        if (docs.length === 0) return false;
-
-        switch (documentFilter) {
-          case 'vencidos':
-            // Al menos un documento vencido
-            return docs.some(doc => doc.estado === 'error');
-          case 'por_vencer':
-            // Al menos un documento por vencer (y ninguno vencido)
-            return docs.some(doc => doc.estado === 'warning') && 
-                   !docs.some(doc => doc.estado === 'error');
-          case 'al_dia':
-            // Todos los documentos al día
-            return docs.every(doc => doc.estado === 'ok');
-          default:
-            return true;
-        }
-      });
-    }
-
-    return filtered;
+    // Los filtros ahora se aplican en el backend, así que solo retornamos las máquinas recibidas
+    // El backend ya aplica los filtros de estado operativo y documento_estado
+    return this.machines();
   });
 
   operativasCount = computed(() => {
-    return this.machines().filter(m => m.estado_operativo === 'Operativa').length;
+    // Usar el total de operativas sin filtros (desde KPIs)
+    return this.totalOperativas();
   });
 
   getDocStatus(machineId: number) {

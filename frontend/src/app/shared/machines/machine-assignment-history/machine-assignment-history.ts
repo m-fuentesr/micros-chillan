@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, input, output, signal, computed } f
 import { CommonModule } from '@angular/common';
 import { MachineAssignment } from '../../models/machine-detail.models';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-machine-assignment-history',
-  imports: [CommonModule, UiIconComponent],
+  imports: [CommonModule, UiIconComponent, LoadingSpinner],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
       <!-- Header -->
@@ -24,7 +25,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           <div class="flex items-center gap-3 shrink-0">
             <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
               <span class="w-2 h-2 rounded-full bg-primary"></span>
-              {{ filteredAssignments().length }} {{ filteredAssignments().length === 1 ? 'asignación' : 'asignaciones' }}
+              {{ totalAssignments() }} {{ totalAssignments() === 1 ? 'asignación' : 'asignaciones' }}
             </span>
           </div>
         </div>
@@ -42,37 +43,37 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           <div class="flex flex-wrap gap-2">
             <button
               class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
-              [class.bg-primary]="activeFilter() === 'all'"
-              [class.text-primary-content]="activeFilter() === 'all'"
-              [class.text-base-content]="activeFilter() === 'all'"
-              [class.bg-base-200/60]="activeFilter() !== 'all'"
-              [class.text-base-content/70]="activeFilter() !== 'all'"
-              [class.hover:bg-base-200]="activeFilter() !== 'all'"
-              (click)="onFilterChange('all')"
+              [class.bg-primary]="activeFilter() === 'todas'"
+              [class.text-primary-content]="activeFilter() === 'todas'"
+              [class.text-base-content]="activeFilter() === 'todas'"
+              [class.bg-base-200/60]="activeFilter() !== 'todas'"
+              [class.text-base-content/70]="activeFilter() !== 'todas'"
+              [class.hover:bg-base-200]="activeFilter() !== 'todas'"
+              (click)="onFilterChange('todas')"
               type="button">
               Todas
             </button>
             <button
               class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
-              [class.bg-success]="activeFilter() === 'activa'"
-              [class.text-success-content]="activeFilter() === 'activa'"
-              [class.text-base-content]="activeFilter() === 'activa'"
-              [class.bg-base-200/60]="activeFilter() !== 'activa'"
-              [class.text-base-content/70]="activeFilter() !== 'activa'"
-              [class.hover:bg-base-200]="activeFilter() !== 'activa'"
-              (click)="onFilterChange('activa')"
+              [class.bg-success]="activeFilter() === 'actual'"
+              [class.text-success-content]="activeFilter() === 'actual'"
+              [class.text-base-content]="activeFilter() === 'actual'"
+              [class.bg-base-200/60]="activeFilter() !== 'actual'"
+              [class.text-base-content/70]="activeFilter() !== 'actual'"
+              [class.hover:bg-base-200]="activeFilter() !== 'actual'"
+              (click)="onFilterChange('actual')"
               type="button">
               Activas
             </button>
             <button
               class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
-              [class.bg-base-content/60]="activeFilter() === 'cerrada'"
-              [class.text-base-100]="activeFilter() === 'cerrada'"
-              [class.text-base-content]="activeFilter() === 'cerrada'"
-              [class.bg-base-200/60]="activeFilter() !== 'cerrada'"
-              [class.text-base-content/70]="activeFilter() !== 'cerrada'"
-              [class.hover:bg-base-200]="activeFilter() !== 'cerrada'"
-              (click)="onFilterChange('cerrada')"
+              [class.bg-base-content/60]="activeFilter() === 'cerradas'"
+              [class.text-base-100]="activeFilter() === 'cerradas'"
+              [class.text-base-content]="activeFilter() === 'cerradas'"
+              [class.bg-base-200/60]="activeFilter() !== 'cerradas'"
+              [class.text-base-content/70]="activeFilter() !== 'cerradas'"
+              [class.hover:bg-base-200]="activeFilter() !== 'cerradas'"
+              (click)="onFilterChange('cerradas')"
               type="button">
               Cerradas
             </button>
@@ -81,7 +82,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
-          @for (assignment of filteredAssignments(); track assignment.id; let i = $index) {
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando asignaciones..." />
+            </div>
+          } @else {
+          @for (assignment of assignments(); track assignment.id; let i = $index) {
             <div 
               class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
               [class.border-l-4]="assignment.estado === 'activa'"
@@ -189,10 +195,16 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               </div>
             </div>
           }
+          }
         </div>
 
         <!-- Vista Desktop: Tabla -->
         <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando asignaciones..." />
+            </div>
+          } @else {
           <table class="table w-full">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
@@ -204,7 +216,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               </tr>
             </thead>
             <tbody>
-              @for (assignment of filteredAssignments(); track assignment.id; let i = $index) {
+              @for (assignment of assignments(); track assignment.id; let i = $index) {
                 <tr 
                   class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                   [class.border-l-4]="assignment.estado === 'activa'"
@@ -310,7 +322,38 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               }
             </tbody>
           </table>
+          }
         </div>
+        
+        <!-- Paginación -->
+        @if (totalPages() > 0 && !isLoading()) {
+          <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+            <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalAssignments() }} asignaciones</span>
+            <div class="join">
+              <button 
+                (click)="goToPreviousPage()" 
+                [disabled]="currentPage() === 1 || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === 1 || isLoading()">
+                «
+              </button>
+              @for (page of pages(); track page) {
+                <button 
+                  (click)="goToPage(page)" 
+                  [disabled]="isLoading()" 
+                  [class.btn-active]="page === currentPage()" 
+                  class="join-item btn btn-sm px-4">{{ page }}</button>
+              }
+              <button 
+                (click)="goToNextPage()" 
+                [disabled]="currentPage() === totalPages() || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === totalPages() || isLoading()">
+                »
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -387,18 +430,61 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 })
 export class MachineAssignmentHistory {
   assignments = input.required<MachineAssignment[]>();
-  activeFilter = signal<'all' | 'activa' | 'cerrada'>('all');
+  totalAssignments = input<number>(0);
+  currentPage = input<number>(1);
+  totalPages = input<number>(0);
+  isLoading = input<boolean>(false);
+  activeFilter = input<'todas' | 'actual' | 'cerradas'>('todas');
+  
+  filterChange = output<'todas' | 'actual' | 'cerradas'>();
+  pageChange = output<number>();
 
-  filteredAssignments = computed(() => {
-    const filter = this.activeFilter();
-    if (filter === 'all') {
-      return this.assignments();
+  pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    
+    for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+      pages.push(i);
     }
-    return this.assignments().filter(a => a.estado === filter);
+    
+    return pages;
   });
+  
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 10;
+    return (page - 1) * pageSize + 1;
+  });
+  
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 10;
+    const total = this.totalAssignments();
+    return Math.min(page * pageSize, total);
+  });
+  
+  goToPreviousPage(): void {
+    if (this.currentPage() > 1) {
+      this.pageChange.emit(this.currentPage() - 1);
+    }
+  }
+  
+  goToNextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.pageChange.emit(this.currentPage() + 1);
+    }
+  }
+  
+  goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return;
+    }
+    this.pageChange.emit(page);
+  }
 
-  onFilterChange(filter: 'all' | 'activa' | 'cerrada'): void {
-    this.activeFilter.set(filter);
+  onFilterChange(filter: 'todas' | 'actual' | 'cerradas'): void {
+    this.filterChange.emit(filter);
   }
 
   getInitials(name: string): string {

@@ -45,13 +45,22 @@ export class MachineService {
       );
   }
 
-  // GET /api/machines - Listar máquinas
-  // El backend retorna: { id, numero_interno, marca, patente, estado_operativo, chofer_asignado, documentos }
-  // Transformamos a: { id, numero, marca, patente, estado_operativo, chofer_actual, documentos }
+  // GET /api/machines - Listar máquinas con paginación
+  // El backend retorna: { total, page, per_page, items: [...] }
+  // Transformamos a: { datos: Machine[], total, pagina, por_pagina, total_paginas }
   getMachines(filters?: {
     estado?: string;
     search?: string;
-  }): Observable<Machine[]> {
+    documento_estado?: 'vencidos' | 'por_vencer' | 'al_dia';
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    datos: Machine[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.estado) {
       params = params.set('estado', filters.estado);
@@ -59,6 +68,17 @@ export class MachineService {
     if (filters?.search) {
       params = params.set('search', filters.search);
     }
+    
+    if (filters?.documento_estado) {
+      params = params.set('documento_estado', filters.documento_estado);
+    }
+    
+    // Paginación por defecto: 12 registros por página
+    const pagina = filters?.page || 1;
+    const porPagina = filters?.per_page || 12;
+    
+    params = params.set('page', pagina.toString());
+    params = params.set('per_page', porPagina.toString());
     
     // Tipo de respuesta del backend
     interface BackendMachine {
@@ -79,9 +99,16 @@ export class MachineService {
       };
     }
 
-    return this.http.get<BackendMachine[]>(`${this.apiUrl}/api/machines`, { params }).pipe(
-      map((machines) => 
-        machines.map((m): Machine => {
+    interface BackendPaginatedResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendMachine[];
+    }
+
+    return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/machines`, { params }).pipe(
+      map((response) => ({
+        datos: response.items.map((m): Machine => {
           // Transformar estado_operativo
           const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
             'operativa': 'Operativa',
@@ -111,8 +138,12 @@ export class MachineService {
             chofer_actual: m.chofer_asignado,
             documentos: documentos
           };
-        })
-      ),
+        }),
+        total: response.total,
+        pagina: response.page,
+        por_pagina: response.per_page,
+        total_paginas: Math.ceil(response.total / response.per_page)
+      })),
       catchError((error) => {
         console.error('Error obteniendo máquinas:', error);
         return throwError(() => error);
@@ -399,10 +430,28 @@ export class MachineService {
   }
 
   // GET /api/machines/{id}/assignments - Obtener historial de asignaciones de una máquina
-  getMachineAssignments(machineId: number, filtro?: 'todas' | 'actual' | 'cerradas'): Observable<any[]> {
+  getMachineAssignments(
+    machineId: number, 
+    filters?: {
+      filtro?: 'todas' | 'actual' | 'cerradas';
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{
+    total: number;
+    page: number;
+    per_page: number;
+    items: any[];
+  }> {
     let params = new HttpParams();
-    if (filtro && filtro !== 'todas') {
-      params = params.set('filtro', filtro);
+    if (filters?.filtro && filters.filtro !== 'todas') {
+      params = params.set('filtro', filters.filtro);
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
     }
 
     // Tipo de respuesta del backend
@@ -416,9 +465,19 @@ export class MachineService {
       dias_asignado: number;
     }
 
-    return this.http.get<BackendAssignment[]>(`${this.apiUrl}/api/machines/${machineId}/assignments`, { params }).pipe(
-      map((assignments) => 
-        assignments.map((a) => ({
+    interface BackendResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendAssignment[];
+    }
+
+    return this.http.get<BackendResponse>(`${this.apiUrl}/api/machines/${machineId}/assignments`, { params }).pipe(
+      map((response) => ({
+        total: response.total,
+        page: response.page,
+        per_page: response.per_page,
+        items: response.items.map((a) => ({
           id: a.id,
           chofer: {
             id: a.chofer_id,
@@ -429,10 +488,15 @@ export class MachineService {
           duracion_dias: a.dias_asignado,
           estado: a.estado.toLowerCase() as 'activa' | 'cerrada'
         }))
-      ),
+      })),
       catchError((error) => {
         console.error('Error obteniendo asignaciones:', error);
-        return of([]);
+        return of({
+          total: 0,
+          page: 1,
+          per_page: 10,
+          items: []
+        });
       })
     );
   }

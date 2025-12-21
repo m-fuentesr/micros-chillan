@@ -3,6 +3,7 @@ import { Driver, DriverViewMode, DriverStatusFilter, LicenseFilter } from '../..
 import { calculateLicenseStatus } from '../../utils/license.utils';
 import { DriverCard } from '../driver-card/driver-card';
 import { DriverTable } from '../driver-table/driver-table';
+import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 
 interface LicenseAlerts {
   vencidas: number;
@@ -12,7 +13,7 @@ interface LicenseAlerts {
 
 @Component({
   selector: 'app-driver-list',
-  imports: [DriverCard, DriverTable],
+  imports: [DriverCard, DriverTable, LoadingSpinner],
   template: `
     <div class="card bg-base-100 shadow-xl">
       <div class="card-header p-4 sm:p-6 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-4 sm:pb-6 relative">
@@ -191,8 +192,13 @@ interface LicenseAlerts {
         
       </div>
       <div class="card-body">
-        <!-- En ≤1300px solo mostrar tarjetas (sin selector) -->
-        <div class="max-[1300px]:block min-[1301px]:hidden">
+        @if (isLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <app-loading-spinner size="md" text="Cargando conductores..." />
+          </div>
+        } @else {
+          <!-- En ≤1300px solo mostrar tarjetas (sin selector) -->
+          <div class="max-[1300px]:block min-[1301px]:hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             @for (driver of filteredDrivers(); track driver.id; let i = $index) {
               <div [class]="getCardAnimationClass(i)">
@@ -251,6 +257,7 @@ interface LicenseAlerts {
             </div>
           }
         </div>
+        }
       </div>
     </div>
   `,
@@ -284,46 +291,22 @@ export class DriverList {
   statusFilter = input<DriverStatusFilter>('all');
   licenseFilter = input<LicenseFilter>('all');
   licenseAlerts = input.required<LicenseAlerts>();
+  isLoading = input<boolean>(false);
+  totalActivos = input<number>(0); // Total de conductores activos sin filtros
   
   viewModeChange = output<DriverViewMode>();
   filterChange = output<DriverStatusFilter>();
   licenseFilterChange = output<LicenseFilter>();
 
   filteredDrivers = computed(() => {
-    const drivers = this.drivers();
-    const statusFilter = this.statusFilter();
-    const licenseFilter = this.licenseFilter();
-
-    let filtered = drivers;
-
-    // Filtrar por estado
-    if (statusFilter !== 'all') {
-      filtered = filtered.filter(d => d.estado === statusFilter);
-    }
-
-    // Filtrar por estado de licencias
-    if (licenseFilter !== 'all') {
-      filtered = filtered.filter(driver => {
-        const licenseStatus = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
-        
-        switch (licenseFilter) {
-          case 'vencidas':
-            return licenseStatus.estado === 'error';
-          case 'por_vencer':
-            return licenseStatus.estado === 'warning';
-          case 'al_dia':
-            return licenseStatus.estado === 'ok';
-          default:
-            return true;
-        }
-      });
-    }
-
-    return filtered;
+    // Los filtros ahora se aplican en el backend, así que solo retornamos los conductores recibidos
+    // El backend ya aplica los filtros de estado y licencia_estado
+    return this.drivers();
   });
 
   activosCount = computed(() => {
-    return this.drivers().filter(d => d.estado === 'activo').length;
+    // Usar el total de activos sin filtros (desde KPIs)
+    return this.totalActivos();
   });
 
   alerts = computed(() => this.licenseAlerts());

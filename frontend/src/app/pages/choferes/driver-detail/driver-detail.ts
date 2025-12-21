@@ -8,6 +8,7 @@ import { DailyRecordService } from '../../../shared/services/daily-record.servic
 import { AccountingService } from '../../../shared/services/accounting.service';
 import type { DailyRecord, DailyRecordStatus } from '../../../shared/models/daily-record.models';
 import { Driver, DriverDailyRecord, DriverLiquidation } from '../../../shared/models/driver.models';
+import type { Machine } from '../../../shared/models/machine.models';
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
@@ -1468,6 +1469,7 @@ export class DriverDetail implements OnInit {
   // Cargar máquinas para el select
   maquinasData = toSignal(
     this.machineService.getMachines().pipe(
+      map(response => response.datos),
       catchError(() => of([]))
     ),
     { initialValue: [] }
@@ -1475,7 +1477,7 @@ export class DriverDetail implements OnInit {
 
   maquinas = computed(() => {
     const machines = this.maquinasData() ?? [];
-    return machines.map(m => ({
+    return machines.map((m: Machine) => ({
       id: m.id,
       identificador: `MÁQUINA ${m.numero || m.id}`
     }));
@@ -1491,8 +1493,8 @@ export class DriverDetail implements OnInit {
     }
     
     // Separar la máquina asignada del resto
-    const assignedMaquina = maquinas.find(m => m.id === currentMaquinaId);
-    const otherMaquinas = maquinas.filter(m => m.id !== currentMaquinaId);
+    const assignedMaquina = maquinas.find((m: { id: number }) => m.id === currentMaquinaId);
+    const otherMaquinas = maquinas.filter((m: { id: number }) => m.id !== currentMaquinaId);
     
     // Retornar la asignada primero, luego las demás
     return assignedMaquina ? [assignedMaquina, ...otherMaquinas] : maquinas;

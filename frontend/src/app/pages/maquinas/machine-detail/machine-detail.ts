@@ -491,7 +491,12 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                 [records]="dailyRecords()"
                 [choferes]="choferes()"
                 [filters]="recordFilters()"
+                [totalRecords]="dailyRecordsTotal()"
+                [currentPage]="dailyRecordsCurrentPage()"
+                [totalPages]="dailyRecordsTotalPages()"
+                [isLoading]="dailyRecordsLoading()"
                 (filterChange)="onRecordFilterChange($event)"
+                (pageChange)="onDailyRecordsPageChange($event)"
                 (viewDetail)="onViewRecordDetail($event)">
               </app-machine-daily-records>
             </div>
@@ -501,7 +506,14 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
           @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
             <div class="animate-tab-enter">
               <app-machine-assignment-history
-                [assignments]="assignments()">
+                [assignments]="assignments()"
+                [totalAssignments]="assignmentsTotal()"
+                [currentPage]="assignmentsCurrentPage()"
+                [totalPages]="assignmentsTotalPages()"
+                [isLoading]="assignmentsLoading()"
+                [activeFilter]="assignmentsFilter()"
+                (filterChange)="onAssignmentFilterChange($event)"
+                (pageChange)="onAssignmentPageChange($event)">
               </app-machine-assignment-history>
             </div>
           }
@@ -973,7 +985,8 @@ export class MachineDetail implements OnInit {
   
   // Cargar choferes completos para otros componentes (MachineDailyRecords)
   choferesData = toSignal(
-    this.driverService.getDrivers({ estado: 'activo' }).pipe(
+    this.driverService.getDrivers({ estado: 'activos' }).pipe(
+      map(response => response.datos),
       catchError(() => of([]))
     ),
     { initialValue: [] }
@@ -983,9 +996,19 @@ export class MachineDetail implements OnInit {
 
   // Registros diarios
   dailyRecords = signal<MachineDailyRecord[]>([]);
+  dailyRecordsTotal = signal<number>(0);
+  dailyRecordsCurrentPage = signal<number>(1);
+  dailyRecordsTotalPages = signal<number>(0);
+  dailyRecordsLoading = signal<boolean>(false);
+  itemsPerPage = 10;
 
   // Asignaciones
   assignments = signal<MachineAssignment[]>([]);
+  assignmentsTotal = signal<number>(0);
+  assignmentsCurrentPage = signal<number>(1);
+  assignmentsTotalPages = signal<number>(0);
+  assignmentsLoading = signal<boolean>(false);
+  assignmentsFilter = signal<'todas' | 'actual' | 'cerradas'>('todas');
   
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general'])); // 'general' siempre se carga
@@ -1199,7 +1222,14 @@ export class MachineDetail implements OnInit {
 
   onRecordFilterChange(filters: MachineDailyRecordFilters): void {
     this.recordFilters.set(filters);
-    // Aquí podrías recargar los registros con los nuevos filtros
+    // Resetear a página 1 cuando cambian los filtros
+    this.dailyRecordsCurrentPage.set(1);
+    // Recargar los registros con los nuevos filtros
+    this.loadDailyRecords();
+  }
+  
+  onDailyRecordsPageChange(page: number): void {
+    this.dailyRecordsCurrentPage.set(page);
     this.loadDailyRecords();
   }
 
@@ -1213,6 +1243,9 @@ export class MachineDetail implements OnInit {
     if (!machine) return;
 
     const filters = this.recordFilters();
+    const currentPage = this.dailyRecordsCurrentPage();
+    
+    this.dailyRecordsLoading.set(true);
     
     this.dailyRecordService.getDailyRecords({
       maquina_id: machine.id,
@@ -1220,8 +1253,8 @@ export class MachineDetail implements OnInit {
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
-      pagina: 1,
-      por_pagina: 100 // Obtener todos los registros de la máquina
+      pagina: currentPage,
+      por_pagina: this.itemsPerPage
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
@@ -1234,22 +1267,21 @@ export class MachineDetail implements OnInit {
           chofer_id: record.chofer_id,
           recaudado: record.recaudado || 0,
           diesel: record.costo_diesel || 0,
-          observaciones: record.observaciones || null, // null si no hay, string si hay (aunque sea vacío)
+          observaciones: record.observaciones || null,
           estado: record.estado
         }));
 
-        // Ordenar según filtro (aunque el backend ya lo ordena, por si acaso)
-        if (filters.orden === 'mas_antiguo') {
-          machineRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-        } else {
-          machineRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-        }
-
         this.dailyRecords.set(machineRecords);
+        this.dailyRecordsTotal.set(response.total || 0);
+        this.dailyRecordsTotalPages.set(response.total_paginas || 0);
+        this.dailyRecordsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar registros diarios:', error);
         this.dailyRecords.set([]);
+        this.dailyRecordsTotal.set(0);
+        this.dailyRecordsTotalPages.set(0);
+        this.dailyRecordsLoading.set(false);
       }
     });
   }
@@ -1258,15 +1290,40 @@ export class MachineDetail implements OnInit {
     const machineId = this.machineId();
     if (!machineId) return;
 
-    this.machineService.getMachineAssignments(machineId).subscribe({
-      next: (assignments) => {
-        this.assignments.set(assignments);
+    this.assignmentsLoading.set(true);
+    const currentPage = this.assignmentsCurrentPage();
+    const filter = this.assignmentsFilter();
+
+    this.machineService.getMachineAssignments(machineId, {
+      filtro: filter,
+      page: currentPage,
+      per_page: 10
+    }).subscribe({
+      next: (response) => {
+        this.assignments.set(response.items);
+        this.assignmentsTotal.set(response.total);
+        this.assignmentsTotalPages.set(Math.ceil(response.total / response.per_page));
+        this.assignmentsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar asignaciones:', error);
         this.assignments.set([]);
+        this.assignmentsTotal.set(0);
+        this.assignmentsTotalPages.set(0);
+        this.assignmentsLoading.set(false);
       }
     });
+  }
+
+  onAssignmentFilterChange(filter: 'todas' | 'actual' | 'cerradas'): void {
+    this.assignmentsFilter.set(filter);
+    this.assignmentsCurrentPage.set(1);
+    this.loadAssignments();
+  }
+
+  onAssignmentPageChange(page: number): void {
+    this.assignmentsCurrentPage.set(page);
+    this.loadAssignments();
   }
 
   private loadMaintenanceRecords(): void {
