@@ -46,7 +46,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
         <!-- Formulario Principal (3 columnas en desktop) -->
         <div class="lg:col-span-3 space-y-0">
-          <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
+          <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl overflow-hidden">
             <div class="card-body p-6 sm:p-8">
               <app-driver-form
                 [maquinas]="maquinas()"

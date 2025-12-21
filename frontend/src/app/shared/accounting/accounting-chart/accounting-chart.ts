@@ -19,33 +19,114 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
           </div>
         </div>
         
-        <div class="w-full relative h-[400px]" appLazyChart #lazyChart="lazyChart">
-          @if (lazyChart.isVisible()) {
-            @if (chartData().labels && chartData().labels!.length > 0) {
-              <canvas baseChart
-                class="w-full h-full"
-                [data]="chartData()"
-                [options]="chartOptions"
-                [type]="chartType">
-              </canvas>
-            }
-          } @else {
-            <div class="flex items-center justify-center h-full text-base-content/40">
-              <div class="text-left pl-4 border-l-4 border-l-primary">
-                <div class="loading loading-spinner loading-md mb-2"></div>
-                <p class="text-sm">Cargando gráfico...</p>
+        @if (isLoading() || dailyData().length === 0) {
+          <!-- Skeleton completo del gráfico -->
+          <div class="w-full relative h-[400px] animate-fade-in">
+            <div class="w-full h-full relative bg-base-50 rounded-xl border border-base-200/50 overflow-hidden p-6">
+              <!-- Skeleton del área del gráfico con gradiente -->
+              <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
+              <div class="relative h-full w-full rounded-xl border border-dashed border-base-200/80 overflow-hidden bg-white">
+                <div class="absolute inset-0 flex flex-col gap-3 p-6">
+                  <!-- Eje Y labels (izquierda) -->
+                  <div class="absolute left-0 top-6 bottom-6 w-12 flex flex-col justify-between">
+                    @for (i of [1,2,3,4,5]; track i) {
+                      <div class="h-2.5 w-12 skeleton-shimmer rounded"></div>
+                    }
+                  </div>
+                  
+                  <!-- Eje X labels (abajo) -->
+                  <div class="absolute bottom-0 left-12 right-0 h-6 flex items-center justify-between px-6">
+                    @for (i of [1,2,3,4,5,6,7]; track i) {
+                      <div class="h-2 w-10 skeleton-shimmer rounded"></div>
+                    }
+                  </div>
+                  
+                  <!-- Área principal del gráfico -->
+                  <div class="flex-1 rounded-xl skeleton-shimmer mt-8 mb-8 ml-12 mr-0"></div>
+                </div>
+              </div>
+              
+              <!-- Skeleton de la leyenda (fuera del área del gráfico, centrada) -->
+              <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-6">
+                @for (i of [1,2,3]; track i) {
+                  <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 skeleton-shimmer rounded-full"></div>
+                    <div class="h-3 w-20 skeleton-shimmer rounded"></div>
+                  </div>
+                }
               </div>
             </div>
-          }
-        </div>
+          </div>
+        } @else {
+          <div class="w-full relative h-[400px]" appLazyChart #lazyChart="lazyChart">
+            @if (lazyChart.isVisible()) {
+              @if (chartData().labels && chartData().labels!.length > 0) {
+                <canvas baseChart
+                  class="w-full h-full"
+                  [data]="chartData()"
+                  [options]="chartOptions"
+                  [type]="chartType">
+                </canvas>
+              }
+            } @else {
+              <div class="flex items-center justify-center h-full text-base-content/40">
+                <div class="text-left pl-4 border-l-4 border-l-primary">
+                  <div class="loading loading-spinner loading-md mb-2"></div>
+                  <p class="text-sm">Cargando gráfico...</p>
+                </div>
+              </div>
+            }
+          </div>
+        }
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    @keyframes shimmer {
+      0% {
+        background-position: -1000px 0;
+      }
+      100% {
+        background-position: 1000px 0;
+      }
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .skeleton-shimmer {
+      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
+      background-size: 2000px 100%;
+      animation: shimmer 2s infinite;
+    }
+    
+    .animate-fade-in {
+      animation: fadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer {
+        animation: none;
+      }
+      
+      .animate-fade-in {
+        animation: none;
+      }
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AccountingChart implements OnInit {
   dailyData = input.required<DailyProfitabilityData[]>();
+  isLoading = input<boolean>(false);
 
   chartType = 'line' as const;
 

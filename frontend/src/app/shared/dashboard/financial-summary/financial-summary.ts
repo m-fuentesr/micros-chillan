@@ -13,7 +13,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   template: `
     <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
       <div class="px-6 pt-5 pb-3 mb-6 flex justify-between items-end border-b border-zinc-100 bg-zinc-50/60">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-zinc-500">Rendimiento Financiero (Periodo Actual)</h2>
+        <h2 class="text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
         <div class="flex gap-2 text-[10px] font-bold uppercase tracking-wider">
           <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
             <div class="w-2 h-2 rounded-full bg-emerald-500"></div>

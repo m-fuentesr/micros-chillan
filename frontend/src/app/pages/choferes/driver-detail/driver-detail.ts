@@ -26,7 +26,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
     <div class="space-y-6 lg:space-y-8">
       @if (driver()) {
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
         <div class="relative">
@@ -127,7 +127,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
             </div>
 
         <!-- Sección de Tabs (separada del card principal) -->
-        <div class="bg-base-50/50 rounded-2xl p-4 border border-base-200/50 animate-fade-in-up" [style.animation-delay]="'200ms'">
+        <div class="bg-base-50/50 rounded-3xl p-4 border border-base-200/50 animate-fade-in-up" [style.animation-delay]="'200ms'">
           <div class="tabs tabs-boxed bg-base-100/50 p-1 gap-1">
                 <button
               class="tab px-6 h-10 font-medium transition-all rounded-lg"
@@ -170,7 +170,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 animate-tab-enter">
             
             <!-- Información Personal -->
-              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
+              <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
               <div class="card-body p-6">
                 <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -241,7 +241,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   </div>
 
                   <div class="grid grid-cols-2 gap-4">
-                    <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                       <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
                         RUT <span class="text-error">*</span>
                       </span>
@@ -258,7 +258,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         </div>
                       }
                     </div>
-                    <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                       <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
                         Estado
                       </span>
@@ -523,9 +523,9 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
           <!-- Registros diarios -->
         @if (activeTab() === 'records' && loadedTabs().has('records')) {
             <div class="animate-tab-enter">
-              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
-                <!-- Header Premium con gradiente sutil -->
-                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+                <!-- Header -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex-1 min-w-0">
                       <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -777,9 +777,9 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
         <!-- Liquidaciones -->
         @if (activeTab() === 'liquidations' && loadedTabs().has('liquidations')) {
             <div class="animate-tab-enter">
-              <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
-                <!-- Header Premium con gradiente sutil -->
-                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+              <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+                <!-- Header -->
+                <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <div class="flex-1 min-w-0">
                       <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -1057,11 +1057,11 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="h-6 w-full skeleton-shimmer rounded"></div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                         <div class="h-3 w-16 skeleton-shimmer rounded mb-2"></div>
                         <div class="h-5 w-full skeleton-shimmer rounded"></div>
                       </div>
-                      <div class="bg-base-200/50 p-3 rounded-xl border border-base-200">
+                      <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
                         <div class="h-3 w-16 skeleton-shimmer rounded mb-2"></div>
                         <div class="h-5 w-full skeleton-shimmer rounded"></div>
                       </div>

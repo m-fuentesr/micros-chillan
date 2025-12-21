@@ -36,9 +36,9 @@ import { CommonModule } from '@angular/common';
         }
         @case ('dashboard-kpi') {
           <div class="group relative flex flex-col gap-3 md:gap-4 overflow-hidden rounded-3xl border border-base-200/80 bg-base-100 p-4 md:p-5 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.08)] min-h-[150px] md:min-h-[170px]">
-            <div class="absolute right-0 top-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-primary/5 blur-2xl"></div>
+            <div class="absolute right-0 top-0 -mt-6 -mr-6 h-24 w-24 rounded-full bg-base-200/30 blur-2xl"></div>
             <div class="relative flex items-center gap-3">
-              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-base-200/50 ring-1 ring-base-200/60">
                 <div class="w-5 h-5 skeleton-shimmer rounded-lg"></div>
               </div>
               <div class="space-y-1">
@@ -53,23 +53,64 @@ import { CommonModule } from '@angular/common';
           </div>
         }
         @case ('dashboard-chart') {
-          <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl">
-            <div class="px-6 pt-5 pb-3 mb-4 flex justify-between items-center border-b border-zinc-100 bg-zinc-50/60">
-              <div class="space-y-2">
-                <div class="h-3 w-44 skeleton-shimmer rounded"></div>
-                <div class="h-2.5 w-28 skeleton-shimmer rounded-full"></div>
-              </div>
-              <div class="flex gap-2">
-                <div class="h-3 w-16 skeleton-shimmer rounded-full"></div>
-                <div class="h-3 w-16 skeleton-shimmer rounded-full"></div>
+          <div class="card bg-white shadow-xl border border-zinc-200 flex flex-col overflow-hidden rounded-3xl h-[424px]">
+            <div class="px-6 pt-5 pb-3 mb-6 flex justify-between items-end border-b border-zinc-100 bg-zinc-50/60">
+              <div class="h-3 w-56 skeleton-shimmer rounded"></div>
+              <div class="flex gap-2 text-[10px]">
+                <div class="h-6 w-24 skeleton-shimmer rounded-lg"></div>
+                <div class="h-6 w-24 skeleton-shimmer rounded-lg"></div>
               </div>
             </div>
-            <div class="relative flex-1 p-6">
+            <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative">
               <div class="absolute inset-0 bg-gradient-to-b from-zinc-50/60 to-white pointer-events-none"></div>
-              <div class="relative h-full w-full rounded-2xl border border-dashed border-zinc-200/80 overflow-hidden bg-white">
-                <div class="absolute inset-0 flex flex-col gap-3 p-6">
-                  <div class="h-4 w-1/3 skeleton-shimmer rounded self-start"></div>
-                  <div class="flex-1 rounded-2xl skeleton-shimmer"></div>
+              <div class="relative h-full w-full overflow-hidden">
+                <!-- Grid de líneas horizontales para simular el fondo del gráfico -->
+                <div class="absolute inset-0 flex flex-col justify-between py-6 px-6">
+                  @for (i of [1,2,3,4,5]; track i) {
+                    <div class="w-full h-px bg-zinc-100/50"></div>
+                  }
+                </div>
+                
+                <!-- Contenedor principal del gráfico -->
+                <div class="relative h-full w-full flex flex-col">
+                  <!-- Eje Y labels (izquierda) - valores monetarios -->
+                  <div class="absolute left-0 top-6 bottom-8 w-16 flex flex-col justify-between items-end pr-2">
+                    @for (i of [1,2,3,4,5]; track i) {
+                      <div class="h-2.5 w-14 skeleton-shimmer rounded text-right"></div>
+                    }
+                  </div>
+                  
+                  <!-- Área principal del gráfico con barras verticales apiladas -->
+                  <div class="flex-1 flex items-end justify-center gap-4 mt-6 mb-8 ml-16 mr-4 px-4">
+                    @for (i of [1,2,3,4,5]; track i) {
+                      <div class="flex-1 flex flex-col items-center justify-end max-w-[50px] min-w-[40px]">
+                        <!-- Contenedor de barras apiladas verticalmente - altura total variable del grupo -->
+                        <div class="w-full flex flex-col items-center justify-end" [style.height.%]="[55, 70, 45, 85, 65][i-1]">
+                          <!-- Barra de Ingreso Bruto (púrpura, más ancha, abajo - base de la pila vertical) -->
+                          <div 
+                            class="w-full rounded-lg relative overflow-hidden flex-shrink-0" 
+                            [style.height.%]="[70, 65, 75, 60, 68][i-1]"
+                            [style.background]="'linear-gradient(180deg, rgba(124, 58, 237, 0.20) 0%, rgba(124, 58, 237, 0.30) 100%)'">
+                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                          </div>
+                          <!-- Barra de Ganancia Neta (verde, más delgada, encima - apilada verticalmente sobre la púrpura) -->
+                          <div 
+                            class="w-4/5 rounded-t-lg relative overflow-hidden flex-shrink-0" 
+                            [style.height.%]="[30, 35, 25, 40, 32][i-1]"
+                            [style.background]="'linear-gradient(180deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.35) 100%)'">
+                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                          </div>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                  
+                  <!-- Eje X labels (abajo) - IDs de máquinas -->
+                  <div class="absolute bottom-0 left-16 right-4 h-6 flex items-center justify-between px-4">
+                    @for (i of [1,2,3,4,5]; track i) {
+                      <div class="h-2.5 w-6 skeleton-shimmer rounded text-center"></div>
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -82,7 +123,7 @@ import { CommonModule } from '@angular/common';
               <div class="h-2.5 w-20 skeleton-shimmer rounded-full"></div>
             </div>
             <div class="flex flex-col flex-1 px-4 pb-5 gap-2">
-              <div class="flex items-center justify-between rounded-2xl bg-base-200/60 border border-base-200/80 px-4 py-3">
+              <div class="flex items-center justify-between rounded-3xl bg-base-200/60 border border-base-200/80 px-4 py-3">
                 <div class="flex items-center gap-2">
                   <div class="h-2 w-2 rounded-full bg-base-content/40 skeleton-shimmer"></div>
                   <div class="h-3 w-16 skeleton-shimmer rounded"></div>
@@ -90,11 +131,11 @@ import { CommonModule } from '@angular/common';
                 <div class="h-5 w-10 skeleton-shimmer rounded"></div>
               </div>
               <div class="flex gap-2 h-16">
-                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-base-200/40 border border-base-200/60 space-y-2">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl bg-base-200/40 border border-base-200/60 space-y-2">
                   <div class="h-5 w-6 skeleton-shimmer rounded"></div>
                   <div class="h-2.5 w-16 skeleton-shimmer rounded"></div>
                 </div>
-                <div class="flex-1 flex flex-col items-center justify-center rounded-2xl bg-base-200/40 border border-base-200/60 space-y-2">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl bg-base-200/40 border border-base-200/60 space-y-2">
                   <div class="h-5 w-6 skeleton-shimmer rounded"></div>
                   <div class="h-2.5 w-10 skeleton-shimmer rounded"></div>
                 </div>
@@ -103,8 +144,8 @@ import { CommonModule } from '@angular/common';
           </div>
         }
         @case ('dashboard-table') {
-          <div class="card bg-base-100 shadow-xl border border-base-200/70 rounded-3xl overflow-hidden">
-            <div class="card-header p-4 sm:p-6 lg:p-7 border-b border-base-200/70 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+          <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
+            <div class="card-header p-4 sm:p-6 lg:p-7 border-b border-base-200/70">
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div class="flex items-start gap-3">
                   <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
@@ -145,7 +186,7 @@ import { CommonModule } from '@angular/common';
               </div>
               <div class="block xl:hidden space-y-3">
                 @for (row of rows(); track $index) {
-                  <div class="card bg-base-100 border border-base-200/70 rounded-2xl">
+                  <div class="card bg-base-100 border border-base-200/70 rounded-3xl">
                     <div class="card-body p-4 space-y-3">
                       <div class="flex items-start gap-3">
                         <div class="rounded-lg w-12 h-12 skeleton-shimmer"></div>
@@ -250,7 +291,7 @@ import { CommonModule } from '@angular/common';
                 <div class="absolute left-0 top-0 w-10 h-10 bg-white rounded-full border-[3px] border-slate-50 shadow-sm z-10 flex items-center justify-center ring-1 ring-black/5">
                   <div class="w-2.5 h-2.5 skeleton-shimmer rounded-full"></div>
                 </div>
-                <div class="bg-white p-4 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100">
+                <div class="bg-white p-4 rounded-3xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.08)] border border-slate-100">
                   <div class="flex justify-between items-start mb-1">
                     <div class="h-4 w-32 skeleton-shimmer rounded"></div>
                     <div class="h-3 w-16 skeleton-shimmer rounded"></div>
@@ -262,7 +303,7 @@ import { CommonModule } from '@angular/common';
           </div>
         }
         @case ('worker-stats') {
-          <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
+          <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-6 flex justify-between items-center divide-x divide-slate-100">
             <div class="flex-1 text-left px-2 pl-4 border-l-4 border-l-slate-200">
               <div class="h-3 w-20 skeleton-shimmer rounded mb-1"></div>
               <div class="h-8 w-24 skeleton-shimmer rounded"></div>
@@ -276,7 +317,7 @@ import { CommonModule } from '@angular/common';
         @case ('worker-form') {
           <div class="space-y-6">
             <!-- Select de máquinas -->
-            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1">
+            <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-1">
               <div class="flex items-center p-4 gap-4">
                 <div class="w-12 h-12 skeleton-shimmer rounded-xl"></div>
                 <div class="flex-1">
@@ -286,13 +327,13 @@ import { CommonModule } from '@angular/common';
               </div>
             </div>
             <!-- Campo de recaudado -->
-            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-slate-200">
+            <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-slate-200">
               <div class="h-3 w-32 skeleton-shimmer rounded mb-2"></div>
               <div class="h-12 w-3/4 skeleton-shimmer rounded"></div>
               <div class="h-3 w-48 skeleton-shimmer rounded mt-2"></div>
             </div>
             <!-- Campos de combustible -->
-            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+            <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-5">
               <div class="h-4 w-40 skeleton-shimmer rounded mb-4"></div>
               <div class="grid grid-cols-2 gap-4">
                 <div class="space-y-2">
@@ -306,12 +347,12 @@ import { CommonModule } from '@angular/common';
               </div>
             </div>
             <!-- Área de imagen -->
-            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+            <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-5">
               <div class="h-3 w-32 skeleton-shimmer rounded mb-3"></div>
               <div class="w-full aspect-[3/1] skeleton-shimmer rounded-xl"></div>
             </div>
             <!-- Textarea -->
-            <div class="bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5">
+            <div class="bg-white rounded-3xl shadow-xl shadow-blue-900/5 p-5">
               <div class="h-20 w-full skeleton-shimmer rounded-xl"></div>
             </div>
           </div>

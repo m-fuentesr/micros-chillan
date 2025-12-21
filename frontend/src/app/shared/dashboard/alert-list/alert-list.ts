@@ -54,7 +54,7 @@ import { Alert } from '../../models/dashboard.models';
 
       <div class="flex-1 overflow-y-auto custom-scrollbar scrollbar-hide bg-white p-2 space-y-1 min-h-0">
         @if (activeAlerts().length === 0) {
-          <div class="flex flex-col gap-4 p-6 animate-fade-in rounded-2xl border border-zinc-100 bg-white/80 backdrop-blur-md text-left shadow-[0_20px_50px_-28px_rgba(0,0,0,0.25)]">
+          <div class="flex flex-col gap-4 p-6 animate-fade-in rounded-3xl border border-zinc-100 bg-white/80 backdrop-blur-md text-left shadow-[0_20px_50px_-28px_rgba(0,0,0,0.25)]">
             <div class="flex items-center gap-3">
               <div class="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center ring-1 ring-inset ring-emerald-100">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
@@ -81,7 +81,7 @@ import { Alert } from '../../models/dashboard.models';
             </div>
 
             @for (alert of group.alerts; track alert.id) {
-              <div class="group relative bg-white rounded-xl border border-transparent hover:border-zinc-200 hover:shadow-sm transition-all duration-300 overflow-hidden">
+              <div class="group relative bg-white rounded-3xl border border-transparent hover:border-zinc-200 hover:shadow-sm transition-all duration-300 overflow-hidden">
                 <div
                   class="absolute left-0 top-0 bottom-0 w-1 rounded-r-full group-hover:w-1.5 transition-all duration-300"
                   [class.bg-red-500]="alert.severity === 'critical'"

@@ -85,7 +85,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         </div>
 
         <!-- Vista Desktop: Tabla con Ecuación Visual (solo XL y mayores) -->
-        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-200/50 border-b border-base-200">
               <tr>
@@ -280,7 +280,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
             @if (liquidation().choferes.length === 0) {
               <!-- Skeleton para móvil cuando no hay datos (cargando o esperando datos) -->
               @for (i of [1,2,3,4,5,6]; track i) {
-                <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm">
+                <div class="bg-base-100 border border-base-200 rounded-3xl p-4 shadow-sm">
                   <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
                       <div class="w-12 h-12 rounded-full bg-base-200 animate-pulse"></div>

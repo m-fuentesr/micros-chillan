@@ -49,7 +49,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
         <!-- Formulario Principal (3 columnas en desktop) -->
         <div class="lg:col-span-3 space-y-6">
           <!-- Sección 1: Datos de la Máquina (Fondo blanco) -->
-          <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
+          <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl overflow-hidden">
             <div class="card-body p-6 sm:p-8">
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
@@ -66,7 +66,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           
           @if (feedback()) {
             <div
-              class="alert shadow-md border border-base-200/70 rounded-xl mb-4 animate-fade-in-fast"
+              class="alert shadow-md border border-base-200/70 rounded-3xl mb-4 animate-fade-in-fast"
               [class.alert-success]="feedback()?.type === 'success'"
               [class.alert-error]="feedback()?.type === 'error'"
               role="status"
@@ -99,7 +99,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           </div>
 
           <!-- Sección 2: Documentación (Fondo base-200 para crear "capítulo" visual) -->
-          <div class="card bg-base-200/30 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
+          <div class="card bg-base-200/30 shadow-lg border border-base-200/50 rounded-3xl overflow-hidden">
             <div class="card-body p-6 sm:p-8">
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-300/50">
@@ -123,7 +123,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           </div>
           
           <!-- Acciones Finales (Pegado al último card) -->
-          <div class="bg-base-200/30 border-t border-base-300/50 rounded-2xl -mt-6">
+          <div class="bg-base-200/30 border-t border-base-300/50 rounded-3xl -mt-6">
             <div class="px-6 sm:px-8 py-4 sm:py-6">
               <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
                 <a 
