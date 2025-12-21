@@ -439,15 +439,6 @@ export class DatePicker {
     const year = this.currentYearView();
     const date = new Date(year, monthIndex, 1);
     const dateStr = this.formatDate(date);
-    
-    // Debug logs
-    console.log('selectMonth - monthIndex:', monthIndex);
-    console.log('selectMonth - year:', year);
-    console.log('selectMonth - date created:', date);
-    console.log('selectMonth - dateStr formatted:', dateStr);
-    console.log('selectMonth - date.getMonth():', date.getMonth());
-    console.log('selectMonth - date.getFullYear():', date.getFullYear());
-    
     this.valueChange.emit(dateStr);
     setTimeout(() => {
       this.closeCalendar();

@@ -1,23 +1,59 @@
-import { Component, ChangeDetectionStrategy, input, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ClosedLiquidation, ClosedLiquidationWeek, LiquidationDriver } from '../../models/accounting.models';
 import { AccountingService } from '../../services/accounting.service';
+import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-liquidation-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SearchFilters, UiIconComponent],
   template: `
-    <div class="card bg-base-100 shadow-xl border border-base-200">
-      <div class="card-body p-4 sm:p-6">
-        
-        <div class="mb-6">
-          <h2 class="text-2xl font-bold border-l-4 border-l-primary pl-3">Historial de Cierres</h2>
-          <p class="text-xs sm:text-sm text-base-content/60">Registro inmutable de liquidaciones.</p>
+    <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden">
+      <!-- Header -->
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 sm:gap-6">
+          <div class="flex-1 min-w-0">
+            <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
+              Historial de Cierres
+            </h2>
+            <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
+              Registro inmutable de liquidaciones.
+            </p>
+          </div>
+          
+          <!-- Badge de conteo -->
+          <div class="shrink-0">
+            <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              {{ totalGlobal() }} {{ totalGlobal() === 1 ? 'período' : 'períodos' }}
+            </span>
+          </div>
         </div>
+      </div>
 
-        <!-- Vista Desktop: Tabla (solo desde lg: 1024px) -->
-        <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
+      <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6 pb-32 sm:pb-40 lg:pb-48">
+        <!-- Filtros -->
+        <div class="mb-6">
+          <app-search-filters
+            [fields]="filterFields()"
+            [filters]="filters()"
+            (filterChange)="onFilterChange($event)"
+          />
+        </div>
+        
+        <!-- Contenido: Tabla o mensaje de vacío -->
+        @if (isLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <div class="flex flex-col items-center gap-3">
+              <span class="loading loading-spinner loading-lg text-primary"></span>
+              <span class="text-sm text-base-content/60 font-medium">Cargando períodos...</span>
+            </div>
+          </div>
+        } @else if (liquidations().length > 0) {
+          <!-- Vista Desktop: Tabla (solo desde lg: 1024px) -->
+          <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
           <table class="table w-full table-fixed">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
@@ -81,11 +117,11 @@ import { AccountingService } from '../../services/accounting.service';
               }
             </tbody>
           </table>
-        </div>
+          </div>
 
-        <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
-        <div class="lg:hidden space-y-4">
-          @for (liquidation of liquidations(); track liquidation.id) {
+          <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
+          <div class="lg:hidden space-y-4">
+            @for (liquidation of liquidations(); track liquidation.id) {
             @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
             @let isLoading = isLoadingDetails(liquidation.id);
             <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
@@ -133,8 +169,18 @@ import { AccountingService } from '../../services/accounting.service';
                 }
               </div>
             </div>
-          }
-        </div>
+            }
+          </div>
+        } @else {
+          <!-- Mensaje cuando no hay datos -->
+          <div class="flex flex-col items-center justify-center py-12">
+            <ui-icon name="FileText" size="lg" class="text-base-content/40 mb-4" />
+            <h3 class="text-lg font-semibold text-base-content mb-2">No hay períodos disponibles</h3>
+            <p class="text-sm text-base-content/70 text-center max-w-md">
+              No se encontraron períodos con los filtros aplicados.
+            </p>
+          </div>
+        }
 
       </div>
     </div>
@@ -183,7 +229,7 @@ import { AccountingService } from '../../services/accounting.service';
           
           <div class="weeks-container space-y-3">
             @for (week of liquidation.semanas || []; track week.semana) {
-            <div class="border border-base-200 rounded-lg overflow-hidden bg-base-50/30">
+              <div class="border border-base-200 rounded-lg overflow-hidden bg-base-50/30">
               <!-- Header de Semana -->
               <div 
                 class="p-3 flex justify-between items-center cursor-pointer hover:bg-base-100/50 transition-colors"
@@ -276,8 +322,8 @@ import { AccountingService } from '../../services/accounting.service';
                   }
                 </div>
               }
-            </div>
-          }
+              </div>
+            }
           </div>
         </div>
         
@@ -358,7 +404,20 @@ import { AccountingService } from '../../services/accounting.service';
 })
 export class LiquidationHistory {
   liquidations = input.required<ClosedLiquidation[]>();
+  totalGlobal = input<number>(0);
+  isLoading = input<boolean>(false);
+  filters = input<{ fecha_desde?: string | null; fecha_hasta?: string | null }>({});
+  filterChange = output<Record<string, any>>();
   private accountingService = inject(AccountingService);
+  
+  filterFields = computed<FilterField[]>(() => [
+    { key: 'fecha_desde', label: 'Mes Desde', type: 'date', monthOnly: true },
+    { key: 'fecha_hasta', label: 'Mes Hasta', type: 'date', monthOnly: true }
+  ]);
+  
+  onFilterChange(filters: Record<string, any>): void {
+    this.filterChange.emit(filters);
+  }
   
   /**
    * Cache de detalles cargados para evitar recargas innecesarias

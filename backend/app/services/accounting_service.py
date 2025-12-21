@@ -475,23 +475,46 @@ async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: in
 # 3. MÓDULO: HISTORIAL DE CIERRES (Jerárquico: Mes -> Semanas)
 # --------------------------------------------------------------------------
 
-async def get_history_periods():
+async def get_history_periods(filters=None):
     """
-    Obtiene la lista de meses.
+    Obtiene la lista de meses con paginación y filtros.
     Lógica de Estado:
     - "Finalizado": Si se detecta un pago en la ÚLTIMA semana de ese mes.
     - "En Proceso": Si hay pagos, pero falta la última semana.
     """
-    # 1. Traer todos los pagos (Agregamos 'semana' a la consulta)
-    res = (
+    from app.core.pagination import PaginatedResponse
+    
+    # Si no hay filtros, usar valores por defecto
+    if filters is None:
+        from app.schemas.settlement import HistoryPeriodFilters
+        filters = HistoryPeriodFilters()
+    
+    # 1. Obtener total global (sin filtros) para el badge - hacer esto primero
+    res_global = (
         supabase.table("pagos_semanales")
-        .select("mes, anio, total_pagado, fecha_pago, semana") # <--- IMPORTANTE: traer 'semana'
-        .order("anio", desc=True)
-        .order("mes", desc=True)
+        .select("mes, anio")
         .execute()
     )
+    grupos_global = set()
+    for item in res_global.data:
+        grupos_global.add((item["mes"], item["anio"]))
+    total_global = len(grupos_global)
     
-    # 2. Agrupar en memoria
+    # 2. Traer pagos con filtros aplicados en la consulta
+    query = (
+        supabase.table("pagos_semanales")
+        .select("mes, anio, total_pagado, fecha_pago, semana")
+    )
+    
+    # Aplicar filtros de mes directamente en la consulta
+    if filters.mes_desde is not None:
+        query = query.gte("mes", filters.mes_desde)
+    if filters.mes_hasta is not None:
+        query = query.lte("mes", filters.mes_hasta)
+    
+    res = query.order("anio", desc=True).order("mes", desc=True).execute()
+    
+    # 3. Agrupar en memoria
     grupos = {}
     
     for item in res.data:
@@ -508,14 +531,14 @@ async def get_history_periods():
         grupos[clave]["fechas"].append(item["fecha_pago"])
         grupos[clave]["semanas_pagadas"].add(item["semana"])
 
-    # 3. Procesar estados y formatear
+    # 4. Procesar estados y formatear
     resultado = []
     
     for (mes, anio), info in grupos.items():
+        
         nombre_mes = MESES_ES.get(mes, str(mes))
         
         # Fecha cierre visual: La fecha más reciente de pago en ese mes
-        # (Si la fecha te salía mal antes, revisa que en el JSON del POST hayas puesto la fecha correcta)
         fecha_cierre_visual = max(info["fechas"]) if info["fechas"] else date(anio, mes, 28)
         
         # --- LÓGICA DE ESTADO ---
@@ -538,7 +561,24 @@ async def get_history_periods():
             "estado": estado_final
         })
     
-    return resultado
+    # 5. Aplicar paginación
+    total_filtrado = len(resultado)
+    start = filters.offset
+    end = start + filters.per_page
+    items_paginados = resultado[start:end]
+    
+    # 6. Calcular total de páginas
+    total_paginas = (total_filtrado + filters.per_page - 1) // filters.per_page if total_filtrado > 0 else 0
+    
+    # Retornar respuesta con total_global para el badge
+    # Usar dict directamente ya que PaginatedResponse no tiene total_global
+    return {
+        "total": total_filtrado,
+        "total_global": total_global,
+        "page": filters.page,
+        "per_page": filters.per_page,
+        "items": items_paginados
+    }
 
 async def get_history_month_detail(mes: int, anio: int):
     """
