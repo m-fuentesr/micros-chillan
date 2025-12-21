@@ -18,10 +18,11 @@ import { ConfirmModalService } from '../../../shared/services/confirm-modal.serv
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule, UiIconComponent, SearchFilters],
+  imports: [CommonModule, RouterLink, FormsModule, UiIconComponent, SearchFilters, LoadingSpinner],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (driver()) {
@@ -525,7 +526,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     <div class="flex items-center gap-3 shrink-0">
                       <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
                         <span class="w-2 h-2 rounded-full bg-primary"></span>
-                        {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
+                        {{ recordsTotalGlobal() }} {{ recordsTotalGlobal() === 1 ? 'registro' : 'registros' }}
                 </span>
               </div>
             </div>
@@ -577,7 +578,12 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
 
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
-                    @for (record of filteredRecords(); track record.id; let i = $index) {
+                @if (recordsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando registros..." />
+                  </div>
+                } @else {
+                  @for (record of dailyRecords(); track record.id; let i = $index) {
                   <div 
                     class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                     [style.animation-delay.ms]="i * 50"
@@ -625,14 +631,14 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
 
                           <!-- Observaciones -->
-                      @if (record.tiene_observaciones) {
-                        <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
-                          <div class="flex items-start gap-2">
-                            <ui-icon name="Info" size="xs" class="text-info shrink-0 mt-0.5" />
-                            <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
-                          </div>
-                        </div>
-                      }
+                          @if (record.tiene_observaciones) {
+                            <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
+                              <div class="flex items-start gap-2">
+                                <ui-icon name="Info" size="xs" class="text-info shrink-0 mt-0.5" />
+                                <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
+                              </div>
+                            </div>
+                          }
 
                           <!-- Botón de Acción -->
                       <div class="mt-4">
@@ -645,39 +651,45 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
                     </div>
                   </div>
-                } @empty {
-                      <div class="py-16 sm:py-20">
-                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
-                          </div>
-                          <div class="space-y-2">
-                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
-                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                              Ajusta los filtros para ver más resultados.
-                            </p>
-                          </div>
+                  } @empty {
+                    <div class="py-16 sm:py-20">
+                      <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                          <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
                         </div>
-                  </div>
+                        <div class="space-y-2">
+                          <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                          <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                            Ajusta los filtros para ver más resultados.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                    <table class="table w-full table-min-height">
-                  <thead class="bg-base-50 border-b border-base-200">
-                    <tr>
-                      <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
-                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
-                      <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                        @for (record of filteredRecords(); track record.id; let i = $index) {
+                @if (recordsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando registros..." />
+                  </div>
+                } @else {
+                  <table class="table w-full table-min-height">
+                    <thead class="bg-base-50 border-b border-base-200">
+                      <tr>
+                        <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
+                        <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (record of dailyRecords(); track record.id; let i = $index) {
                       <tr 
                             class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
                         [style.animation-delay.ms]="i * 30"
@@ -721,15 +733,15 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             
                             <td class="text-center py-4" (click)="$event.stopPropagation()">
                               <div class="flex items-center justify-center">
-                            @if (record.tiene_observaciones) {
+                                @if (record.tiene_observaciones) {
                                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
                                     <ui-icon name="Info" size="xs" class="text-primary group-hover:scale-110 transition-transform" />
                                   </div>
                                 } @else {
                                   <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
                                     <ui-icon name="Info" size="xs" class="text-base-content/30" />
-                              </div>
-                            }
+                                  </div>
+                                }
                               </div>
                             </td>
                             
@@ -759,18 +771,49 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         </td>
                       </tr>
                     }
-                        <!-- Filas vacías para mantener altura mínima en desktop -->
-                        @if (filteredRecords().length > 0 && filteredRecords().length < 5) {
-                          @for (i of getEmptyRows(); track i) {
-                            <tr class="empty-row-spacer">
-                              <td colspan="7" class="h-20"></td>
-                            </tr>
-                          }
-                    }
-                  </tbody>
-                </table>
-                  </div>
+                      <!-- Filas vacías para mantener altura mínima en desktop -->
+                      @if (dailyRecords().length > 0 && dailyRecords().length < 5) {
+                        @for (i of getEmptyRows(); track i) {
+                          <tr class="empty-row-spacer">
+                            <td colspan="7" class="h-20"></td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                }
               </div>
+
+              <!-- Paginación -->
+              @if (recordsTotalPages() > 0 && !recordsLoading()) {
+                <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+                  <span>Mostrando {{ getStartRecord() }}-{{ getEndRecord() }} de {{ recordsTotal() }} registros</span>
+                  <div class="join">
+                    <button 
+                      (click)="onRecordsPageChange(recordsCurrentPage() - 1)" 
+                      [disabled]="recordsCurrentPage() === 1 || recordsLoading()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="recordsCurrentPage() === 1 || recordsLoading()">
+                      «
+                    </button>
+                    @for (page of getRecordsPages(); track page) {
+                      <button 
+                        (click)="onRecordsPageChange(page)" 
+                        [disabled]="recordsLoading()" 
+                        [class.btn-active]="page === recordsCurrentPage()" 
+                        class="join-item btn btn-sm px-4">{{ page }}</button>
+                    }
+                    <button 
+                      (click)="onRecordsPageChange(recordsCurrentPage() + 1)" 
+                      [disabled]="recordsCurrentPage() === recordsTotalPages() || recordsLoading()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="recordsCurrentPage() === recordsTotalPages() || recordsLoading()">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
+                </div>
             </div>
           </div>
         }
@@ -795,16 +838,58 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     <div class="flex items-center gap-3 shrink-0">
                       <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
                         <span class="w-2 h-2 rounded-full bg-primary"></span>
-                  {{ liquidations().length }} {{ liquidations().length === 1 ? 'liquidación' : 'liquidaciones' }}
+                  {{ liquidationsTotalGlobal() }} {{ liquidationsTotalGlobal() === 1 ? 'liquidación' : 'liquidaciones' }}
                 </span>
               </div>
             </div>
                 </div>
 
-                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 lg:pb-20">
+                  <!-- Filtros -->
+                  <div class="mb-6">
+                    <app-search-filters
+                      [fields]="[
+                        {
+                          key: 'fecha_desde',
+                          label: 'Período Desde',
+                          type: 'date',
+                          placeholder: 'Seleccionar mes',
+                          monthOnly: true
+                        },
+                        {
+                          key: 'fecha_hasta',
+                          label: 'Período Hasta',
+                          type: 'date',
+                          placeholder: 'Seleccionar mes',
+                          monthOnly: true
+                        },
+                        {
+                          key: 'estado',
+                          label: 'Estado',
+                          type: 'select',
+                          options: [
+                            { value: 'all', label: 'Todos' },
+                            { value: 'pagado', label: 'Pagado' },
+                            { value: 'pendiente', label: 'Pendiente' }
+                          ]
+                        }
+                      ]"
+                      [columns]="3"
+                      [filters]="{
+                        fecha_desde: liquidationFilters().fecha_desde || null,
+                        fecha_hasta: liquidationFilters().fecha_hasta || null,
+                        estado: liquidationFilters().estado || 'all'
+                      }"
+                      (filterChange)="onLiquidationFilterChange($event)"
+                    />
+                  </div>
+
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
-                @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
+                @if (liquidationsLoading()) {
+                  <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                } @else {
+                  @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
                   <div 
                     class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                     [style.animation-delay.ms]="i * 50"
@@ -872,39 +957,45 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
                     </div>
                   </div>
-                } @empty {
-                      <div class="py-16 sm:py-20">
-                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
-                          </div>
-                          <div class="space-y-2">
-                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
-                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                              El chofer aún no tiene liquidaciones registradas.
-                            </p>
-                          </div>
+                  } @empty {
+                    <div class="py-16 sm:py-20">
+                      <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                          <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                         </div>
-                  </div>
+                        <div class="space-y-2">
+                          <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                          <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                            El chofer aún no tiene liquidaciones registradas.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                    <table class="table w-full table-min-height">
-                  <thead class="bg-base-50 border-b border-base-200">
-                    <tr>
-                          <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Período</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Total Ganado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Mínimo Garantizado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Pago Final</th>
-                      <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Método</th>
-                          <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Código/Ref.</th>
-                      <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
+                @if (liquidationsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                  </div>
+                } @else {
+                  <table class="table w-full table-min-height">
+                    <thead class="bg-base-50 border-b border-base-200">
+                      <tr>
+                        <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Período</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Total Ganado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Mínimo Garantizado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Pago Final</th>
+                        <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Método</th>
+                        <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Código/Ref.</th>
+                        <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
                       <tr 
                         class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                         [style.animation-delay.ms]="i * 30"
@@ -948,34 +1039,66 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                           </div>
                         </td>
                       </tr>
-                    } @empty {
-                      <tr>
-                            <td colspan="7" class="py-16 sm:py-20">
-                              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                  <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
-                                </div>
-                                <div class="space-y-2">
-                                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
-                                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                                    El chofer aún no tiene liquidaciones registradas.
-                                  </p>
-                                </div>
+                      } @empty {
+                        <tr>
+                          <td colspan="7" class="py-16 sm:py-20">
+                            <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                                <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                               </div>
-                        </td>
-                      </tr>
-                    }
-                        <!-- Filas vacías para mantener altura mínima en desktop -->
-                        @if (liquidations().length > 0 && liquidations().length < 5) {
-                          @for (i of getEmptyLiquidationRows(); track i) {
-                            <tr class="empty-row-spacer">
-                              <td colspan="7" class="h-20"></td>
-                            </tr>
-                          }
-                    }
-                  </tbody>
-                </table>
+                              <div class="space-y-2">
+                                <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                                <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                                  El chofer aún no tiene liquidaciones registradas.
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                      <!-- Filas vacías para mantener altura mínima en desktop -->
+                      @if (liquidations().length > 0 && liquidations().length < 5) {
+                        @for (i of getEmptyLiquidationRows(); track i) {
+                          <tr class="empty-row-spacer">
+                            <td colspan="7" class="h-20"></td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+
+              <!-- Paginación -->
+              @if (liquidationsTotalPages() > 1 && !liquidationsLoading()) {
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div class="text-sm text-base-content/60">
+                    Mostrando {{ getStartLiquidationRecord() }} - {{ getEndLiquidationRecord() }} de {{ liquidationsTotal() }} liquidaciones
                   </div>
+                  <div class="join">
+                    <button
+                      class="join-item btn btn-sm btn-outline"
+                      [disabled]="liquidationsCurrentPage() === 1"
+                      (click)="onLiquidationPageChange(liquidationsCurrentPage() - 1)">
+                      «
+                    </button>
+                    @for (page of getLiquidationPages(); track page) {
+                      <button
+                        class="join-item btn btn-sm"
+                        [class.btn-active]="page === liquidationsCurrentPage()"
+                        (click)="onLiquidationPageChange(page)">
+                        {{ page }}
+                      </button>
+                    }
+                    <button
+                      class="join-item btn btn-sm btn-outline"
+                      [disabled]="liquidationsCurrentPage() === liquidationsTotalPages()"
+                      (click)="onLiquidationPageChange(liquidationsCurrentPage() + 1)">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
               </div>
             </div>
           </div>
@@ -1506,44 +1629,13 @@ export class DriverDetail implements OnInit {
     orden: 'mas_reciente'
   });
   
-  // Registros filtrados
-  filteredRecords = computed(() => {
-    let filtered = [...this.dailyRecords()];
-    const filters = this.recordFilters();
-
-    // Filtrar por fecha desde
-    if (filters.desde) {
-      const desde = new Date(filters.desde);
-      desde.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        fecha.setHours(0, 0, 0, 0);
-        return fecha >= desde;
-      });
-    }
-
-    // Filtrar por fecha hasta
-    if (filters.hasta) {
-      const hasta = new Date(filters.hasta);
-      hasta.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        fecha.setHours(0, 0, 0, 0);
-        return fecha <= hasta;
-      });
-    }
-
-    // Ordenar
-    const orden = filters.orden || 'mas_reciente';
-    if (orden === 'mas_antiguo') {
-      filtered.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-    } else {
-      // Por defecto: más reciente primero
-      filtered.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    }
-
-    return filtered;
-  });
+  // Paginación y estado
+  recordsTotal = signal<number>(0);
+  recordsTotalGlobal = signal<number>(0);
+  recordsCurrentPage = signal<number>(1);
+  recordsTotalPages = signal<number>(0);
+  recordsLoading = signal<boolean>(false);
+  recordsPerPage = 10;
   
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
@@ -1583,12 +1675,20 @@ export class DriverDetail implements OnInit {
     };
     this.recordFilters.set(filters);
     
+    // Resetear a página 1 cuando cambian los filtros
+    this.recordsCurrentPage.set(1);
+    
     // Recargar datos del backend con los nuevos filtros
+    this.loadDailyRecords();
+  }
+
+  onRecordsPageChange(page: number): void {
+    this.recordsCurrentPage.set(page);
     this.loadDailyRecords();
   }
   
   getEmptyRows(): number[] {
-    const count = this.filteredRecords().length;
+    const count = this.dailyRecords().length;
     if (count === 0) return [];
     const needed = 5 - count;
     return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
@@ -1601,8 +1701,50 @@ export class DriverDetail implements OnInit {
     return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
   }
 
+  getRecordsPages(): number[] {
+    const total = this.recordsTotalPages();
+    const current = this.recordsCurrentPage();
+    const pages: number[] = [];
+    
+    // Mostrar máximo 5 páginas
+    const maxPages = 5;
+    let start = Math.max(1, current - Math.floor(maxPages / 2));
+    let end = Math.min(total, start + maxPages - 1);
+    
+    if (end - start < maxPages - 1) {
+      start = Math.max(1, end - maxPages + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  }
+
+  getStartRecord(): number {
+    return ((this.recordsCurrentPage() - 1) * this.recordsPerPage) + 1;
+  }
+
+  getEndRecord(): number {
+    const page = this.recordsCurrentPage();
+    const total = this.recordsTotal();
+    return Math.min(page * this.recordsPerPage, total);
+  }
+
   // Liquidaciones
   liquidations = signal<DriverLiquidation[]>([]);
+  liquidationFilters = signal<{ 
+    fecha_desde?: string | null; 
+    fecha_hasta?: string | null; 
+    estado?: 'all' | 'pagado' | 'pendiente' 
+  }>({});
+  liquidationsTotal = signal<number>(0);
+  liquidationsTotalGlobal = signal<number>(0);
+  liquidationsCurrentPage = signal<number>(1);
+  liquidationsTotalPages = signal<number>(0);
+  liquidationsLoading = signal<boolean>(false);
+  liquidationsPerPage = 10;
   
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general']));
@@ -1911,14 +2053,17 @@ export class DriverDetail implements OnInit {
     if (!driverId) return;
 
     const filters = this.recordFilters();
+    const currentPage = this.recordsCurrentPage();
+    
+    this.recordsLoading.set(true);
     
     this.dailyRecordService.getDailyRecords({
       chofer_id: driverId,
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
-      pagina: 1,
-      por_pagina: 100 // Obtener todos los registros del chofer
+      pagina: currentPage,
+      por_pagina: this.recordsPerPage
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
@@ -1955,13 +2100,19 @@ export class DriverDetail implements OnInit {
           };
         });
 
-        // No ordenar aquí, el orden lo maneja filteredRecords según los filtros
-        // (aunque el backend ya ordena, filteredRecords puede aplicar ordenamiento adicional si es necesario)
         this.dailyRecords.set(driverRecords);
+        this.recordsTotal.set(response.total);
+        this.recordsTotalGlobal.set(response.total_registros_global ?? response.total);
+        this.recordsTotalPages.set(response.total_paginas);
+        this.recordsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar registros diarios:', error);
         this.dailyRecords.set([]);
+        this.recordsTotal.set(0);
+        this.recordsTotalGlobal.set(0);
+        this.recordsTotalPages.set(0);
+        this.recordsLoading.set(false);
       }
     });
   }
@@ -1970,83 +2121,122 @@ export class DriverDetail implements OnInit {
     const driverId = this.driverId();
     if (!driverId) return;
 
-    // Obtener liquidaciones del chofer
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
+    const filters = this.liquidationFilters();
+    const currentPage = this.liquidationsCurrentPage();
 
-    this.accountingService.getLiquidation(currentMonth, currentYear).subscribe({
-      next: (liquidation) => {
-        const liquidations: DriverLiquidation[] = [];
+    this.liquidationsLoading.set(true);
 
-        // Buscar el chofer en la liquidación
-        const driverLiquidation = liquidation.choferes.find(c => c.chofer_id === driverId);
-        
-        if (driverLiquidation) {
-          liquidations.push({
-            id: driverLiquidation.chofer_id,
-            fecha: `${String(currentMonth).padStart(2, '0')}/${currentYear}`,
-            total_ganado: driverLiquidation.total_ganado,
-            minimo_garantizado: driverLiquidation.minimo_garantizado || 0,
-            pago_final: driverLiquidation.pago_final,
-            metodo_pago: driverLiquidation.metodo_pago || 'transferencia',
-            codigo_transferencia: driverLiquidation.codigo_transferencia || null,
-            estado_pago: driverLiquidation.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
-          });
-        }
+    // Convertir fechas a mes/año para el backend
+    // Las liquidaciones son mensuales, así que solo necesitamos mes y año
+    let mes_desde: number | undefined;
+    let anio_desde: number | undefined;
+    let mes_hasta: number | undefined;
+    let anio_hasta: number | undefined;
 
-        // Obtener historial de liquidaciones
-        this.accountingService.getLiquidationHistory().subscribe({
-          next: (history) => {
-            // Filtrar liquidaciones del chofer
-            history.forEach((item) => {
-              // Buscar en semanas primero (nueva estructura), luego en choferes (legacy)
-              let driverItem = null;
-              
-              if (item.semanas && item.semanas.length > 0) {
-                // Buscar en la última semana (donde se aplica el garantizado)
-                const lastWeek = item.semanas.find(w => w.es_ultima_semana) || item.semanas[item.semanas.length - 1];
-                driverItem = lastWeek.choferes.find(c => c.chofer_id === driverId);
-              } else if (item.choferes) {
-                // Fallback a estructura legacy
-                driverItem = item.choferes.find(c => c.chofer_id === driverId);
-              }
-              
-              if (driverItem) {
-                liquidations.push({
-                  id: driverItem.chofer_id,
-                  fecha: `${String(item.mes).padStart(2, '0')}/${item.anio}`,
-                  total_ganado: driverItem.total_ganado,
-                  minimo_garantizado: driverItem.minimo_garantizado || 0,
-                  pago_final: driverItem.pago_final,
-                  metodo_pago: driverItem.metodo_pago || 'transferencia',
-                  codigo_transferencia: driverItem.codigo_transferencia || null,
-                  estado_pago: driverItem.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
-                });
-              }
-            });
+    if (filters.fecha_desde) {
+      // Parsear fecha en formato YYYY-MM-DD de forma segura
+      console.log('loadLiquidations - fecha_desde raw:', filters.fecha_desde);
+      const parts = filters.fecha_desde.split('-');
+      console.log('loadLiquidations - fecha_desde parts:', parts);
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        // Crear fecha directamente sin problemas de zona horaria
+        mes_desde = month; // Ya viene como 1-12 del formato YYYY-MM-DD
+        anio_desde = year;
+        console.log('loadLiquidations - mes_desde:', mes_desde, 'anio_desde:', anio_desde);
+      }
+    }
 
-            // Ordenar por fecha (más reciente primero)
-            liquidations.sort((a, b) => {
-              const [monthA, yearA] = a.fecha.split('/').map(Number);
-              const [monthB, yearB] = b.fecha.split('/').map(Number);
-              if (yearA !== yearB) return yearB - yearA;
-              return monthB - monthA;
-            });
+    if (filters.fecha_hasta) {
+      // Parsear fecha en formato YYYY-MM-DD de forma segura
+      console.log('loadLiquidations - fecha_hasta raw:', filters.fecha_hasta);
+      const parts = filters.fecha_hasta.split('-');
+      console.log('loadLiquidations - fecha_hasta parts:', parts);
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        const day = parseInt(parts[2], 10);
+        // Crear fecha directamente sin problemas de zona horaria
+        mes_hasta = month; // Ya viene como 1-12 del formato YYYY-MM-DD
+        anio_hasta = year;
+        console.log('loadLiquidations - mes_hasta:', mes_hasta, 'anio_hasta:', anio_hasta);
+      }
+    }
 
-            this.liquidations.set(liquidations);
-          },
-          error: (error) => {
-            console.error('Error al cargar historial de liquidaciones:', error);
-            this.liquidations.set(liquidations);
-          }
-        });
+    this.driverService.getDriverLiquidations(driverId, {
+      mes_desde: mes_desde,
+      anio_desde: anio_desde,
+      mes_hasta: mes_hasta,
+      anio_hasta: anio_hasta,
+      estado_pago: filters.estado && filters.estado !== 'all' ? filters.estado : undefined,
+      page: currentPage,
+      per_page: this.liquidationsPerPage
+    }).subscribe({
+      next: (response) => {
+        this.liquidations.set(response.items);
+        this.liquidationsTotal.set(response.total);
+        this.liquidationsTotalGlobal.set(response.total_global);
+        this.liquidationsTotalPages.set(Math.ceil(response.total / response.per_page));
+        this.liquidationsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar liquidaciones:', error);
         this.liquidations.set([]);
+        this.liquidationsTotal.set(0);
+        this.liquidationsTotalGlobal.set(0);
+        this.liquidationsTotalPages.set(0);
+        this.liquidationsLoading.set(false);
       }
     });
+  }
+
+  onLiquidationFilterChange(filters: Record<string, any>): void {
+    // Si el objeto está vacío, limpiar todos los filtros
+    if (Object.keys(filters).length === 0) {
+      this.liquidationFilters.set({});
+      this.liquidationsCurrentPage.set(1);
+      this.loadLiquidations();
+      return;
+    }
+    
+    // Procesar filtros: las fechas vienen como strings en formato YYYY-MM-DD
+    const processedFilters: { 
+      fecha_desde?: string | null; 
+      fecha_hasta?: string | null; 
+      estado?: 'all' | 'pagado' | 'pendiente' 
+    } = {
+      fecha_desde: filters['fecha_desde'] || null,
+      fecha_hasta: filters['fecha_hasta'] || null,
+      estado: filters['estado'] || 'all'
+    };
+    
+    this.liquidationFilters.set(processedFilters);
+    this.liquidationsCurrentPage.set(1);
+    this.loadLiquidations();
+  }
+
+  onLiquidationPageChange(page: number): void {
+    this.liquidationsCurrentPage.set(page);
+    this.loadLiquidations();
+  }
+
+  getLiquidationPages(): number[] {
+    const totalPages = this.liquidationsTotalPages();
+    if (totalPages <= 1) return [];
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  getStartLiquidationRecord(): number {
+    const page = this.liquidationsCurrentPage();
+    return (page - 1) * this.liquidationsPerPage + 1;
+  }
+
+  getEndLiquidationRecord(): number {
+    const page = this.liquidationsCurrentPage();
+    const total = this.liquidationsTotal();
+    return Math.min(page * this.liquidationsPerPage, total);
   }
 
   onBack(): void {

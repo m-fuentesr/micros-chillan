@@ -9,13 +9,12 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
-import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-drivers-list',
-  imports: [DriverKPIs, DriverList, RouterLink, LoadingSkeleton, LoadingSpinner, UiIconComponent],
+  imports: [DriverKPIs, DriverList, RouterLink, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->

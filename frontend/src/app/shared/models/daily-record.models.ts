@@ -218,6 +218,7 @@ export interface DailyRecordsKPIs {
 export interface DailyRecordsResponse {
   datos: DailyRecord[];
   total: number;
+  total_registros_global?: number;
   pagina: number;
   por_pagina: number;
   total_paginas: number;

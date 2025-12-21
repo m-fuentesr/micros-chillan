@@ -157,11 +157,13 @@ async def get_machine_maintenances(
     item: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(12, ge=1, le=100),
     current_user: UserInDB = Depends(get_current_user)
 ):
     require_admin(current_user)
     return await machine_service.get_machine_maintenances(
-        machine_id, categoria, item, desde, hasta
+        machine_id, categoria, item, desde, hasta, page, per_page
     )
 
 # ---------------------------------------------------------

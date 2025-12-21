@@ -527,9 +527,16 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                   [records]="maintenanceRecords()"
                   [availableItems]="maintenanceItems()"
                   [filters]="maintenanceFilters()"
+                  [totalRecords]="maintenanceTotal()"
+                  [totalRecordsGlobal]="maintenanceTotalGlobal()"
+                  [gastoMesActual]="maintenanceGastoMesActual()"
+                  [currentPage]="maintenanceCurrentPage()"
+                  [totalPages]="maintenanceTotalPages()"
+                  [isLoading]="maintenanceLoading()"
                   (recordAdded)="onMaintenanceRecordAdded($event)"
                   (recordDeleted)="onMaintenanceRecordDeleted($event)"
-                  (filterChange)="onMaintenanceFilterChange($event)">
+                  (filterChange)="onMaintenanceFilterChange($event)"
+                  (pageChange)="onMaintenancePageChange($event)">
                 </app-machine-maintenance>
               </div>
             }
@@ -847,6 +854,13 @@ export class MachineDetail implements OnInit {
   recordFilters = signal<MachineDailyRecordFilters>({});
   maintenanceFilters = signal<MaintenanceFilters>({});
   maintenanceRecords = signal<MaintenanceRecord[]>([]);
+  maintenanceTotal = signal<number>(0);
+  maintenanceTotalGlobal = signal<number>(0);
+  maintenanceGastoMesActual = signal<number>(0);
+  maintenanceCurrentPage = signal<number>(1);
+  maintenanceTotalPages = signal<number>(0);
+  maintenanceLoading = signal<boolean>(false);
+  maintenanceItemsPerPage = 12;
   maintenanceItems = signal<string[]>(['Neumáticos', 'Aceite Motor', 'Filtros', 'Reparación Frenos']);
 
   // Valores editables temporales
@@ -1328,21 +1342,43 @@ export class MachineDetail implements OnInit {
 
   private loadMaintenanceRecords(): void {
     const machineId = this.machineId();
-    if (!machineId) return;
+    if (!machineId) {
+      console.warn('No hay machineId para cargar mantenimientos');
+      return;
+    }
 
     const filters = this.maintenanceFilters();
+    const currentPage = this.maintenanceCurrentPage();
+    
+    console.log('Cargando mantenimientos:', { machineId, filters, currentPage, per_page: this.maintenanceItemsPerPage });
+    
+    this.maintenanceLoading.set(true);
+    
     this.machineService.getMachineMaintenances(machineId, {
       categoria: filters.categoria && filters.categoria !== 'all' ? filters.categoria : undefined,
       item: filters.item,
       desde: filters.desde,
-      hasta: filters.hasta
+      hasta: filters.hasta,
+      page: currentPage,
+      per_page: this.maintenanceItemsPerPage
     }).subscribe({
       next: (response) => {
+        console.log('Respuesta de mantenimientos:', response);
         this.maintenanceRecords.set(response.items);
+        this.maintenanceTotal.set(response.total_registros);
+        this.maintenanceTotalGlobal.set(response.total_registros_global);
+        this.maintenanceGastoMesActual.set(response.gasto_mes_actual);
+        this.maintenanceTotalPages.set(response.total_paginas);
+        this.maintenanceLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar mantenimientos:', error);
         this.maintenanceRecords.set([]);
+        this.maintenanceTotal.set(0);
+        this.maintenanceTotalGlobal.set(0);
+        this.maintenanceGastoMesActual.set(0);
+        this.maintenanceTotalPages.set(0);
+        this.maintenanceLoading.set(false);
       }
     });
   }
@@ -1359,9 +1395,9 @@ export class MachineDetail implements OnInit {
       fecha: record.fecha
     }).subscribe({
       next: (newRecord) => {
-        const current = this.maintenanceRecords();
-        // Agregar al inicio para que aparezca primero
-        this.maintenanceRecords.set([newRecord, ...current]);
+        // Recargar los registros para obtener la lista actualizada con paginación
+        this.maintenanceCurrentPage.set(1);
+        this.loadMaintenanceRecords();
       },
       error: (error) => {
         console.error('Error al crear mantenimiento:', error);
@@ -1373,8 +1409,8 @@ export class MachineDetail implements OnInit {
   onMaintenanceRecordDeleted(id: number): void {
     this.machineService.deleteMaintenance(id).subscribe({
       next: () => {
-        const current = this.maintenanceRecords();
-        this.maintenanceRecords.set(current.filter(r => r.id !== id));
+        // Recargar los registros para obtener la lista actualizada con paginación
+        this.loadMaintenanceRecords();
       },
       error: (error) => {
         console.error('Error al eliminar mantenimiento:', error);
@@ -1385,6 +1421,15 @@ export class MachineDetail implements OnInit {
 
   onMaintenanceFilterChange(filters: MaintenanceFilters): void {
     this.maintenanceFilters.set(filters);
+    // Resetear a página 1 cuando cambian los filtros
+    this.maintenanceCurrentPage.set(1);
+    // Recargar los registros con los nuevos filtros
+    this.loadMaintenanceRecords();
+  }
+
+  onMaintenancePageChange(page: number): void {
+    this.maintenanceCurrentPage.set(page);
+    this.loadMaintenanceRecords();
   }
 
   // Métodos auxiliares para el template

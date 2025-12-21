@@ -7,12 +7,16 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
 export interface FilterField {
   key: string;
   label: string;
-  type: 'select' | 'date' | 'text' | 'number' | 'custom';
+  type: 'select' | 'date' | 'text' | 'number' | 'month-year' | 'custom';
   icon?: string;
   placeholder?: string;
   options?: Array<{ value: string | number | null; label: string }>;
   minDate?: string | null;
   maxDate?: string | null;
+  monthOnly?: boolean; // Si es true, el date picker solo permite seleccionar mes/año
+  // Para month-year: keys para mes y año
+  monthKey?: string;
+  yearKey?: string;
 }
 
 @Component({
@@ -53,31 +57,18 @@ export interface FilterField {
                     {{ field.label }}
                   </span>
                 </label>
-                <div class="dropdown dropdown-bottom w-full">
-                  <div 
-                    tabindex="0" 
-                    role="button"
-                    class="select select-bordered w-full bg-base-100 border-base-200 focus:border-primary">
-                    <span class="truncate">
-                      {{ getSelectDisplayValue(field.key) }}
-                    </span>
-                  </div>
-                  <ul class="dropdown-content menu bg-base-100 rounded-box z-[100] shadow-xl border border-base-200 mt-1 max-h-[240px] overflow-y-auto" 
-                      style="min-width: 100%; width: 100%;">
-                    @if (field.options) {
-                      @for (option of field.options; track option.value) {
-                        <li class="w-full">
-                          <a 
-                            (click)="onOptionClick($event, field.key, option.value)"
-                            [class.active]="getFilterValue(field.key) === option.value"
-                            class="w-full block">
-                            {{ option.label }}
-                          </a>
-                        </li>
-                      }
+                <select
+                  class="select select-bordered w-full bg-base-100 border-base-200 focus:border-primary transition-colors"
+                  [value]="getFilterValue(field.key) || ''"
+                  (change)="onSelectChange($event, field.key)">
+                  @if (field.options) {
+                    @for (option of field.options; track option.value) {
+                      <option [value]="option.value ?? ''">
+                        {{ option.label }}
+                      </option>
                     }
-                  </ul>
-                </div>
+                  }
+                </select>
               </div>
             }
             @case ('date') {
@@ -87,6 +78,7 @@ export interface FilterField {
                 [value]="getDateValue(field.key)"
                 [minDate]="field.minDate || null"
                 [maxDate]="field.maxDate || null"
+                [monthOnly]="field.monthOnly || false"
                 (valueChange)="onFilterChange(field.key, $event)" />
             }
             @case ('text') {
@@ -127,6 +119,38 @@ export interface FilterField {
                   (blur)="onNumberBlur(field.key, $event)">
               </div>
             }
+            @case ('month-year') {
+              <div class="form-control">
+                <label class="label py-1.5">
+                  <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
+                    @if (field.icon) {
+                      <span [innerHTML]="field.icon" class="w-3.5 h-3.5 text-primary"></span>
+                    }
+                    {{ field.label }}
+                  </span>
+                </label>
+                <div class="flex gap-2">
+                  <select
+                    class="select select-bordered flex-1 bg-base-100 border-base-200 focus:border-primary transition-colors"
+                    [value]="getFilterValue(field.monthKey || '') || ''"
+                    (change)="onMonthYearChange(field.monthKey || '', $event, 'month')">
+                    <option value="">Mes</option>
+                    @for (month of getMonths(); track month.value) {
+                      <option [value]="month.value">{{ month.label }}</option>
+                    }
+                  </select>
+                  <select
+                    class="select select-bordered flex-1 bg-base-100 border-base-200 focus:border-primary transition-colors"
+                    [value]="getFilterValue(field.yearKey || '') || ''"
+                    (change)="onMonthYearChange(field.yearKey || '', $event, 'year')">
+                    <option value="">Año</option>
+                    @for (year of getYears(); track year) {
+                      <option [value]="year">{{ year }}</option>
+                    }
+                  </select>
+                </div>
+              </div>
+            }
             @case ('custom') {
               <ng-content [select]="'[' + field.key + ']'"></ng-content>
             }
@@ -135,41 +159,7 @@ export interface FilterField {
       </div>
     </div>
   `,
-  styles: [`
-    /* Asegurar que el dropdown tenga el ancho correcto */
-    .dropdown {
-      position: relative;
-    }
-    
-    .dropdown-content.menu {
-      display: block !important;
-      flex-direction: column !important;
-      min-width: 100% !important;
-      width: 100% !important;
-      left: 0 !important;
-      right: 0 !important;
-    }
-    
-    .dropdown-content.menu li {
-      display: block !important;
-      width: 100% !important;
-      min-width: 100% !important;
-      float: none !important;
-    }
-    
-    .dropdown-content.menu li > a {
-      display: block !important;
-      width: 100% !important;
-      white-space: normal !important;
-      word-wrap: break-word !important;
-      overflow-wrap: break-word !important;
-      padding: 0.75rem 1rem !important;
-      line-height: 1.5 !important;
-      text-align: left !important;
-      overflow: visible !important;
-      text-overflow: unset !important;
-    }
-  `],
+  styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SearchFilters implements OnDestroy {
@@ -205,20 +195,6 @@ export class SearchFilters implements OnDestroy {
     return typeof value === 'string' ? value : null;
   }
 
-  getSelectDisplayValue(key: string): string {
-    const field = this.fields().find(f => f.key === key);
-    if (!field || !field.options) return 'Seleccionar...';
-    
-    const value = this.getFilterValue(key);
-    if (value === null || value === undefined || value === '') {
-      // Buscar la opción con valor vacío o la primera opción
-      const emptyOption = field.options.find(opt => opt.value === '' || opt.value === null);
-      return emptyOption?.label || field.options[0]?.label || 'Seleccionar...';
-    }
-    
-    const option = field.options.find(opt => opt.value === value);
-    return option?.label || 'Seleccionar...';
-  }
 
   onTextInput(key: string, event: Event): void {
     const target = event.target as HTMLInputElement;
@@ -242,19 +218,43 @@ export class SearchFilters implements OnDestroy {
     this.onFilterChange(key, value);
   }
 
-  onOptionClick(event: Event, key: string, value: any): void {
-    event.preventDefault();
-    event.stopPropagation();
+  onSelectChange(event: Event, key: string): void {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value === '' ? null : target.value;
     this.onFilterChange(key, value);
-    // Cerrar el dropdown después de seleccionar
-    const target = event.target as HTMLElement;
-    const dropdown = target.closest('.dropdown');
-    if (dropdown) {
-      const button = dropdown.querySelector('[tabindex="0"]') as HTMLElement;
-      if (button) {
-        button.blur();
-      }
+  }
+
+  onMonthYearChange(key: string, event: Event, type: 'month' | 'year'): void {
+    const target = event.target as HTMLSelectElement;
+    const value = target.value === '' ? null : (type === 'month' ? Number(target.value) : Number(target.value));
+    this.onFilterChange(key, value);
+  }
+
+  getMonths(): Array<{ value: number; label: string }> {
+    return [
+      { value: 1, label: 'Enero' },
+      { value: 2, label: 'Febrero' },
+      { value: 3, label: 'Marzo' },
+      { value: 4, label: 'Abril' },
+      { value: 5, label: 'Mayo' },
+      { value: 6, label: 'Junio' },
+      { value: 7, label: 'Julio' },
+      { value: 8, label: 'Agosto' },
+      { value: 9, label: 'Septiembre' },
+      { value: 10, label: 'Octubre' },
+      { value: 11, label: 'Noviembre' },
+      { value: 12, label: 'Diciembre' }
+    ];
+  }
+
+  getYears(): number[] {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    // Años desde 2020 hasta el año actual + 1
+    for (let year = 2020; year <= currentYear + 1; year++) {
+      years.push(year);
     }
+    return years.reverse(); // Más recientes primero
   }
 
   onFilterChange(key: string, value: any): void {

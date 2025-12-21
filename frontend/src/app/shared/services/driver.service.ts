@@ -243,5 +243,91 @@ export class DriverService {
   deleteDriver(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/api/drivers/${id}`);
   }
+
+  // GET /api/drivers/{id}/liquidations - Obtener liquidaciones de un chofer
+  getDriverLiquidations(
+    driverId: number,
+    filters?: {
+      mes_desde?: number;
+      anio_desde?: number;
+      mes_hasta?: number;
+      anio_hasta?: number;
+      estado_pago?: 'pendiente' | 'pagado';
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{
+    items: any[];
+    total: number;
+    total_global: number;
+    page: number;
+    per_page: number;
+  }> {
+    let params = new HttpParams();
+    
+    if (filters?.mes_desde) {
+      params = params.set('mes_desde', filters.mes_desde.toString());
+    }
+    if (filters?.anio_desde) {
+      params = params.set('anio_desde', filters.anio_desde.toString());
+    }
+    if (filters?.mes_hasta) {
+      params = params.set('mes_hasta', filters.mes_hasta.toString());
+    }
+    if (filters?.anio_hasta) {
+      params = params.set('anio_hasta', filters.anio_hasta.toString());
+    }
+    if (filters?.estado_pago) {
+      params = params.set('estado_pago', filters.estado_pago);
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
+
+    interface BackendLiquidationResponse {
+      total: number;
+      total_global: number;
+      page: number;
+      per_page: number;
+      items: Array<{
+        id: number;
+        fecha: string;
+        mes: number;
+        anio: number;
+        total_ganado: number;
+        minimo_garantizado: number;
+        pago_final: number;
+        metodo_pago?: string | null;
+        codigo_transferencia?: string | null;
+        estado_pago: 'pendiente' | 'pagado';
+      }>;
+    }
+
+    return this.http.get<BackendLiquidationResponse>(`${this.apiUrl}/api/drivers/${driverId}/liquidations`, { params }).pipe(
+      map((response) => ({
+        items: response.items.map((item) => ({
+          id: item.id,
+          fecha: item.fecha,
+          total_ganado: item.total_ganado,
+          minimo_garantizado: item.minimo_garantizado,
+          pago_final: item.pago_final,
+          metodo_pago: item.metodo_pago || 'transferencia',
+          codigo_transferencia: item.codigo_transferencia || null,
+          estado_pago: item.estado_pago
+        })),
+        total: response.total,
+        total_global: response.total_global,
+        page: response.page,
+        per_page: response.per_page
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo liquidaciones:', error);
+        return throwError(() => error);
+      })
+    );
+  }
 }
 

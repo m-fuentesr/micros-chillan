@@ -504,8 +504,23 @@ export class MachineService {
   // GET /api/machines/{id}/maintenances - Obtener mantenimientos de una máquina
   getMachineMaintenances(
     machineId: number, 
-    filters?: { categoria?: string; item?: string; desde?: string; hasta?: string }
-  ): Observable<{ items: any[]; total_registros: number; gasto_mes_actual: number }> {
+    filters?: { 
+      categoria?: string; 
+      item?: string; 
+      desde?: string; 
+      hasta?: string;
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{ 
+    items: any[]; 
+    total_registros: number; 
+    total_registros_global: number;
+    gasto_mes_actual: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.categoria) {
       params = params.set('categoria', filters.categoria);
@@ -519,11 +534,21 @@ export class MachineService {
     if (filters?.hasta) {
       params = params.set('hasta', filters.hasta);
     }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
 
     // Tipo de respuesta del backend
     interface BackendMaintenanceResponse {
       total_registros: number;
+      total_registros_global: number;
       gasto_mes_actual: number;
+      pagina: number;
+      por_pagina: number;
+      total_paginas: number;
       items: Array<{
         id: number;
         fecha: string; // ISO date string
@@ -537,7 +562,11 @@ export class MachineService {
     return this.http.get<BackendMaintenanceResponse>(`${this.apiUrl}/api/machines/${machineId}/maintenances`, { params }).pipe(
       map((response) => ({
         total_registros: response.total_registros,
+        total_registros_global: response.total_registros_global,
         gasto_mes_actual: response.gasto_mes_actual,
+        pagina: response.pagina,
+        por_pagina: response.por_pagina,
+        total_paginas: response.total_paginas,
         items: response.items.map((item) => ({
           id: item.id,
           maquina_id: machineId,
@@ -550,7 +579,15 @@ export class MachineService {
       })),
       catchError((error) => {
         console.error('Error obteniendo mantenimientos:', error);
-        return of({ items: [], total_registros: 0, gasto_mes_actual: 0 });
+        return of({ 
+          items: [], 
+          total_registros: 0,
+          total_registros_global: 0,
+          gasto_mes_actual: 0,
+          pagina: 1,
+          por_pagina: 12,
+          total_paginas: 0
+        });
       })
     );
   }

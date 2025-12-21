@@ -125,6 +125,7 @@ export class DailyRecordService {
 
     interface BackendPaginatedResponse {
       total: number;
+      total_registros_global?: number;
       page: number;
       per_page: number;
       items: Array<{
@@ -178,6 +179,7 @@ export class DailyRecordService {
             };
           }),
           total: response.total,
+          total_registros_global: response.total_registros_global ?? response.total,
           pagina: response.page,
           por_pagina: response.per_page,
           total_paginas: Math.ceil(response.total / response.per_page)

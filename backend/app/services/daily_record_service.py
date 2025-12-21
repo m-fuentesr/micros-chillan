@@ -523,12 +523,25 @@ async def list_daily_records_for_admin(
     if filters.fecha_fin:
         base_query = base_query.lte("fecha", filters.fecha_fin.isoformat())
 
-    # Primero obtenemos TOTAL
+    # Primero obtenemos TOTAL filtrado
     count_res = base_query.execute()
     if getattr(count_res, "error", None):
         raise HTTPException(400, f"Error listando registros diarios: {count_res.error}")
 
     total = count_res.count or 0
+
+    # Obtener total global (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+    )
+    if filters.chofer_id:
+        total_global_query = total_global_query.eq("chofer_id", filters.chofer_id)
+    if filters.maquina_id is not None:
+        total_global_query = total_global_query.eq("maquina_id", filters.maquina_id)
+    
+    total_global_res = total_global_query.execute()
+    total_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
 
     # Ahora hacemos la query paginada
     start = (filters.page - 1) * filters.per_page
@@ -572,12 +585,19 @@ async def list_daily_records_for_admin(
             }
         )
 
-    return PaginatedResponse(
+    # Retornar diccionario con total_registros_global además de PaginatedResponse
+    response = PaginatedResponse(
         total=total,
         page=filters.page,
         per_page=filters.per_page,
         items=items
     )
+    
+    # Convertir a dict y agregar total_registros_global
+    response_dict = response.model_dump()
+    response_dict["total_registros_global"] = total_global
+    
+    return response_dict
 
 
 async def get_daily_record_detail(record_id: int):

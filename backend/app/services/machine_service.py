@@ -1020,12 +1020,17 @@ async def get_machine_maintenances(
     item: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    page: int = 1,
+    per_page: int = 12,
 ):
     """
     Devuelve:
     - total_registros: cantidad de resultados filtrados
     - gasto_mes_actual: suma de costos del mes en curso
-    - items: lista de mantenimientos
+    - items: lista de mantenimientos paginados
+    - pagina: página actual
+    - por_pagina: registros por página
+    - total_paginas: total de páginas
     """
 
     # ---------------------------------------------------------
@@ -1050,11 +1055,11 @@ async def get_machine_maintenances(
     gasto_mes_actual = sum(r["costo"] for r in gasto_raw.data) if gasto_raw.data else 0
 
     # ---------------------------------------------------------
-    # 2) Construir el query principal
+    # 2) Construir el query principal con count
     # ---------------------------------------------------------
     query = (
         supabase.table("v_compras_repuestos")
-        .select("*")
+        .select("*", count="exact")
         .eq("maquina_id", machine_id)
     )
 
@@ -1091,8 +1096,18 @@ async def get_machine_maintenances(
     if hasta:
         query = query.lte("fecha_compra", hasta.isoformat())
 
-    # Ejecutar query
-    res = query.order("fecha_compra", desc=True).execute()
+    # Aplicar paginación
+    start = (page - 1) * per_page
+    end = start + per_page - 1
+    
+    # Ejecutar query con paginación
+    res = query.order("fecha_compra", desc=True).range(start, end).execute()
+    
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo historial: {res.error}")
+    
+    # Obtener el total del conteo
+    total_registros = res.count if hasattr(res, 'count') and res.count is not None else (len(res.data) if res.data else 0)
 
     if getattr(res, "error", None):
         raise HTTPException(400, f"Error obteniendo historial: {res.error}")
@@ -1112,15 +1127,29 @@ async def get_machine_maintenances(
             "numero_documento": r.get("numero_documento")
         })
 
-    total_registros = len(items)
+    # Calcular total de páginas
+    total_paginas = (total_registros + per_page - 1) // per_page if total_registros > 0 else 0
+
+    # Obtener total global de registros (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("v_compras_repuestos")
+        .select("id", count="exact")
+        .eq("maquina_id", machine_id)
+    )
+    total_global_res = total_global_query.execute()
+    total_registros_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
 
     # ---------------------------------------------------------
     # 4) Respuesta final
     # ---------------------------------------------------------
     return {
-        "total_registros": total_registros,
+        "total_registros": total_registros,  # Total filtrado (para paginación)
+        "total_registros_global": total_registros_global,  # Total sin filtros (para badge)
         "gasto_mes_actual": gasto_mes_actual,
-        "items": items
+        "items": items,
+        "pagina": page,
+        "por_pagina": per_page,
+        "total_paginas": total_paginas
     }
 
 

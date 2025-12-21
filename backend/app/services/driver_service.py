@@ -1124,3 +1124,129 @@ async def delete_driver(driver_id: int):
         raise HTTPException(400, f"Error marcando chofer como eliminado: {upd_ch.error}")
 
     return {"message": "Chofer eliminado correctamente"}
+
+
+async def get_driver_liquidations(driver_id: int, filters):
+    """
+    Obtiene las liquidaciones mensuales de un chofer con paginación y filtros.
+    Consulta directamente la tabla liquidaciones (cierres mensuales).
+    """
+    from app.core.pagination import PaginatedResponse
+    
+    # Construir query base para obtener liquidaciones del chofer
+    base_query = (
+        supabase.table("liquidaciones")
+        .select("*")
+        .eq("chofer_id", driver_id)
+    )
+    
+    # Obtener todas las liquidaciones (aplicaremos filtros después)
+    res = base_query.order("anio", desc=True).order("mes", desc=True).execute()
+    
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo liquidaciones: {res.error}")
+    
+    # Obtener total global (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("liquidaciones")
+        .select("id", count="exact")
+        .eq("chofer_id", driver_id)
+    )
+    total_global_res = total_global_query.execute()
+    total_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
+    
+    # Mapear liquidaciones y aplicar filtros
+    items = []
+    for liq in res.data or []:
+        mes = liq.get("mes")
+        anio = liq.get("anio")
+        
+        # Aplicar filtros de período
+        # Si hay filtro "desde" Y "hasta", mostrar rango
+        if filters.mes_desde and filters.anio_desde and filters.mes_hasta and filters.anio_hasta:
+            # Excluir si está antes del rango
+            if anio < filters.anio_desde or (anio == filters.anio_desde and mes < filters.mes_desde):
+                continue
+            # Excluir si está después del rango
+            if anio > filters.anio_hasta or (anio == filters.anio_hasta and mes > filters.mes_hasta):
+                continue
+        # Si solo hay "desde" sin "hasta", mostrar solo ese mes específico
+        elif filters.mes_desde and filters.anio_desde:
+            # Mostrar solo el mes/año exacto seleccionado
+            if anio != filters.anio_desde or mes != filters.mes_desde:
+                continue
+        # Si solo hay "hasta" sin "desde", mostrar todos hasta ese mes
+        elif filters.mes_hasta and filters.anio_hasta:
+            # Excluir si está después del mes "hasta"
+            if anio > filters.anio_hasta or (anio == filters.anio_hasta and mes > filters.mes_hasta):
+                continue
+        # Si no hay filtros de período, mostrar todos (no hacer nada)
+        
+        sueldo_minimo = int(liq.get("sueldo_minimo") or 0)
+        total_final = int(liq.get("total_final") or 0)
+        porcentaje_ganado = liq.get("porcentaje_ganado")
+        monto_faltante = liq.get("monto_faltante")
+        
+        # Calcular total_ganado: si hay porcentaje_ganado, usarlo; sino calcular desde total_final
+        # El total_ganado sería el monto antes de aplicar el mínimo garantizado
+        if porcentaje_ganado is not None:
+            # Si hay porcentaje_ganado, el total ganado es porcentaje_ganado + monto_faltante (si existe)
+            total_ganado = int(porcentaje_ganado) + (int(monto_faltante) if monto_faltante else 0)
+        else:
+            # Si no hay porcentaje_ganado, usar total_final como aproximación
+            total_ganado = total_final
+        
+        # Determinar estado: si total_final > 0, está pagado; sino pendiente
+        estado_pago = "pagado" if total_final > 0 else "pendiente"
+        
+        # Aplicar filtro de estado si existe
+        if filters.estado_pago and estado_pago != filters.estado_pago:
+            continue
+        
+        # Intentar obtener método de pago y código de transferencia desde pagos_semanales
+        # Buscar el último pago del mes para obtener estos datos
+        metodo_pago = None
+        codigo_transferencia = None
+        
+        if mes and anio:
+            pago_res = (
+                supabase.table("pagos_semanales")
+                .select("metodo_pago, codigo_transferencia")
+                .eq("chofer_id", driver_id)
+                .eq("mes", mes)
+                .eq("anio", anio)
+                .order("semana", desc=True)
+                .limit(1)
+                .execute()
+            )
+            
+            if pago_res.data and len(pago_res.data) > 0:
+                metodo_pago = pago_res.data[0].get("metodo_pago")
+                codigo_transferencia = pago_res.data[0].get("codigo_transferencia")
+        
+        items.append({
+            "id": liq.get("id"),
+            "fecha": f"{mes:02d}/{anio}",
+            "mes": mes,
+            "anio": anio,
+            "total_ganado": total_ganado,
+            "minimo_garantizado": sueldo_minimo,
+            "pago_final": total_final,
+            "metodo_pago": metodo_pago or "transferencia",
+            "codigo_transferencia": codigo_transferencia,
+            "estado_pago": estado_pago
+        })
+    
+    # Aplicar paginación
+    total = len(items)
+    start = filters.offset
+    end = start + filters.per_page
+    items_paginados = items[start:end]
+    
+    return {
+        "total": total,
+        "total_global": total_global,
+        "page": filters.page,
+        "per_page": filters.per_page,
+        "items": items
+    }
