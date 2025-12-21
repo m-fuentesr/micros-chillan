@@ -134,6 +134,7 @@ export class AccountingService {
             gasto_mantenimiento: week.total_mantenimiento,
             total_egresos: totalEgresos,
             ganancia_neta: week.ganancia_liquida,
+            total_pago_choferes: week.total_pago_choferes,
             choferes: [] // Se cargará cuando se expanda la semana
           };
         });

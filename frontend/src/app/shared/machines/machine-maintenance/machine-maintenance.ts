@@ -60,12 +60,48 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
       </div>
 
       <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-        <!-- Filtros usando componente reutilizable -->
-        <app-search-filters
-          [fields]="filterFields()"
-          [filters]="filters()"
-          [columns]="4"
-          (filterChange)="onFiltersChange($event)" />
+        <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
+        <div class="md:hidden mb-4">
+          <div class="sticky top-2 z-20">
+            <button
+              type="button"
+              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+              (click)="toggleFiltersMobile()"
+              [attr.aria-expanded]="showFiltersMobile()">
+              <div class="flex items-center gap-2">
+                <span class="w-1 h-4 rounded-full bg-primary"></span>
+                <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
+              </div>
+              <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
+            </button>
+          </div>
+          @if (showFiltersMobile()) {
+            <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
+              <app-search-filters
+                [fields]="filterFields()"
+                [filters]="filters()"
+                [columns]="1"
+                (filterChange)="onFiltersChange($event)" />
+              <!-- Botón para cerrar el panel manualmente -->
+              <div class="p-4 pt-0 border-t border-base-200/50">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary w-full"
+                  (click)="showFiltersMobile.set(false)">
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="hidden md:block">
+          <app-search-filters
+            [fields]="filterFields()"
+            [filters]="filters()"
+            [columns]="4"
+            (filterChange)="onFiltersChange($event)" />
+        </div>
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
@@ -410,6 +446,8 @@ export class MachineMaintenance implements OnInit, OnDestroy {
   recordDeleted = output<number>();
   filterChange = output<MaintenanceFilters>();
 
+  showFiltersMobile = signal(false);
+
   private confirmModal = inject(ConfirmModalService);
   private maintenanceFormModal = inject(MaintenanceFormModalService);
 
@@ -515,6 +553,10 @@ export class MachineMaintenance implements OnInit, OnDestroy {
     }
     
     this.filterChange.emit(updatedFilters);
+  }
+
+  toggleFiltersMobile(): void {
+    this.showFiltersMobile.update(open => !open);
   }
 
   ngOnInit(): void {

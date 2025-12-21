@@ -31,7 +31,9 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
+              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter"
+              [class.cursor-pointer]="record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA'"
+              [class.cursor-default]="!(record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA')"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
@@ -202,7 +204,9 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                   [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
                   [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
                   [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
-                  class="hover:bg-base-50/50 transition-colors group border-b border-base-100 last:border-0 animate-table-row-enter cursor-pointer"
+                  [class.cursor-pointer]="record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA'"
+                  [class.cursor-default]="!(record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA')"
+                  class="hover:bg-base-50/50 transition-colors group border-b border-base-100 last:border-0 animate-table-row-enter"
                   [style.animation-delay.ms]="i * 30"
                   [style.animation-fill-mode]="'both'"
                   (click)="onRecordClick(record, $event)">
@@ -455,7 +459,11 @@ export class DailyRecordsTable {
     if (target.closest('a, button')) {
       return;
     }
-    this.router.navigate(['/registro-diario', record.id]);
+    
+    // Solo navegar si el registro puede ser visto
+    if (record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA') {
+      this.router.navigate(['/registro-diario', record.id]);
+    }
   }
 
   formatCurrency(value: number): string {

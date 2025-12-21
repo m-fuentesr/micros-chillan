@@ -259,12 +259,21 @@ interface DailyRecordView {
                   </button>
                 </div>
                 @if (showFiltersMobile()) {
-                  <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm">
+                  <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
                     <app-search-filters
                       [fields]="filterFields()"
                       [filters]="recordFilters()"
                       [columns]="1"
                       (filterChange)="onRecordFilterChange($event)" />
+                    <!-- Botón para cerrar el panel manualmente -->
+                    <div class="p-4 pt-0 border-t border-base-200/50">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary w-full"
+                        (click)="toggleFiltersMobile()">
+                        Aplicar Filtros
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -917,7 +926,8 @@ export class BitacoraOperaciones implements OnInit {
       orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
     };
     this.recordFilters.set(filters);
-    this.showFiltersMobile.set(false);
+    // NO cerrar automáticamente el panel móvil - dejar que el usuario lo cierre manualmente
+    // Esto permite seleccionar múltiples filtros sin que el panel se cierre
     
     // Actualizar los filtros existentes para compatibilidad
     if (filters.desde) {

@@ -385,8 +385,15 @@ export class WeeklySummaryTable {
 
   totalPagos = computed(() => 
     this.summariesWithDrivers().reduce((acc, s) => {
-      const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
-      return acc + pagoChoferes;
+      // Si los choferes están cargados, usar la suma individual (más preciso)
+      // Si no, usar el total del resumen semanal
+      if (s.choferes && s.choferes.length > 0) {
+        const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
+        return acc + pagoChoferes;
+      } else {
+        // Usar el total del resumen semanal cuando los choferes no están cargados
+        return acc + (s.total_pago_choferes || 0);
+      }
     }, 0)
   );
 
