@@ -7,17 +7,16 @@ import { DriverCreateSummary } from '../../../shared/drivers/driver-create-summa
 import { Driver } from '../../../shared/models/driver.models';
 import { catchError, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-driver-create',
-  imports: [DriverForm, DriverCreateSummary, RouterLink, UiIconComponent],
+  imports: [DriverForm, DriverCreateSummary, RouterLink],
   template: `
     <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
-    <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
+    <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <!-- Header con borde izquierdo (estilo referencia) -->
-        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 mb-6">
+        <div class="page-entry-header border-l-4 border-l-primary pl-4 md:pl-6 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div class="flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -32,7 +31,9 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
             <a 
               routerLink="/choferes" 
               class="flex items-center gap-2 text-base-content/60 hover:text-base-content transition-colors text-sm font-medium group">
-              <ui-icon name="ChevronLeft" size="sm" class="group-hover:-translate-x-1 transition-transform" />
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:-translate-x-1 transition-transform">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+              </svg>
               <span>Volver a Conductores</span>
             </a>
           </div>
@@ -67,7 +68,9 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
                   class="btn btn-primary w-full sm:w-auto order-1 sm:order-2 shadow-lg"
                   [disabled]="!canSave()"
                   (click)="onSave()">
-                  <ui-icon name="Check" size="sm" class="mr-2" />
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </svg>
                   Guardar Conductor
                 </button>
               </div>

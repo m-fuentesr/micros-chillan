@@ -18,7 +18,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
     <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <!-- Header con borde izquierdo (estilo referencia) -->
-        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 mb-6">
+        <div class="page-entry-header border-l-4 border-l-primary pl-4 md:pl-6 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div class="flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -52,7 +52,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <ui-icon name="BusFront" size="md" class="text-primary" />
+                  <ui-icon name="BusFront" size="sm" class="text-primary" />
                 </div>
                 <div>
                   <h2 class="text-xl sm:text-2xl font-bold text-base-content">Datos de la Máquina</h2>
@@ -102,7 +102,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-300/50">
                 <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <ui-icon name="FileText" size="md" class="text-warning" />
+                  <ui-icon name="FileText" size="sm" class="text-warning" />
                 </div>
                 <div>
                   <h2 class="text-xl sm:text-2xl font-bold text-base-content">Documentación Inicial</h2>
@@ -119,7 +119,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
           </div>
           
           <!-- Acciones Finales (Pegado al último card) -->
-          <div class="bg-base-200/30 border-t border-base-300/50 rounded-3xl -mt-6">
+          <div class="bg-base-200/30 border-t border-base-300/50 rounded-2xl -mt-6">
             <div class="px-6 sm:px-8 py-4 sm:py-6">
               <div class="flex flex-col sm:flex-row justify-end gap-3 sm:gap-4">
                 <a 
