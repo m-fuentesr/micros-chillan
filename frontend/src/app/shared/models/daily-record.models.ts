@@ -3,13 +3,15 @@
 
 /**
  * Estados posibles de un registro diario
+ * Incluye EN_ESPERA para registros que aún no han sido creados
  */
 export type DailyRecordStatus = 
   | 'PENDIENTE_TRABAJADOR' 
   | 'INCIDENTE_REPORTADO' 
   | 'COMPLETO' 
   | 'NO_TRABAJADO' 
-  | 'DIA_NO_TRABAJADO';
+  | 'DIA_NO_TRABAJADO'
+  | 'EN_ESPERA';
 
 /**
  * Motivos de inactividad cuando el día no fue trabajado

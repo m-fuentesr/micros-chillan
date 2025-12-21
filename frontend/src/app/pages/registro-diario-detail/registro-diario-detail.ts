@@ -10,8 +10,7 @@ import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/da
 import { catchError, EMPTY, forkJoin, of, switchMap, Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
-import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { getDateInChileTime, getDaysDifferenceInChile } from '../../shared/utils/date.utils';
 
 /**
@@ -49,7 +48,7 @@ interface DailyRecordDetailView extends DailyRecord {
 
 @Component({
   selector: 'app-registro-diario-detail',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage, BusIcon, DriverIcon],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage, UiIconComponent],
   template: `
     <main class="bg-base-200 min-h-screen">
       <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
@@ -105,9 +104,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     (click)="goBack()"
                     type="button"
                     aria-label="Volver">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                    </svg>
+                    <ui-icon name="ChevronLeft" size="md" />
                   </button>
 
                   <div class="flex items-center gap-3 flex-wrap">
@@ -116,9 +113,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     </h1>
                     @if (isIncidente()) {
                       <span class="inline-flex items-center gap-2 rounded-full bg-error/10 text-error px-3 py-1 text-xs sm:text-sm font-semibold border border-error/20 shadow-sm">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                        </svg>
+                        <ui-icon name="AlertCircle" size="sm" />
                         Incidente
                       </span>
                     } @else if (isCompleto()) {
@@ -131,17 +126,15 @@ interface DailyRecordDetailView extends DailyRecord {
 
                 <div class="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-base-content/70">
                   <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-primary/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2Z"/>
-                    </svg>
+                    <ui-icon name="Calendar" size="sm" class="text-primary/80" />
                     {{ record()?.date }}
                   </span>
                   <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                    <app-bus-icon class="w-4 h-4 text-primary/80"></app-bus-icon>
+                    <ui-icon name="BusFront" size="sm" class="text-primary/80" />
                     {{ record()?.machine }}
                   </span>
                   <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-100 border border-base-200 shadow-sm">
-                    <app-driver-icon class="w-4 h-4 text-primary/80"></app-driver-icon>
+                    <ui-icon name="IdCard" size="sm" class="text-primary/80" />
                     {{ record()?.driver }}
                   </span>
                 </div>
@@ -153,9 +146,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     class="btn bg-primary text-primary-content border-none hover:bg-primary-focus h-11 px-5 gap-2 rounded-lg shadow-lg shadow-primary/25" 
                     (click)="enableEditMode()"
                     type="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                    </svg>
+                    <ui-icon name="Pencil" size="sm" />
                     <span>Editar registro</span>
                   </button>
                 } @else {
@@ -168,9 +159,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     (click)="saveRecord()"
                     [disabled]="recordForm.invalid"
                     type="button">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Check" size="sm" />
                     <span>Guardar cambios</span>
                   </button>
                 }
@@ -309,9 +298,7 @@ interface DailyRecordDetailView extends DailyRecord {
             <!-- Alert para Incidente -->
             @if (isIncidente()) {
               <div class="alert alert-error bg-error/10 border-l-4 border-l-error border-y-0 border-r-0 rounded-r-lg text-base-content shadow-sm mb-6 flex items-start">
-                <svg xmlns="http://www.w3.org/2000/svg" class="stroke-error shrink-0 h-6 w-6 mt-0.5" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
+                <ui-icon name="TriangleAlert" size="lg" class="stroke-error shrink-0 mt-0.5" />
                 <div class="flex-1">
                   <h3 class="font-bold text-error">Incidente Crítico Reportado</h3>
                   <div class="text-sm opacity-90 italic mt-1">El conductor reportó un incidente. Revisa las observaciones y fotos antes de validar.</div>
@@ -391,9 +378,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     <div class="card-body p-4 sm:p-5 lg:p-6">
                       <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-base-200">
                         <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary flex-shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3 0h6m-6-4h6m-6-4h6M4.5 6.75h15a.75.75 0 0 1 .75.75v9a.75.75 0 0 1-.75.75h-15A.75.75 0 0 1 3.75 16.5v-9a.75.75 0 0 1 .75-.75Z" />
-                          </svg>
+                          <ui-icon name="Wallet" size="md" />
                         </div>
                         <div class="min-w-0">
                           <h2 class="card-title text-base sm:text-lg truncate">Información Financiera</h2>
@@ -470,9 +455,7 @@ interface DailyRecordDetailView extends DailyRecord {
                       <div class="flex items-center justify-between gap-3">
                         <div class="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                           <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm flex-shrink-0 text-sm sm:text-base">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" viewBox="0 0 24 24" stroke-width="1.8" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.5m0 3.5h.01M10.29 3.86 2.82 17.25a1.5 1.5 0 0 0 1.29 2.25h15.78a1.5 1.5 0 0 0 1.29-2.25L13.71 3.86a1.5 1.5 0 0 0-2.42 0Z" />
-                            </svg>
+                            <ui-icon name="TriangleAlert" size="md" />
                           </div>
                           <div class="min-w-0">
                             <p class="text-xs sm:text-sm font-bold text-red-800 truncate">¿Es una emergencia?</p>
@@ -523,9 +506,7 @@ interface DailyRecordDetailView extends DailyRecord {
                       <h3 class="font-bold text-sm sm:text-base">Comprobante del Registro Diario</h3>
                       @if (hasComprobanteRegistro()) {
                         <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2 shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                          </svg>
+                          <ui-icon name="Check" size="xs" />
                           <span class="hidden sm:inline">Validado</span>
                         </span>
                       }
@@ -551,9 +532,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         }
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
-                          </svg>
+                          <ui-icon name="Search" size="lg" class="text-white" />
                           <span class="font-bold text-sm">Ver Detalle</span>
                         </div>
                       </div>
@@ -569,9 +548,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     @if (!hasComprobanteRegistro() && !isEditMode()) {
                       <div class="w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 flex items-center justify-center">
                         <div class="flex flex-col items-center justify-center text-base-content/40">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <ui-icon name="FileText" size="lg" class="mb-2" />
                           <span class="text-sm font-medium">No hay foto subida</span>
                         </div>
                       </div>
@@ -601,17 +578,12 @@ interface DailyRecordDetailView extends DailyRecord {
                               class="object-cover w-full h-full" />
                           }
                           <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
-                            </svg>
+                            <ui-icon name="Camera" size="lg" class="text-white" />
                             <span class="font-bold text-sm">Cambiar foto</span>
                           </div>
                         } @else {
                           <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 group-hover:text-primary transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                            </svg>
+                            <ui-icon name="Upload" size="lg" class="mb-1" />
                             <span class="text-xs font-bold uppercase">Sube o arrastra el comprobante</span>
                             <span class="text-[10px] mt-1">JPG, PNG, JFIF (Max 10MB)</span>
                           </div>
@@ -631,9 +603,7 @@ interface DailyRecordDetailView extends DailyRecord {
                       <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500 shrink-0">Opcional</span>
                       @if (hasComprobante()) {
                         <span class="badge badge-success badge-xs gap-1 py-1.5 sm:py-2 shrink-0">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                          </svg>
+                          <ui-icon name="Check" size="xs" />
                           <span class="hidden sm:inline">Validado</span>
                         </span>
                       }
@@ -659,9 +629,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         }
                         <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm pointer-events-none">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607zM10.5 7.5v6m3-3h-6" />
-                          </svg>
+                          <ui-icon name="Search" size="lg" class="text-white" />
                           <span class="font-bold text-sm">Ver Detalle</span>
                         </div>
                       </div>
@@ -677,9 +645,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     @if (!hasComprobante() && !isEditMode()) {
                       <div class="w-full aspect-[4/3] border-2 border-dashed border-base-300 rounded-xl bg-base-50 flex items-center justify-center">
                         <div class="flex flex-col items-center justify-center text-base-content/40">
-                          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <ui-icon name="FileText" size="lg" class="mb-2" />
                           <span class="text-sm font-medium">No hay foto subida</span>
                         </div>
                       </div>
@@ -709,10 +675,7 @@ interface DailyRecordDetailView extends DailyRecord {
                               class="object-cover w-full h-full" />
                           }
                           <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-2 backdrop-blur-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316Z" />
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zm2.25-2.25h.008v.008h-.008V10.5z" />
-                            </svg>
+                            <ui-icon name="Camera" size="lg" class="text-white" />
                             <span class="font-bold text-sm">Cambiar foto</span>
                           </div>
                         } @else {
@@ -762,9 +725,7 @@ interface DailyRecordDetailView extends DailyRecord {
                 <div class="card bg-base-100 shadow-sm border border-base-200 order-3 lg:order-3">
                   <div class="card-body p-4 sm:p-5">
                     <h3 class="font-bold text-sm sm:text-base mb-3 sm:mb-4 flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4 text-base-content/50">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <ui-icon name="Clock" size="sm" class="text-base-content/50" />
                       Historial
                     </h3>
                     @if (historyItems().length > 0) {
@@ -797,9 +758,7 @@ interface DailyRecordDetailView extends DailyRecord {
           </form>
         } @else {
           <div class="alert alert-error">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
+            <ui-icon name="AlertCircle" size="lg" class="stroke-current shrink-0" />
             <span>No se pudo cargar el registro.</span>
           </div>
         }

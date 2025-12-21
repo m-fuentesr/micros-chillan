@@ -8,17 +8,17 @@ import { MachineCreateSummary } from '../../../shared/machines/machine-create-su
 import { Machine } from '../../../shared/models/machine.models';
 import { catchError, finalize, of, take } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-create',
-  imports: [MachineForm, MachineDocumentationForm, MachineCreateSummary, RouterLink, BusIcon],
+  imports: [MachineForm, MachineDocumentationForm, MachineCreateSummary, RouterLink, UiIconComponent],
   template: `
     <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
     <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <!-- Header con borde izquierdo (estilo referencia) -->
-        <div class="page-entry-header border-l-4 border-l-primary pl-4 md:pl-6 mb-6">
+        <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
             <div class="flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -33,9 +33,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
             <a 
               routerLink="/maquinas" 
               class="flex items-center gap-2 text-base-content/60 hover:text-base-content transition-colors text-sm font-medium group">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:-translate-x-1 transition-transform">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
+              <ui-icon name="ChevronLeft" size="sm" class="group-hover:-translate-x-1 transition-transform" />
               <span>Volver a Flota</span>
             </a>
           </div>
@@ -54,7 +52,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
                 <div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <app-bus-icon class="w-5 h-5 text-primary" />
+                  <ui-icon name="BusFront" size="md" class="text-primary" />
                 </div>
                 <div>
                   <h2 class="text-xl sm:text-2xl font-bold text-base-content">Datos de la Máquina</h2>
@@ -104,9 +102,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               <!-- Header de sección con icono -->
               <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-300/50">
                 <div class="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-warning">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
+                  <ui-icon name="FileText" size="md" class="text-warning" />
                 </div>
                 <div>
                   <h2 class="text-xl sm:text-2xl font-bold text-base-content">Documentación Inicial</h2>
@@ -139,9 +135,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 <span class="loading loading-spinner loading-sm mr-2"></span>
                 Guardando…
               } @else {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
+                <ui-icon name="Check" size="sm" class="mr-2" />
                 Guardar Máquina
               }
                 </button>

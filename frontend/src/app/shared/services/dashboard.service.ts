@@ -1,6 +1,6 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, Subject, EMPTY, throwError } from 'rxjs';
+import { Observable, of, Subject, EMPTY, throwError, firstValueFrom } from 'rxjs';
 import { catchError, map, filter, tap, debounceTime, shareReplay } from 'rxjs/operators';
 import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { Alert, DailyRecord, FinancialSummary, DashboardResponse } from '../models/dashboard.models';
@@ -27,6 +27,14 @@ export class DashboardService {
   // ========== Signals para estado reactivo (nuevo endpoint /api/dashboard/overview) ==========
   private _dashboardData = signal<DashboardResponse | null>(null);
   public readonly dashboardData = this._dashboardData.asReadonly();
+  
+  // Signal para registros diarios con timestamps
+  private _dailyRecords = signal<DailyRecord[]>([]);
+  public readonly dailyRecords = this._dailyRecords.asReadonly();
+  
+  // Track de IDs con valores actualizados (para value flash animation)
+  private _updatedValueIds = signal<Set<number>>(new Set());
+  public readonly updatedValueIds = this._updatedValueIds.asReadonly();
   
   // Signal para estado de conexión WebSocket
   private _isConnected = signal<boolean>(false);
@@ -211,6 +219,56 @@ export class DashboardService {
   }
 
   /**
+   * Obtiene los registros diarios del día actual desde el endpoint /api/dashboard/daily-records
+   * Este método actualiza el Signal dailyRecords y detecta nuevos registros para animaciones
+   */
+  private async fetchDailyRecords(): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get<{ total: number; items: any[] }>(
+          `${this.apiUrl}/api/dashboard/daily-records`
+        )
+      );
+      
+      const records: DailyRecord[] = response.items.map(item => ({
+        id: item.registro_id?.toString() || item.chofer?.id?.toString() || '',
+        machineId: item.maquina?.numero_interno?.toString() || item.maquina?.id?.toString() || 'N/A',
+        driver: item.chofer?.nombre?.trim() || 'Sin asignar',
+        date: item.fecha,
+        status: item.estado?.toUpperCase() || 'EN_ESPERA',
+        recaudacion: item.monto_recaudado,
+        puedeVerDetalle: item.puede_ver_detalle ?? false
+      }));
+      
+      // Detectar valores actualizados (recaudación cambió)
+      const updatedValueIds = new Set<number>();
+      const previousRecords = this._dailyRecords();
+      
+      if (previousRecords.length > 0) {
+        records.forEach(record => {
+          const prevRecord = previousRecords.find(r => r.id === record.id);
+          if (prevRecord && prevRecord.recaudacion !== record.recaudacion) {
+            const id = parseInt(record.id);
+            if (!isNaN(id)) updatedValueIds.add(id);
+          }
+        });
+      }
+      
+      this._dailyRecords.set(records);
+      this._updatedValueIds.set(updatedValueIds);
+      
+      // Limpiar IDs actualizados después de 3 segundos (para la animación)
+      if (updatedValueIds.size > 0) {
+        setTimeout(() => {
+          this._updatedValueIds.set(new Set());
+        }, 3000);
+      }
+    } catch (error) {
+      console.error('Error cargando registros diarios:', error);
+    }
+  }
+
+  /**
    * Conecta al WebSocket para recibir notificaciones de actualización
    * Implementa el patrón "Signal-Triggered Refetch"
    */
@@ -280,6 +338,7 @@ export class DashboardService {
         tap(() => {
           console.log('⚡ Actualización recibida, recargando datos del dashboard...');
           this.fetchOverview();
+          this.fetchDailyRecords();
         }),
         shareReplay(1)
       ).subscribe({
@@ -295,6 +354,7 @@ export class DashboardService {
 
       // Cargar datos iniciales
       this.fetchOverview();
+      this.fetchDailyRecords();
     } catch (error) {
       console.error('Error al crear conexión WebSocket:', error);
       this._connectionError.set('Error al conectar con el servidor');

@@ -19,12 +19,12 @@ import { calculateMachineDocumentStatus } from '../../../shared/utils/document.u
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
-import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, BusIcon],
+  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, UiIconComponent],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
@@ -48,9 +48,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                 class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto btn btn-ghost btn-sm gap-2 hover:bg-base-200/50 transition-all shrink-0 z-10"
                 aria-label="Volver a la lista de máquinas"
                 (click)="onBack()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                </svg>
+                <ui-icon name="ChevronLeft" size="sm" />
                 <span class="hidden sm:inline">Volver</span>
               </button>
             </div>
@@ -61,7 +59,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
                   <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <app-bus-icon class="w-6 h-6" />
+                    <ui-icon name="BusFront" size="md" />
                   </div>
                   <div class="min-w-0">
                     <h2 class="text-xl md:text-2xl font-bold text-base-content">
@@ -95,19 +93,14 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     type="button"
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Eliminar</span>
                   </button>
                   <button
                     type="button"
                     class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="toggleEditGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                    </svg>
+                    <ui-icon name="Pencil" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Editar</span>
                   </button>
                 } @else {
@@ -121,9 +114,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     type="button"
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
                 }
@@ -187,9 +178,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
                 <div class="card-body p-6">
                   <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                    </svg>
+                    <ui-icon name="Settings" size="sm" class="text-primary" />
                     Ficha Técnica
                   </h3>
                   <div class="grid grid-cols-1 gap-4">
@@ -280,9 +269,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full animate-card-stagger" [style.animation-delay]="'100ms'">
                 <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
                 <h3 class="font-bold text-lg flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 2c-1.716 0-3.408.106-5.07.31C3.806 2.45 3 3.414 3 4.517V17.25a.75.75 0 0 0 1.075.676L10 15.082l5.925 2.844A.75.75 0 0 0 17 17.25V4.517c0-1.103-.806-2.068-1.93-2.207A41.403 41.403 0 0 0 10 2Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="FileText" size="sm" class="text-primary" />
                   Documentación
                 </h3>
               </div>
@@ -301,9 +288,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     [class.bg-success/5]="docStatus().revision_tecnica?.estado === 'ok'"
                     [class.text-success]="docStatus().revision_tecnica?.estado === 'ok'"
                     [class.border-success/20]="docStatus().revision_tecnica?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                      </svg>
+                    <ui-icon name="CheckCircle2" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
@@ -341,9 +326,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     [class.bg-success/5]="docStatus().permiso_circulacion?.estado === 'ok'"
                     [class.text-success]="docStatus().permiso_circulacion?.estado === 'ok'"
                     [class.border-success/20]="docStatus().permiso_circulacion?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                      </svg>
+                    <ui-icon name="FileText" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
@@ -381,9 +364,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     [class.bg-success/5]="docStatus().seguro_obligatorio?.estado === 'ok'"
                     [class.text-success]="docStatus().seguro_obligatorio?.estado === 'ok'"
                     [class.border-success/20]="docStatus().seguro_obligatorio?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-                      </svg>
+                    <ui-icon name="CheckCircle2" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
@@ -459,9 +440,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                   } @else {
                     <div class="avatar mb-4 placeholder">
                       <div class="w-24 rounded-full bg-base-200 ring ring-base-100 ring-offset-2 flex items-center justify-center text-base-content/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                        </svg>
+                        <ui-icon name="UserRound" size="lg" />
                       </div>
                     </div>
                     <h4 class="text-lg font-bold text-base-content/70">

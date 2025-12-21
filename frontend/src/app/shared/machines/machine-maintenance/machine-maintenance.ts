@@ -6,10 +6,11 @@ import { SearchFilters, FilterField } from '../../components/search-filters/sear
 import { ConfirmModalService } from '../../services/confirm-modal.service';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
 import { KpiCard } from '../../components/kpi-card/kpi-card';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-maintenance',
-  imports: [CommonModule, FormsModule, SearchFilters, KpiCard],
+  imports: [CommonModule, FormsModule, SearchFilters, KpiCard, UiIconComponent],
   template: `
 
     <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
@@ -40,11 +41,10 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                 [subtitle]="'Acumulado del mes actual'"
                 [value]="formatCurrency(monthTotal())"
                 type="danger"
+                size="compact"
                 badgeText="Inversión activos"
                 [animationDelay]="0">
-                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
-                </svg>
+                <span icon><ui-icon name="Wallet" size="md" /></span>
               </app-kpi-card>
             </div>
             
@@ -52,9 +52,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             <button
               class="btn btn-primary gap-2 font-bold shadow-lg hover:shadow-xl transition-all whitespace-nowrap w-full sm:w-auto"
               (click)="openAddRecordModal()">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
+              <ui-icon name="CirclePlus" size="sm" />
               Nueva compra
             </button>
           </div>
@@ -83,9 +81,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                 <div class="flex items-start justify-between gap-4 mb-4">
                   <div class="flex items-center gap-3">
                     <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                      </svg>
+                      <ui-icon name="Calendar" size="sm" />
                     </div>
                     <div>
                       <h3 class="font-bold text-base text-base-content">{{ formatDate(record.fecha) }}</h3>
@@ -97,16 +93,12 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   <div class="shrink-0">
                     @if (record.categoria === 'preventivo') {
                       <div class="badge badge-success gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
-                        </svg>
+                        <ui-icon name="Check" size="xs" />
                         Preventivo
                       </div>
                     } @else if (record.categoria === 'correctivo') {
                       <div class="badge badge-warning gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-                        </svg>
+                        <ui-icon name="TriangleAlert" size="xs" />
                         Correctivo
                       </div>
                     } @else {
@@ -149,9 +141,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             <div class="text-center py-12 animate-fade-in">
               <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655-5.653a2.548 2.548 0 010-3.586L11.12 2.12a2.548 2.548 0 013.586 0l4.655 5.653a2.548 2.548 0 010 3.586l-5.877 5.877M11.42 15.17l-1.496 1.83" />
-                  </svg>
+                  <ui-icon name="Settings" size="lg" class="text-base-content/40" />
                 </div>
                 <div class="space-y-2">
                   <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -189,9 +179,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-2">
                       <div class="bg-primary/10 p-1.5 rounded text-primary shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                        </svg>
+                        <ui-icon name="Calendar" size="sm" />
                       </div>
                       <div>
                         <div class="font-semibold text-base-content">{{ formatDate(record.fecha) }}</div>
@@ -240,9 +228,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                     <button 
                       class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                       (click)="openDeleteModal(record.id)">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                        <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                      </svg>
+                      <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                       <span class="whitespace-nowrap">Eliminar</span>
                     </button>
                   </td>
@@ -252,9 +238,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   <td colspan="6" class="py-16 sm:py-20">
                     <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                       <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655-5.653a2.548 2.548 0 010-3.586L11.12 2.12a2.548 2.548 0 013.586 0l4.655 5.653a2.548 2.548 0 010 3.586l-5.877 5.877M11.42 15.17l-1.496 1.83" />
-                        </svg>
+                        <ui-icon name="Settings" size="lg" class="text-base-content/40" />
                       </div>
                       <div class="space-y-2">
                         <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>

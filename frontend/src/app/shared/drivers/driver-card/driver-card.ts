@@ -2,12 +2,12 @@ import { Component, ChangeDetectionStrategy, input, computed } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { Driver } from '../../models/driver.models';
 import { calculateLicenseStatus } from '../../utils/license.utils';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-driver-card',
   standalone: true,
-  imports: [RouterLink, DriverIcon],
+  imports: [RouterLink, UiIconComponent],
   template: `
     <!-- La tarjeta completa actúa como CTA principal -->
     <a 
@@ -56,7 +56,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
           <div class="flex gap-4 flex-grow min-h-0">
             <!-- Avatar (80x80 = w-20 h-20) -->
             <div class="w-20 h-20 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
-              <app-driver-icon class="w-full h-full p-2 text-primary" />
+              <ui-icon name="IdCard" size="lg" class="text-primary" />
             </div>
 
             <!-- Datos: Especificaciones -->

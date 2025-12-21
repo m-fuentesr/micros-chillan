@@ -1,10 +1,11 @@
 import { Component, ChangeDetectionStrategy, inject, effect, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
 import { AlertModalService } from '../../services/alert-modal.service';
 
 @Component({
   selector: 'app-alert-modal',
-  imports: [CommonModule],
+  imports: [CommonModule, UiIconComponent],
   template: `
     <dialog 
       #dialogRef
@@ -24,21 +25,13 @@ import { AlertModalService } from '../../services/alert-modal.service';
             [class.bg-info/10]="modalService.config()?.type === 'info' || !modalService.config()?.type"
             [class.text-info]="modalService.config()?.type === 'info' || !modalService.config()?.type">
             @if (modalService.config()?.type === 'error') {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="TriangleAlert" size="xl" />
             } @else if (modalService.config()?.type === 'warning') {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="TriangleAlert" size="xl" />
             } @else if (modalService.config()?.type === 'success') {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ui-icon name="CheckCircle2" size="xl" />
             } @else {
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-7 h-7">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
-              </svg>
+              <ui-icon name="Info" size="xl" />
             }
           </div>
           <div class="flex-1 min-w-0 pt-0.5">
@@ -59,9 +52,7 @@ import { AlertModalService } from '../../services/alert-modal.service';
             type="button"
             class="btn btn-primary gap-2 font-semibold"
             (click)="modalService.close()">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Check" size="sm" />
             {{ modalService.config()?.buttonText || 'Entendido' }}
           </button>
         </div>

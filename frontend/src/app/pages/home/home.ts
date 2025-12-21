@@ -9,7 +9,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { isPlatformBrowser } from '@angular/common';
@@ -18,7 +18,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon, KpiCard, AnimatedCounterDirective],
+  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, KpiCard, AnimatedCounterDirective, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
@@ -50,9 +50,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
         } @else if (sequentialState.kpisError()) {
           <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
             <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ui-icon name="AlertCircle" size="md" class="text-error" />
               <div>
                 <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
                 <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
@@ -76,10 +74,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
-                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-                  <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-                </svg>
+                <ui-icon icon name="Wallet" size="md" />
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
@@ -103,13 +98,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                       'h-8 w-8': cardSize() === 'medium',
                       'h-5 w-5': cardSize() === 'compact'
                     }">
-                    <svg xmlns="http://www.w3.org/2000/svg" 
-                      [ngClass]="{
-                        'w-5 h-5': cardSize() === 'default',
-                        'w-4 h-4': cardSize() === 'medium',
-                        'w-3 h-3': cardSize() === 'compact'
-                      }"
-                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                    <ui-icon 
+                      name="HandCoins"
+                      [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                   </div>
                   <div>
                     <h3 
@@ -177,12 +168,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                         'h-8 w-8': cardSize() === 'medium',
                         'h-5 w-5': cardSize() === 'compact'
                       }">
-                      <app-bus-icon 
-                        [ngClass]="{
-                          'h-5 w-5': cardSize() === 'default',
-                          'h-4 w-4': cardSize() === 'medium',
-                          'h-3 w-3': cardSize() === 'compact'
-                        }" />
+                      <ui-icon 
+                        name="BusFront" 
+                        [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                     </div>
                     <div>
                       <h3 
@@ -396,10 +384,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
-                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-                  <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-                </svg>
+                <ui-icon icon name="Wallet" size="md" />
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
@@ -423,13 +408,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                       'h-8 w-8': cardSize() === 'medium',
                       'h-5 w-5': cardSize() === 'compact'
                     }">
-                    <svg xmlns="http://www.w3.org/2000/svg" 
-                      [ngClass]="{
-                        'w-5 h-5': cardSize() === 'default',
-                        'w-4 h-4': cardSize() === 'medium',
-                        'w-3 h-3': cardSize() === 'compact'
-                      }"
-                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
+                    <ui-icon 
+                      name="HandCoins"
+                      [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                   </div>
                   <div>
                     <h3 
@@ -499,12 +480,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                         'h-8 w-8': cardSize() === 'medium',
                         'h-5 w-5': cardSize() === 'compact'
                       }">
-                      <app-bus-icon 
-                        [ngClass]="{
-                          'h-5 w-5': cardSize() === 'default',
-                          'h-4 w-4': cardSize() === 'medium',
-                          'h-3 w-3': cardSize() === 'compact'
-                        }" />
+                      <ui-icon 
+                        name="BusFront" 
+                        [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                     </div>
                     <div>
                       <h3 
@@ -729,9 +707,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
           } @else if (sequentialState.contentError()) {
             <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
               <div class="flex flex-col items-center gap-4 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <ui-icon name="AlertCircle" size="xl" class="text-error" />
                 <div>
                   <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
                   <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
@@ -769,9 +745,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
             @if (sequentialState.contentError()) {
               <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <ui-icon name="AlertCircle" size="xl" class="text-error" />
                   <div>
                     <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
                     <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
@@ -799,6 +773,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
               <div class="border-t-2 border-t-base-300 pt-6">
                 <app-daily-records-table
                   [records]="dailyRecords()"
+                  [updatedValueIds]="updatedValueIds()"
                   [showOnlyPending]="showOnlyPending()"
                   (toggleFilter)="togglePendingFilter()" />
               </div>
@@ -1011,21 +986,9 @@ export class Home implements OnInit, OnDestroy {
     };
   });
 
-  // Cargar registros diarios
-  dailyRecordsData = toSignal(
-    this.dashboardService.getDailyRecords().pipe(
-      catchError((error) => {
-        console.error('Error al cargar registros diarios en home:', error);
-        return of<DailyRecord[]>([]);
-      })
-    ),
-    { initialValue: [] }
-  );
-
-  dailyRecords = computed(() => {
-    const records = this.dailyRecordsData() ?? [];
-    return records;
-  });
+  // Cargar registros diarios desde el signal del servicio (se actualiza vía WebSocket)
+  dailyRecords = this.dashboardService.dailyRecords;
+  updatedValueIds = this.dashboardService.updatedValueIds;
 
   // Datos financieros (se obtienen del backend)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({

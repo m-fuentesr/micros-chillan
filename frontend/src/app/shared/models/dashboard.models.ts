@@ -43,6 +43,7 @@ export interface DailyRecord {
   status: DailyRecordStatus;
   recaudacion?: number; // Alias de recaudado
   motivo?: string; // Alias de motivo_inactividad
+  puedeVerDetalle?: boolean; // Indica si existe un registro diario para ver el detalle
 }
 
 export interface FinancialSummary {

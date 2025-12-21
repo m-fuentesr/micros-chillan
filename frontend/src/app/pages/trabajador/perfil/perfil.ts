@@ -5,14 +5,14 @@ import { AuthService } from '../../../shared/services/auth.service';
 import { WorkerService } from '../../../shared/services/worker.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
-import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import { AnimatedCounterDirective } from '../../../shared/directives/animated-counter.directive';
 
 @Component({
   selector: 'app-perfil',
-  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, DriverIcon],
+  imports: [RouterLink, CommonModule, LoadingSkeleton, AnimatedCounterDirective, UiIconComponent],
   template: `
     <div class="perfil-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
       @if (profileLoadingState.isLoading()) {
@@ -35,7 +35,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
         <div class="relative z-10 flex flex-col items-center text-white text-center" [style.padding-top]="'calc(40px + env(safe-area-inset-top, 0px))'">
           <div class="avatar online mb-3">
             <div class="w-20 rounded-full ring ring-white ring-offset-base-100 ring-offset-2 bg-white/20 backdrop-blur-sm flex items-center justify-center text-primary">
-              <app-driver-icon class="w-10 h-10 text-white drop-shadow-md"></app-driver-icon>
+              <ui-icon name="IdCard" size="xl" class="text-white drop-shadow-md" />
             </div>
           </div>
           
@@ -45,9 +45,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
             
             @if (phoneNumber()) {
               <div class="flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full mt-1 backdrop-blur-md border border-white/20 shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                  <path fill-rule="evenodd" d="M2 3.5A1.5 1.5 0 013.5 2h1.148a1.5 1.5 0 011.465 1.175l.716 3.223a1.5 1.5 0 01-1.052 1.767l-.933.267c-.41.117-.643.555-.48.95a11.542 11.542 0 006.254 6.254c.395.163.833-.07.95-.48l.267-.933a1.5 1.5 0 011.767-1.052l3.223.716A1.5 1.5 0 0118 15.352V16.5a1.5 1.5 0 01-1.5 1.5H15c-1.149 0-2.263-.15-3.326-.43A13.022 13.022 0 012.43 8.326 13.019 13.019 0 012 5V3.5z" clip-rule="evenodd" />
-                </svg>
+                <ui-icon name="Phone" size="xs" />
                 <span class="font-mono text-xs tracking-wide">{{ phoneNumber() }}</span>
               </div>
             }
@@ -92,27 +90,23 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
           <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden space-y-0.5">
             <a routerLink="/trabajador/mi-historial" class="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors active:bg-blue-50 group">
               <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path d="M12.75 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM7.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM8.25 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM9.75 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM10.5 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM12.75 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM14.25 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 17.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 15.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM15 12.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM16.5 13.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" /><path fill-rule="evenodd" d="M6.75 2.25A.75.75 0 0 1 7.5 3v1.5h9V3A.75.75 0 0 1 18 3v1.5h.75a3 3 0 0 1 3 3v11.25a3 3 0 0 1-3 3H5.25a3 3 0 0 1-3-3V7.5a3 3 0 0 1 3-3H6V3a.75.75 0 0 1 .75-.75Zm13.5 9a1.5 1.5 0 0 0-1.5-1.5H5.25a1.5 1.5 0 0 0-1.5 1.5v7.5a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-7.5Z" clip-rule="evenodd" /></svg>
+                <ui-icon name="Calendar" size="sm" />
               </div>
               <div class="flex-1">
                 <p class="text-sm font-bold text-slate-700">Historial de Reportes</p>
                 <p class="text-xs text-slate-400">Revisar tus envíos anteriores</p>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-slate-300 group-hover:text-blue-500 transition-colors"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+              <ui-icon name="ChevronRight" size="sm" class="text-slate-300 group-hover:text-blue-500 transition-colors" />
             </a>
             <a routerLink="/trabajador/centro-ayuda" class="flex items-center gap-4 p-4 hover:bg-slate-50 transition-colors active:bg-blue-50 group border-t border-slate-100">
               <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                  <path d="M12 17h.01"></path>
-                </svg>
+                <ui-icon name="LifeBuoy" size="sm" />
               </div>
               <div class="flex-1">
                 <p class="text-sm font-bold text-slate-700">Centro de Ayuda</p>
                 <p class="text-xs text-slate-400">Guías y respuestas rápidas</p>
               </div>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 text-slate-300 group-hover:text-indigo-500 transition-colors"><path stroke-linecap="round" stroke-linejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" /></svg>
+              <ui-icon name="ChevronRight" size="sm" class="text-slate-300 group-hover:text-indigo-500 transition-colors" />
             </a>
           </div>
         </div>
@@ -142,8 +136,8 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
         </div>
 
         <div class="mt-12">
-          <button class="w-full py-3 px-4 border border-red-200 text-red-600 bg-transparent rounded-xl font-semibold text-sm hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.98]" (click)="openLogoutConfirm()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2 inline-block"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" /></svg>
+          <button class="w-full py-3 px-4 border border-red-200 text-red-600 bg-transparent rounded-xl font-semibold text-sm hover:bg-red-50 hover:border-red-300 transition-all duration-200 active:scale-[0.98] flex items-center justify-center gap-2" (click)="openLogoutConfirm()">
+            <ui-icon name="LogOut" size="sm" />
             Cerrar Sesión
           </button>
         </div>
@@ -164,9 +158,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
             <div class="card-body p-6 sm:p-7">
               <div class="flex items-start gap-4 pb-4 border-b border-base-200">
                 <div class="p-3 rounded-xl bg-error/10 text-error shrink-0 ring-4 ring-error/5">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v4m0 4h.01M5.1 19h13.8a2 2 0 0 0 1.8-3l-6.9-12a2 2 0 0 0-3.6 0l-6.9 12A2 2 0 0 0 5.1 19Z" />
-                  </svg>
+                  <ui-icon name="TriangleAlert" size="md" />
                 </div>
                 <div class="flex-1 min-w-0">
                   <h3 class="text-lg font-semibold text-base-content">¿Cerrar sesión?</h3>

@@ -15,13 +15,12 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
-import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
-import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule, BusIcon, DriverIcon, SearchFilters],
+  imports: [CommonModule, RouterLink, FormsModule, UiIconComponent, SearchFilters],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (driver()) {
@@ -45,9 +44,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
             class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto btn btn-ghost btn-sm gap-2 hover:bg-base-200/50 transition-all shrink-0 z-10"
             aria-label="Volver a la lista de choferes"
             (click)="onBack()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
+            <ui-icon name="ChevronLeft" size="sm" />
             <span class="hidden sm:inline">Volver</span>
           </button>
       </div>
@@ -58,7 +55,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
                   <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <app-driver-icon class="w-6 h-6" />
+                    <ui-icon name="IdCard" size="md" />
                   </div>
                   <div class="min-w-0">
                     <h2 class="text-xl md:text-2xl font-bold text-base-content">
@@ -89,19 +86,14 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     type="button"
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Eliminar</span>
                   </button>
                   <button
                     type="button"
                     class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="toggleEditGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                    </svg>
+                    <ui-icon name="Pencil" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Editar</span>
                   </button>
                 } @else {
@@ -115,9 +107,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     type="button"
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
                 }
@@ -173,9 +163,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
               <div class="card-body p-6">
                 <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <ui-icon name="User" size="sm" class="text-primary" />
                   Información Personal
                 </h3>
 
@@ -356,9 +344,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl">
               <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
                 <h3 class="font-bold text-lg flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm3 2.75A.75.75 0 015.75 8h1.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-1.5A.75.75 0 015 11.25v-2.5zm7-1.5A.75.75 0 0112.75 7h2.5a.75.75 0 01.75.75v4.5a.75.75 0 01-.75.75h-2.5a.75.75 0 01-.75-.75v-4.5z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="IdCard" size="sm" class="text-primary" />
                   Licencia de Conducir
                 </h3>
               </div>
@@ -382,9 +368,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     [class.bg-success/5]="licenseStatus().estado === 'ok'"
                     [class.text-success]="licenseStatus().estado === 'ok'"
                     [class.border-success/20]="licenseStatus().estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                    </svg>
+                    <ui-icon name="IdCard" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
@@ -427,7 +411,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
               <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                 @if (driver()!.maquina_actual) {
                   <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
-                    <app-bus-icon class="w-8 h-8" />
+                    <ui-icon name="BusFront" size="lg" />
                   </div>
 
                   <h4 class="text-xl font-bold text-base-content">
@@ -470,7 +454,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   <div class="w-full mt-auto"></div>
                 } @else {
                   <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center text-primary mb-4">
-                    <app-bus-icon class="w-8 h-8" />
+                    <ui-icon name="BusFront" size="lg" />
                   </div>
                   <h4 class="text-lg font-bold text-base-content/70">
                     Sin Asignar
@@ -566,9 +550,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                            <ui-icon name="Calendar" size="sm" />
                           </div>
                           <div>
                             <h3 class="font-bold text-base text-base-content">{{ formatDate(record.fecha) }}</h3>
@@ -609,9 +591,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       @if (record.tiene_observaciones) {
                         <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
                           <div class="flex items-start gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-info shrink-0 mt-0.5">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                            </svg>
+                            <ui-icon name="Info" size="xs" class="text-info shrink-0 mt-0.5" />
                             <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
                           </div>
                         </div>
@@ -622,10 +602,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         <a 
                           [routerLink]="['/registro-diario', record.id]"
                           class="btn btn-sm w-full btn-outline gap-2 hover:btn-primary transition-all">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                            <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                          </svg>
+                          <ui-icon name="Eye" size="xs" />
                           Ver Detalle
                         </a>
                       </div>
@@ -635,9 +612,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="py-16 sm:py-20">
                         <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                           <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                            <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
                           </div>
                           <div class="space-y-2">
                             <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -675,9 +650,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         <td class="pl-6 py-4">
                               <div class="flex items-center gap-3">
                                 <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                              </svg>
+                              <ui-icon name="Calendar" size="xs" />
                             </div>
                             <div>
                                   <div class="font-bold text-base-content">{{ formatDate(record.fecha) }}</div>
@@ -713,15 +686,11 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                               <div class="flex items-center justify-center">
                             @if (record.tiene_observaciones) {
                                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
-                                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                    </svg>
+                                    <ui-icon name="Info" size="xs" class="text-primary group-hover:scale-110 transition-transform" />
                                   </div>
                                 } @else {
                                   <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
-                                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                </svg>
+                                    <ui-icon name="Info" size="xs" class="text-base-content/30" />
                               </div>
                             }
                               </div>
@@ -731,10 +700,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-base-content/70 hover:text-primary bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all duration-200 group">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 group-hover:scale-110 transition-transform">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
+                                <ui-icon name="Eye" size="xs" class="group-hover:scale-110 transition-transform" />
                                 <span>Ver</span>
                             </a>
                         </td>
@@ -744,9 +710,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             <td colspan="7" class="py-16 sm:py-20">
                               <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                  </svg>
+                                  <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
                                 </div>
                                 <div class="space-y-2">
                                   <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -813,9 +777,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                            <ui-icon name="Calendar" size="sm" />
                           </div>
                           <div>
                             <h3 class="font-bold text-base text-base-content">Período {{ liquidation.fecha }}</h3>
@@ -877,9 +839,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="py-16 sm:py-20">
                         <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                           <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                            </svg>
+                            <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                           </div>
                           <div class="space-y-2">
                             <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
@@ -915,9 +875,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         <td class="pl-6 py-4">
                               <div class="flex items-center gap-3">
                                 <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                              </svg>
+                              <ui-icon name="Calendar" size="xs" />
                             </div>
                             <div>
                                   <div class="font-bold text-base-content">{{ liquidation.fecha }}</div>
@@ -958,9 +916,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             <td colspan="7" class="py-16 sm:py-20">
                               <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                                  </svg>
+                                  <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                                 </div>
                                 <div class="space-y-2">
                                   <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>

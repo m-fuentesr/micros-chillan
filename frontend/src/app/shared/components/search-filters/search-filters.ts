@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, input, output, computed, signal, On
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DatePicker } from '../date-picker/date-picker';
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
 export interface FilterField {
   key: string;
@@ -16,7 +17,7 @@ export interface FilterField {
 
 @Component({
   selector: 'app-search-filters',
-  imports: [CommonModule, FormsModule, DatePicker],
+  imports: [CommonModule, FormsModule, DatePicker, UiIconComponent],
   template: `
     <div class="bg-base-50/50 p-5 sm:p-6 rounded-3xl border border-base-200/50 mb-6">
       <!-- Header de Filtros -->
@@ -32,9 +33,7 @@ export interface FilterField {
             class="btn btn-ghost btn-xs sm:btn-sm gap-1.5 px-2 sm:px-3 rounded-lg hover:bg-base-200 transition-all active:scale-95 text-error/70 hover:text-error" 
             (click)="onClearFilters()"
             type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4">
-              <path fill-rule="evenodd" d="M2.628 1.601C5.028 1.206 7.49 1 10 1s4.972.206 7.372.601a.75.75 0 01.628.74v2.288a2.25 2.25 0 01-.659 1.591l-4.682 4.683a2.25 2.25 0 00-.659 1.591v4.242a2.25 2.25 0 01-1.244 2.013L9.75 21v-6.568a2.25 2.25 0 00-.659-1.591L4.659 8.591A2.25 2.25 0 014 7V4.341a.75.75 0 01.628-.74z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Filter" size="sm" />
             <span class="hidden sm:inline">Limpiar</span>
           </button>
         }

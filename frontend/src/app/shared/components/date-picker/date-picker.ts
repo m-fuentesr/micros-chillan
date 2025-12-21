@@ -1,16 +1,15 @@
 import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-date-picker',
-  imports: [CommonModule],
+  imports: [CommonModule, UiIconComponent],
   template: `
     <div class="form-control">
       <label class="label py-1.5">
         <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 text-primary">
-            <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" />
-          </svg>
+          <ui-icon name="Calendar" size="sm" class="text-primary" />
           {{ label() }}
         </span>
       </label>
@@ -25,9 +24,7 @@ import { CommonModule } from '@angular/common';
           <span [class.text-base-content/50]="!displayValue()">
             {{ displayValue() || placeholder() }}
           </span>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/40">
-            <path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h7V2.75a.75.75 0 011.5 0V4h1.25a2.75 2.75 0 012.75 2.75v10.5A2.75 2.75 0 0116.25 20H3.75A2.75 2.75 0 011 17.25V6.75A2.75 2.75 0 013.75 4H5V2.75A.75.75 0 015.75 2zm-1 5.5c-.69 0-1.25.56-1.25 1.25v7.5c0 .69.56 1.25 1.25 1.25h12.5c.69 0 1.25-.56 1.25-1.25v-7.5c0-.69-.56-1.25-1.25-1.25H4.75z" clip-rule="evenodd" />
-          </svg>
+          <ui-icon name="Calendar" size="sm" class="text-base-content/40" />
         </div>
         @if (isOpen()) {
           <div 
@@ -39,9 +36,7 @@ import { CommonModule } from '@angular/common';
                 type="button"
                 class="btn btn-ghost btn-sm btn-circle"
                 (click)="previousMonth()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
-                </svg>
+                <ui-icon name="ChevronLeft" size="sm" />
               </button>
               <div class="text-sm font-semibold text-base-content">
                 {{ currentMonthYear() }}
@@ -50,9 +45,7 @@ import { CommonModule } from '@angular/common';
                 type="button"
                 class="btn btn-ghost btn-sm btn-circle"
                 (click)="nextMonth()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
-                </svg>
+                <ui-icon name="ChevronRight" size="sm" />
               </button>
             </div>
 

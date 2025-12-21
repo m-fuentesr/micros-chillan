@@ -10,6 +10,7 @@ import { WorkerService } from '../../../shared/services/worker.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { TransitionService } from '../../../shared/services/transition.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
@@ -18,7 +19,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
 @Component({
   selector: 'app-reportar',
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="reportar-background-enter bg-slate-50 font-sans">
       <header 
@@ -30,9 +31,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           class="absolute top-12 left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
           aria-label="Volver"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <ui-icon name="ChevronLeft" size="md" />
         </a>
 
         <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30">
@@ -63,8 +62,8 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
       >
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1 overflow-hidden" [style.animation-delay.ms]="200">
           <div class="flex items-center p-4 gap-4">
-            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
-              🚛
+            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shadow-inner">
+              <ui-icon name="BusFront" size="lg" class="text-blue-600" />
             </div>
             <div class="flex-1">
               <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Máquina asignada</label>
@@ -79,9 +78,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   }
                 </select>
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="ChevronDown" size="sm" />
                 </div>
               </div>
             </div>
@@ -90,10 +87,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-emerald-500 relative overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/50 transition-all" [style.animation-delay.ms]="300">
           <label class="flex items-center gap-2 text-xs font-bold text-emerald-600 uppercase tracking-[0.35em] mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.732 6.232a2.5 2.5 0 0 1 3.536 0 .75.75 0 1 0 1.06-1.06A4 4 0 0 0 6.5 8v.165c0 .364.034.709.13 1.04l.635 2.048a.75.75 0 0 1-1.428.442l-.636-2.047a5.507 5.507 0 0 1-.18-.762 3.996 3.996 0 0 1 .978-3.654Z" clip-rule="evenodd" />
-              <path d="M6.25 8a2.5 2.5 0 0 1 2.5-2.5h2.5a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1-2.5 2.5h-2.5a2.5 2.5 0 0 1-2.5-2.5V8Z" />
-            </svg>
+            <ui-icon name="Wallet" size="xs" />
             Total recaudado
           </label>
           <div class="flex items-center gap-2">
@@ -114,7 +108,9 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="400">
           <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xs">⛽</div>
+            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+              <ui-icon name="Droplet" size="xs" />
+            </div>
             <span class="text-sm font-bold text-slate-700">Carga de combustible</span>
             <span class="ml-auto text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
           </div>
@@ -155,9 +151,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="500">
           <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em] mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Camera" size="xs" />
             Foto del comprobante del registro diario *
           </label>
 
@@ -172,9 +166,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
@@ -190,10 +182,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
               @if (!imagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-blue-600">Cambiar imagen</span>
@@ -206,9 +195,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="550">
           <div class="flex items-center gap-2 mb-3">
             <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em]">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-              </svg>
+              <ui-icon name="Camera" size="xs" />
               Foto del comprobante de combustible
             </label>
             <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
@@ -225,9 +212,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
@@ -243,10 +228,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
               @if (!dieselImagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-amber-600">Cambiar imagen</span>
@@ -266,7 +248,9 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="700">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">⚠️</div>
+            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">
+              <ui-icon name="TriangleAlert" size="sm" />
+            </div>
             <div>
               <p class="text-sm font-bold text-red-800">¿Hubo incidente?</p>
               <p class="text-[10px] text-red-600/70">Choque, falla mecánica, etc.</p>
@@ -315,9 +299,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               }
               @if (reportSuccess() && !hasError()) {
                 <div class="checkmark-premium-wrapper">
-                  <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
-                  </svg>
+                  <ui-icon name="Check" size="lg" class="checkmark-premium" />
                   <div class="checkmark-ripple"></div>
                 </div>
               }
@@ -780,23 +762,28 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
       position: relative;
       width: 28px;
       height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .checkmark-premium {
-      width: 100%;
-      height: 100%;
-      stroke: white;
-      stroke-dasharray: 24;
-      stroke-dashoffset: 24;
-      animation: checkmarkDrawReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      width: 28px;
+      height: 28px;
+      color: white;
+      animation: checkmarkScaleReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      transform: scale(0);
     }
 
-    @keyframes checkmarkDrawReportar {
+    @keyframes checkmarkScaleReportar {
       0% {
-        stroke-dashoffset: 24;
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.2);
       }
       100% {
-        stroke-dashoffset: 0;
+        transform: scale(1);
       }
     }
 
@@ -1533,8 +1520,10 @@ export class Reportar implements OnInit {
     toast.className = 'toast toast-top toast-end z-[100]';
     toast.innerHTML = `
       <div class="alert alert-error shadow-lg animate-fade-in">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m15 9-6 6"/>
+          <path d="m9 9 6 6"/>
         </svg>
         <div class="flex-1">
           <h3 class="font-bold">Error al enviar reporte</h3>

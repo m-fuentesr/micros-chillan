@@ -4,11 +4,11 @@ import { RouterLink } from '@angular/router';
 import { MachineDailyRecord, MachineDailyRecordFilters } from '../../models/machine-detail.models';
 import { Driver } from '../../models/driver.models';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-daily-records',
-  imports: [CommonModule, RouterLink, SearchFilters, DriverIcon],
+  imports: [CommonModule, RouterLink, SearchFilters, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header Premium con gradiente sutil -->
@@ -79,7 +79,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                 <div class="flex items-center gap-3 mb-4 p-3 bg-base-50 rounded-lg border border-base-200">
                   <div class="shrink-0">
                     <div class="bg-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-primary/20">
-                      <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
+                      <ui-icon name="IdCard" size="md" class="text-primary" />
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -195,7 +195,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     <div class="flex items-center gap-2">
                       <div class="shrink-0">
                         <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
-                          <app-driver-icon class="w-4 h-4 text-primary"></app-driver-icon>
+                          <ui-icon name="IdCard" size="sm" class="text-primary" />
                         </div>
                       </div>
                       <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.chofer">

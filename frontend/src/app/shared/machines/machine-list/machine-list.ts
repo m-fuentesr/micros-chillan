@@ -3,11 +3,11 @@ import { Machine, ViewMode, StatusFilter, DocumentFilter, MachineDocumentAlerts 
 import { MachineCard } from '../machine-card/machine-card';
 import { MachineTable } from '../machine-table/machine-table';
 import { DocumentStatus } from '../../models/machine.models';
-import { BusIcon } from '../../components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-list',
-  imports: [MachineCard, MachineTable, BusIcon],
+  imports: [MachineCard, MachineTable, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl">
       <div class="card-header p-4 sm:p-6 lg:p-8 pt-4 sm:pt-6 lg:pt-8 pb-4 sm:pb-6 relative">
@@ -213,7 +213,7 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
               <div class="col-span-full py-16 sm:py-20">
                 <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                   <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                    <app-bus-icon class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40" />
+                    <ui-icon name="BusFront" size="lg" class="text-base-content/40" />
                   </div>
                   <div class="space-y-2">
                     <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay máquinas disponibles</h3>
@@ -243,7 +243,7 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
                 <div class="col-span-full py-16 sm:py-20">
                   <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                     <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                      <app-bus-icon class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40" />
+                      <ui-icon name="BusFront" size="lg" class="text-base-content/40" />
                     </div>
                     <div class="space-y-2">
                       <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay máquinas disponibles</h3>

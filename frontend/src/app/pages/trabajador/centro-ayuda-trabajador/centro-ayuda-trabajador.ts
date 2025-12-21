@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, OnDestroy, OnInit, computed, inject
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 type IconName =
   | 'introduccion'
@@ -37,7 +37,7 @@ interface FaqItem {
 @Component({
   selector: 'app-centro-ayuda-trabajador',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, UiIconComponent],
   template: `
     <div class="min-h-screen bg-slate-50 pb-16">
       <!-- Hero -->
@@ -56,9 +56,7 @@ interface FaqItem {
 
           <div class="relative max-w-xl mx-auto group">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-white/60 group-focus-within:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <ui-icon name="Search" size="sm" class="text-white/60 group-focus-within:text-white transition-colors" />
             </div>
             <input
               type="text"
@@ -80,17 +78,11 @@ interface FaqItem {
                       class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-white/10 transition-colors text-sm text-white"
                       (click)="scrollToSection(item.id, true)"
                     >
-                      <svg
-                        class="w-5 h-5 text-white"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        [innerHTML]="icons[item.icon]"
-                      ></svg>
+                      <ui-icon 
+                        [name]="getIconName(item.icon)" 
+                        size="sm" 
+                        class="text-white"
+                        aria-hidden="true" />
                       <div class="flex-1">
                         <p class="font-bold">{{ item.title }}</p>
                         <p class="text-xs text-white/70 truncate">{{ item.description }}</p>
@@ -126,23 +118,14 @@ interface FaqItem {
                   [class.bg-white]="activeSection() !== item.id"
                 >
                   <div class="flex items-center gap-2">
-                    <svg
-                      class="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                      [innerHTML]="icons[item.icon]"
-                    ></svg>
+                    <ui-icon 
+                      [name]="getIconName(item.icon)" 
+                      size="sm"
+                      aria-hidden="true" />
                     <span>{{ item.title }}</span>
                   </div>
                   @if (activeSection() === item.id) {
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                      <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="ChevronRight" size="xs" />
                   }
                 </button>
               }
@@ -160,17 +143,10 @@ interface FaqItem {
                   <header class="flex flex-col gap-3">
                     <div class="flex items-center gap-4">
                       <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
-                        <svg
-                          class="w-7 h-7"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          aria-hidden="true"
-                          [innerHTML]="icons[section.icon]"
-                        ></svg>
+                        <ui-icon 
+                          [name]="getIconName(section.icon)" 
+                          size="md"
+                          aria-hidden="true" />
                       </div>
                       <div>
                         <h2 class="text-2xl font-bold">{{ section.title }}</h2>
@@ -179,7 +155,7 @@ interface FaqItem {
                     </div>
                     @if (section.context) {
                       <div class="alert alert-info bg-blue-50 border-blue-200 text-sm text-slate-700">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-blue-600 shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <ui-icon name="Info" size="sm" class="stroke-blue-600 shrink-0" />
                         <div>{{ section.context }}</div>
                       </div>
                     }
@@ -227,17 +203,10 @@ interface FaqItem {
                 <div class="card-body space-y-6">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                      <svg
-                        class="w-6 h-6"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        [innerHTML]="icons['faq']"
-                      ></svg>
+                      <ui-icon 
+                        name="Info" 
+                        size="sm"
+                        aria-hidden="true" />
                     </div>
                     <div>
                       <h2 class="text-2xl font-bold">Preguntas Frecuentes</h2>
@@ -266,23 +235,7 @@ interface FaqItem {
             <section class="card bg-primary text-white shadow-xl rounded-3xl animate-card-enter-delay-3">
               <div class="card-body flex flex-col md:flex-row md:items-center gap-6">
                 <div class="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center text-white">
-                  <svg
-                    class="w-10 h-10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="12" r="7.5" />
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 4.5v2.25" />
-                    <path d="M12 17.25V19.5" />
-                    <path d="M4.5 12h2.25" />
-                    <path d="M17.25 12h2.25" />
-                  </svg>
+                  <ui-icon name="LifeBuoy" size="lg" />
                 </div>
                 <div class="space-y-2 flex-1">
                   <h2 class="text-2xl font-bold">¿Sigues con dudas?</h2>
@@ -309,33 +262,6 @@ export class CentroAyudaTrabajador implements OnInit, OnDestroy {
   searchQuery = signal('');
   activeSection = signal('introduccion');
   private observer?: IntersectionObserver;
-  private readonly sanitizer = inject(DomSanitizer);
-
-  readonly icons: Record<IconName, SafeHtml> = {
-    introduccion: this.icon(`
-      <circle cx="12" cy="12" r="7.5"></circle>
-      <path d="M12 10.5v4.5"></path>
-      <path d="M12 7.5h.01"></path>
-    `),
-    'reporte-diario': this.icon(`
-      <path d="M9 5.25h6a1.5 1.5 0 0 1 1.5 1.5v11.25a1.5 1.5 0 0 1-1.5 1.5H9a1.5 1.5 0 0 1-1.5-1.5V6.75A1.5 1.5 0 0 1 9 5.25z"></path>
-      <path d="M9 8.25h6"></path>
-      <path d="M9 11.25h6"></path>
-      <path d="M9 14.25h4"></path>
-    `),
-    'mi-historial': this.icon(`
-      <path d="M3.75 5.25h16.5M3.75 9h16.5m-16.5 3.75h16.5M3.75 16.5h16.5"></path>
-    `),
-    perfil: this.icon(`
-      <path d="M5.25 18.75v-1.5a4.5 4.5 0 0 1 4.5-4.5h4.5a4.5 4.5 0 0 1 4.5 4.5v1.5"></path>
-      <circle cx="12" cy="9.75" r="3.25"></circle>
-    `),
-    faq: this.icon(`
-      <circle cx="12" cy="12" r="7.5"></circle>
-      <path d="M9.75 10.125a2.25 2.25 0 1 1 4.5 0c0 1.5-2.25 2.25-2.25 3.375v.375"></path>
-      <path d="M12 16.5h.01"></path>
-    `)
-  };
 
   readonly navItems = signal<HelpNavItem[]>([
     { id: 'introduccion', title: 'Introducción', icon: 'introduccion', description: 'Bienvenida y conceptos básicos' },
@@ -548,8 +474,15 @@ export class CentroAyudaTrabajador implements OnInit, OnDestroy {
     }, 200);
   }
 
-  private icon(svg: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(svg);
+  getIconName(iconName: IconName): string {
+    const iconMap: Record<IconName, string> = {
+      'introduccion': 'Info',
+      'reporte-diario': 'ClipboardList',
+      'mi-historial': 'FileText',
+      'perfil': 'User',
+      'faq': 'Info'
+    };
+    return iconMap[iconName] || 'Info';
   }
 }
 

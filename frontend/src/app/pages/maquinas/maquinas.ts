@@ -11,10 +11,11 @@ import { catchError, of, map } from 'rxjs';
 import { calculateMachineDocumentStatus } from '../../shared/utils/document.utils';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-maquinas',
-  imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton],
+  imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -29,9 +30,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
             </p>
           </div>
           <a routerLink="/maquinas/nueva" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <ui-icon name="CirclePlus" size="sm" />
             <span class="sm:hidden">Registrar</span>
             <span class="hidden sm:inline">Registrar Máquina</span>
           </a>
@@ -52,9 +51,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
         } @else if (sequentialState.kpisError()) {
           <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
             <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ui-icon name="AlertCircle" size="sm" class="text-error" />
               <div>
                 <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
                 <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
@@ -92,9 +89,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
           } @else if (sequentialState.contentError()) {
             <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
               <div class="flex flex-col items-center gap-4 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <ui-icon name="AlertCircle" size="xl" class="text-error" />
                 <div>
                   <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
                   <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>

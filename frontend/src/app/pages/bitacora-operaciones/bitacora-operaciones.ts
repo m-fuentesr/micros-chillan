@@ -14,8 +14,7 @@ import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { SearchFilters, FilterField } from '../../shared/components/search-filters/search-filters';
-import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
@@ -38,7 +37,7 @@ interface DailyRecordView {
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon, KpiCard],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, UiIconComponent, KpiCard],
   template: `
     <div class="space-y-6 relative">
         <!-- Hero Section Premium - Siempre visible primero -->
@@ -55,9 +54,7 @@ interface DailyRecordView {
             <button 
               (click)="openNewRecordModal()"
               class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
-              </svg>
+              <ui-icon name="CirclePlus" size="md" />
               Nuevo Registro
             </button>
           </div>
@@ -72,9 +69,7 @@ interface DailyRecordView {
           } @else if (sequentialState.kpisError()) {
             <div class="col-span-full card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
               <div class="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
+                <ui-icon name="AlertCircle" size="md" class="text-error" />
                 <div>
                   <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
                   <p class="text-xs text-error/70">No se pudieron cargar los indicadores</p>
@@ -104,9 +99,7 @@ interface DailyRecordView {
               type="financial"
               [badgeText]="currentMonthName()"
               [animationDelay]="0">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 6v12m-3-2.818l.818.182a2.25 2.25 0 002.364 0l.818-.182m-3-2.818h6m-6-2.25h6m-9 2.25v6.75a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 2.25z" />
-              </svg>
+              <ui-icon name="Wallet" size="md" icon />
             </app-kpi-card>
 
             <!-- Card 2: Registros Faltantes -->
@@ -118,9 +111,7 @@ interface DailyRecordView {
               [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
               [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
               [animationDelay]="1">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="AlertCircle" size="md" icon />
             </app-kpi-card>
 
             <!-- Card 3: Con Incidentes -->
@@ -132,9 +123,7 @@ interface DailyRecordView {
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
               [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
               [animationDelay]="2">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="TriangleAlert" size="md" icon />
             </app-kpi-card>
             </div>
           }
@@ -212,9 +201,7 @@ interface DailyRecordView {
         } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
           <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
             <div class="flex flex-col items-center gap-4 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+              <ui-icon name="AlertCircle" size="xl" class="text-error" />
               <div>
                 <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
                 <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
@@ -268,9 +255,7 @@ interface DailyRecordView {
                       <span class="w-1 h-4 rounded-full bg-primary"></span>
                       <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="showFiltersMobile()" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
                   </button>
                 </div>
                 @if (showFiltersMobile()) {
@@ -303,9 +288,7 @@ interface DailyRecordView {
                 } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
                   <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                     <div class="flex flex-col items-center gap-4 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <ui-icon name="AlertCircle" size="xl" class="text-error" />
                       <div>
                         <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
                         <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
@@ -341,9 +324,7 @@ interface DailyRecordView {
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="sm" />
                               </div>
                               <div>
                                 <div class="font-bold text-base-content">{{ record.date }}</div>
@@ -353,7 +334,7 @@ interface DailyRecordView {
                           </td>
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
-                              <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
+                              <ui-icon name="IdCard" size="md" class="text-primary" />
                               <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
                                 {{ record.driver }}
                               </div>
@@ -385,9 +366,7 @@ interface DailyRecordView {
                               </div>
                             } @else if (record.status === 'no_worked') {
                               <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                                </svg>
+                                <ui-icon name="Ban" size="xs" class="mr-1.5" />
                                 No Trabajado
                               </div>
                             } @else {
@@ -402,16 +381,12 @@ interface DailyRecordView {
                               @if (record.hasIncident) {
                                 <div class="tooltip tooltip-top" data-tip="Tiene observaciones">
                                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
-                                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                    </svg>
+                                    <ui-icon name="Info" size="sm" class="text-primary group-hover:scale-110 transition-transform" />
                                   </div>
                                 </div>
                               } @else {
                                 <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                  </svg>
+                                  <ui-icon name="Info" size="sm" class="text-base-content/30" />
                                 </div>
                               }
                             </div>
@@ -420,10 +395,7 @@ interface DailyRecordView {
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
                               class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-[44px]">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
+                              <ui-icon name="Eye" size="sm" />
                               <span class="hidden lg:inline">Ver</span>
                             </a>
                           </td>
@@ -433,9 +405,7 @@ interface DailyRecordView {
                           <td colspan="8" class="py-16 sm:py-20">
                             <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                               <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="xl" class="text-base-content/40" />
                               </div>
                               <div class="space-y-2">
                                 <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -465,9 +435,7 @@ interface DailyRecordView {
                 } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
                   <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                     <div class="flex flex-col items-center gap-4 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
+                      <ui-icon name="AlertCircle" size="xl" class="text-error" />
                       <div>
                         <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
                         <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
@@ -498,9 +466,7 @@ interface DailyRecordView {
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="sm" />
                               </div>
                               <div>
                                 <div class="font-bold text-base-content">{{ record.date }}</div>
@@ -510,7 +476,7 @@ interface DailyRecordView {
                           </td>
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
-                              <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
+                              <ui-icon name="IdCard" size="md" class="text-primary" />
                               <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
                                 {{ record.driver }}
                               </div>
@@ -536,9 +502,7 @@ interface DailyRecordView {
                               </div>
                             } @else if (record.status === 'no_worked') {
                               <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                                </svg>
+                                <ui-icon name="Ban" size="xs" class="mr-1.5" />
                                 No Trabajado
                               </div>
                             } @else {
@@ -552,10 +516,7 @@ interface DailyRecordView {
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
                               class="btn btn-xs h-8 px-2 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 font-normal">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
+                              <ui-icon name="Eye" size="sm" />
                               <span>Ver</span>
                             </a>
                           </td>
@@ -565,9 +526,7 @@ interface DailyRecordView {
                           <td colspan="5" class="py-16 sm:py-20">
                             <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                               <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="xl" class="text-base-content/40" />
                               </div>
                               <div class="space-y-2">
                                 <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -599,9 +558,7 @@ interface DailyRecordView {
             } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
               <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <ui-icon name="AlertCircle" size="xl" class="text-error" />
                   <div>
                     <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
                     <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
@@ -634,8 +591,10 @@ interface DailyRecordView {
                         [class.bg-gradient-to-br]="record.status !== 'incident'"
                         [class.from-primary/20]="record.status !== 'incident'"
                         [class.to-primary/10]="record.status !== 'incident'">
-                        <app-bus-icon 
-                          [class]="record.status === 'incident' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
+                        <ui-icon 
+                          name="BusFront" 
+                          size="lg" 
+                          [class]="record.status === 'incident' ? 'text-error' : 'text-primary'" />
                       </div>
                     </div>
 
@@ -649,7 +608,7 @@ interface DailyRecordView {
                           <div class="flex items-center gap-2 mt-1.5">
                             <div class="avatar placeholder shrink-0">
                               <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                                <app-driver-icon class="w-full h-full" />
+                                <ui-icon name="IdCard" size="sm" />
                               </div>
                             </div>
                             <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
@@ -666,7 +625,7 @@ interface DailyRecordView {
                             </div>
                           } @else if (record.status === 'incident') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                              <ui-icon name="OctagonAlert" size="xs" class="mr-1" />
                               Incidente
                             </div>
                           } @else if (record.status === 'no_worked') {
