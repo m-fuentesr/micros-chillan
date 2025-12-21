@@ -1088,11 +1088,30 @@ async def resolve_incident(
 
     supabase.table("registros_diarios_auditoria").insert(auditoria).execute()
 
+    # ----------------------------------------
+    # 6.RESOLVER ALERTA ASOCIADA
+    # ----------------------------------------
+    # Buscamos alertas activas vinculadas a este registro y las cerramos.
+    try:
+        # IMPORTANTE: Asumo que el 'origen_tipo' cuando se crea la alerta es "registro_diario".
+        # Si usaste otro nombre al crear la alerta, cámbialo aquí.
+        supabase.table("alertas")\
+            .update({"estado": "resuelta",
+                     "fecha_resuelta": datetime.now().isoformat()})\
+            .eq("origen_id", record_id)\
+            .eq("origen_tipo", "registro_diario")\
+            .execute()
+            
+        print(f"✅ Alerta asociada al registro {record_id} marcada como resuelta.")
+        
+    except Exception as e:
+        # Solo imprimimos el error para no fallar toda la operación si algo pasa con las alertas
+        print(f"⚠️ Advertencia: No se pudo cerrar la alerta asociada: {e}")
     # TODO: Aquí se agregará lógica para alertas/notificaciones cuando se resuelva un incidente
     # Ejemplo: enviar notificación al chofer, registrar en sistema de alertas, etc.
 
     # ----------------------------------------
-    # 6. Retornar registro actualizado usando get_daily_record_detail
+    # 7. Retornar registro actualizado usando get_daily_record_detail
     # ----------------------------------------
     if original.get("fecha") == date.today().isoformat():
         await dashboard_realtime.broadcast_refresh()
