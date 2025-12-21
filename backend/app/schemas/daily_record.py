@@ -48,7 +48,7 @@ class DailyRecordResponse(BaseModel):
     monto_recaudado: int
     litros_diesel: Optional[float]
     costo_total_diesel: Optional[float]
-    imagen_url: str  # Comprobante del registro diario
+    imagen_url: Optional[str] = None # Comprobante del registro diario
     imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
     observaciones: Optional[str]
     estado: str
@@ -84,7 +84,8 @@ class DailyRecordListItem(BaseModel):
     maquina: DailyRecordListMachine
     monto_recaudado: int
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
-    neto: int                      # monto_recaudado - costo_total_diesel
+    pago_chofer: int
+    neto: int                      # monto_recaudado - costo_total_diesel - pago_chofer
     estado: str
     tiene_observaciones: bool = False
 
@@ -138,6 +139,10 @@ class DailyRecordUpdate(BaseModel):
     motivo_no_trabajado_otro: Optional[str] = None
 
     incidente_critico: bool = False
+    
+    # Campos de imágenes para actualización
+    imagen_url: Optional[str] = None  # Comprobante del registro diario
+    imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
 
 
 class DailyRecordAuditDetail(BaseModel):

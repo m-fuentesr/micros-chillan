@@ -21,9 +21,8 @@ import { AccountingService } from '../../services/accounting.service';
           <table class="table w-full table-fixed">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
-                <th class="pl-6 w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Período</th>
-                <th class="w-1/6 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha Cierre</th>
-                <th class="w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Responsable</th>
+                <th class="pl-6 w-2/5 text-xs font-bold uppercase tracking-widest text-base-content/60">Período</th>
+                <th class="w-1/5 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha Cierre</th>
                 <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 pr-12 font-mono tabular-nums">Total</th>
                 <th class="w-16"></th>
               </tr>
@@ -48,18 +47,6 @@ import { AccountingService } from '../../services/accounting.service';
                     </div>
                   </td>
                   <td class="tabular-nums text-sm text-base-content/70">{{ formatDate(liquidation.fecha_cierre) }}</td>
-                  <td class="pr-4">
-                    <div class="flex items-center gap-2 w-full">
-                      <div class="avatar placeholder shrink-0">
-                        <div class="bg-primary text-primary-content rounded-full w-6 h-6 flex items-center justify-center">
-                          <span class="text-[10px] font-bold">{{ getInitials(liquidation.cerrado_por) }}</span>
-                        </div>
-                      </div>
-                      <span class="text-sm text-base-content/80 truncate block w-full" [attr.title]="liquidation.cerrado_por">
-                        {{ liquidation.cerrado_por }}
-                      </span>
-                    </div>
-                  </td>
                   <td class="text-left pr-12 font-mono tabular-nums">
                     <span class="font-black text-base-content tabular-nums tracking-tight">{{ formatCurrency(liquidation.total_pagado) }}</span>
                   </td>
@@ -71,7 +58,7 @@ import { AccountingService } from '../../services/accounting.service';
                   </td>
                 </tr>
                 <tr>
-                  <td colspan="5" class="p-0 border-b border-base-200">
+                  <td colspan="4" class="p-0 border-b border-base-200">
                     <div class="collapse-anim" [class.collapse-expanded]="expandedIds().has(liquidation.id)">
                       <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 motion-panel"
                            [attr.id]="'history-detail-' + liquidation.id">
@@ -115,10 +102,8 @@ import { AccountingService } from '../../services/accounting.service';
                   </div>
                   <div class="truncate">
                     <div class="font-bold text-sm sm:text-base truncate">{{ liquidation.periodo }}</div>
-                    <div class="text-[11px] sm:text-xs text-base-content/50 flex items-center gap-1 flex-wrap">
+                    <div class="text-[11px] sm:text-xs text-base-content/50">
                       <span>{{ formatDate(liquidation.fecha_cierre) }}</span>
-                      <span>•</span>
-                      <span class="truncate max-w-[100px]">{{ liquidation.cerrado_por }}</span>
                     </div>
                   </div>
                 </div>

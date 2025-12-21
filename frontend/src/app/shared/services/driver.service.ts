@@ -1,8 +1,8 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Driver } from '../models/driver.models';
+import { Driver, DriverKPIs } from '../models/driver.models';
 import { environment } from '../../../environments/environment.development';
 import { calculateLicenseStatus } from '../utils/license.utils';
 
@@ -13,21 +13,37 @@ export class DriverService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
 
-  // GET /api/drivers - Listar choferes
+  // GET /api/drivers - Listar choferes con paginación
   getDrivers(filters?: {
     search?: string;
-    estado?: 'activo' | 'inactivo';
-  }): Observable<Driver[]> {
+    estado?: 'todos' | 'activos' | 'inactivos';
+    licencia_estado?: 'vencidas' | 'por_vencer' | 'vigentes';
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    datos: Driver[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.search) {
       params = params.set('search', filters.search);
     }
-    if (filters?.estado) {
-      // Backend espera "activos" / "inactivos"
-      const estadoMap: Record<string, string> = { activo: 'activos', inactivo: 'inactivos' };
-      const mapped = estadoMap[filters.estado] || filters.estado;
-      params = params.set('estado', mapped);
+    if (filters?.estado && filters.estado !== 'todos') {
+      params = params.set('estado', filters.estado);
     }
+    if (filters?.licencia_estado) {
+      params = params.set('licencia_estado', filters.licencia_estado);
+    }
+    
+    // Paginación por defecto: 12 registros por página
+    const pagina = filters?.page || 1;
+    const porPagina = filters?.per_page || 12;
+    
+    params = params.set('page', pagina.toString());
+    params = params.set('per_page', porPagina.toString());
     
     // El backend retorna DriverListItem[] con el formato:
     // { id, nombre_completo, rut, telefono, correo_electronico, estado, maquina_actual, licencia_estado }
@@ -48,16 +64,17 @@ export class DriverService {
         dias_restantes: number;
       };
     }
-    
-    return this.http.get<any>(`${this.apiUrl}/api/drivers`, { params }).pipe(
-      map((response) => {
-        // El backend responde con un array
-        const backendItems: BackendDriver[] = Array.isArray(response)
-          ? response
-          : (response?.items || []);
 
-        // Transformar los datos del backend al formato del frontend
-        let drivers: Driver[] = backendItems.map((backendDriver): Driver => {
+    interface BackendPaginatedResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendDriver[];
+    }
+    
+    return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/drivers`, { params }).pipe(
+      map((response) => ({
+        datos: response.items.map((backendDriver): Driver => {
           // Calcular alerta de licencia desde el estado que viene del backend
           const alertaLicencia = backendDriver.licencia_estado.estado === 'danger' || backendDriver.licencia_estado.estado === 'warning';
           
@@ -73,44 +90,69 @@ export class DriverService {
             estado: backendDriver.estado,
             maquina_actual: backendDriver.maquina_actual || null
           };
-        });
-        
-        // Eliminar duplicados por ID (por si el backend devuelve duplicados)
-        const uniqueDrivers = drivers.filter((driver, index, self) => 
-          index === self.findIndex(d => d.id === driver.id)
-        );
-        drivers = uniqueDrivers;
-        
-        // Aplicar filtros en el frontend si el backend no los soporta
-        if (filters?.estado) {
-          drivers = drivers.filter(d => d.estado === filters.estado);
-        }
-        if (filters?.search) {
-          const search = filters.search.toLowerCase();
-          drivers = drivers.filter(d => 
-            d.nombre_completo?.toLowerCase().includes(search) ||
-            d.rut?.includes(search)
-          );
-        }
-        
-        return drivers;
-      }),
-      catchError(() => {
-        // Mock data para desarrollo
-        let drivers = this.getMockDrivers();
-        if (filters?.estado) {
-          drivers = drivers.filter(d => d.estado === filters.estado);
-        }
-        if (filters?.search) {
-          const search = filters.search.toLowerCase();
-          drivers = drivers.filter(d => 
-            d.nombre_completo.toLowerCase().includes(search) ||
-            d.rut.includes(search)
-          );
-        }
-        return of(drivers);
+        }),
+        total: response.total,
+        pagina: response.page,
+        por_pagina: response.per_page,
+        total_paginas: Math.ceil(response.total / response.per_page)
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo choferes:', error);
+        return throwError(() => error);
       })
     );
+  }
+
+  // GET /api/drivers/summary - Obtener KPIs de conductores
+  getKPIs(): Observable<DriverKPIs> {
+    return this.http.get<{
+      estados: {
+        activos: number;
+        inactivos: number;
+      };
+      operatividad: {
+        con_maquina_asignada: number;
+        sin_asignar: number;
+      };
+      documentos: {
+        licencias_con_alerta: number;
+      };
+    }>(`${this.apiUrl}/api/drivers/summary`).pipe(
+      map((response) => ({
+        activos: response.estados.activos,
+        inactivos: response.estados.inactivos,
+        con_maquina: response.operatividad.con_maquina_asignada,
+        licencias_por_vencer: response.documentos.licencias_con_alerta
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo KPIs de conductores:', error);
+        return of({
+          activos: 0,
+          inactivos: 0,
+          con_maquina: 0,
+          licencias_por_vencer: 0
+        });
+      })
+    );
+  }
+
+  // GET /api/drivers/license-alerts - Obtener alertas de licencia
+  getLicenseAlerts(filters?: {
+    estado?: 'todos' | 'activos' | 'inactivos';
+  }): Observable<{
+    vencidas: number;
+    por_vencer: number;
+    vigentes: number;
+  }> {
+    let params = new HttpParams();
+    if (filters?.estado && filters.estado !== 'todos') {
+      params = params.set('estado', filters.estado);
+    }
+    return this.http.get<{
+      vencidas: number;
+      por_vencer: number;
+      vigentes: number;
+    }>(`${this.apiUrl}/api/drivers/license-alerts`, { params });
   }
 
   // GET /api/drivers/active - Lista choferes activos para selects
@@ -127,12 +169,7 @@ export class DriverService {
       }),
       catchError((error) => {
         console.error('Error obteniendo choferes activos:', error);
-        // Retornar datos mock en caso de error para desarrollo
-        return of([
-          { id: 1, nombre_completo: 'Juan Pérez' },
-          { id: 2, nombre_completo: 'María Gómez' },
-          { id: 3, nombre_completo: 'Pedro López' }
-        ]);
+        return throwError(() => error);
       })
     );
   }
@@ -184,110 +221,13 @@ export class DriverService {
           segundo_apellido: segundoApellido
         };
       }),
-      catchError(() => {
-        // Mock data para desarrollo
-        const mockDriver = this.getMockDriverById(id);
-        return mockDriver ? of(mockDriver) : of(null as any);
+      catchError((error) => {
+        console.error('Error obteniendo detalle de chofer:', error);
+        return throwError(() => error);
       })
     );
   }
 
-  private getMockDriverById(id: number): Driver | null {
-    const mockDrivers = this.getMockDrivers();
-    return mockDrivers.find(d => d.id === id) || null;
-  }
-
-  private getMockDrivers(): Driver[] {
-    return [
-      {
-        id: 1,
-        nombre_completo: 'Juan Pérez González',
-        rut: '12.345.678-9',
-        telefono: '+56 9 1234 5678',
-        correo: 'juan.perez@ejemplo.cl',
-        porcentaje_pago: 16.5,
-        fecha_venc_licencia: '2024-12-15',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 1,
-          identificador: 'MÁQUINA 01'
-        },
-        nombre: 'Juan',
-        segundo_nombre: 'Carlos',
-        apellido: 'Pérez',
-        segundo_apellido: 'González'
-      },
-      {
-        id: 2,
-        nombre_completo: 'María López Silva',
-        rut: '18.765.432-1',
-        telefono: '+56 9 8765 4321',
-        correo: 'maria.lopez@ejemplo.cl',
-        porcentaje_pago: 15.0,
-        fecha_venc_licencia: '2025-06-20',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 3,
-          identificador: 'MÁQUINA 03'
-        },
-        nombre: 'María',
-        apellido: 'López',
-        segundo_apellido: 'Silva'
-      },
-      {
-        id: 3,
-        nombre_completo: 'Pedro Ramírez Torres',
-        rut: '15.987.654-3',
-        telefono: '+56 9 5987 6543',
-        correo: 'pedro.ramirez@ejemplo.cl',
-        porcentaje_pago: 16.0,
-        fecha_venc_licencia: '2024-11-25',
-        alerta_licencia: true,
-        estado: 'inactivo',
-        maquina_actual: null,
-        nombre: 'Pedro',
-        segundo_nombre: 'Antonio',
-        apellido: 'Ramírez',
-        segundo_apellido: 'Torres'
-      },
-      {
-        id: 4,
-        nombre_completo: 'Ana Fernández Muñoz',
-        rut: '14.258.963-7',
-        telefono: '+56 9 4258 9637',
-        correo: 'ana.fernandez@ejemplo.cl',
-        porcentaje_pago: 15.5,
-        fecha_venc_licencia: '2025-03-10',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: {
-          id: 5,
-          identificador: 'MÁQUINA 05'
-        },
-        nombre: 'Ana',
-        segundo_nombre: 'María',
-        apellido: 'Fernández',
-        segundo_apellido: 'Muñoz'
-      },
-      {
-        id: 5,
-        nombre_completo: 'Carlos Soto Bravo',
-        rut: '16.357.159-2',
-        telefono: '+56 9 6357 1592',
-        correo: 'carlos.soto@ejemplo.cl',
-        porcentaje_pago: 16.0,
-        fecha_venc_licencia: '2025-08-15',
-        alerta_licencia: false,
-        estado: 'activo',
-        maquina_actual: null,
-        nombre: 'Carlos',
-        apellido: 'Soto',
-        segundo_apellido: 'Bravo'
-      }
-    ];
-  }
 
   // POST /api/drivers - Crear nuevo chofer
   createDriver(driver: Partial<Driver>): Observable<Driver> {
@@ -302,6 +242,92 @@ export class DriverService {
   // DELETE /api/drivers/{id} - Desactivar chofer (soft delete)
   deleteDriver(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/api/drivers/${id}`);
+  }
+
+  // GET /api/drivers/{id}/liquidations - Obtener liquidaciones de un chofer
+  getDriverLiquidations(
+    driverId: number,
+    filters?: {
+      mes_desde?: number;
+      anio_desde?: number;
+      mes_hasta?: number;
+      anio_hasta?: number;
+      estado_pago?: 'pendiente' | 'pagado';
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{
+    items: any[];
+    total: number;
+    total_global: number;
+    page: number;
+    per_page: number;
+  }> {
+    let params = new HttpParams();
+    
+    if (filters?.mes_desde) {
+      params = params.set('mes_desde', filters.mes_desde.toString());
+    }
+    if (filters?.anio_desde) {
+      params = params.set('anio_desde', filters.anio_desde.toString());
+    }
+    if (filters?.mes_hasta) {
+      params = params.set('mes_hasta', filters.mes_hasta.toString());
+    }
+    if (filters?.anio_hasta) {
+      params = params.set('anio_hasta', filters.anio_hasta.toString());
+    }
+    if (filters?.estado_pago) {
+      params = params.set('estado_pago', filters.estado_pago);
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
+
+    interface BackendLiquidationResponse {
+      total: number;
+      total_global: number;
+      page: number;
+      per_page: number;
+      items: Array<{
+        id: number;
+        fecha: string;
+        mes: number;
+        anio: number;
+        total_ganado: number;
+        minimo_garantizado: number;
+        pago_final: number;
+        metodo_pago?: string | null;
+        codigo_transferencia?: string | null;
+        estado_pago: 'pendiente' | 'pagado';
+      }>;
+    }
+
+    return this.http.get<BackendLiquidationResponse>(`${this.apiUrl}/api/drivers/${driverId}/liquidations`, { params }).pipe(
+      map((response) => ({
+        items: response.items.map((item) => ({
+          id: item.id,
+          fecha: item.fecha,
+          total_ganado: item.total_ganado,
+          minimo_garantizado: item.minimo_garantizado,
+          pago_final: item.pago_final,
+          metodo_pago: item.metodo_pago || 'transferencia',
+          codigo_transferencia: item.codigo_transferencia || null,
+          estado_pago: item.estado_pago
+        })),
+        total: response.total,
+        total_global: response.total_global,
+        page: response.page,
+        per_page: response.per_page
+      })),
+      catchError((error) => {
+        console.error('Error obteniendo liquidaciones:', error);
+        return throwError(() => error);
+      })
+    );
   }
 }
 

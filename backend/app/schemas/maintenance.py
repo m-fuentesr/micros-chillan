@@ -1,6 +1,7 @@
 ﻿from pydantic import BaseModel, Field, field_validator
 from datetime import date
 from typing import List, Optional
+from app.core.pagination import PaginatedResponse
 
 
 class MaintenanceRecord(BaseModel):
@@ -13,9 +14,14 @@ class MaintenanceRecord(BaseModel):
 
 
 class MaintenanceListResponse(BaseModel):
-    total_registros: int
+    total_registros: int  # Total filtrado (para paginación)
+    total_registros_global: int  # Total sin filtros (para badge)
     gasto_mes_actual: float
     items: List[MaintenanceRecord]
+    # Campos de paginación
+    pagina: int
+    por_pagina: int
+    total_paginas: int
 
 
 class MaintenanceCreate(BaseModel):

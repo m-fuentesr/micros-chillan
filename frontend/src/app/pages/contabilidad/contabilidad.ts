@@ -15,10 +15,11 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { PaymentConfirmModalService } from '../../shared/services/payment-confirm-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -45,10 +46,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'summary'"
               [class.text-primary-content]="activeTab() === 'summary'"
               (click)="setActiveTab('summary')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-              </svg>
+              <ui-icon name="ChartNoAxesCombined" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Resumen</span>
             </button>
 
@@ -59,9 +57,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'weekly'"
               [class.text-primary-content]="activeTab() === 'weekly'"
               (click)="setActiveTab('weekly')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-              </svg>
+              <ui-icon name="Calendar" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Semanal</span>
             </button>
 
@@ -72,9 +68,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'payroll'"
               [class.text-primary-content]="activeTab() === 'payroll'"
               (click)="setActiveTab('payroll')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
+              <ui-icon name="HandCoins" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Liquidación</span>
             </button>
 
@@ -85,9 +79,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'history'"
               [class.text-primary-content]="activeTab() === 'history'"
               (click)="setActiveTab('history')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
+              <ui-icon name="Clock" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Historial Liquidaciones</span>
             </button>
           </div>
@@ -95,9 +87,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
         <!-- Filtros Globales (solo para Resumen General y Resumen Semanal) -->
         @if (activeTab() === 'summary' || activeTab() === 'weekly') {
-          <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
-              <div class="relative w-full">
+          <div class="flex flex-row items-center gap-2 w-full lg:w-auto">
+            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+              <div class="relative w-full min-w-0">
                 <select 
                   class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedMonth()" 
@@ -107,17 +99,15 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
 
               <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
 
-              <div class="relative w-full">
+              <div class="relative w-full min-w-0">
                 <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedYear()" 
                   (change)="onYearChange($event)">
                   @for (year of years(); track year.value) {
@@ -125,16 +115,12 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
             </div>
-            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0" (click)="applyFilters()" title="Actualizar">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
+            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
+              <ui-icon name="RefreshCw" size="xs" />
             </button>
           </div>
         }
@@ -199,9 +185,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
             } @else if (payrollError()) {
               <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <ui-icon name="AlertCircle" size="lg" class="text-error" />
                   <div>
                     <h3 class="text-lg font-semibold text-error mb-2">Error al cargar liquidación</h3>
                     <p class="text-sm text-error/70 mb-4">{{ payrollError() }}</p>
@@ -228,9 +212,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               <!-- Solo mostrar "No hay datos" si NO está cargando -->
               <div class="card bg-base-100 border border-base-200 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <ui-icon name="FileText" size="lg" class="text-base-content/40" />
                   <div>
                     <h3 class="text-lg font-semibold text-base-content mb-2">No hay datos de liquidación</h3>
                     <p class="text-sm text-base-content/70 mb-4">No se encontraron datos para la semana seleccionada.</p>

@@ -1,6 +1,7 @@
 ﻿from pydantic import BaseModel, EmailStr, Field
 from typing import Literal, Optional
 from datetime import date
+from app.core.pagination import PaginationParams
 
 
 class DriverBase(BaseModel):
@@ -93,4 +94,37 @@ class DriverCreate(DriverBase):
         None,
         description="ID de la máquina a asignar"
     )
+
+
+class DriverListFilters(PaginationParams):
+    estado: Optional[Literal["todos", "activos", "inactivos"]] = None
+    licencia_estado: Optional[Literal["vencidas", "por_vencer", "vigentes"]] = None
+    search: Optional[str] = None
+
+
+class DriverLicenseAlerts(BaseModel):
+    vencidas: int
+    por_vencer: int
+    vigentes: int
+
+
+class DriverLiquidationFilters(PaginationParams):
+    mes_desde: Optional[int] = Field(None, ge=1, le=12, description="Mes inicial del filtro")
+    anio_desde: Optional[int] = Field(None, ge=2020, description="Año inicial del filtro")
+    mes_hasta: Optional[int] = Field(None, ge=1, le=12, description="Mes final del filtro")
+    anio_hasta: Optional[int] = Field(None, ge=2020, description="Año final del filtro")
+    estado_pago: Optional[Literal["pendiente", "pagado"]] = Field(None, description="Filtrar por estado de pago")
+
+
+class DriverLiquidationItem(BaseModel):
+    id: int  # chofer_id + mes + anio como identificador único
+    fecha: str  # "MM/YYYY"
+    mes: int
+    anio: int
+    total_ganado: int  # Suma de base_ganado de todas las semanas del mes
+    minimo_garantizado: int  # 750000
+    pago_final: int  # total_pagado de la última semana o suma de todas
+    metodo_pago: Optional[str] = None
+    codigo_transferencia: Optional[str] = None
+    estado_pago: Literal["pendiente", "pagado"]
 

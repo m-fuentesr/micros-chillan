@@ -43,6 +43,7 @@ export interface DailyRecord {
   status: DailyRecordStatus;
   recaudacion?: number; // Alias de recaudado
   motivo?: string; // Alias de motivo_inactividad
+  puedeVerDetalle?: boolean; // Indica si existe un registro diario para ver el detalle
 }
 
 export interface FinancialSummary {
@@ -59,4 +60,59 @@ export interface FinancialSummary {
 }
 
 export type FinancialMetric = 'Ganancia Neta' | 'Ingreso Total';
+
+// ========== Interfaces para el endpoint /api/dashboard/overview ==========
+
+export interface DashboardResponse {
+  fecha: string; // ISO date
+  kpis: DashboardKpis;
+  rendimiento: DashboardMachinePerformance[];
+  alertas: DashboardAlerts;
+}
+
+export interface DashboardKpis {
+  recaudacion_total: number;
+  ganancia_neta: number;
+  flota_en_ruta: DashboardFleetKpi;
+}
+
+export interface DashboardFleetKpi {
+  activas: number;
+  reportes_recibidos: number;
+  reportes_totales: number;
+  reportes_pendientes: number;
+}
+
+export interface DashboardMachinePerformance {
+  maquina_id: number;
+  numero_interno: number | null;
+  patente: string | null;
+  chofer: string | null;
+  monto_recaudado: number;
+  costo_total_diesel: number;
+  ganancia_neta: number;
+  estado: string | null;
+}
+
+export interface DashboardAlerts {
+  resumen: DashboardAlertSummary;
+  items: DashboardAlertItem[];
+}
+
+export interface DashboardAlertSummary {
+  criticas: number;
+  advertencias: number;
+  informativas: number;
+}
+
+export interface DashboardAlertItem {
+  id: number;
+  mensaje: string;
+  severidad: string;
+  tipo: string;
+  origen_tipo: string;
+  origen_id: number;
+  estado: string;
+  created_at: string; // ISO datetime string
+}
 

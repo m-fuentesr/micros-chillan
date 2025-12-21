@@ -12,23 +12,23 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
     <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
-      <div class="px-6 pt-5 pb-3 mb-6 flex justify-between items-end border-b border-zinc-100 bg-zinc-50/60">
-        <h2 class="text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
-        <div class="flex gap-2 text-[10px] font-bold uppercase tracking-wider">
-          <div class="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
-            <div class="w-2 h-2 rounded-full bg-emerald-500"></div>
-            Ganancia Neta
+      <div class="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 sm:gap-0 border-b border-zinc-100 bg-zinc-50/60">
+        <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
+        <div class="flex gap-1.5 sm:gap-2 flex-wrap">
+          <div class="flex items-center gap-1 sm:gap-1.5 bg-emerald-50 text-emerald-700 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg ring-1 ring-emerald-100/70 cursor-default">
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 flex-shrink-0"></div>
+            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Ganancia Neta</span>
           </div>
-          <div class="flex items-center gap-1.5 bg-indigo-50 text-indigo-700 px-2.5 py-1.5 rounded-lg ring-1 ring-indigo-100/70 cursor-default">
-            <div class="w-2 h-2 rounded-full bg-indigo-400 opacity-50"></div>
-            Ingreso Bruto
+          <div class="flex items-center gap-1 sm:gap-1.5 bg-indigo-50 text-indigo-700 px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg ring-1 ring-indigo-100/70 cursor-default">
+            <div class="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-indigo-400 opacity-50 flex-shrink-0"></div>
+            <span class="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider whitespace-nowrap">Ingreso Bruto</span>
           </div>
         </div>
       </div>
 
-      <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative">
+      <div class="card-body p-0 flex flex-col flex-1 min-h-0 relative" style="min-height: 200px;">
         <div class="absolute inset-0 bg-gradient-to-b from-zinc-50/60 to-white pointer-events-none"></div>
-        <div class="relative h-full" appLazyChart #lazyChart="lazyChart">
+        <div class="relative h-full min-h-[200px]" appLazyChart #lazyChart="lazyChart">
           @if (lazyChart.isVisible() && hasData()) {
             <canvas baseChart
               class="w-full h-full"
@@ -37,14 +37,14 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
               [type]="chartType">
             </canvas>
           } @else if (lazyChart.isVisible() && !hasData()) {
-            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-400">
-              <div class="flex h-14 w-14 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6">
-                  <path d="M3 7h18M3 12h18M3 17h18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+            <div class="absolute inset-0 flex flex-col items-center justify-center gap-3 text-zinc-400 px-4 py-8 sm:py-12">
+              <div class="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-zinc-100 text-zinc-400 border border-dashed border-zinc-200 flex-shrink-0">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" class="h-6 w-6 sm:h-7 sm:w-7">
+                  <path d="M3 21h18M6 18v-6M10 18v-10M14 18v-4M18 18v-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </div>
-              <div class="text-sm font-semibold text-zinc-500">Aún no hay datos para este periodo</div>
-              <div class="text-xs text-zinc-400">Conecta las fuentes o espera la primera carga.</div>
+              <div class="text-sm sm:text-base font-semibold text-zinc-500 text-center">Aún no hay datos para este periodo</div>
+              <div class="text-xs sm:text-sm text-zinc-400 text-center max-w-xs">Espera la primera carga de datos</div>
             </div>
           } @else {
             <div class="flex items-center justify-center h-full text-zinc-300 font-bold text-sm uppercase tracking-widest">
@@ -65,22 +65,32 @@ export class FinancialSummary implements OnInit {
   currentMetric = signal<FinancialMetric>('Ganancia Neta');
   metricChange = output<FinancialMetric>();
   
-  // Datos de ejemplo (en producción vendrían del servicio)
-  financialData = signal<Record<FinancialMetric, FinancialData[]>>({
-    'Ganancia Neta': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 245000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 320000 },
-      { machineId: '03', driver: 'María López', value: 180000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 410000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 280000 }
-    ],
-    'Ingreso Total': [
-      { machineId: '01', driver: 'Carlos Rodríguez', value: 850000 },
-      { machineId: '02', driver: 'Ana Gómez', value: 920000 },
-      { machineId: '03', driver: 'María López', value: 720000 },
-      { machineId: '05', driver: 'Juan Pérez', value: 1050000 },
-      { machineId: '07', driver: 'Pedro Gómez', value: 880000 }
-    ]
+  // Datos reactivos desde el backend - se actualizan automáticamente con WebSocket
+  financialData = computed<Record<FinancialMetric, FinancialData[]>>(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    
+    // Si hay datos del backend, usarlos
+    if (dashboardData?.rendimiento && dashboardData.rendimiento.length > 0) {
+      const rendimiento = dashboardData.rendimiento;
+      
+      return {
+        'Ganancia Neta': rendimiento.map(m => ({
+          machineId: m.numero_interno?.toString() || `M${m.maquina_id}`,
+          driver: m.chofer || 'Sin chofer asignado',
+          value: m.ganancia_neta
+        })),
+        'Ingreso Total': rendimiento.map(m => ({
+          machineId: m.numero_interno?.toString() || `M${m.maquina_id}`,
+          driver: m.chofer || 'Sin chofer asignado',
+          value: m.monto_recaudado
+        }))
+      };
+    }
+    
+    return {
+      'Ganancia Neta': [],
+      'Ingreso Total': []
+    };
   });
 
   private summaryData = computed(() => {
@@ -182,6 +192,7 @@ export class FinancialSummary implements OnInit {
       mode: 'index',
       intersect: false
     },
+    // Configuración general de animaciones
     animation: {
       duration: 800,
       easing: 'easeOutQuart' as const,
@@ -189,10 +200,73 @@ export class FinancialSummary implements OnInit {
         // Callback cuando la animación completa
       }
     },
+    // Transiciones Premium/Experta para efecto "Organic Rise"
     transitions: {
+      // 1. Animación al cargar por primera vez (SHOW)
+      show: {
+        animations: {
+          y: {
+            from: (context) => {
+              // Empieza desde abajo (base del gráfico)
+              if (context.chart && context.chart.scales?.['y']) {
+                return context.chart.scales['y'].getPixelForValue(0);
+              }
+              return 500; // Fallback: empieza desde abajo
+            },
+            duration: 800,
+            easing: 'easeOutQuart' as const
+          },
+          opacity: {
+            from: 0,
+            to: 1,
+            duration: 500,
+            easing: 'easeOutQuart' as const
+          }
+        }
+      },
+      // 2. Animación cuando llegan DATOS NUEVOS (WebSocket)
       active: {
-        animation: {
-          duration: 400
+        animations: {
+          // Eje X: Las barras existentes se deslizan a su nuevo lugar
+          x: {
+            duration: 600,
+            easing: 'easeOutQuart' as const
+          },
+          // Eje Y: La NUEVA barra crece desde cero, las existentes se ajustan suavemente
+          y: {
+            duration: 800,
+            easing: 'easeOutQuart' as const,
+            delay: (context: any) => {
+              // Efecto cascada: pequeño retraso basado en el índice si llegan varios datos a la vez
+              return (context.dataIndex || 0) * 50;
+            },
+            from: (context: any) => {
+              // MAGIA AQUÍ: Si es un dato nuevo, forzamos que la animación empiece desde la base (0)
+              // chart.scales['y'].getPixelForValue(0) obtiene el pixel exacto de la base
+              try {
+                // Verificar si es una actualización de datos (nuevo elemento o cambio)
+                if (context.chart && context.chart.scales?.['y']) {
+                  const baseY = context.chart.scales['y'].getPixelForValue(0);
+                  // Si el contexto indica que es un nuevo dato o actualización
+                  // animar desde la base para efecto "Organic Rise"
+                  if (context.type === 'data' || context.mode === 'default') {
+                    return baseY;
+                  }
+                }
+              } catch (e) {
+                // Si hay algún error, usar undefined para animación natural
+                console.debug('Error calculando from para animación Y:', e);
+              }
+              return undefined; // Si no es nuevo, usa la posición natural (animación suave)
+            }
+          },
+          // Efecto visual: La barra nueva aparece un poco transparente y se llena
+          backgroundColor: {
+            type: 'color' as const,
+            duration: 500,
+            from: 'transparent',
+            easing: 'easeOutQuart' as const
+          }
         }
       }
     },
@@ -260,14 +334,10 @@ export class FinancialSummary implements OnInit {
   };
 
   ngOnInit(): void {
-    // Cargar datos reales del servicio
-    const now = new Date();
-    this.dashboardService.getFinancialSummary(now.getMonth() + 1, now.getFullYear())
-      .pipe(
-        catchError(() => of(null))
-      )
-      .subscribe();
-
+    // Los datos se cargan automáticamente desde dashboardService.dashboardData()
+    // que se actualiza mediante WebSocket cuando hay cambios
+    // No necesitamos cargar datos aquí porque el servicio ya los tiene
+    
     // Emitimos la métrica inicial para mantener compatibilidad con el contenedor
     this.metricChange.emit(this.currentMetric());
   }

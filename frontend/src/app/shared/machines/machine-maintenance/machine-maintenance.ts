@@ -6,10 +6,12 @@ import { SearchFilters, FilterField } from '../../components/search-filters/sear
 import { ConfirmModalService } from '../../services/confirm-modal.service';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
 import { KpiCard } from '../../components/kpi-card/kpi-card';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-machine-maintenance',
-  imports: [CommonModule, FormsModule, SearchFilters, KpiCard],
+  imports: [CommonModule, FormsModule, SearchFilters, KpiCard, UiIconComponent, LoadingSpinner],
   template: `
 
     <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
@@ -25,52 +27,91 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             </p>
           </div>
           
-          <!-- Derecha: Botón, Badge y KPI -->
+          <!-- Derecha: KPI, Badge y Botón -->
           <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-5 lg:gap-6 shrink-0 w-full sm:w-auto">
+            <!-- KPI y Badge de conteo en fila -->
+            <div class="flex items-center gap-4 sm:gap-5 flex-wrap">
+              <!-- KPI de Gastos en Repuestos -->
+              <app-kpi-card
+                title="Gastos en Repuestos"
+                [subtitle]="'Acumulado del mes actual'"
+                [value]="formatCurrency(gastoMesActual())"
+                type="danger"
+                size="compact"
+                badgeText="Inversión activos"
+                [animationDelay]="0">
+                <span icon><ui-icon name="Wallet" size="md" /></span>
+              </app-kpi-card>
+              
+              <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+                <span class="w-2 h-2 rounded-full bg-primary"></span>
+                {{ totalRecordsGlobal() }} {{ totalRecordsGlobal() === 1 ? 'registro' : 'registros' }}
+              </span>
+            </div>
+            
             <!-- Botón Registrar Nueva Compra -->
             <button
               class="btn btn-primary gap-2 font-bold shadow-lg hover:shadow-xl transition-all whitespace-nowrap w-full sm:w-auto"
               (click)="openAddRecordModal()">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-              </svg>
+              <ui-icon name="CirclePlus" size="sm" />
               Nueva compra
             </button>
-            
-            <!-- Badge de conteo -->
-            <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
-              <span class="w-2 h-2 rounded-full bg-primary"></span>
-              {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
-            </span>
-            
-            <!-- KPI de Gastos en Repuestos -->
-            <app-kpi-card
-              title="Gastos en Repuestos"
-              [subtitle]="'Acumulado del mes actual'"
-              [value]="formatCurrency(monthTotal())"
-              type="danger"
-              size="compact"
-              badgeText="Inversión activos"
-              [animationDelay]="0">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
-              </svg>
-            </app-kpi-card>
           </div>
         </div>
       </div>
 
-      <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-        <!-- Filtros usando componente reutilizable -->
-        <app-search-filters
-          [fields]="filterFields()"
-          [filters]="filters()"
-          [columns]="4"
-          (filterChange)="onFiltersChange($event)" />
+      <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6 pb-8 sm:pb-12 lg:pb-16">
+        <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
+        <div class="md:hidden mb-4">
+          <div class="sticky top-2 z-20">
+            <button
+              type="button"
+              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+              (click)="toggleFiltersMobile()"
+              [attr.aria-expanded]="showFiltersMobile()">
+              <div class="flex items-center gap-2">
+                <span class="w-1 h-4 rounded-full bg-primary"></span>
+                <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
+              </div>
+              <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
+            </button>
+          </div>
+          @if (showFiltersMobile()) {
+            <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
+              <app-search-filters
+                [fields]="filterFields()"
+                [filters]="filters()"
+                [columns]="1"
+                (filterChange)="onFiltersChange($event)" />
+              <!-- Botón para cerrar el panel manualmente -->
+              <div class="p-4 pt-0 border-t border-base-200/50">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary w-full"
+                  (click)="showFiltersMobile.set(false)">
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="hidden md:block">
+          <app-search-filters
+            [fields]="filterFields()"
+            [filters]="filters()"
+            [columns]="4"
+            (filterChange)="onFiltersChange($event)" />
+        </div>
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
-          @for (record of filteredRecords(); track record.id; let i = $index) {
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando registros..." />
+            </div>
+          } @else {
+            @for (record of records(); track record.id; let i = $index) {
             <div 
               class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group"
               [class.animate-card-enter]="!isNewlyAdded(record.id)"
@@ -82,9 +123,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                 <div class="flex items-start justify-between gap-4 mb-4">
                   <div class="flex items-center gap-3">
                     <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                      </svg>
+                      <ui-icon name="Calendar" size="sm" />
                     </div>
                     <div>
                       <h3 class="font-bold text-base text-base-content">{{ formatDate(record.fecha) }}</h3>
@@ -96,16 +135,12 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   <div class="shrink-0">
                     @if (record.categoria === 'preventivo') {
                       <div class="badge badge-success gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                          <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
-                        </svg>
+                        <ui-icon name="Check" size="xs" />
                         Preventivo
                       </div>
                     } @else if (record.categoria === 'correctivo') {
                       <div class="badge badge-warning gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3">
-                          <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-                        </svg>
+                        <ui-icon name="TriangleAlert" size="xs" />
                         Correctivo
                       </div>
                     } @else {
@@ -144,40 +179,52 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
 
               </div>
             </div>
-          } @empty {
-            <div class="text-center py-12 animate-fade-in">
-              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655-5.653a2.548 2.548 0 010-3.586L11.12 2.12a2.548 2.548 0 013.586 0l4.655 5.653a2.548 2.548 0 010 3.586l-5.877 5.877M11.42 15.17l-1.496 1.83" />
-                  </svg>
-                </div>
-                <div class="space-y-2">
-                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
-                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                    Ajusta los filtros para ver más resultados.
-                  </p>
+            } @empty {
+              <div class="text-center py-12 animate-fade-in">
+                <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                    <ui-icon name="Settings" size="lg" class="text-base-content/40" />
+                  </div>
+                  <div class="space-y-2">
+                    <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                    <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                      Ajusta los filtros para ver más resultados.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            }
           }
         </div>
 
         <!-- Vista Desktop: Tabla -->
-        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
-          <table class="table w-full">
-            <thead class="bg-base-50 border-b border-base-200">
-              <tr>
-                <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
-                <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[200px]">Ítem/Repuesto</th>
-                <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Costo</th>
-                <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[150px]">Nº Factura/Boleta</th>
-                <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Categoría</th>
-                <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (record of filteredRecords(); track record.id; let i = $index) {
+        <div class="hidden xl:block overflow-x-auto rounded-xl border border-base-200">
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando registros..." />
+            </div>
+          } @else {
+            <table class="table w-full" style="table-layout: fixed; min-width: 1200px;">
+              <colgroup>
+                <col style="width: 200px;">
+                <col style="width: auto;">
+                <col style="width: 140px;">
+                <col style="width: 180px;">
+                <col style="width: 140px;">
+                <col style="width: 140px;">
+              </colgroup>
+              <thead class="bg-base-50 border-b border-base-200">
+                <tr>
+                  <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha</th>
+                  <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60">Ítem/Repuesto</th>
+                  <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums">Costo</th>
+                  <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60">Nº Factura/Boleta</th>
+                  <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60">Categoría</th>
+                  <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (record of records(); track record.id; let i = $index) {
                 <tr 
                   class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none"
                   [class.animate-table-row-enter]="!isNewlyAdded(record.id)"
@@ -185,16 +232,14 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   [style.animation-delay.ms]="isNewlyAdded(record.id) ? 0 : i * 30"
                   [style.animation-fill-mode]="'both'">
                   
-                  <td class="pl-6 py-4">
+                  <td class="pl-6 py-4" style="width: 200px;">
                     <div class="flex items-center gap-2">
                       <div class="bg-primary/10 p-1.5 rounded text-primary shrink-0">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                        </svg>
+                        <ui-icon name="Calendar" size="sm" />
                       </div>
-                      <div>
-                        <div class="font-semibold text-base-content">{{ formatDate(record.fecha) }}</div>
-                        <div class="text-xs text-base-content/50 font-mono">{{ formatDateFull(record.fecha) }}</div>
+                      <div class="min-w-0 flex-1">
+                        <div class="font-semibold text-base-content whitespace-nowrap">{{ formatDate(record.fecha) }}</div>
+                        <div class="text-xs text-base-content/50 font-mono whitespace-nowrap">{{ formatDateFull(record.fecha) }}</div>
                       </div>
                     </div>
                   </td>
@@ -239,9 +284,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                     <button 
                       class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                       (click)="openDeleteModal(record.id)">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                        <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                      </svg>
+                      <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                       <span class="whitespace-nowrap">Eliminar</span>
                     </button>
                   </td>
@@ -251,9 +294,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   <td colspan="6" class="py-16 sm:py-20">
                     <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                       <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M11.42 15.17L17.25 21A2.652 2.652 0 0021 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655-5.653a2.548 2.548 0 010-3.586L11.12 2.12a2.548 2.548 0 013.586 0l4.655 5.653a2.548 2.548 0 010 3.586l-5.877 5.877M11.42 15.17l-1.496 1.83" />
-                        </svg>
+                        <ui-icon name="Settings" size="lg" class="text-base-content/40" />
                       </div>
                       <div class="space-y-2">
                         <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -267,7 +308,38 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
               }
             </tbody>
           </table>
+          }
         </div>
+
+        <!-- Paginación -->
+        @if (totalPages() > 0 && !isLoading()) {
+          <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+            <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalRecords() }} registros</span>
+            <div class="join">
+              <button 
+                (click)="goToPreviousPage()" 
+                [disabled]="currentPage() === 1 || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === 1 || isLoading()">
+                «
+              </button>
+              @for (page of pages(); track page) {
+                <button 
+                  (click)="goToPage(page)" 
+                  [disabled]="isLoading()" 
+                  [class.btn-active]="page === currentPage()" 
+                  class="join-item btn btn-sm px-4">{{ page }}</button>
+              }
+              <button 
+                (click)="goToNextPage()" 
+                [disabled]="currentPage() === totalPages() || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === totalPages() || isLoading()">
+                »
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
 
@@ -420,10 +492,19 @@ export class MachineMaintenance implements OnInit, OnDestroy {
   records = input.required<MaintenanceRecord[]>();
   availableItems = input<string[]>([]);
   filters = input<MaintenanceFilters>({});
+  totalRecords = input<number>(0);
+  totalRecordsGlobal = input<number>(0);
+  gastoMesActual = input<number>(0);
+  currentPage = input<number>(1);
+  totalPages = input<number>(0);
+  isLoading = input<boolean>(false);
 
   recordAdded = output<MaintenanceRecord>();
   recordDeleted = output<number>();
   filterChange = output<MaintenanceFilters>();
+  pageChange = output<number>();
+
+  showFiltersMobile = signal(false);
 
   private confirmModal = inject(ConfirmModalService);
   private maintenanceFormModal = inject(MaintenanceFormModalService);
@@ -432,41 +513,60 @@ export class MachineMaintenance implements OnInit, OnDestroy {
   private newlyAddedIds = signal<Set<number>>(new Set());
   private previousRecordIds = signal<Set<number>>(new Set());
 
-  monthTotal = computed(() => {
-    const records = this.records();
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
 
-    return records
-      .filter(r => {
-        const recordDate = new Date(r.fecha);
-        return recordDate.getMonth() === currentMonth && 
-               recordDate.getFullYear() === currentYear;
-      })
-      .reduce((sum, r) => sum + r.costo, 0);
+  // Funciones de paginación
+  pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    
+    // Mostrar máximo 5 páginas
+    const maxPages = 5;
+    let start = Math.max(1, current - Math.floor(maxPages / 2));
+    let end = Math.min(total, start + maxPages - 1);
+    
+    if (end - start < maxPages - 1) {
+      start = Math.max(1, end - maxPages + 1);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   });
-
-  filteredRecords = computed(() => {
-    const records = this.records();
-    const filters = this.filters();
-
-    return records.filter(record => {
-      if (filters.item && !record.item.toLowerCase().includes(filters.item.toLowerCase())) {
-        return false;
-      }
-      if (filters.categoria && filters.categoria !== 'all' && record.categoria !== filters.categoria) {
-        return false;
-      }
-      if (filters.desde && record.fecha < filters.desde) {
-        return false;
-      }
-      if (filters.hasta && record.fecha > filters.hasta) {
-        return false;
-      }
-      return true;
-    });
+  
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 12;
+    return (page - 1) * pageSize + 1;
   });
+  
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 12;
+    const total = this.totalRecords();
+    return Math.min(page * pageSize, total);
+  });
+  
+  goToPreviousPage(): void {
+    if (this.currentPage() > 1) {
+      this.pageChange.emit(this.currentPage() - 1);
+    }
+  }
+  
+  goToNextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.pageChange.emit(this.currentPage() + 1);
+    }
+  }
+  
+  goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return;
+    }
+    this.pageChange.emit(page);
+  }
 
   // Verificar si un registro es nuevo (siempre retorna false para evitar problemas)
   isNewlyAdded = (recordId: number): boolean => {
@@ -478,42 +578,50 @@ export class MachineMaintenance implements OnInit, OnDestroy {
     return !!(f.item || f.categoria || f.desde || f.hasta);
   });
 
-  filterFields = computed<FilterField[]>(() => [
-    {
-      key: 'item',
-      label: 'Ítem/Repuesto',
-      type: 'text',
-      placeholder: 'Buscar por ítem...'
-    },
-    {
-      key: 'categoria',
-      label: 'Categoría',
-      type: 'select',
-      options: [
-        { value: 'all', label: 'Todas las categorías' },
-        { value: 'preventivo', label: 'Preventivo' },
-        { value: 'correctivo', label: 'Correctivo' }
-      ]
-    },
+  filterFields = computed<FilterField[]>(() => {
+    const items = this.availableItems();
+    const itemOptions = [
+      { value: 'all', label: 'Todos los repuestos' },
+      ...items.map(item => ({ value: item, label: item }))
+    ];
+    
+    return [
+      {
+        key: 'item',
+        label: 'Ítem/Repuesto',
+        type: 'select',
+        options: itemOptions
+      },
+      {
+        key: 'categoria',
+        label: 'Categoría',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'Todas las categorías' },
+          { value: 'preventivo', label: 'Preventivo' },
+          { value: 'correctivo', label: 'Correctivo' }
+        ]
+      },
     {
       key: 'desde',
       label: 'Desde',
       type: 'date',
       placeholder: 'Seleccionar fecha'
     },
-    {
-      key: 'hasta',
-      label: 'Hasta',
-      type: 'date',
-      placeholder: 'Seleccionar fecha'
-    }
-  ]);
+      {
+        key: 'hasta',
+        label: 'Hasta',
+        type: 'date',
+        placeholder: 'Seleccionar fecha'
+      }
+    ];
+  });
 
   onFiltersChange(newFilters: Record<string, any>): void {
     const updatedFilters: MaintenanceFilters = {};
     
     // Procesar cada filtro
-    if (newFilters['item'] && typeof newFilters['item'] === 'string' && newFilters['item'].trim()) {
+    if (newFilters['item'] && typeof newFilters['item'] === 'string' && newFilters['item'].trim() && newFilters['item'] !== 'all') {
       updatedFilters.item = newFilters['item'].trim();
     }
     
@@ -530,6 +638,10 @@ export class MachineMaintenance implements OnInit, OnDestroy {
     }
     
     this.filterChange.emit(updatedFilters);
+  }
+
+  toggleFiltersMobile(): void {
+    this.showFiltersMobile.update(open => !open);
   }
 
   ngOnInit(): void {

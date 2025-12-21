@@ -1,4 +1,5 @@
 ﻿from datetime import date, timedelta, datetime, timezone
+from typing import Optional
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.driver import DriverCreate
@@ -7,6 +8,37 @@ from app.utils.helpers import normalize_rut, validate_rut
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def build_nombre_completo(primer_nombre: str | None, segundo_nombre: str | None, 
+                         apellido_paterno: str | None, apellido_materno: str | None) -> str:
+    """
+    Construye el nombre completo de un chofer manejando correctamente valores None.
+    Evita que aparezca "None" como texto en el nombre.
+    """
+    parts = []
+    
+    # Agregar primer nombre (requerido)
+    if primer_nombre:
+        parts.append(primer_nombre.strip())
+    
+    # Agregar segundo nombre si existe
+    if segundo_nombre:
+        parts.append(segundo_nombre.strip())
+    
+    # Agregar apellido paterno (requerido)
+    if apellido_paterno:
+        parts.append(apellido_paterno.strip())
+    
+    # Agregar apellido materno si existe
+    if apellido_materno:
+        parts.append(apellido_materno.strip())
+    
+    # Si no hay partes, retornar un valor por defecto
+    if not parts:
+        return "Sin nombre"
+    
+    return " ".join(parts)
 
 async def get_summary():
     """
@@ -94,32 +126,69 @@ async def get_summary():
     }
 
 
-async def list_drivers(estado: str | None):
+async def list_drivers(filters):
     """
-    Lista principal de choferes para ADMIN.
+    Lista principal de choferes para ADMIN con paginación.
     Genera alertas automáticas si la licencia está por vencer.
     """
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
 
     # ---------------------------------------------------------
-    # 1) Obtener choferes + correo
+    # 1) Construir query base con filtros
     # ---------------------------------------------------------
-    query = (
+    base_query = (
         supabase.table("choferes")
-        .select("*, usuarios:usuarios!inner(correo)")
+        .select("*, usuarios:usuarios!inner(correo)", count="exact")
     )
 
-    if estado == "activos":
-        query = query.eq("estado", "activo")
-    elif estado == "inactivos":
-        query = query.eq("estado", "inactivo")
-    elif estado == "eliminados":
-        query = query.eq("estado", "eliminado")
+    # Aplicar filtro de estado
+    if filters.estado == "activos":
+        base_query = base_query.eq("estado", "activo")
+    elif filters.estado == "inactivos":
+        base_query = base_query.eq("estado", "inactivo")
+    elif filters.estado == "eliminados":
+        base_query = base_query.eq("estado", "eliminado")
 
-    res = query.execute()
-    if getattr(res, "error", None):
-        raise HTTPException(400, f"Error obteniendo choferes: {res.error}")
+    # Aplicar búsqueda si existe
+    if filters.search:
+        search_term = f"%{filters.search}%"
+        base_query = base_query.or_(f"primer_nombre.ilike.{search_term},apellido_paterno.ilike.{search_term},rut.ilike.{search_term}")
 
-    choferes = res.data
+    # Si hay filtro de licencia, necesitamos obtener TODOS los choferes primero
+    if filters.licencia_estado:
+        # Obtener todas las choferes sin paginar
+        choferes_raw = base_query.execute()
+        
+        if getattr(choferes_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+        
+        choferes = choferes_raw.data
+    else:
+        # Sin filtro de licencia, podemos paginar directamente
+        # Obtener total primero
+        count_res = base_query.execute()
+        if getattr(count_res, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {count_res.error}")
+        
+        total = count_res.count or 0
+        
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page - 1
+        
+        # Obtener choferes paginados
+        choferes_raw = (
+            base_query
+            .order("apellido_paterno")
+            .range(start, end)
+            .execute()
+        )
+
+        if getattr(choferes_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+
+        choferes = choferes_raw.data
 
     # ---------------------------------------------------------
     # 2) Obtener asignaciones activas
@@ -165,7 +234,12 @@ async def list_drivers(estado: str | None):
     items = []
 
     for c in choferes:
-        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+        nombre = build_nombre_completo(
+            c.get('primer_nombre'),
+            c.get('segundo_nombre'),
+            c.get('apellido_paterno'),
+            c.get('apellido_materno')
+        )
         cid = c["id"]
 
         if c["fecha_venc_licencia"]:
@@ -185,9 +259,17 @@ async def list_drivers(estado: str | None):
                 severidad = "critica" if estado_lic == "danger" else "advertencia"
                 msg_inicio = "Licencia VENCIDA" if estado_lic == "danger" else "Licencia por vencer"
                 
+                # Construir nombre del chofer para el mensaje
+                nombre_chofer = build_nombre_completo(
+                    c.get('primer_nombre'),
+                    None,  # No incluir segundo nombre en alertas
+                    c.get('apellido_paterno'),
+                    None   # No incluir apellido materno en alertas
+                )
+                
                 # Diccionario EXACTO con los 5 argumentos que pide tu función
                 nueva_alerta = {
-                    "mensaje": f"{msg_inicio}: Chofer {c['primer_nombre']} {c['apellido_paterno']}",
+                    "mensaje": f"{msg_inicio}: Chofer {nombre_chofer}",
                     "severidad": severidad,
                     "origen_tipo": "chofer",
                     "origen_id": cid,
@@ -206,6 +288,18 @@ async def list_drivers(estado: str | None):
             dias = 0
             estado_lic = "unknown"
 
+        # Verificar si pasa el filtro de licencia
+        if filters.licencia_estado:
+            if filters.licencia_estado == "vencidas":
+                if estado_lic != "danger":
+                    continue
+            elif filters.licencia_estado == "por_vencer":
+                if estado_lic != "warning":
+                    continue
+            elif filters.licencia_estado == "vigentes":
+                if estado_lic != "ok":
+                    continue
+
         items.append({
             "id": cid,
             "nombre_completo": nombre,
@@ -221,7 +315,77 @@ async def list_drivers(estado: str | None):
             },
         })
 
-    return items
+    # Si hay filtro de licencia, calcular total después del filtro y aplicar paginación
+    if filters.licencia_estado:
+        total = len(items)
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page
+        items = items[start:end]
+    else:
+        # Sin filtro de licencia, el total ya se calculó antes
+        pass
+
+    from app.core.pagination import PaginatedResponse
+    return PaginatedResponse(
+        total=total,
+        page=filters.page,
+        per_page=filters.per_page,
+        items=items
+    )
+
+
+async def get_license_alerts(estado: Optional[str] = None):
+    """
+    Obtiene conteos de conductores por estado de licencia.
+    Opcionalmente filtra por estado del conductor.
+    Por defecto excluye conductores eliminados (solo activos e inactivos).
+    """
+    hoy = date.today()
+    limite_warning = hoy + timedelta(days=30)
+
+    # 1) Obtener choferes (con filtro de estado si aplica)
+    base_query = supabase.table("choferes").select("id, fecha_venc_licencia")
+    
+    if estado == "activos":
+        base_query = base_query.eq("estado", "activo")
+    elif estado == "inactivos":
+        base_query = base_query.eq("estado", "inactivo")
+    else:
+        # Por defecto (todos o None), excluir eliminados (solo activos e inactivos)
+        # Esto coincide con el comportamiento de list_drivers cuando estado es "todos"
+        base_query = base_query.in_("estado", ["activo", "inactivo"])
+    
+    choferes_raw = base_query.execute()
+    if getattr(choferes_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes: {choferes_raw.error}")
+    
+    choferes = choferes_raw.data
+
+    # 2) Calcular estados de licencia
+    vencidas = 0
+    por_vencer = 0
+    vigentes = 0
+    
+    for c in choferes:
+        if not c.get("fecha_venc_licencia"):
+            continue
+            
+        fv = date.fromisoformat(c["fecha_venc_licencia"])
+        dias = (fv - hoy).days
+
+        if dias < 0:
+            vencidas += 1
+        elif dias <= 30:
+            por_vencer += 1
+        else:
+            vigentes += 1
+
+    return {
+        "vencidas": vencidas,
+        "por_vencer": por_vencer,
+        "vigentes": vigentes
+    }
 
 
 async def list_active_drivers():
@@ -243,7 +407,12 @@ async def list_active_drivers():
     items = []
 
     for c in res.data:
-        nombre = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+        nombre = build_nombre_completo(
+            c.get('primer_nombre'),
+            c.get('segundo_nombre'),
+            c.get('apellido_paterno'),
+            c.get('apellido_materno')
+        )
 
         items.append({
             "id": c["id"],
@@ -316,9 +485,12 @@ async def get_driver_detail(driver_id: int):
     # ---------------------------------------------------------
     # 4) Construcción de respuesta final
     # ---------------------------------------------------------
-    nombre_completo = f"{c['primer_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
-    if c.get('segundo_nombre'):
-        nombre_completo = f"{c['primer_nombre']} {c['segundo_nombre']} {c['apellido_paterno']} {c['apellido_materno']}"
+    nombre_completo = build_nombre_completo(
+        c.get('primer_nombre'),
+        c.get('segundo_nombre'),
+        c.get('apellido_paterno'),
+        c.get('apellido_materno')
+    )
 
     return {
         "id": c["id"],
@@ -952,3 +1124,129 @@ async def delete_driver(driver_id: int):
         raise HTTPException(400, f"Error marcando chofer como eliminado: {upd_ch.error}")
 
     return {"message": "Chofer eliminado correctamente"}
+
+
+async def get_driver_liquidations(driver_id: int, filters):
+    """
+    Obtiene las liquidaciones mensuales de un chofer con paginación y filtros.
+    Consulta directamente la tabla liquidaciones (cierres mensuales).
+    """
+    from app.core.pagination import PaginatedResponse
+    
+    # Construir query base para obtener liquidaciones del chofer
+    base_query = (
+        supabase.table("liquidaciones")
+        .select("*")
+        .eq("chofer_id", driver_id)
+    )
+    
+    # Obtener todas las liquidaciones (aplicaremos filtros después)
+    res = base_query.order("anio", desc=True).order("mes", desc=True).execute()
+    
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo liquidaciones: {res.error}")
+    
+    # Obtener total global (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("liquidaciones")
+        .select("id", count="exact")
+        .eq("chofer_id", driver_id)
+    )
+    total_global_res = total_global_query.execute()
+    total_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
+    
+    # Mapear liquidaciones y aplicar filtros
+    items = []
+    for liq in res.data or []:
+        mes = liq.get("mes")
+        anio = liq.get("anio")
+        
+        # Aplicar filtros de período
+        # Si hay filtro "desde" Y "hasta", mostrar rango
+        if filters.mes_desde and filters.anio_desde and filters.mes_hasta and filters.anio_hasta:
+            # Excluir si está antes del rango
+            if anio < filters.anio_desde or (anio == filters.anio_desde and mes < filters.mes_desde):
+                continue
+            # Excluir si está después del rango
+            if anio > filters.anio_hasta or (anio == filters.anio_hasta and mes > filters.mes_hasta):
+                continue
+        # Si solo hay "desde" sin "hasta", mostrar solo ese mes específico
+        elif filters.mes_desde and filters.anio_desde:
+            # Mostrar solo el mes/año exacto seleccionado
+            if anio != filters.anio_desde or mes != filters.mes_desde:
+                continue
+        # Si solo hay "hasta" sin "desde", mostrar todos hasta ese mes
+        elif filters.mes_hasta and filters.anio_hasta:
+            # Excluir si está después del mes "hasta"
+            if anio > filters.anio_hasta or (anio == filters.anio_hasta and mes > filters.mes_hasta):
+                continue
+        # Si no hay filtros de período, mostrar todos (no hacer nada)
+        
+        sueldo_minimo = int(liq.get("sueldo_minimo") or 0)
+        total_final = int(liq.get("total_final") or 0)
+        porcentaje_ganado = liq.get("porcentaje_ganado")
+        monto_faltante = liq.get("monto_faltante")
+        
+        # Calcular total_ganado: si hay porcentaje_ganado, usarlo; sino calcular desde total_final
+        # El total_ganado sería el monto antes de aplicar el mínimo garantizado
+        if porcentaje_ganado is not None:
+            # Si hay porcentaje_ganado, el total ganado es porcentaje_ganado + monto_faltante (si existe)
+            total_ganado = int(porcentaje_ganado) + (int(monto_faltante) if monto_faltante else 0)
+        else:
+            # Si no hay porcentaje_ganado, usar total_final como aproximación
+            total_ganado = total_final
+        
+        # Determinar estado: si total_final > 0, está pagado; sino pendiente
+        estado_pago = "pagado" if total_final > 0 else "pendiente"
+        
+        # Aplicar filtro de estado si existe
+        if filters.estado_pago and estado_pago != filters.estado_pago:
+            continue
+        
+        # Intentar obtener método de pago y código de transferencia desde pagos_semanales
+        # Buscar el último pago del mes para obtener estos datos
+        metodo_pago = None
+        codigo_transferencia = None
+        
+        if mes and anio:
+            pago_res = (
+                supabase.table("pagos_semanales")
+                .select("metodo_pago, codigo_transferencia")
+                .eq("chofer_id", driver_id)
+                .eq("mes", mes)
+                .eq("anio", anio)
+                .order("semana", desc=True)
+                .limit(1)
+                .execute()
+            )
+            
+            if pago_res.data and len(pago_res.data) > 0:
+                metodo_pago = pago_res.data[0].get("metodo_pago")
+                codigo_transferencia = pago_res.data[0].get("codigo_transferencia")
+        
+        items.append({
+            "id": liq.get("id"),
+            "fecha": f"{mes:02d}/{anio}",
+            "mes": mes,
+            "anio": anio,
+            "total_ganado": total_ganado,
+            "minimo_garantizado": sueldo_minimo,
+            "pago_final": total_final,
+            "metodo_pago": metodo_pago or "transferencia",
+            "codigo_transferencia": codigo_transferencia,
+            "estado_pago": estado_pago
+        })
+    
+    # Aplicar paginación
+    total = len(items)
+    start = filters.offset
+    end = start + filters.per_page
+    items_paginados = items[start:end]
+    
+    return {
+        "total": total,
+        "total_global": total_global,
+        "page": filters.page,
+        "per_page": filters.per_page,
+        "items": items
+    }

@@ -1,19 +1,17 @@
 import { Component, ChangeDetectionStrategy, signal, output, inject, effect, OnInit, OnDestroy, input } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { BusIcon } from '../components/bus-icon/bus-icon';
+import { UiIconComponent } from '../components/ui-icon/ui-icon.component';
 import { ConfirmModalService } from '../services/confirm-modal.service';
 
 @Component({
   selector: 'app-navbar',
-  imports: [RouterLink, RouterLinkActive, BusIcon],
+  imports: [RouterLink, RouterLinkActive, UiIconComponent],
   template: `
     <!-- Top Bar Móvil Premium (solo visible en < lg) -->
-    <div class="lg:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative">
-      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors absolute left-4" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-6 h-6 text-base-content/70">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-        </svg>
+    <div class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-base-200/60 z-30 flex items-center justify-center px-4 shadow-[0_2px_8px_rgba(0,0,0,0.02)] relative" style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(4rem + env(safe-area-inset-top, 0px));">
+      <button class="btn btn-square btn-ghost hover:bg-base-100 transition-colors absolute left-4" (click)="toggleMobileMenu()" type="button" aria-label="Abrir menú" style="top: calc(env(safe-area-inset-top, 0px) + 0.5rem);">
+        <ui-icon name="Menu" size="lg" class="text-base-content/70" />
       </button>
 
       <div class="flex flex-col items-center justify-center">
@@ -25,14 +23,16 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
     <!-- Backdrop Móvil (solo visible cuando el menú está abierto) -->
     @if (isMobileMenuOpen()) {
       <div 
-        class="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm transition-opacity animate-in fade-in"
+        class="fixed z-40 lg:hidden bg-black/50 backdrop-blur-sm transition-opacity animate-in fade-in"
+        style="top: 0; left: 0; right: 0; bottom: 0; padding-bottom: env(safe-area-inset-bottom, 0px);"
         (click)="closeMobileMenu()">
       </div>
     }
 
     <!-- Sidebar Premium -->
     <aside 
-      class="sidebar-container fixed top-0 bottom-0 left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out h-dvh overflow-hidden lg:translate-x-0 w-72"
+      class="sidebar-container fixed left-0 bg-white flex flex-col z-50 border-r border-base-200/60 shadow-[4px_0_24px_rgba(0,0,0,0.02)] transition-all duration-300 ease-in-out overflow-hidden lg:translate-x-0 w-72"
+      style="top: 0; bottom: env(safe-area-inset-bottom, 0px); height: calc(100dvh - env(safe-area-inset-bottom, 0px));"
       [class.sidebar-enter]="shouldAnimate()"
       [class.sidebar-start-hidden]="shouldStartHidden()"
       [class.lg:w-72]="!isCollapsed()"
@@ -42,7 +42,8 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
       [class.translate-x-0]="isMobileMenuOpen()">
       
       <!-- Header con Branding -->
-      <div class="h-20 flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
+      <div class="flex items-center px-6 border-b border-base-100 flex-shrink-0 justify-between"
+           style="padding-top: env(safe-area-inset-top, 0px); min-height: calc(5rem + env(safe-area-inset-top, 0px));"
            [class.lg:justify-center]="isCollapsed()"
            [class.lg:justify-between]="!isCollapsed()">
         <div class="flex flex-col justify-center sidebar-brand-text"
@@ -57,18 +58,14 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
             [class.collapsed]="isCollapsed()"
             type="button"
             [attr.aria-label]="isCollapsed() ? 'Expandir sidebar' : 'Colapsar sidebar'">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-5 w-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-            </svg>
+            <ui-icon name="ChevronRight" size="md" />
           </button>
           <button 
             (click)="closeMobileMenu()"
             class="btn btn-square btn-sm btn-ghost lg:hidden"
             type="button"
             aria-label="Cerrar menú">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+            <ui-icon name="X" size="md" />
           </button>
         </div>
       </div>
@@ -84,9 +81,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Panel Principal' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-          </svg>
+          <ui-icon name="LayoutDashboard" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-bold text-sm tracking-wide"
                 [class.lg:hidden]="isCollapsed()">Panel Principal</span>
         </a>
@@ -100,9 +95,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Registros Diarios' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
+          <ui-icon name="ClipboardList" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-normal text-sm"
                 [class.lg:hidden]="isCollapsed()">Registros Diarios</span>
         </a>
@@ -125,7 +118,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Flota de Vehículos' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <app-bus-icon class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
+          <ui-icon name="BusFront" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Flota de Vehículos</span>
         </a>
@@ -139,9 +132,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Conductores' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z" />
-          </svg>
+          <ui-icon name="IdCard" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Conductores</span>
         </a>
@@ -164,9 +155,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Finanzas y Nómina' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m-3-2.818.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-          </svg>
+          <ui-icon name="HandCoins" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Finanzas y Nómina</span>
         </a>
@@ -180,9 +169,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Análisis y Reportes' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-          </svg>
+          <ui-icon name="ChartNoAxesCombined" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Análisis y Reportes</span>
         </a>
@@ -199,10 +186,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Configuración' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 0 1 0 .255c.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 0 1 0-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124a6.57 6.57 0 0 1 .22-.128c.332-.183.582-.495.644-.869l.214-1.281Z" />
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-          </svg>
+          <ui-icon name="Settings" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Configuración</span>
         </a>
@@ -216,9 +200,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           [attr.data-tip]="isCollapsed() ? 'Centro de Ayuda' : null"
           (click)="closeMobileMenu()">
           <div class="absolute left-0 top-3 bottom-3 w-1 bg-primary rounded-r-full nav-indicator"></div>
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 text-base-content/60 group-hover:text-primary active:text-primary transition-colors">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
-          </svg>
+          <ui-icon name="LifeBuoy" size="md" class="text-base-content/60 group-hover:text-primary active:text-primary transition-colors" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Centro de Ayuda</span>
         </a>
@@ -228,9 +210,7 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
           class="group flex items-center gap-3 px-4 py-3 rounded-xl text-error hover:bg-error/10 hover:text-error hover:shadow-sm border border-transparent hover:border-error/20 transition-all duration-200"
           [attr.data-tip]="isCollapsed() ? 'Cerrar Sesión' : null"
           (click)="openLogoutConfirm($event)">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
-          </svg>
+          <ui-icon name="LogOut" size="md" />
           <span class="font-medium text-sm"
                 [class.lg:hidden]="isCollapsed()">Cerrar Sesión</span>
         </a>

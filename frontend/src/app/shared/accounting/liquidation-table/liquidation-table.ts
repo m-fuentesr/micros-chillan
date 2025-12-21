@@ -2,12 +2,12 @@ import { Component, ChangeDetectionStrategy, input, output, computed, signal } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-liquidation-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, DriverIcon],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -152,7 +152,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-3">
                       <div class="bg-primary/10 text-primary rounded-full w-10 h-10 flex items-center justify-center p-2">
-                        <app-driver-icon class="w-full h-full" />
+                        <ui-icon name="IdCard" size="md" />
                       </div>
                       <div class="flex flex-col">
                         <span class="font-bold text-base-content">{{ chofer.chofer_nombre }}</span>
@@ -331,7 +331,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
                   <div class="bg-primary/10 text-primary rounded-full w-12 h-12 flex items-center justify-center p-2.5">
-                    <app-driver-icon class="w-full h-full" />
+                    <ui-icon name="IdCard" size="lg" />
                   </div>
                   <div>
                     <div class="font-bold text-lg">{{ chofer.chofer_nombre }}</div>

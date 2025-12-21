@@ -2,10 +2,11 @@ import { Component, ChangeDetectionStrategy, inject, effect, ViewChild, ElementR
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-maintenance-form-modal',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
     <dialog 
       #dialogRef
@@ -15,9 +16,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
       <div class="modal-box max-w-2xl">
         <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
           <div class="p-2 bg-primary/10 rounded-lg text-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
+            <ui-icon name="CirclePlus" size="md" />
           </div>
           <div>
             <h3 class="font-bold text-xl text-base-content">Registrar Compra de Repuesto</h3>
@@ -48,9 +47,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               </select>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
                   Ingrese el nombre del repuesto o ítem comprado
                 </span>
               </label>
@@ -79,9 +76,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               </div>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
                   Ingrese el costo en pesos chilenos
                 </span>
               </label>
@@ -105,9 +100,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
                 required>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
                   Número de factura o boleta para trazabilidad contable/SII
                 </span>
               </label>
@@ -129,9 +122,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               </select>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
                   Tipo de mantenimiento (opcional pero recomendado)
                 </span>
               </label>
@@ -154,9 +145,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
                 required>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
                   Fecha en que se realizó la compra
                 </span>
               </label>
@@ -169,18 +158,14 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               type="button" 
               class="btn btn-ghost gap-2"
               (click)="modalService.cancel()">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
+              <ui-icon name="X" size="sm" />
               Cancelar
             </button>
             <button 
               type="submit" 
               class="btn btn-primary gap-2 shadow-lg shadow-primary/20"
               [disabled]="!form.valid">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-              </svg>
+              <ui-icon name="Check" size="sm" />
               Guardar Registro
             </button>
           </div>

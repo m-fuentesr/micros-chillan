@@ -8,7 +8,7 @@ import { ReportsService, MachineProfitabilityResponse, MachineGrossRankingRespon
 import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
@@ -33,7 +33,7 @@ interface DriverProfit {
 
 @Component({
   selector: 'app-reportes',
-  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, BusIcon, KpiCard],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, UiIconComponent, KpiCard],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -350,7 +350,7 @@ interface DriverProfit {
                             <td>
                               <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                  <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
                                 <strong class="leading-tight">{{ item.machine }}</strong>
                               </div>
@@ -427,7 +427,7 @@ interface DriverProfit {
                           <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2 min-w-0">
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
-                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                              <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
                             <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
                           </div>
@@ -713,7 +713,7 @@ interface DriverProfit {
                             <td>
                               <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                  <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
                                 <strong class="leading-tight">{{ item.machine }}</strong>
                               </div>
@@ -778,7 +778,7 @@ interface DriverProfit {
                           <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2 min-w-0">
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
-                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                              <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
                             <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
                           </div>
