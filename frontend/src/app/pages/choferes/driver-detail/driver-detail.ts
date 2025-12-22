@@ -1586,7 +1586,40 @@ export class DriverDetail implements OnInit {
         texto: ''
       };
     }
-    return calculateLicenseStatus(d.fecha_venc_licencia, 30);
+    // Usar estado provisto por backend si existe
+    if (d.licencia_estado) {
+      const estado = d.licencia_estado.estado;
+      const dias = d.licencia_estado.dias_restantes;
+      const fecha = d.licencia_estado.fecha_vencimiento || d.fecha_venc_licencia || null;
+
+      if (estado === 'danger') {
+        return {
+          fecha,
+          estado: 'error' as const,
+          dias_restantes: dias,
+          texto: dias !== undefined ? `Vencida hace ${Math.abs(dias)} días` : 'Licencia vencida'
+        };
+      }
+
+      if (estado === 'warning') {
+        return {
+          fecha,
+          estado: 'warning' as const,
+          dias_restantes: dias,
+          texto: dias !== undefined ? `Vence en ${dias} días` : 'Licencia por vencer'
+        };
+      }
+
+      return {
+        fecha,
+        estado: 'ok' as const,
+        dias_restantes: dias,
+        texto: 'Al día'
+      };
+    }
+
+    // Fallback a cálculo local con umbral por defecto (30) solo si no viene estado
+    return calculateLicenseStatus(d.fecha_venc_licencia);
   });
 
   // Cargar máquinas para el select

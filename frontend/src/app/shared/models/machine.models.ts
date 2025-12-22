@@ -19,6 +19,11 @@ export interface Machine {
     permiso_circulacion?: string; // fecha_venc_permiso
     seguro_obligatorio?: string; // fecha_venc_seguro
   };
+  documentos_estado?: {
+    revision_tecnica?: DocumentStatus;
+    permiso_circulacion?: DocumentStatus;
+    seguro_obligatorio?: DocumentStatus;
+  };
   created_at?: string;
   updated_at?: string;
 }

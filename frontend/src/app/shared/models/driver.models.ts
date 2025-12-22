@@ -9,6 +9,11 @@ export interface Driver {
   porcentaje_pago: number;
   fecha_venc_licencia: string;
   alerta_licencia: boolean;
+  licencia_estado?: {
+    estado: 'ok' | 'warning' | 'danger';
+    dias_restantes: number;
+    fecha_vencimiento: string;
+  };
   estado: 'activo' | 'inactivo' | 'eliminado';
   maquina_actual?: {
     id: number;

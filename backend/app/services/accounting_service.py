@@ -8,7 +8,6 @@ import calendar
 # --------------------------------------------------------------------------
 # CONFIGURACIÓN
 # --------------------------------------------------------------------------
-SUELDO_GARANTIZADO = 750000 
 MESES_ES = {
     1: "Enero", 2: "Febrero", 3: "Marzo", 4: "Abril", 5: "Mayo", 6: "Junio",
     7: "Julio", 8: "Agosto", 9: "Septiembre", 10: "Octubre", 11: "Noviembre", 12: "Diciembre"
@@ -302,7 +301,18 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
     total_semanas = count_weeks_in_month(mes, anio)
     es_ultima_semana = (semana == total_semanas)
 
-    # ... (EL RESTO DEL CÓDIGO ES IDÉNTICO AL ANTERIOR) ...
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("sueldo_minimo")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error obteniendo configuración: {cfg_res.error}")
+
+    sueldo_minimo_vigente = cfg_res.data.get("sueldo_minimo") if cfg_res.data else None
+    if sueldo_minimo_vigente is None:
+        raise HTTPException(status_code=400, detail="Configuración general no tiene sueldo_minimo definido.")
     
     # 2. Choferes Activos
     res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
@@ -348,7 +358,7 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "mes": mes, "anio": anio, "semana": semana, "es_ultima_semana": es_ultima_semana,
                 "base_ganado": p["base_ganado"],
                 "acumulado_mes_anterior": acumulados_map.get(cid, 0),
-                "sueldo_minimo_mensual": SUELDO_GARANTIZADO,
+                "sueldo_minimo_mensual": sueldo_minimo_vigente,
                 "ajuste_garantizado_calculado": p["ajuste_garantizado"],
                 "total_a_pagar": p["total_pagado"],
                 "estado_pago": p["estado_pago"],
@@ -377,8 +387,8 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
             if es_ultima_semana:
                 acumulado = acumulados_map.get(cid, 0)
                 total_proyectado = acumulado + base_semana
-                if total_proyectado < SUELDO_GARANTIZADO:
-                    bono_sugerido = SUELDO_GARANTIZADO - total_proyectado
+                if total_proyectado < sueldo_minimo_vigente:
+                    bono_sugerido = sueldo_minimo_vigente - total_proyectado
             
             total_calc = base_semana + bono_sugerido
 
@@ -388,7 +398,7 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "mes": mes, "anio": anio, "semana": semana, "es_ultima_semana": es_ultima_semana,
                 "base_ganado": int(base_semana),
                 "acumulado_mes_anterior": int(acumulado),
-                "sueldo_minimo_mensual": SUELDO_GARANTIZADO,
+                "sueldo_minimo_mensual": sueldo_minimo_vigente,
                 "ajuste_garantizado_calculado": int(bono_sugerido),
                 "total_a_pagar": int(total_calc),
                 "estado_pago": "pendiente",

@@ -54,12 +54,6 @@ class MachineCreate(BaseModel):
     documentos: MachineCreateDocuments
     
 
-class MachineDetailDocuments(BaseModel):
-    fecha_venc_revision_tecnica: date
-    fecha_venc_permiso_circulacion: date
-    fecha_venc_seguro_obligatorio: date
-
-
 class MachineDetail(BaseModel):
     id: int
     numero_interno: int
@@ -70,7 +64,7 @@ class MachineDetail(BaseModel):
 
     chofer_actual_id: Optional[int]
 
-    documentos: MachineDetailDocuments
+    documentos: dict[str, DocumentoMaquina]
 
 
 class MachineUpdateDocuments(BaseModel):

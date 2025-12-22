@@ -182,7 +182,19 @@ export class DriverCard {
   driver = input.required<Driver>();
 
   licenseStatus = computed(() => {
-    // Se asume que el segundo parámetro es el umbral de días para WARNING
-    return calculateLicenseStatus(this.driver().fecha_venc_licencia, 30);
+    const d = this.driver();
+    if (d.licencia_estado) {
+      return {
+        fecha: d.licencia_estado.fecha_vencimiento,
+        estado: d.licencia_estado.estado === 'danger' ? 'error' : d.licencia_estado.estado,
+        dias_restantes: d.licencia_estado.dias_restantes,
+        texto: d.licencia_estado.estado === 'danger'
+          ? `Vencida hace ${Math.abs(d.licencia_estado.dias_restantes ?? 0)} días`
+          : d.licencia_estado.estado === 'warning'
+            ? `Vence en ${d.licencia_estado.dias_restantes ?? ''} días`
+            : 'Al día'
+      };
+    }
+    return calculateLicenseStatus(d.fecha_venc_licencia);
   });
 }

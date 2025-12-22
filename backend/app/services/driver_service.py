@@ -51,7 +51,18 @@ async def get_summary():
     """
 
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # ---------------------------------------------------------
     # 1) Obtener estados (activo / inactivo)
@@ -132,7 +143,18 @@ async def list_drivers(filters):
     Genera alertas automáticas si la licencia está por vencer.
     """
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # ---------------------------------------------------------
     # 1) Construir query base con filtros
@@ -248,7 +270,7 @@ async def list_drivers(filters):
 
             if dias < 0:
                 estado_lic = "danger"
-            elif dias <= 30:
+            elif dias <= dias_alerta:
                 estado_lic = "warning"
             else:
                 estado_lic = "ok"
@@ -342,7 +364,18 @@ async def get_license_alerts(estado: Optional[str] = None):
     Por defecto excluye conductores eliminados (solo activos e inactivos).
     """
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # 1) Obtener choferes (con filtro de estado si aplica)
     base_query = supabase.table("choferes").select("id, fecha_venc_licencia")
@@ -376,7 +409,7 @@ async def get_license_alerts(estado: Optional[str] = None):
 
         if dias < 0:
             vencidas += 1
-        elif dias <= 30:
+        elif dias <= dias_alerta:
             por_vencer += 1
         else:
             vigentes += 1
@@ -471,13 +504,25 @@ async def get_driver_detail(driver_id: int):
     # ---------------------------------------------------------
     # 3) Calcular estado de licencia
     # ---------------------------------------------------------
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    
     hoy = date.today()
     fv = date.fromisoformat(c["fecha_venc_licencia"])
     dias = (fv - hoy).days
 
     if dias < 0:
         estado_lic = "danger"
-    elif dias <= 30:
+    elif dias <= dias_alerta:
         estado_lic = "warning"
     else:
         estado_lic = "ok"

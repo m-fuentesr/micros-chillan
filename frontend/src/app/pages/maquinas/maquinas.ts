@@ -516,7 +516,11 @@ export class Maquinas implements OnInit, OnDestroy {
       seguro_obligatorio?: DocumentStatus;
     }>();
     this.machines().forEach(machine => {
-      map.set(machine.id, calculateMachineDocumentStatus(machine));
+      if (machine.documentos_estado) {
+        map.set(machine.id, machine.documentos_estado);
+      } else {
+        map.set(machine.id, calculateMachineDocumentStatus(machine));
+      }
     });
     return map;
   });
