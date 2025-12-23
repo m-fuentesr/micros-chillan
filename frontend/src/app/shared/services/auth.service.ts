@@ -253,7 +253,26 @@ export class AuthService {
           const errorMessage = error.message?.toLowerCase() || '';
           const errorStatus = error.status || 0;
           
-          // PRIORIDAD 1: Email no encontrado o formato inválido (verificar PRIMERO)
+          // PRIORIDAD 1: Errores de red/conexión (PRIMERO antes de analizar contenido)
+          if (errorMessage.includes('failed to fetch') ||
+              errorMessage.includes('network error') ||
+              errorMessage.includes('networkerror') ||
+              errorMessage.includes('fetch failed') ||
+              errorMessage.includes('network') || 
+              errorMessage.includes('timeout') ||
+              errorMessage.includes('connection') ||
+              error.message === 'Failed to fetch') {
+            throw new Error('NETWORK_ERROR');
+          }
+          
+          // PRIORIDAD 2: Errores de servidor
+          if (errorMessage.includes('server error') ||
+              errorMessage.includes('internal server error') ||
+              errorMessage.includes('service unavailable')) {
+            throw new Error('NETWORK_ERROR');
+          }
+          
+          // PRIORIDAD 3: Email no encontrado o formato inválido
           if (errorMessage.includes('email') && 
               (errorMessage.includes('not found') || 
                errorMessage.includes('does not exist') ||
@@ -262,14 +281,14 @@ export class AuthService {
             throw new Error('EMAIL_NOT_FOUND');
           }
           
-          // PRIORIDAD 2: Email no confirmado
+          // PRIORIDAD 4: Email no confirmado
           if (errorMessage.includes('email not confirmed') || 
               errorMessage.includes('not confirmed') ||
               errorMessage.includes('email_not_confirmed')) {
             throw new Error('EMAIL_NOT_CONFIRMED');
           }
           
-          // PRIORIDAD 3: Si el mensaje menciona específicamente "email" sin mencionar "password",
+          // PRIORIDAD 5: Si el mensaje menciona específicamente "email" sin mencionar "password",
           // es más probable que sea un problema de email
           if (errorMessage.includes('email') && 
               !errorMessage.includes('password') &&
@@ -277,29 +296,21 @@ export class AuthService {
             throw new Error('EMAIL_NOT_FOUND');
           }
           
-          // PRIORIDAD 4: Demasiados intentos
+          // PRIORIDAD 6: Demasiados intentos
           if (errorMessage.includes('too many requests') || 
               errorMessage.includes('rate limit') ||
               errorMessage.includes('rate_limit_exceeded')) {
             throw new Error('TOO_MANY_ATTEMPTS');
           }
           
-          // PRIORIDAD 5: Usuario deshabilitado
+          // PRIORIDAD 7: Usuario deshabilitado
           if (errorMessage.includes('disabled') || 
               errorMessage.includes('banned') ||
               errorMessage.includes('user is disabled')) {
             throw new Error('USER_DISABLED');
           }
           
-          // PRIORIDAD 6: Error de red o servidor
-          if (errorMessage.includes('network') || 
-              errorMessage.includes('timeout') ||
-              errorMessage.includes('server error') ||
-              errorMessage.includes('connection')) {
-            throw new Error('NETWORK_ERROR');
-          }
-          
-          // PRIORIDAD 7: Contraseña incorrecta - Solo si NO es un error de email
+          // PRIORIDAD 8: Contraseña incorrecta - Solo si NO es un error de email
           // Supabase generalmente devuelve "Invalid login credentials" para ambos casos,
           // pero si menciona específicamente "password", es más probable que sea contraseña
           if (errorMessage.includes('invalid password') ||
@@ -310,7 +321,7 @@ export class AuthService {
             throw new Error('INVALID_PASSWORD');
           }
           
-          // PRIORIDAD 8: Si el error es 400 y menciona credenciales pero NO menciona email,
+          // PRIORIDAD 9: Si el error es 400 y menciona credenciales pero NO menciona email,
           // probablemente es contraseña incorrecta (el email existe pero la contraseña no)
           if (errorStatus === 400 && 
               errorMessage.includes('credentials') &&
@@ -362,8 +373,17 @@ export class AuthService {
       }
       // NO navegar automáticamente aquí - el componente Login manejará la navegación
       // después de la animación de transición
-    } catch (error) {
+    } catch (error: any) {
       this.isManualLogin = false;
+      
+      // Detectar errores de red a nivel de JavaScript/fetch que no fueron capturados por Supabase
+      if (error?.message === 'Failed to fetch' ||
+          error?.message?.includes('NetworkError') ||
+          error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+        throw new Error('NETWORK_ERROR');
+      }
+      
+      // Re-lanzar el error si ya está categorizado
       throw error;
     } finally {
       // Asegurar que el flag se resetee incluso si hay un error
@@ -386,9 +406,69 @@ export class AuthService {
       ? `${window.location.origin}/restablecer-clave`
       : undefined;
 
-    return this.supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
+    try {
+      const result = await this.supabase.auth.resetPasswordForEmail(email, {
+        redirectTo,
+      });
+
+      // Si hay un error, verificar si es un error de red
+      if (result.error) {
+        const errorMessage = result.error.message?.toLowerCase() || '';
+        
+        // Detectar errores de red/conexión
+        if (errorMessage.includes('failed to fetch') ||
+            errorMessage.includes('network error') ||
+            errorMessage.includes('networkerror') ||
+            errorMessage.includes('fetch failed') ||
+            result.error.message === 'Failed to fetch') {
+          throw new Error('NETWORK_ERROR');
+        }
+        
+        // Detectar errores de servidor
+        if (errorMessage.includes('server error') ||
+            errorMessage.includes('internal server error') ||
+            errorMessage.includes('service unavailable')) {
+          throw new Error('SERVER_ERROR');
+        }
+        
+        // Detectar si el email no existe
+        if (errorMessage.includes('user not found') ||
+            errorMessage.includes('email not found') ||
+            errorMessage.includes('no user found')) {
+          throw new Error('EMAIL_NOT_FOUND');
+        }
+        
+        // Detectar si el email no está confirmado
+        if (errorMessage.includes('email not confirmed') ||
+            errorMessage.includes('not confirmed')) {
+          throw new Error('EMAIL_NOT_CONFIRMED');
+        }
+        
+        // Otros errores de Supabase
+        throw new Error(result.error.message || 'UNKNOWN_ERROR');
+      }
+
+      return result;
+    } catch (error: any) {
+      // Si es un error de red que no fue capturado por Supabase
+      if (error?.message === 'Failed to fetch' ||
+          error?.message?.includes('NetworkError') ||
+          error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+        throw new Error('NETWORK_ERROR');
+      }
+      
+      // Si ya es un error que lanzamos nosotros, re-lanzarlo
+      if (error?.message === 'NETWORK_ERROR' ||
+          error?.message === 'SERVER_ERROR' ||
+          error?.message === 'EMAIL_NOT_FOUND' ||
+          error?.message === 'EMAIL_NOT_CONFIRMED' ||
+          error?.message === 'UNKNOWN_ERROR') {
+        throw error;
+      }
+      
+      // Error desconocido
+      throw new Error(error?.message || 'UNKNOWN_ERROR');
+    }
   }
 
 

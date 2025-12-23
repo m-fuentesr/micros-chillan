@@ -1726,7 +1726,12 @@ export class Login {
             
           case 'INVALID_CREDENTIALS':
           default:
-            userFriendlyMessage = 'Credenciales inválidas.\nVerifica tu correo y contraseña e inténtalo nuevamente.';
+            // Mensaje más amigable y accionable sin comprometer seguridad
+            userFriendlyMessage = 'No pudimos iniciar sesión con estos datos.\nVerifica tu correo y contraseña. Si olvidaste tu contraseña, usa "¿Olvidaste tu clave?".';
+            // Resaltar ambos campos para que el usuario revise ambos
+            this.loginForm.get('email')?.markAsTouched();
+            this.loginForm.get('password')?.markAsTouched();
+            this.passwordErrorShown.set(true);
             break;
         }
         

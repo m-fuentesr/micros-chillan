@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-liquidation-table',
@@ -156,9 +157,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                       </div>
                       <div class="flex flex-col">
                         <span class="font-bold text-base-content">{{ chofer.chofer_nombre }}</span>
-                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide" 
-                              [class.text-success]="chofer.estado_pago === 'pagado'">
-                          {{ chofer.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente' }}
+                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide">
+                          {{ formatDateRange(liquidation().fecha_inicio, liquidation().fecha_fin) }}
                         </span>
                       </div>
                     </div>
@@ -564,6 +564,28 @@ export class LiquidationTable {
   onClosePeriod(): void {
     if (confirm('¿Está seguro de que desea cerrar y finalizar este período de liquidación? Esta acción es irreversible.')) {
       this.closePeriod.emit();
+    }
+  }
+
+  formatDateRange(start: string, end: string): string {
+    try {
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const startMonth = monthNames[startParts.month - 1];
+      const endMonth = monthNames[endParts.month - 1];
+      
+      // Si es el mismo mes, mostrar formato corto: "1-7 nov"
+      if (startParts.month === endParts.month) {
+        return `${startParts.day}-${endParts.day} ${startMonth}`;
+      }
+      
+      // Si son meses diferentes, mostrar formato completo: "30 nov - 6 dic"
+      return `${startParts.day} ${startMonth} - ${endParts.day} ${endMonth}`;
+    } catch {
+      return `${start} - ${end}`;
     }
   }
 }

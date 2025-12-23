@@ -1112,11 +1112,7 @@ export class RecuperarClave {
     const email = this.form.value.email ?? '';
 
     try {
-      const { error } = await this.auth.sendPasswordResetEmail(email);
-
-      if (error) {
-        throw new Error(error.message || 'No se pudo enviar el correo de recuperación.');
-      }
+      await this.auth.sendPasswordResetEmail(email);
 
       this.submittedEmail.set(email);
       // Primero detener el loading para mostrar el checkmark
@@ -1128,9 +1124,39 @@ export class RecuperarClave {
       await new Promise(resolve => setTimeout(resolve, 1500));
       this.currentStep.set('success');
     } catch (err: any) {
-      this.error.set(
-        err?.message || 'No pudimos enviar el correo de recuperación. Inténtalo nuevamente más tarde.'
-      );
+      let errorMessage = 'No pudimos enviar el correo de recuperación. Inténtalo nuevamente más tarde.';
+      
+      // Manejar diferentes tipos de errores con mensajes específicos
+      const errorType = err?.message || '';
+      
+      if (errorType === 'NETWORK_ERROR' || 
+          errorType.includes('Failed to fetch') ||
+          errorType.includes('NetworkError') ||
+          errorType.includes('network')) {
+        errorMessage = 'No hay conexión a internet o el servidor no está disponible. Verifica tu conexión e inténtalo nuevamente.';
+      } else if (errorType === 'SERVER_ERROR' ||
+                 errorType.includes('server error') ||
+                 errorType.includes('service unavailable')) {
+        errorMessage = 'El servidor no está disponible en este momento. Por favor, inténtalo más tarde.';
+      } else if (errorType === 'EMAIL_NOT_FOUND' ||
+                 errorType.includes('user not found') ||
+                 errorType.includes('email not found')) {
+        errorMessage = 'No encontramos una cuenta asociada a este correo electrónico. Verifica que el correo sea correcto.';
+      } else if (errorType === 'EMAIL_NOT_CONFIRMED' ||
+                 errorType.includes('email not confirmed')) {
+        errorMessage = 'Este correo electrónico no ha sido confirmado. Por favor, confirma tu correo antes de solicitar recuperación de contraseña.';
+      } else if (errorType.includes('rate limit') ||
+                 errorType.includes('too many requests')) {
+        errorMessage = 'Has realizado demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.';
+      } else if (err?.message && !err.message.includes('NETWORK_ERROR') && 
+                 !err.message.includes('SERVER_ERROR') &&
+                 !err.message.includes('EMAIL_NOT_FOUND') &&
+                 !err.message.includes('EMAIL_NOT_CONFIRMED')) {
+        // Si hay un mensaje de error específico de Supabase, usarlo
+        errorMessage = err.message;
+      }
+      
+      this.error.set(errorMessage);
       this.submitSuccess.set(false);
       this.loading.set(false);
     }

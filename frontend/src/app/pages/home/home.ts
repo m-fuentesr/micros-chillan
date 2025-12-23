@@ -78,73 +78,18 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
-              <div 
-                class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-card-enter-in-context-delay-1"
-                [ngClass]="{
-                  'gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]': cardSize() === 'default',
-                  'gap-2 md:gap-3 p-3 md:p-4 min-h-[112px] md:min-h-[128px]': cardSize() === 'medium',
-                  'gap-1.5 md:gap-2 p-2 md:p-2.5 min-h-[75px] md:min-h-[85px]': cardSize() === 'compact'
-                }">
-                <div class="flex items-center"
-                  [ngClass]="{
-                    'gap-3': cardSize() === 'default',
-                    'gap-2.5': cardSize() === 'medium',
-                    'gap-2': cardSize() === 'compact'
-                  }">
-                  <div 
-                    class="flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
-                    [ngClass]="{
-                      'h-10 w-10': cardSize() === 'default',
-                      'h-8 w-8': cardSize() === 'medium',
-                      'h-5 w-5': cardSize() === 'compact'
-                    }">
-                    <ui-icon 
-                      name="HandCoins"
-                      [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
-                  </div>
-                  <div>
-                    <h3 
-                      class="font-bold uppercase tracking-wider text-base-content"
-                      [ngClass]="{
-                        'text-xs': cardSize() === 'default',
-                        'text-[10px]': cardSize() === 'medium' || cardSize() === 'compact'
-                      }">Recaudación Total</h3>
-                    <p 
-                      class="font-medium text-zinc-400"
-                      [ngClass]="{
-                        'text-[10px] mt-0.5': cardSize() === 'default',
-                        'text-[9px] mt-0.5': cardSize() === 'medium',
-                        'text-[8px] mt-0.5': cardSize() === 'compact'
-                      }">Bruto sin descuentos</p>
-                  </div>
-                </div>
-
-                <div class="flex flex-col w-full">
-                  <div 
-                    class="font-black tracking-tight text-zinc-900 break-words overflow-hidden leading-tight"
-                    [ngClass]="{
-                      'text-base sm:text-lg md:text-xl lg:text-2xl': cardSize() === 'default',
-                      'text-[10px] sm:text-xs md:text-sm lg:text-base': cardSize() === 'medium',
-                      'text-[9px] sm:text-[10px] md:text-xs lg:text-sm': cardSize() === 'compact'
-                    }">{{ ingresoTotal() }}</div>
-                  <div 
-                    [ngClass]="{
-                      'mt-2': cardSize() === 'default',
-                      'mt-1.5': cardSize() === 'medium',
-                      'mt-1': cardSize() === 'compact'
-                    }">
-                    <span 
-                      class="inline-flex items-center rounded bg-primary/10 font-bold text-primary ring-1 ring-inset ring-primary/15"
-                      [ngClass]="{
-                        'px-1.5 py-0.5 text-[10px]': cardSize() === 'default',
-                        'px-1 py-0.5 text-[9px]': cardSize() === 'medium',
-                        'px-1 py-0.5 text-[8px]': cardSize() === 'compact'
-                      }">
-                      Total hoy
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <app-kpi-card
+                title="Recaudación Total"
+                [subtitle]="'Bruto sin descuentos'"
+                [numericValue]="ingresoTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
+                type="info"
+                badgeText="Total hoy"
+                [externalSize]="cardSize()"
+                [animationDelay]="100">
+                <ui-icon icon name="HandCoins" size="md" />
+              </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
               <div 
@@ -388,75 +333,18 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
-              <div 
-                class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-card-enter-in-context-delay-1"
-                [ngClass]="{
-                  'gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]': cardSize() === 'default',
-                  'gap-2 md:gap-3 p-3 md:p-4 min-h-[112px] md:min-h-[128px]': cardSize() === 'medium',
-                  'gap-1.5 md:gap-2 p-2 md:p-2.5 min-h-[75px] md:min-h-[85px]': cardSize() === 'compact'
-                }">
-                <div class="flex items-center"
-                  [ngClass]="{
-                    'gap-3': cardSize() === 'default',
-                    'gap-2.5': cardSize() === 'medium',
-                    'gap-2': cardSize() === 'compact'
-                  }">
-                  <div 
-                    class="flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
-                    [ngClass]="{
-                      'h-10 w-10': cardSize() === 'default',
-                      'h-8 w-8': cardSize() === 'medium',
-                      'h-5 w-5': cardSize() === 'compact'
-                    }">
-                    <ui-icon 
-                      name="HandCoins"
-                      [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
-                  </div>
-                  <div>
-                    <h3 
-                      class="font-bold uppercase tracking-wider text-base-content"
-                      [ngClass]="{
-                        'text-xs': cardSize() === 'default',
-                        'text-[10px]': cardSize() === 'medium' || cardSize() === 'compact'
-                      }">Recaudación Total</h3>
-                    <p 
-                      class="font-medium text-zinc-400"
-                      [ngClass]="{
-                        'text-[10px] mt-0.5': cardSize() === 'default',
-                        'text-[9px] mt-0.5': cardSize() === 'medium',
-                        'text-[8px] mt-0.5': cardSize() === 'compact'
-                      }">Bruto sin descuentos</p>
-                  </div>
-                </div>
-
-                <div class="flex flex-col w-full">
-                  <div 
-                    class="font-black tracking-tight text-zinc-900 break-words overflow-hidden leading-tight"
-                    [ngClass]="{
-                      'text-base sm:text-lg md:text-xl lg:text-2xl': cardSize() === 'default',
-                      'text-[10px] sm:text-xs md:text-sm lg:text-base': cardSize() === 'medium',
-                      'text-[9px] sm:text-[10px] md:text-xs lg:text-sm': cardSize() === 'compact'
-                    }">
-                    <span [appAnimatedCounter]="ingresoTotalNumeric()" format="currency" [duration]="1500"></span>
-                  </div>
-                  <div 
-                    [ngClass]="{
-                      'mt-2': cardSize() === 'default',
-                      'mt-1.5': cardSize() === 'medium',
-                      'mt-1': cardSize() === 'compact'
-                    }">
-                    <span 
-                      class="inline-flex items-center rounded bg-primary/10 font-bold text-primary ring-1 ring-inset ring-primary/15"
-                      [ngClass]="{
-                        'px-1.5 py-0.5 text-[10px]': cardSize() === 'default',
-                        'px-1 py-0.5 text-[9px]': cardSize() === 'medium',
-                        'px-1 py-0.5 text-[8px]': cardSize() === 'compact'
-                      }">
-                      Total hoy
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <app-kpi-card
+                title="Recaudación Total"
+                [subtitle]="'Bruto sin descuentos'"
+                [numericValue]="ingresoTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
+                type="info"
+                badgeText="Total hoy"
+                [externalSize]="cardSize()"
+                [animationDelay]="100">
+                <ui-icon icon name="HandCoins" size="md" />
+              </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
               <div 

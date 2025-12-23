@@ -4,6 +4,7 @@ import { ClosedLiquidation, ClosedLiquidationWeek, LiquidationDriver } from '../
 import { AccountingService } from '../../services/accounting.service';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-liquidation-history',
@@ -556,10 +557,16 @@ export class LiquidationHistory {
 
   formatDateRange(start: string, end: string): string {
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const startStr = startDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
-      const endStr = endDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const startMonth = monthNames[startParts.month - 1];
+      const endMonth = monthNames[endParts.month - 1];
+      
+      const startStr = `${startParts.day}-${startMonth}`;
+      const endStr = `${endParts.day} ${endMonth} ${endParts.year}`;
       return `${startStr} - ${endStr}`;
     } catch {
       return `${start} - ${end}`;
@@ -628,8 +635,11 @@ export class LiquidationHistory {
 
   formatDate(date: string): string {
     try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: '2-digit' });
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const parts = getDatePartsInChile(date);
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = monthNames[parts.month - 1];
+      return `${parts.day} ${month} ${parts.year}`;
     } catch {
       return date;
     }

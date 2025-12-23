@@ -3,6 +3,7 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { DailyProfitabilityData } from '../../models/accounting.models';
 import { LazyChartDirective } from '../../directives/lazy-chart.directive';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-accounting-chart',
@@ -132,15 +133,31 @@ export class AccountingChart implements OnInit {
 
   chartData = computed<ChartData<'line'>>(() => {
     const data = this.dailyData();
+    
+    // Ordenar los datos por fecha usando zona horaria de Chile
+    const sortedData = [...data].sort((a, b) => {
+      const partsA = getDatePartsInChile(a.fecha);
+      const partsB = getDatePartsInChile(b.fecha);
+      
+      // Comparar año, mes y día
+      if (partsA.year !== partsB.year) {
+        return partsA.year - partsB.year;
+      }
+      if (partsA.month !== partsB.month) {
+        return partsA.month - partsB.month;
+      }
+      return partsA.day - partsB.day;
+    });
+    
     return {
-      labels: data.map(d => {
-        const date = new Date(d.fecha);
-        return date.getDate().toString();
+      labels: sortedData.map(d => {
+        const parts = getDatePartsInChile(d.fecha);
+        return parts.day.toString();
       }),
       datasets: [
         {
           label: 'Ingresos (Bruto)',
-          data: data.map(d => d.ingresos),
+          data: sortedData.map(d => d.ingresos),
           borderColor: 'hsl(217, 91%, 60%)', // Azul corporativo (primary)
           backgroundColor: 'hsla(217, 91%, 60%, 0.1)',
           tension: 0.4,
@@ -153,7 +170,7 @@ export class AccountingChart implements OnInit {
         },
         {
           label: 'Egresos (Total)',
-          data: data.map(d => d.egresos),
+          data: sortedData.map(d => d.egresos),
           borderColor: 'hsl(0, 84%, 60%)', // Rojo corporativo (error)
           backgroundColor: 'hsla(0, 84%, 60%, 0.1)',
           tension: 0.4,
@@ -166,7 +183,7 @@ export class AccountingChart implements OnInit {
         },
         {
           label: 'Ganancia (Neta)',
-          data: data.map(d => d.ganancia),
+          data: sortedData.map(d => d.ganancia),
           borderColor: 'hsl(142, 71%, 50%)', // Verde corporativo (success)
           backgroundColor: 'hsla(142, 71%, 50%, 0.1)',
           tension: 0.4,
@@ -249,6 +266,24 @@ export class AccountingChart implements OnInit {
         padding: 12,
         displayColors: true,
         callbacks: {
+          title: (context) => {
+            const data = this.dailyData();
+            const sortedData = [...data].sort((a, b) => {
+              const partsA = getDatePartsInChile(a.fecha);
+              const partsB = getDatePartsInChile(b.fecha);
+              if (partsA.year !== partsB.year) return partsA.year - partsB.year;
+              if (partsA.month !== partsB.month) return partsA.month - partsB.month;
+              return partsA.day - partsB.day;
+            });
+            const index = context[0]?.dataIndex ?? 0;
+            const item = sortedData[index];
+            if (item) {
+              const parts = getDatePartsInChile(item.fecha);
+              const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+              return `${parts.day} ${monthNames[parts.month - 1]} ${parts.year}`;
+            }
+            return '';
+          },
           label: (context) => {
             const value = context.raw;
             if (typeof value === 'number') {
