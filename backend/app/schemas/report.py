@@ -3,6 +3,8 @@
 class MachineProfitabilityResponse(BaseModel):
     maquina_id: int
     identificador: str # Ej: "JCB-01" o el Nombre
+    numero_interno: str | None = None
+    patente: str | None = None
     
     # Ingresos
     ingresos_totales: int  # Suma de monto_recaudado
@@ -19,6 +21,8 @@ class MachineGrossRankingResponse(BaseModel):
     ranking: int          # Posición (1, 2, 3...)
     maquina_id: int
     identificador: str
+    numero_interno: str | None = None
+    patente: str | None = None
     
     ingresos_totales: int # El campo estrella de este reporte
     costos_diesel: int

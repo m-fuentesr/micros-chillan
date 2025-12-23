@@ -2,6 +2,7 @@
 from typing import Optional
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
+from app.core.config import settings
 from app.schemas.driver import DriverCreate
 from app.services import alert_service
 from app.utils.helpers import normalize_rut, validate_rut
@@ -878,13 +879,33 @@ async def create_driver(data: DriverCreate):
     supabase_uid = auth_user.id
 
     # --------------------------
-    # 2) Enviar correo para forzar cambio de contraseña
+    # 2) Enviar correo de bienvenida usando Magic Link (sign_in_with_otp)
+    # Esto usa la plantilla "Magic Link" en lugar de "Reset Password"
+    # El Magic Link loguea automáticamente al usuario y lo redirige a /restablecer-clave
+    # 
+    # NOTA: La URL de redirección debe configurarse en el Dashboard de Supabase:
+    # Authentication → URL Configuration → Redirect URLs
+    # Agregar: http://localhost:4200/restablecer-clave (dev) y tu dominio de producción
     # --------------------------
     try:
-        supabase.auth.reset_password_for_email(email)
+        # Construir URL completa de redirección usando FRONTEND_URL de configuración
+        # Esto evita problemas con rutas relativas que pueden fallar según la configuración de SITE_URL
+        redirect_url = f"{settings.FRONTEND_URL}/restablecer-clave"
+        
+        # Enviar Magic Link usando la API de Supabase
+        # sign_in_with_otp envía un correo con un link que loguea automáticamente
+        result = supabase.auth.sign_in_with_otp({
+            "email": email,
+            "options": {
+                "email_redirect_to": redirect_url
+            }
+        })
+        
+        if getattr(result, "error", None):
+            logger.warning(f"Supabase devolvió error al enviar Magic Link: {result.error}")
     except Exception as e:
         # No rompemos el flujo completo si falla el correo
-        logger.error(f"Error enviando correo de cambio de contraseña: {e}")
+        logger.error(f"Error enviando correo de bienvenida (Magic Link): {e}")
 
     # --------------------------
     # 3) Obtener porcentaje default

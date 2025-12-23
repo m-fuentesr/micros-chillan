@@ -225,18 +225,58 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
-              <div class="skeleton-container">
-                <app-loading-skeleton 
-                  type="table" 
-                  [count]="5"
-                  [isExiting]="historyLoadingState.isSkeletonExiting()" />
-              </div>
-            } @else if (liquidationHistory().length > 0) {
-              <div class="animate-tab-panel tab-panel-scroll">
-                <app-liquidation-history [liquidations]="liquidationHistory()" />
-              </div>
-            }
+            <div class="animate-tab-panel">
+              @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+                <div class="skeleton-container">
+                  <app-loading-skeleton 
+                    type="table" 
+                    [count]="5"
+                    [isExiting]="historyLoadingState.isSkeletonExiting()" />
+                </div>
+              } @else {
+                <app-liquidation-history 
+                  [liquidations]="liquidationHistory()"
+                  [totalGlobal]="historyTotalGlobal()"
+                  [isLoading]="historyLoadingState.isLoading()"
+                  [filters]="{
+                    fecha_desde: historyFilters().fecha_desde || null,
+                    fecha_hasta: historyFilters().fecha_hasta || null
+                  }"
+                  (filterChange)="onHistoryFilterChange($event)"
+                />
+                
+                <!-- Paginación -->
+                @if (historyTotalPages() > 1 && !historyLoadingState.isLoading()) {
+                  <div class="flex justify-center mt-6">
+                    <div class="join">
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === 1"
+                        (click)="onHistoryPageChange(historyCurrentPage() - 1)">
+                        «
+                      </button>
+                      @for (page of getHistoryPages(); track page) {
+                        <button
+                          type="button"
+                          class="btn btn-sm join-item"
+                          [class.btn-active]="page === historyCurrentPage()"
+                          (click)="onHistoryPageChange(page)">
+                          {{ page }}
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === historyTotalPages()"
+                        (click)="onHistoryPageChange(historyCurrentPage() + 1)">
+                        »
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
           }
         </div>
       </div>
@@ -367,6 +407,17 @@ export class Contabilidad implements OnInit {
   weeklySummaries = signal<WeeklySummary[]>([]);
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
+  
+  // Signals para historial con paginación y filtros
+  historyFilters = signal<{ 
+    fecha_desde?: string | null; 
+    fecha_hasta?: string | null; 
+  }>({});
+  historyTotal = signal<number>(0);
+  historyTotalGlobal = signal<number>(0);
+  historyCurrentPage = signal<number>(1);
+  historyTotalPages = signal<number>(0);
+  historyPerPage = 10;
 
 
   // Selector de semana para liquidación
@@ -683,12 +734,98 @@ export class Contabilidad implements OnInit {
 
   loadLiquidationHistory(): void {
     this.historyLoadingState.setLoading(true);
-    this.accountingService.getLiquidationHistory()
-      .pipe(catchError(() => of([])))
-      .subscribe((history: ClosedLiquidation[]) => {
-        this.liquidationHistoryData.set(history);
+    const filters = this.historyFilters();
+    const currentPage = this.historyCurrentPage();
+    
+    // Convertir fechas a mes (las fechas vienen como YYYY-MM-DD)
+    let mes_desde: number | undefined;
+    let mes_hasta: number | undefined;
+    
+    if (filters.fecha_desde) {
+      const parts = filters.fecha_desde.split('-');
+      if (parts.length === 3) {
+        mes_desde = parseInt(parts[1], 10);
+      }
+    }
+    
+    if (filters.fecha_hasta) {
+      const parts = filters.fecha_hasta.split('-');
+      if (parts.length === 3) {
+        mes_hasta = parseInt(parts[1], 10);
+      }
+    }
+    
+    this.accountingService.getLiquidationHistory({
+      mes_desde: mes_desde,
+      mes_hasta: mes_hasta,
+      page: currentPage,
+      per_page: this.historyPerPage
+    }).subscribe({
+      next: (response) => {
+        this.liquidationHistoryData.set(response.items);
+        this.historyTotal.set(response.total);
+        this.historyTotalGlobal.set(response.total_global);
+        this.historyTotalPages.set(response.total_pages);
         this.historyLoadingState.setDataLoaded();
-      });
+      },
+      error: (error) => {
+        console.error('Error cargando historial:', error);
+        this.liquidationHistoryData.set([]);
+        this.historyTotal.set(0);
+        this.historyTotalGlobal.set(0);
+        this.historyTotalPages.set(0);
+        this.historyLoadingState.setDataLoaded();
+      }
+    });
+  }
+
+  onHistoryFilterChange(filters: Record<string, any>): void {
+    // Si el objeto está vacío, limpiar todos los filtros
+    if (Object.keys(filters).length === 0) {
+      this.historyFilters.set({});
+      this.historyCurrentPage.set(1);
+      this.loadLiquidationHistory();
+      return;
+    }
+    
+    const processedFilters: { 
+      fecha_desde?: string | null; 
+      fecha_hasta?: string | null; 
+    } = {
+      fecha_desde: filters['fecha_desde'] || null,
+      fecha_hasta: filters['fecha_hasta'] || null
+    };
+    
+    this.historyFilters.set(processedFilters);
+    this.historyCurrentPage.set(1);
+    this.loadLiquidationHistory();
+  }
+
+  onHistoryPageChange(page: number): void {
+    this.historyCurrentPage.set(page);
+    this.loadLiquidationHistory();
+  }
+
+  getHistoryPages(): number[] {
+    const totalPages = this.historyTotalPages();
+    if (totalPages <= 1) return [];
+    const pages: number[] = [];
+    const current = this.historyCurrentPage();
+    const total = totalPages;
+    
+    // Mostrar máximo 7 páginas
+    let start = Math.max(1, current - 3);
+    let end = Math.min(total, start + 6);
+    
+    if (end - start < 6) {
+      start = Math.max(1, end - 6);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   }
 
 

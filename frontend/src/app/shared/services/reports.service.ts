@@ -71,6 +71,8 @@ export interface ReportFilters {
 export interface MachineProfitabilityResponse {
   maquina_id: number;
   identificador: string;
+  numero_interno?: string | null;
+  patente?: string | null;
   ingresos_totales: number;
   costos_diesel: number;
   pago_choferes: number;
@@ -85,6 +87,8 @@ export interface MachineGrossRankingResponse {
   ranking: number;
   maquina_id: number;
   identificador: string;
+  numero_interno?: string | null;
+  patente?: string | null;
   ingresos_totales: number;
   costos_diesel: number;
   pago_choferes: number;

@@ -60,7 +60,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
             <div class="flex flex-col justify-between flex-grow min-w-0">
               <!-- PATENTE - El elemento estrella -->
               <div class="mb-3">
-                <div class="inline-block bg-base-100 text-base-content font-mono font-bold text-xl px-2 py-1 rounded border-2 border-base-content tracking-wider shadow-sm">
+                <div class="inline-block bg-base-100 text-base-content font-mono font-bold text-xl px-2 py-1 rounded border border-base-300/50 tracking-wider shadow-sm">
                   {{ machine().patente | uppercase }}
                 </div>
               </div>

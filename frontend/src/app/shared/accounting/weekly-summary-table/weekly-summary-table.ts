@@ -4,6 +4,7 @@ import { WeeklySummary, WeeklyDriverBreakdown } from '../../models/accounting.mo
 import { AccountingService } from '../../services/accounting.service';
 import { KpiCard } from '../../components/kpi-card/kpi-card';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-weekly-summary-table',
@@ -478,13 +479,12 @@ export class WeeklySummaryTable {
 
   formatDateRange(start: string, end: string): string {
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const startDay = startDate.getDate();
-      const endDay = endDate.getDate();
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const month = monthNames[startDate.getMonth()];
-      return `${startDay}-${endDay} ${month}`;
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = monthNames[startParts.month - 1];
+      return `${startParts.day}-${endParts.day} ${month}`;
     } catch {
       return `${start} - ${end}`;
     }

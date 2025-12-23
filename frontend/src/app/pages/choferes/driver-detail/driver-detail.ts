@@ -887,7 +887,9 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
                 @if (liquidationsLoading()) {
-                  <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                  </div>
                 } @else {
                   @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
                   <div 
@@ -2168,33 +2170,25 @@ export class DriverDetail implements OnInit {
 
     if (filters.fecha_desde) {
       // Parsear fecha en formato YYYY-MM-DD de forma segura
-      console.log('loadLiquidations - fecha_desde raw:', filters.fecha_desde);
       const parts = filters.fecha_desde.split('-');
-      console.log('loadLiquidations - fecha_desde parts:', parts);
       if (parts.length === 3) {
         const year = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
-        const day = parseInt(parts[2], 10);
         // Crear fecha directamente sin problemas de zona horaria
         mes_desde = month; // Ya viene como 1-12 del formato YYYY-MM-DD
         anio_desde = year;
-        console.log('loadLiquidations - mes_desde:', mes_desde, 'anio_desde:', anio_desde);
       }
     }
 
     if (filters.fecha_hasta) {
       // Parsear fecha en formato YYYY-MM-DD de forma segura
-      console.log('loadLiquidations - fecha_hasta raw:', filters.fecha_hasta);
       const parts = filters.fecha_hasta.split('-');
-      console.log('loadLiquidations - fecha_hasta parts:', parts);
       if (parts.length === 3) {
         const year = parseInt(parts[0], 10);
         const month = parseInt(parts[1], 10);
-        const day = parseInt(parts[2], 10);
         // Crear fecha directamente sin problemas de zona horaria
         mes_hasta = month; // Ya viene como 1-12 del formato YYYY-MM-DD
         anio_hasta = year;
-        console.log('loadLiquidations - mes_hasta:', mes_hasta, 'anio_hasta:', anio_hasta);
       }
     }
 
