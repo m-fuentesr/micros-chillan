@@ -186,10 +186,63 @@ import { AuthService } from '../../shared/services/auth.service';
                     </span>
                   </button>
                 </div>
+                
+                <!-- Alerta de Error Premium -->
                 @if (error()) {
-                  <p class="text-error text-sm mt-2 animate-entrance-fade-up delay-500">
-                    {{ error() }}
-                  </p>
+                  <div class="error-alert-premium animate-error-slide-in" [class]="errorType() ? 'error-alert-' + errorType() : 'error-alert-generic'">
+                    <div class="error-alert-content">
+                      <div class="error-alert-icon-wrapper">
+                        @if (errorType() === 'network') {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="error-alert-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z" />
+                          </svg>
+                        } @else if (errorType() === 'server') {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="error-alert-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                          </svg>
+                        } @else if (errorType() === 'email') {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="error-alert-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                          </svg>
+                        } @else if (errorType() === 'rate-limit') {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="error-alert-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        } @else {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="error-alert-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008Z" />
+                          </svg>
+                        }
+                      </div>
+                      <div class="error-alert-text">
+                        <p class="error-alert-title">
+                          @if (errorType() === 'network') {
+                            Problema de conexión
+                          } @else if (errorType() === 'server') {
+                            Error del servidor
+                          } @else if (errorType() === 'email') {
+                            Correo no encontrado
+                          } @else if (errorType() === 'rate-limit') {
+                            Demasiados intentos
+                          } @else {
+                            Error al enviar
+                          }
+                        </p>
+                        <p class="error-alert-message">{{ error() }}</p>
+                      </div>
+                      <button 
+                        type="button"
+                        (click)="error.set(null); errorType.set(null);"
+                        class="error-alert-close"
+                        aria-label="Cerrar error"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div class="error-alert-progress"></div>
+                  </div>
                 }
               </form>
             </div>
@@ -1056,6 +1109,222 @@ import { AuthService } from '../../shared/services/auth.service';
       -webkit-box-shadow: 0 0 0px 1000px hsl(var(--b1)) inset;
     }
 
+    /* ============================================
+       ERROR ALERT PREMIUM - Diseño de Alerta de Error
+       ============================================ */
+    
+    @keyframes errorSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes errorShake {
+      0%, 100% { transform: translateX(0); }
+      10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+      20%, 40%, 60%, 80% { transform: translateX(4px); }
+    }
+
+    @keyframes errorProgress {
+      from {
+        width: 100%;
+      }
+      to {
+        width: 0%;
+      }
+    }
+
+    .error-alert-premium {
+      position: relative;
+      background: hsl(var(--er) / 0.08);
+      border: 1.5px solid hsl(var(--er));
+      border-radius: 0.875rem;
+      padding: 1rem;
+      margin-top: 1rem;
+      box-shadow: 
+        0 4px 12px rgba(239, 68, 68, 0.15),
+        0 0 0 3px hsl(var(--er) / 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+      animation: errorSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                 errorShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.4s;
+    }
+
+    .error-alert-premium.error-alert-network {
+      background: hsl(217, 91%, 60% / 0.08);
+      border-color: hsl(217, 91%, 60%);
+      box-shadow: 
+        0 4px 12px rgba(59, 130, 246, 0.15),
+        0 0 0 3px hsl(217, 91%, 60% / 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-alert-premium.error-alert-server {
+      background: hsl(25, 95%, 53% / 0.08);
+      border-color: hsl(25, 95%, 53%);
+      box-shadow: 
+        0 4px 12px rgba(249, 115, 22, 0.15),
+        0 0 0 3px hsl(25, 95%, 53% / 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-alert-premium.error-alert-email {
+      background: hsl(var(--er) / 0.08);
+      border-color: hsl(var(--er));
+      box-shadow: 
+        0 4px 12px rgba(239, 68, 68, 0.15),
+        0 0 0 3px hsl(var(--er) / 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-alert-premium.error-alert-rate-limit {
+      background: hsl(38, 92%, 50% / 0.08);
+      border-color: hsl(38, 92%, 50%);
+      box-shadow: 
+        0 4px 12px rgba(245, 158, 11, 0.15),
+        0 0 0 3px hsl(38, 92%, 50% / 0.1),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .error-alert-content {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.875rem;
+      position: relative;
+      z-index: 2;
+    }
+
+    .error-alert-icon-wrapper {
+      flex-shrink: 0;
+      width: 2.5rem;
+      height: 2.5rem;
+      border-radius: 0.625rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: hsl(var(--er) / 0.15);
+    }
+
+    .error-alert-network .error-alert-icon-wrapper {
+      background: hsl(217, 91%, 60% / 0.15);
+    }
+
+    .error-alert-server .error-alert-icon-wrapper {
+      background: hsl(25, 95%, 53% / 0.15);
+    }
+
+    .error-alert-rate-limit .error-alert-icon-wrapper {
+      background: hsl(38, 92%, 50% / 0.15);
+    }
+
+    .error-alert-icon {
+      width: 1.25rem;
+      height: 1.25rem;
+      color: hsl(var(--er));
+    }
+
+    .error-alert-network .error-alert-icon {
+      color: hsl(217, 91%, 60%);
+    }
+
+    .error-alert-server .error-alert-icon {
+      color: hsl(25, 95%, 53%);
+    }
+
+    .error-alert-rate-limit .error-alert-icon {
+      color: hsl(38, 92%, 50%);
+    }
+
+    .error-alert-text {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .error-alert-title {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: hsl(var(--er));
+      margin-bottom: 0.25rem;
+      line-height: 1.4;
+    }
+
+    .error-alert-network .error-alert-title {
+      color: hsl(217, 91%, 60%);
+    }
+
+    .error-alert-server .error-alert-title {
+      color: hsl(25, 95%, 53%);
+    }
+
+    .error-alert-rate-limit .error-alert-title {
+      color: hsl(38, 92%, 50%);
+    }
+
+    .error-alert-message {
+      font-size: 0.8125rem;
+      color: hsl(var(--bc) / 0.8);
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    .error-alert-close {
+      flex-shrink: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      color: hsl(var(--bc) / 0.5);
+      cursor: pointer;
+      transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+      padding: 0;
+    }
+
+    .error-alert-close:hover {
+      background: hsl(var(--bc) / 0.1);
+      color: hsl(var(--bc));
+      transform: scale(1.1);
+    }
+
+    .error-alert-close:active {
+      transform: scale(0.95);
+    }
+
+    .error-alert-progress {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: hsl(var(--er) / 0.3);
+      animation: errorProgress 8s linear forwards;
+      z-index: 1;
+    }
+
+    .error-alert-network .error-alert-progress {
+      background: hsl(217, 91%, 60% / 0.3);
+    }
+
+    .error-alert-server .error-alert-progress {
+      background: hsl(25, 95%, 53% / 0.3);
+    }
+
+    .error-alert-rate-limit .error-alert-progress {
+      background: hsl(38, 92%, 50% / 0.3);
+    }
+
+    .animate-error-slide-in {
+      animation: errorSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                 errorShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) 0.4s;
+    }
+
     /* Accesibilidad - Reduced Motion */
     @media (prefers-reduced-motion: reduce) {
       .animate-blob-1,
@@ -1081,6 +1350,15 @@ import { AuthService } from '../../shared/services/auth.service';
       .particle {
         animation: none !important;
       }
+
+      .error-alert-premium,
+      .animate-error-slide-in {
+        animation: none;
+      }
+
+      .error-alert-progress {
+        animation: none;
+      }
     }
     `,
   ],
@@ -1098,6 +1376,7 @@ export class RecuperarClave {
   loading = signal(false);
   submitSuccess = signal(false);
   error = signal<string | null>(null);
+  errorType = signal<'network' | 'server' | 'email' | 'rate-limit' | 'generic' | null>(null);
 
   async onSubmit(): Promise<void> {
     if (this.form.invalid) {
@@ -1108,6 +1387,7 @@ export class RecuperarClave {
     this.loading.set(true);
     this.submitSuccess.set(false);
     this.error.set(null);
+    this.errorType.set(null);
 
     const email = this.form.value.email ?? '';
 
@@ -1125,38 +1405,46 @@ export class RecuperarClave {
       this.currentStep.set('success');
     } catch (err: any) {
       let errorMessage = 'No pudimos enviar el correo de recuperación. Inténtalo nuevamente más tarde.';
+      let errorTypeValue: 'network' | 'server' | 'email' | 'rate-limit' | 'generic' = 'generic';
       
       // Manejar diferentes tipos de errores con mensajes específicos
-      const errorType = err?.message || '';
+      const errorTypeStr = err?.message || '';
       
-      if (errorType === 'NETWORK_ERROR' || 
-          errorType.includes('Failed to fetch') ||
-          errorType.includes('NetworkError') ||
-          errorType.includes('network')) {
+      if (errorTypeStr === 'NETWORK_ERROR' || 
+          errorTypeStr.includes('Failed to fetch') ||
+          errorTypeStr.includes('NetworkError') ||
+          errorTypeStr.includes('network')) {
         errorMessage = 'No hay conexión a internet o el servidor no está disponible. Verifica tu conexión e inténtalo nuevamente.';
-      } else if (errorType === 'SERVER_ERROR' ||
-                 errorType.includes('server error') ||
-                 errorType.includes('service unavailable')) {
+        errorTypeValue = 'network';
+      } else if (errorTypeStr === 'SERVER_ERROR' ||
+                 errorTypeStr.includes('server error') ||
+                 errorTypeStr.includes('service unavailable')) {
         errorMessage = 'El servidor no está disponible en este momento. Por favor, inténtalo más tarde.';
-      } else if (errorType === 'EMAIL_NOT_FOUND' ||
-                 errorType.includes('user not found') ||
-                 errorType.includes('email not found')) {
+        errorTypeValue = 'server';
+      } else if (errorTypeStr === 'EMAIL_NOT_FOUND' ||
+                 errorTypeStr.includes('user not found') ||
+                 errorTypeStr.includes('email not found')) {
         errorMessage = 'No encontramos una cuenta asociada a este correo electrónico. Verifica que el correo sea correcto.';
-      } else if (errorType === 'EMAIL_NOT_CONFIRMED' ||
-                 errorType.includes('email not confirmed')) {
+        errorTypeValue = 'email';
+      } else if (errorTypeStr === 'EMAIL_NOT_CONFIRMED' ||
+                 errorTypeStr.includes('email not confirmed')) {
         errorMessage = 'Este correo electrónico no ha sido confirmado. Por favor, confirma tu correo antes de solicitar recuperación de contraseña.';
-      } else if (errorType.includes('rate limit') ||
-                 errorType.includes('too many requests')) {
+        errorTypeValue = 'email';
+      } else if (errorTypeStr.includes('rate limit') ||
+                 errorTypeStr.includes('too many requests')) {
         errorMessage = 'Has realizado demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.';
+        errorTypeValue = 'rate-limit';
       } else if (err?.message && !err.message.includes('NETWORK_ERROR') && 
                  !err.message.includes('SERVER_ERROR') &&
                  !err.message.includes('EMAIL_NOT_FOUND') &&
                  !err.message.includes('EMAIL_NOT_CONFIRMED')) {
         // Si hay un mensaje de error específico de Supabase, usarlo
         errorMessage = err.message;
+        errorTypeValue = 'generic';
       }
       
       this.error.set(errorMessage);
+      this.errorType.set(errorTypeValue);
       this.submitSuccess.set(false);
       this.loading.set(false);
     }

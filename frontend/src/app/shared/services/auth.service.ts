@@ -36,7 +36,7 @@ export class AuthService {
   private readonly http = inject(HttpClient);
   private readonly spinnerService = inject(SpinnerService);
 
-  private supabase: SupabaseClient;
+  readonly supabase: SupabaseClient;
 
   private readonly _currentUser = signal<AuthUser | null>(this.hydrateUser());
   readonly currentUser = this._currentUser;
