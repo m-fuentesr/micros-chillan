@@ -17,6 +17,7 @@ import { SearchFilters, FilterField } from '../../shared/components/search-filte
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 /**
@@ -64,26 +65,35 @@ interface DailyRecordView {
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
           @if (kpisLoading() && !sequentialState.kpisError()) {
             @for (i of [1,2,3]; track i) {
-              <app-loading-skeleton type="kpi" />
-            }
-          } @else if (sequentialState.kpisError()) {
-            <div class="col-span-full card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-              <div class="flex items-center gap-3">
-                <ui-icon name="AlertCircle" size="md" class="text-error" />
-                <div>
-                  <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                  <p class="text-xs text-error/70">No se pudieron cargar los indicadores</p>
+              <!-- 🎭 GhostWire Skeleton: KpiCard default - Replica exacta del componente real -->
+              <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] skeleton-entering gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]"
+                   [style.animation-delay.ms]="i * 50">
+                
+                <!-- Header: Icon + Title - Mismas clases exactas del componente default -->
+                <div class="relative flex items-center gap-3">
+                  <!-- Icono: h-10 w-10 para default -->
+                  <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-base-200 h-10 w-10"></div>
+                  <div class="flex-1 min-w-0">
+                    <!-- Título: text-xs (12px) para default -->
+                    <div class="skeleton-shimmer h-3 w-40 rounded"></div>
+                    <!-- Subtítulo: text-[10px] para default -->
+                    <div class="skeleton-shimmer h-2.5 w-32 rounded mt-0.5"></div>
+                  </div>
+                </div>
+                
+                <!-- Body: Value - Mismas clases exactas del componente default -->
+                <div class="relative flex flex-col">
+                  <!-- Valor: text-base sm:text-lg md:text-xl lg:text-2xl pl-[52px] para default -->
+                  <div class="skeleton-shimmer rounded leading-tight h-6 sm:h-7 md:h-8 lg:h-9 pl-[52px] w-32 sm:w-36 md:w-40 lg:w-44"></div>
+                  
+                  <!-- Footer: Badge - Mismas clases exactas del componente default -->
+                  <div class="flex items-center mt-2 min-h-[24px] pl-[52px]">
+                    <!-- Badge: text-[10px] para default -->
+                    <div class="skeleton-shimmer rounded-full h-2.5 w-24 sm:w-28"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div 
-              class="col-span-full"
-              [class.opacity-0]="!sequentialState.canShowKPIs()" 
-              [class.animate-fade-in]="sequentialState.canShowKPIs()" 
-              [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-              [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-              <!-- KPIs con error pero mostrando datos -->
-            </div>
+            }
           } @else {
             <div 
               class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 col-span-full"
@@ -98,6 +108,7 @@ interface DailyRecordView {
               [value]="formatCurrency(totalRevenue())"
               type="financial"
               [badgeText]="currentMonthName()"
+              [responsive]="true"
               [animationDelay]="0">
               <ui-icon name="Wallet" size="md" icon />
             </app-kpi-card>
@@ -110,6 +121,7 @@ interface DailyRecordView {
               type="warning"
               [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
               [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
+              [responsive]="true"
               [animationDelay]="1">
               <ui-icon name="AlertCircle" size="md" icon />
             </app-kpi-card>
@@ -122,6 +134,7 @@ interface DailyRecordView {
               type="danger"
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
               [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
+              [responsive]="true"
               [animationDelay]="2">
               <ui-icon name="TriangleAlert" size="md" icon />
             </app-kpi-card>
@@ -196,19 +209,6 @@ interface DailyRecordView {
 
               <!-- Skeleton: Tabla -->
               <app-loading-skeleton type="table" [count]="10" />
-            </div>
-          </div>
-        } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-            <div class="flex flex-col items-center gap-4 text-center">
-              <ui-icon name="AlertCircle" size="xl" class="text-error" />
-              <div>
-                <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                  Reintentar
-                </button>
-              </div>
             </div>
           </div>
         } @else {
@@ -294,19 +294,6 @@ interface DailyRecordView {
                   </div>
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
-                } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                    <div class="flex flex-col items-center gap-4 text-center">
-                      <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                      <div>
-                        <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                        <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                        <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                          Reintentar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 } @else {
                   <table class="table w-full table-min-height min-w-[960px]">
                     <thead class="bg-base-50 border-b border-base-200">
@@ -441,19 +428,6 @@ interface DailyRecordView {
                   </div>
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
-                } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                    <div class="flex flex-col items-center gap-4 text-center">
-                      <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                      <div>
-                        <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                        <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                        <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                          Reintentar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 } @else {
                   <table class="table w-full table-min-height">
                     <thead class="bg-base-50 border-b border-base-200">
@@ -564,19 +538,6 @@ interface DailyRecordView {
               @for (i of [1,2,3,4,5]; track i) {
                 <app-loading-skeleton type="card" />
               }
-            } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                      Reintentar
-                    </button>
-                  </div>
-                </div>
-              </div>
             } @else {
               @for (record of paginatedRecords(); track record.id) {
               <div 
@@ -609,25 +570,30 @@ interface DailyRecordView {
 
                     <!-- Información Principal -->
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-start justify-between gap-2 mb-2">
-                        <div class="flex-1 min-w-0">
-                          <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="record.machine">
+                      <!-- Vista móvil: Layout vertical con elementos separados -->
+                      <div class="space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                          <h3 class="font-bold text-base text-base-content tooltip" [attr.data-tip]="record.machine">
                             {{ record.machine }}
                           </h3>
-                          <div class="flex items-center gap-2 mt-1.5">
-                            <div class="avatar placeholder shrink-0">
-                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                                <ui-icon name="IdCard" size="sm" />
-                              </div>
-                            </div>
-                            <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
-                              {{ record.driver }}
-                            </span>
-                          </div>
                         </div>
-                        
-                        <!-- Badge Estado -->
-                        <div class="shrink-0">
+                        <div class="flex items-center gap-2">
+                          <div class="avatar placeholder shrink-0">
+                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                              <ui-icon name="IdCard" size="sm" />
+                            </div>
+                          </div>
+                          <span 
+                            class="text-sm tooltip break-words" 
+                            [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                            [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                            [class.italic]="record.driver === 'Sin asignar'"
+                            [attr.data-tip]="record.driver">
+                            {{ record.driver }}
+                          </span>
+                        </div>
+                        <!-- Badge Estado - Debajo del nombre -->
+                        <div>
                           @if (record.status === 'complete') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/10">
                               Completo
@@ -753,10 +719,25 @@ interface DailyRecordView {
       }
     }
     
+    @keyframes skeletonFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
     .skeleton-shimmer {
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
       animation: shimmer 2s infinite;
+    }
+    
+    .skeleton-entering {
+      animation: skeletonFadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -771,6 +752,7 @@ export class BitacoraOperaciones implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private newRecordModalService = inject(NewRecordModalService);
   private storageService = inject(StorageService);
+  private globalErrorService = inject(GlobalErrorService);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -797,6 +779,11 @@ export class BitacoraOperaciones implements OnInit {
     this.dailyRecordService.getDailyRecordsKPIs().pipe(
       catchError((error) => {
         console.error('Error cargando KPIs:', error);
+        // Mostrar error global en lugar de error local
+        this.globalErrorService.showError(
+          'No se pudieron cargar los datos desde el servidor.',
+          'Error al cargar registros diarios'
+        );
         this.sequentialState.setKPIsReady(true); // Marcar error
         setTimeout(() => {
           this.kpisLoading.set(false);
@@ -1151,8 +1138,12 @@ export class BitacoraOperaciones implements OnInit {
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
             
-            // Si es la primera carga y hay error, marcar error
+            // Si es la primera carga y hay error, mostrar error global
             if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
+              this.globalErrorService.showError(
+                'No se pudieron cargar los registros diarios desde el servidor.',
+                'Error al cargar registros diarios'
+              );
               this.sequentialState.setContentReady(true);
             }
           });
@@ -1434,14 +1425,11 @@ export class BitacoraOperaciones implements OnInit {
       });
   }
 
-  // Función para reintentar carga
+  // Función para reintentar carga (ya no se usa, pero se mantiene por compatibilidad)
   retryLoad(): void {
-    this.sequentialState.resetErrors();
-    this.sequentialState.reset();
-    this.isLoading.set(true);
-    this.currentPage.set(1);
-    this.isInitialLoad = false; // Asegurar que el effect funcione después de un retry
-    this.loadRecords();
+    // Limpiar error global y recargar página
+    this.globalErrorService.clearError();
+    this.globalErrorService.reloadPage();
   }
 
 

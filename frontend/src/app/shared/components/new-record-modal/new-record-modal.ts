@@ -119,78 +119,6 @@ import { catchError, of } from 'rxjs';
               }
             </div>
 
-            @if (!modalService.formData().noWorkDay) {
-              <!-- Bento: Ingresos / Consumos -->
-              <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
-                <div class="form-control md:col-span-2">
-                  <span class="text-xs uppercase tracking-wide text-base-content/60">Ingresos</span>
-                </div>
-                <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
-                      Ingreso del Día <span class="text-error">*</span>
-                    </span>
-                  </label>
-                  <div class="relative group">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-semibold text-base group-focus-within:text-primary transition-colors">$</span>
-                    <input 
-                      type="number" 
-                      class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
-                      [ngModel]="modalService.formData().income"
-                      (ngModelChange)="updateNumberField('income', $event)"
-                      (keydown)="preventInvalidNumberInput($event, 6)"
-                      (input)="limitFieldDigits($event, 'income', 6)"
-                      name="income"
-                      placeholder="0"
-                      min="0"
-                      max="999999"
-                      required />
-                  </div>
-                </div>
-                <div class="form-control">
-                  <label class="label pb-2 pt-0 items-baseline justify-between">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Gasto en Diésel</span>
-                    <span class="label-text-alt text-[11px] text-base-content/60">Opcional</span>
-                  </label>
-                  <div class="relative group">
-                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-semibold text-base group-focus-within:text-primary transition-colors">$</span>
-                    <input 
-                      type="number" 
-                      class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
-                      [ngModel]="modalService.formData().dieselExpense"
-                      (ngModelChange)="updateNumberField('dieselExpense', $event)"
-                      (keydown)="preventInvalidNumberInput($event, 6)"
-                      (input)="limitFieldDigits($event, 'dieselExpense', 6)"
-                      name="dieselExpense"
-                      placeholder="0"
-                      min="0"
-                      max="999999" />
-                  </div>
-                </div>
-                <div class="form-control md:col-span-2">
-                  <label class="label pb-2 pt-0 items-baseline justify-between">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Litros Cargados</span>
-                    <span class="label-text-alt text-[11px] text-base-content/60">Opcional</span>
-                  </label>
-                  <div class="input input-bordered h-12 rounded-lg px-3 flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/70">
-                    <input 
-                      type="number" 
-                      class="grow bg-transparent border-0 focus:outline-none text-base font-semibold font-mono text-base-content placeholder:text-base-content/50"
-                      [ngModel]="modalService.formData().dieselLiters"
-                      (ngModelChange)="updateNumberField('dieselLiters', $event)"
-                      (keydown)="preventInvalidNumberInput($event, 3, true)"
-                      (input)="limitFieldDigits($event, 'dieselLiters', 3, true)"
-                      name="dieselLiters"
-                      step="0.1"
-                      placeholder="0.0"
-                      min="0"
-                      max="999.9" />
-                    <span class="px-2 py-1 rounded-md bg-base-200 text-[11px] font-mono text-base-content/80 border border-base-200">LTS</span>
-                  </div>
-                </div>
-              </div>
-            }
-
             <!-- Bento: Contexto -->
             <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
               <div class="form-control">
@@ -250,6 +178,81 @@ import { catchError, of } from 'rxjs';
                 </select>
               </div>
             </div>
+
+            @if (!modalService.formData().noWorkDay) {
+              <!-- Bento: Ingresos / Consumos -->
+              <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
+                <div class="form-control md:col-span-2">
+                  <span class="text-xs uppercase tracking-wide text-base-content/60">Ingresos</span>
+                </div>
+                <div class="form-control">
+                  <label class="label pb-2 pt-0">
+                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                      Ingreso del Día <span class="text-error">*</span>
+                    </span>
+                  </label>
+                  <div class="relative group">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-semibold text-base group-focus-within:text-primary transition-colors">$</span>
+                    <input 
+                      type="number" 
+                      class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
+                      [ngModel]="modalService.formData().income"
+                      (ngModelChange)="updateNumberField('income', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 6)"
+                      (input)="limitFieldDigits($event, 'income', 6)"
+                      (focus)="onNumberFieldFocus($event, 'income')"
+                      name="income"
+                      placeholder="0"
+                      min="0"
+                      max="999999"
+                      required />
+                  </div>
+                </div>
+                <div class="form-control">
+                  <label class="label pb-2 pt-0 items-baseline justify-between">
+                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Gasto en Diésel</span>
+                    <span class="label-text-alt text-[11px] text-base-content/60">Opcional</span>
+                  </label>
+                  <div class="relative group">
+                    <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-semibold text-base group-focus-within:text-primary transition-colors">$</span>
+                    <input 
+                      type="number" 
+                      class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
+                      [ngModel]="modalService.formData().dieselExpense"
+                      (ngModelChange)="updateNumberField('dieselExpense', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 6)"
+                      (input)="limitFieldDigits($event, 'dieselExpense', 6)"
+                      (focus)="onNumberFieldFocus($event, 'dieselExpense')"
+                      name="dieselExpense"
+                      placeholder="0"
+                      min="0"
+                      max="999999" />
+                  </div>
+                </div>
+                <div class="form-control md:col-span-2">
+                  <label class="label pb-2 pt-0 items-baseline justify-between">
+                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Litros Cargados</span>
+                    <span class="label-text-alt text-[11px] text-base-content/60">Opcional</span>
+                  </label>
+                  <div class="input input-bordered h-12 rounded-lg px-3 flex items-center gap-3 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/70">
+                    <input 
+                      type="number" 
+                      class="grow bg-transparent border-0 focus:outline-none text-base font-semibold font-mono text-base-content placeholder:text-base-content/50"
+                      [ngModel]="modalService.formData().dieselLiters"
+                      (ngModelChange)="updateNumberField('dieselLiters', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 3, true)"
+                      (input)="limitFieldDigits($event, 'dieselLiters', 3, true)"
+                      (focus)="onNumberFieldFocus($event, 'dieselLiters')"
+                      name="dieselLiters"
+                      step="0.1"
+                      placeholder="0.0"
+                      min="0"
+                      max="999.9" />
+                    <span class="px-2 py-1 rounded-md bg-base-200 text-[11px] font-mono text-base-content/80 border border-base-200">LTS</span>
+                  </div>
+                </div>
+              </div>
+            }
 
             <!-- Bento: Uploads (solo si es día trabajado) -->
             @if (!modalService.formData().noWorkDay) {
@@ -662,6 +665,20 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     // Actualizar el formulario
     const numValue = value === '' ? 0 : (allowDecimals ? parseFloat(value) : parseInt(value, 10));
     this.updateNumberField(fieldName, isNaN(numValue) ? 0 : numValue);
+  }
+
+  onNumberFieldFocus(event: FocusEvent, fieldName: 'income' | 'dieselExpense' | 'dieselLiters'): void {
+    const input = event.target as HTMLInputElement;
+    const currentValue = input.value;
+    
+    // Si el valor es "0" o está vacío, seleccionar todo el texto
+    // Esto permite que al escribir se reemplace automáticamente
+    if (currentValue === '0' || currentValue === '' || currentValue === '0.0' || currentValue === '0.') {
+      // Usar setTimeout para asegurar que la selección ocurra después del focus
+      setTimeout(() => {
+        input.select();
+      }, 0);
+    }
   }
 
   onFileChange(field: 'receiptPhoto' | 'fuelReceiptPhoto', event: Event): void {

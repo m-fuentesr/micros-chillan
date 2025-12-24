@@ -64,30 +64,30 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
                   <!-- Información Principal -->
                   <div class="flex-1 min-w-0">
-                    <div class="flex items-start justify-between gap-2 mb-2">
-                      <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="'Máquina ' + record.machineId">
+                    <!-- Vista móvil: Layout vertical con elementos separados -->
+                    <div class="sm:hidden space-y-2.5">
+                      <div class="flex items-start justify-between gap-2">
+                        <h3 class="font-bold text-base text-base-content tooltip" [attr.data-tip]="'Máquina ' + record.machineId">
                           Máquina {{ record.machineId }}
                         </h3>
-                        <div class="flex items-center gap-2 mt-1.5">
-                          <div class="avatar placeholder shrink-0">
-                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                              <ui-icon name="IdCard" size="sm" />
-                            </div>
-                          </div>
-                          <span 
-                            class="text-sm truncate tooltip" 
-                            [class.text-base-content/70]="record.driver !== 'Sin asignar'"
-                            [class.text-base-content/40]="record.driver === 'Sin asignar'"
-                            [class.italic]="record.driver === 'Sin asignar'"
-                            [attr.data-tip]="record.driver">
-                            {{ record.driver }}
-                          </span>
-                        </div>
                       </div>
-                      
-                      <!-- Badge Estado -->
-                      <div class="shrink-0">
+                      <div class="flex items-center gap-2">
+                        <div class="avatar placeholder shrink-0">
+                          <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                            <ui-icon name="IdCard" size="sm" />
+                          </div>
+                        </div>
+                        <span 
+                          class="text-sm tooltip break-words" 
+                          [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                          [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                          [class.italic]="record.driver === 'Sin asignar'"
+                          [attr.data-tip]="record.driver">
+                          {{ record.driver }}
+                        </span>
+                      </div>
+                      <!-- Badge Estado - Solo visible en móviles, debajo del nombre -->
+                      <div>
                         @switch (record.status) {
                           @case ('PENDIENTE_TRABAJADOR') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/10">
@@ -129,6 +129,77 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                             </div>
                           }
                         }
+                      </div>
+                    </div>
+                    
+                    <!-- Vista desktop/tablet: Layout horizontal original -->
+                    <div class="hidden sm:block">
+                      <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="flex-1 min-w-0">
+                          <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="'Máquina ' + record.machineId">
+                            Máquina {{ record.machineId }}
+                          </h3>
+                          <div class="flex items-center gap-2 mt-1.5">
+                            <div class="avatar placeholder shrink-0">
+                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                                <ui-icon name="IdCard" size="sm" />
+                              </div>
+                            </div>
+                            <span 
+                              class="text-sm truncate tooltip" 
+                              [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                              [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                              [class.italic]="record.driver === 'Sin asignar'"
+                              [attr.data-tip]="record.driver">
+                              {{ record.driver }}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <!-- Badge Estado - Solo visible en pantallas medianas y grandes -->
+                        <div class="shrink-0">
+                          @switch (record.status) {
+                            @case ('PENDIENTE_TRABAJADOR') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning/10 text-warning border border-warning/10">
+                                <span class="w-1.5 h-1.5 rounded-full bg-warning mr-1.5 animate-pulse"></span>
+                                Pendiente
+                              </div>
+                            }
+                            @case ('INCIDENTE_REPORTADO') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
+                                <ui-icon name="OctagonAlert" size="xs" class="mr-1" />
+                                Incidente
+                              </div>
+                            }
+                            @case ('COMPLETO') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/10">
+                                Completo
+                              </div>
+                            }
+                            @case ('EN_ESPERA') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                                <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                                En espera
+                              </div>
+                            }
+                            @case ('NO_TRABAJADO') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
+                                No Trabajado
+                              </div>
+                            }
+                            @case ('DIA_NO_TRABAJADO') {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
+                                No Trabajado
+                              </div>
+                            }
+                            @default {
+                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                                <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                                En espera
+                              </div>
+                            }
+                          }
+                        </div>
                       </div>
                     </div>
                   </div>

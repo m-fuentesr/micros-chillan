@@ -179,6 +179,25 @@ export class DriverService {
     );
   }
 
+  // GET /api/drivers/active/without-machine - Lista choferes activos sin máquina asignada
+  getActiveDriversWithoutMachine(): Observable<Array<{ id: number; nombre_completo: string }>> {
+    return this.http.get<Array<{ id: number; nombre_completo: string }>>(
+      `${this.apiUrl}/api/drivers/active/without-machine`
+    ).pipe(
+      map((response) => {
+        // Asegurar que la respuesta sea un array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error obteniendo choferes activos sin máquina:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // GET /api/drivers/{id} - Obtener detalle de chofer
   getDriverById(id: number): Observable<Driver> {
     interface BackendDriverDetail {
@@ -199,6 +218,7 @@ export class DriverService {
         dias_restantes: number;
         estado: 'ok' | 'warning' | 'danger';
       };
+      fecha_contrato?: string | null;
     }
 
     return this.http.get<BackendDriverDetail>(`${this.apiUrl}/api/drivers/${id}`).pipe(
@@ -228,7 +248,8 @@ export class DriverService {
           nombre: nombre,
           segundo_nombre: segundoNombre,
           apellido: apellido,
-          segundo_apellido: segundoApellido
+          segundo_apellido: segundoApellido,
+          fecha_contrato: backendDriver.fecha_contrato || undefined
         };
       }),
       catchError((error) => {

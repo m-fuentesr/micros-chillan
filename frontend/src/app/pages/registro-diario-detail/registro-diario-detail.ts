@@ -1,17 +1,19 @@
 import { Component, ChangeDetectionStrategy, signal, computed, inject, effect } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgOptimizedImage } from '@angular/common';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
 import { StorageService } from '../../shared/services/storage.service';
 import { ImageModalService } from '../../shared/services/image-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import type { DailyRecord, DailyRecordHistoryItem } from '../../shared/models/daily-record.models';
 import { catchError, EMPTY, forkJoin, of, switchMap, Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { getDateInChileTime, getDaysDifferenceInChile } from '../../shared/utils/date.utils';
+import { DailyRecordDetailSkeleton } from '../../shared/daily-records/daily-record-detail-skeleton/daily-record-detail-skeleton';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -48,47 +50,16 @@ interface DailyRecordDetailView extends DailyRecord {
 
 @Component({
   selector: 'app-registro-diario-detail',
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage, UiIconComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, NgOptimizedImage, UiIconComponent, DailyRecordDetailSkeleton],
   template: `
     <main class="bg-base-200 min-h-screen">
       <div class="mx-auto max-w-6xl px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
-        <!-- Hero alineado al estilo de flota/choferes -->
         @if (isLoading()) {
-          <!-- Skeleton del Hero Section -->
-          <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
-            <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-              <div class="flex-1 min-w-0 space-y-3">
-                <!-- Skeleton: Breadcrumb -->
-                <div class="flex items-center gap-2">
-                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
-                  <div class="h-3 w-px bg-base-300"></div>
-                  <div class="h-3 w-32 skeleton-shimmer rounded"></div>
-                </div>
-
-                <!-- Skeleton: Título y Badge -->
-                <div class="flex flex-wrap items-center gap-3 sm:gap-4">
-                  <div class="h-8 w-8 skeleton-shimmer rounded-full"></div>
-                  <div class="flex items-center gap-3 flex-wrap">
-                    <div class="h-8 sm:h-10 lg:h-12 w-40 skeleton-shimmer rounded"></div>
-                    <div class="h-6 w-20 skeleton-shimmer rounded-full"></div>
-                  </div>
-                </div>
-
-                <!-- Skeleton: Badges de información -->
-                <div class="flex flex-wrap items-center gap-3">
-                  <div class="h-7 w-24 skeleton-shimmer rounded-full"></div>
-                  <div class="h-7 w-28 skeleton-shimmer rounded-full"></div>
-                  <div class="h-7 w-32 skeleton-shimmer rounded-full"></div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Botón de acción -->
-              <div class="flex flex-wrap gap-3 w-full lg:w-auto justify-start lg:justify-end">
-                <div class="h-11 w-36 skeleton-shimmer rounded-lg"></div>
-              </div>
-            </div>
-          </section>
+          <!-- Skeleton completo de alta fidelidad -->
+          <app-daily-record-detail-skeleton />
         } @else {
+          <!-- Hero alineado al estilo de flota/choferes -->
+          <!-- Hero Section Real -->
           <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
             <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div class="flex-1 min-w-0 space-y-3">
@@ -169,131 +140,7 @@ interface DailyRecordDetailView extends DailyRecord {
         }
 
         <div class="space-y-6 sm:space-y-8">
-        @if (isLoading()) {
-          <!-- Skeleton que coincide con la estructura de la página -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-            <!-- Columna Principal (2/3) -->
-            <div class="lg:col-span-2 space-y-4 sm:space-y-6">
-              <!-- Skeleton: Toggle Día No Trabajado -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5 lg:p-6">
-                  <div class="flex items-center gap-3">
-                    <div class="h-6 w-6 skeleton-shimmer rounded"></div>
-                    <div class="flex-1 space-y-2">
-                      <div class="h-5 w-3/4 skeleton-shimmer rounded"></div>
-                      <div class="h-4 w-full skeleton-shimmer rounded"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Información Financiera -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5 lg:p-6">
-                  <div class="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 pb-3 sm:pb-4 border-b border-base-200">
-                    <div class="w-8 h-8 sm:w-10 sm:h-10 skeleton-shimmer rounded-xl"></div>
-                    <div class="flex-1 space-y-2">
-                      <div class="h-5 w-40 skeleton-shimmer rounded"></div>
-                      <div class="h-3 w-32 skeleton-shimmer rounded"></div>
-                    </div>
-                  </div>
-
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
-                    <div class="sm:col-span-2 space-y-2">
-                      <div class="h-4 w-40 skeleton-shimmer rounded"></div>
-                      <div class="h-16 w-full skeleton-shimmer rounded-lg"></div>
-                      <div class="h-3 w-48 skeleton-shimmer rounded"></div>
-                    </div>
-                    <div class="space-y-2">
-                      <div class="h-4 w-24 skeleton-shimmer rounded"></div>
-                      <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
-                    </div>
-                    <div class="space-y-2">
-                      <div class="h-4 w-28 skeleton-shimmer rounded"></div>
-                      <div class="h-12 w-full skeleton-shimmer rounded-lg"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Selector de Emergencia -->
-              <div class="card bg-red-50 border border-red-100 shadow-sm">
-                <div class="card-body p-4 sm:p-5">
-                  <div class="flex items-center justify-between gap-3">
-                    <div class="flex items-center gap-2 sm:gap-3 flex-1">
-                      <div class="w-8 h-8 sm:w-10 sm:h-10 skeleton-shimmer rounded-full"></div>
-                      <div class="flex-1 space-y-2">
-                        <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                        <div class="h-3 w-40 skeleton-shimmer rounded"></div>
-                      </div>
-                    </div>
-                    <div class="h-6 w-11 skeleton-shimmer rounded-full"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Observaciones -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5 lg:p-6">
-                  <div class="h-5 w-32 skeleton-shimmer rounded mb-2"></div>
-                  <div class="h-32 w-full skeleton-shimmer rounded-lg"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Sidebar (1/3) -->
-            <div class="lg:col-span-1 space-y-4 sm:space-y-6">
-              <!-- Skeleton: Comprobante del Registro Diario -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5">
-                  <div class="h-5 w-48 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
-                  <div class="w-full aspect-[4/3] skeleton-shimmer rounded-xl mb-4"></div>
-                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Comprobante Diésel -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5">
-                  <div class="h-5 w-40 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
-                  <div class="w-full aspect-[4/3] skeleton-shimmer rounded-xl mb-4"></div>
-                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Desglose de Pago -->
-              <div class="card bg-gradient-to-br from-white to-base-200 shadow-md border border-base-200">
-                <div class="card-body p-4 sm:p-5">
-                  <div class="h-3 w-32 skeleton-shimmer rounded mb-4 sm:mb-6"></div>
-                  <div class="space-y-2 mb-4 sm:mb-6">
-                    <div class="h-4 w-40 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-3/4 skeleton-shimmer rounded"></div>
-                  </div>
-                  <div class="h-2 w-full skeleton-shimmer rounded-full mb-2"></div>
-                  <div class="h-3 w-24 skeleton-shimmer rounded"></div>
-                </div>
-              </div>
-
-              <!-- Skeleton: Historial -->
-              <div class="card bg-base-100 shadow-sm border border-base-200">
-                <div class="card-body p-4 sm:p-5">
-                  <div class="h-5 w-24 skeleton-shimmer rounded mb-3 sm:mb-4"></div>
-                  <div class="space-y-4">
-                    @for (i of [1,2,3]; track i) {
-                      <div class="flex gap-3">
-                        <div class="w-2 h-2 skeleton-shimmer rounded-full mt-2"></div>
-                        <div class="flex-1 space-y-2">
-                          <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                          <div class="h-3 w-48 skeleton-shimmer rounded"></div>
-                        </div>
-                      </div>
-                    }
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        } @else if (record()) {
+        @if (record()) {
           <form [formGroup]="recordForm">
             <!-- Alert para Incidente -->
             @if (isIncidente()) {
@@ -767,21 +614,6 @@ interface DailyRecordDetailView extends DailyRecord {
     </main>
   `,
   styles: [`
-    @keyframes shimmer {
-      0% {
-        background-position: -1000px 0;
-      }
-      100% {
-        background-position: 1000px 0;
-      }
-    }
-    
-    .skeleton-shimmer {
-      background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
-      background-size: 2000px 100%;
-      animation: shimmer 2s infinite;
-    }
-    
     /* Mejoras de responsividad para el timeline del historial */
     .timeline {
       max-width: 100%;
@@ -820,10 +652,12 @@ interface DailyRecordDetailView extends DailyRecord {
 export class RegistroDiarioDetail {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private location = inject(Location);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
   private storageService = inject(StorageService);
   private imageModalService = inject(ImageModalService);
+  private globalErrorService = inject(GlobalErrorService);
 
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
@@ -985,7 +819,11 @@ export class RegistroDiarioDetail {
       error: (error) => {
         console.error('Error al cargar registro o historial:', error);
         this.isLoading.set(false);
-        // TODO: Mostrar mensaje de error al usuario
+        // Mostrar error global
+        this.globalErrorService.showError(
+          'No se pudo cargar el registro diario desde el servidor.',
+          'Error al cargar registro diario'
+        );
       }
     });
   }
@@ -1521,7 +1359,22 @@ export class RegistroDiarioDetail {
   }
 
   goBack(): void {
-    this.router.navigate(['/bitacora-operaciones']);
+    // Usar Location.back() para regresar a la página anterior
+    // Esto funcionará automáticamente tanto desde el panel principal como desde registros diarios
+    // Si no hay historial (acceso directo), navegar al dashboard como fallback
+    
+    // Verificar si hay historial en la sesión actual
+    // window.history.length puede incluir todo el historial del navegador,
+    // así que usamos una verificación más simple: intentar regresar
+    const canGoBack = window.history.length > 1;
+    
+    if (canGoBack) {
+      // Regresar a la página anterior (funciona desde panel principal o registros diarios)
+      this.location.back();
+    } else {
+      // Si no hay historial, navegar al dashboard (panel principal) como fallback
+      this.router.navigate(['/dashboard']);
+    }
   }
   
   // Helper para verificar si se puede usar NgOptimizedImage

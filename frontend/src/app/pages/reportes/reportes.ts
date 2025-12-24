@@ -3,13 +3,15 @@ import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { switchMap, tap } from 'rxjs/operators';
+import { switchMap, tap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { ReportsService, MachineProfitabilityResponse, MachineGrossRankingResponse, DriverProfitabilityResponse } from '../../shared/services/reports.service';
 import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 interface MachineProfit {
@@ -104,11 +106,36 @@ interface DriverProfit {
             <!-- Tab: Rentabilidad por Máquina -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (profitLoadingState.isLoading() && !profitSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
+                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                    <!-- Background blur effect skeleton -->
+                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                    
+                    <!-- Header: Icon + Title (gap-2 para compact) -->
+                    <div class="relative flex items-center gap-2">
+                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                      <div class="flex-1 min-w-0">
+                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL" -->
+                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Rentabilidad neta" -->
+                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Body: Value -->
+                    <div class="relative flex flex-col">
+                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                      
+                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Resultado final" -->
+                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
                 } @else {
                   <app-kpi-card
@@ -176,35 +203,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #profitChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && !hasProfitData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado -->
+                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && (!hasProfitData() || !profitDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de rentabilidad">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) - más sutiles y precisas -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[25, 45, 35, 65, 50, 70, 40, 80][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono máquina -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto máquina -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente realista -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[28, 52, 38, 72, 58, 78, 45, 88][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(37, 99, 235, 0.4) 0%, rgba(37, 99, 235, 0.5) 50%, rgba(37, 99, 235, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(37, 99, 235, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-blue-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton (si aplica) -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -248,18 +309,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="profitLoadingState.isSkeletonExiting()" />
-                  } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -399,18 +448,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="profitLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -508,11 +545,36 @@ interface DriverProfit {
             <!-- Tab: Ranking de Ingresos (Bruto) -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (revenueLoadingState.isLoading() && !revenueSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
+                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                    <!-- Background blur effect skeleton -->
+                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                    
+                    <!-- Header: Icon + Title (gap-2 para compact) -->
+                    <div class="relative flex items-center gap-2">
+                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                      <div class="flex-1 min-w-0">
+                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "INGRESO TOTAL BRUTO" -->
+                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Producción bruta" -->
+                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Body: Value -->
+                    <div class="relative flex flex-col">
+                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                      
+                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Volumen total" -->
+                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
                 } @else {
                   <app-kpi-card
@@ -581,35 +643,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #revenueChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && !hasRevenueData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado (Ranking de Ingresos) -->
+                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && (!hasRevenueData() || !revenueDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de ingresos">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente verde -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[30, 50, 40, 70, 55, 75, 45, 85][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono máquina -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto máquina -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente verde (success) -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[32, 58, 42, 75, 60, 82, 48, 90][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js con color success) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.5) 50%, rgba(16, 185, 129, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(16, 185, 129, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-emerald-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -653,18 +749,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="revenueLoadingState.isSkeletonExiting()" />
-                  } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -760,18 +844,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -847,11 +919,36 @@ interface DriverProfit {
             <!-- Tab: Rentabilidad por Chofer -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (driverLoadingState.isLoading() && !driverSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
+                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                    <!-- Background blur effect skeleton -->
+                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                    
+                    <!-- Header: Icon + Title (gap-2 para compact) -->
+                    <div class="relative flex items-center gap-2">
+                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                      <div class="flex-1 min-w-0">
+                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL CHOFERES" -->
+                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Retribución neta" -->
+                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Body: Value -->
+                    <div class="relative flex flex-col">
+                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                      
+                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Compensación final" -->
+                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
                 } @else {
                   <app-kpi-card
@@ -920,35 +1017,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full" appLazyChart #driverChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && !hasDriverData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado (Rentabilidad por Chofer) -->
+                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && (!hasDriverData() || !driverDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de rentabilidad por chofer">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de chofer -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente púrpura -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[28, 48, 38, 68, 53, 73, 43, 83][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de chofer con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono chofer -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto chofer -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente púrpura (secondary) -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[30, 52, 40, 70, 56, 76, 46, 86][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js con color secondary) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(139, 92, 246, 0.4) 0%, rgba(139, 92, 246, 0.5) 50%, rgba(139, 92, 246, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(139, 92, 246, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-violet-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -992,18 +1123,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="driverLoadingState.isSkeletonExiting()" />
-                  } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -1114,18 +1233,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="driverLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -1286,9 +1393,117 @@ interface DriverProfit {
     }
     
     .skeleton-shimmer {
+      position: relative;
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
-      animation: shimmer 2s infinite;
+      overflow: hidden;
+      will-change: transform;
+    }
+
+    .skeleton-shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        transparent 100%
+      );
+      animation: shimmer-transform 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    @keyframes shimmer-transform {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    /* Skeleton específico para barras del gráfico */
+    .skeleton-shimmer-bar {
+      position: relative;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 30%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0.4) 70%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer-bar 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    @keyframes shimmer-bar {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    /* Animación de fade-in escalonado */
+    @keyframes skeleton-fade-in {
+      from {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .animate-skeleton-fade-in {
+      animation: skeleton-fade-in 400ms cubic-bezier(0.22, 0.8, 0.35, 1) both;
+    }
+
+    /* Respeto por prefers-reduced-motion (a11y) */
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer::after,
+      .skeleton-shimmer-bar {
+        animation: none;
+      }
+      
+      .animate-skeleton-fade-in {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* Dark mode: Contraste adaptativo */
+    @media (prefers-color-scheme: dark) {
+      .skeleton-shimmer {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.1) 100%);
+      }
+
+      .skeleton-shimmer::after {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.2) 50%,
+          transparent 100%
+        );
+      }
+
+      .skeleton-shimmer-bar {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.15) 30%,
+          rgba(255, 255, 255, 0.25) 50%,
+          rgba(255, 255, 255, 0.15) 70%,
+          transparent 100%
+        );
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1296,6 +1511,7 @@ interface DriverProfit {
 export class Reportes implements OnInit {
   private reportsService = inject(ReportsService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private cdr = inject(ChangeDetectorRef);
   
   // Inicializar con valores del mes y año actual calculados una sola vez
@@ -1483,16 +1699,31 @@ export class Reportes implements OnInit {
   private periodFilters$ = toObservable(this.getPeriodFilters);
   
   // Flags para rastrear si ya recibimos una respuesta del servidor (no el valor inicial)
-  private profitDataReceived = signal(false);
-  private revenueDataReceived = signal(false);
-  private driverDataReceived = signal(false);
+  private profitDataReceivedSignal = signal(false);
+  private revenueDataReceivedSignal = signal(false);
+  private driverDataReceivedSignal = signal(false);
+  
+  // Computed públicos para acceso desde el template
+  profitDataReceived = computed(() => this.profitDataReceivedSignal());
+  revenueDataReceived = computed(() => this.revenueDataReceivedSignal());
+  driverDataReceived = computed(() => this.driverDataReceivedSignal());
   
   private machineProfitabilityResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.profitDataReceived.set(false);
+        this.profitDataReceivedSignal.set(false);
         return this.reportsService.getMachineProfitability(filters).pipe(
-          tap(() => this.profitDataReceived.set(true))
+          tap(() => this.profitDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando rentabilidad por máquina:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de rentabilidad desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.profitDataReceivedSignal.set(true);
+            return of([] as MachineProfitabilityResponse[]);
+          })
         );
       })
     ),
@@ -1502,9 +1733,19 @@ export class Reportes implements OnInit {
   private grossIncomeRankingResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.revenueDataReceived.set(false);
+        this.revenueDataReceivedSignal.set(false);
         return this.reportsService.getGrossIncomeRanking(filters).pipe(
-          tap(() => this.revenueDataReceived.set(true))
+          tap(() => this.revenueDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando ranking de ingresos:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de ranking desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.revenueDataReceivedSignal.set(true);
+            return of([] as MachineGrossRankingResponse[]);
+          })
         );
       })
     ),
@@ -1514,9 +1755,19 @@ export class Reportes implements OnInit {
   private driverProfitabilityResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.driverDataReceived.set(false);
+        this.driverDataReceivedSignal.set(false);
         return this.reportsService.getDriverProfitability(filters).pipe(
-          tap(() => this.driverDataReceived.set(true))
+          tap(() => this.driverDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando rentabilidad por chofer:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de rentabilidad por chofer desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.driverDataReceivedSignal.set(true);
+            return of([] as DriverProfitabilityResponse[]);
+          })
         );
       })
     ),
@@ -1552,9 +1803,9 @@ export class Reportes implements OnInit {
     }
     
     // Resetear flags de datos recibidos cuando cambia el período
-    this.profitDataReceived.set(false);
-    this.revenueDataReceived.set(false);
-    this.driverDataReceived.set(false);
+    this.profitDataReceivedSignal.set(false);
+    this.revenueDataReceivedSignal.set(false);
+    this.driverDataReceivedSignal.set(false);
     
     // Cuando cambia el período, reiniciar estados de carga
     this.profitLoadingState.setLoading(true);
@@ -1571,7 +1822,7 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.machineProfitabilityResponse();
     const isLoading = this.profitLoadingState.isLoading();
-    const dataReceived = this.profitDataReceived();
+    const dataReceived = this.profitDataReceivedSignal();
     
     // Solo procesar si está cargando y ya recibimos datos del servidor (no el valor inicial)
     if (isLoading && dataReceived && Array.isArray(response)) {
@@ -1589,7 +1840,7 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.grossIncomeRankingResponse();
     const isLoading = this.revenueLoadingState.isLoading();
-    const dataReceived = this.revenueDataReceived();
+    const dataReceived = this.revenueDataReceivedSignal();
     
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {
@@ -1606,7 +1857,7 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.driverProfitabilityResponse();
     const isLoading = this.driverLoadingState.isLoading();
-    const dataReceived = this.driverDataReceived();
+    const dataReceived = this.driverDataReceivedSignal();
     
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {

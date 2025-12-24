@@ -7,19 +7,24 @@ import { DashboardService } from '../../shared/services/dashboard.service';
 import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared/models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
-import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { AnimatedCounterDirective } from '../../shared/directives/animated-counter.directive';
+import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, KpiCard, AnimatedCounterDirective, UiIconComponent],
+  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, KpiCard, AnimatedCounterDirective, UiIconComponent, HomeSkeleton],
   template: `
+    @if ((kpisLoadingState.isLoading() || contentLoadingState.isLoading()) && !sequentialState.kpisError() && !sequentialState.contentError()) {
+      <!-- Skeleton completo de alta fidelidad mientras carga -->
+      <app-home-skeleton />
+    } @else {
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
       <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
@@ -38,25 +43,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="pl-3 md:pl-4">
-        @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="dashboard-kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-            <div class="flex items-center gap-3">
-              <ui-icon name="AlertCircle" size="md" class="text-error" />
-              <div>
-                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
-              </div>
-            </div>
-          </div>
+        @if (!sequentialState.kpisError()) {
           <div 
             [class.opacity-0]="!sequentialState.canShowKPIs()" 
             [class.animate-fade-in]="sequentialState.canShowKPIs()" 
@@ -571,76 +558,13 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
       <div class="page-entry-content">
-        @if (!sequentialState.canShowContent()) {
-          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
-          @if (contentLoadingState.isLoading() && !sequentialState.contentError()) {
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
-              <div class="xl:col-span-2">
-                <app-loading-skeleton 
-                  type="dashboard-chart" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-              <div class="xl:col-span-1">
-                <app-loading-skeleton 
-                  type="dashboard-alerts" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-            </div>
-            <div class="border-t-2 border-t-base-300 pt-6">
-              <app-loading-skeleton 
-                type="dashboard-table" 
-                [count]="5"
-                [isExiting]="contentLoadingState.isSkeletonExiting()" />
-            </div>
-          } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-              <div class="flex flex-col items-center gap-4 text-center">
-                <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                <div>
-                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
-                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                </div>
-              </div>
-            </div>
-          } @else {
-            <!-- Mantener skeleton visible hasta que canShowContent sea true -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
-              <div class="xl:col-span-2">
-                <app-loading-skeleton 
-                  type="dashboard-chart" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-              <div class="xl:col-span-1">
-                <app-loading-skeleton 
-                  type="dashboard-alerts" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-            </div>
-            <div class="border-t-2 border-t-base-300 pt-6">
-              <app-loading-skeleton 
-                type="dashboard-table" 
-                [count]="5"
-                [isExiting]="contentLoadingState.isSkeletonExiting()" />
-            </div>
-          }
-        } @else {
-          <!-- Solo renderizar el contenido cuando canShowContent es true -->
+        @if (sequentialState.canShowContent()) {
           <div 
             [class.animate-fade-in]="sequentialState.canShowContent()" 
             [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (!sequentialState.contentError()) {
               <!-- Gráfico Financiero (2/3 del ancho) + Alertas (1/3 del ancho) -->
               <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
                 <div class="xl:col-span-2">
@@ -670,6 +594,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
         }
       </div>
     </div>
+    }
   `,
   styles: [
     `
@@ -701,6 +626,7 @@ export class Home implements OnInit, OnDestroy {
   private dashboardService = inject(DashboardService);
   private transitionService = inject(TransitionService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private platformId = inject(PLATFORM_ID);
   
   // Signals para detección de tamaño de pantalla
@@ -768,15 +694,34 @@ export class Home implements OnInit, OnDestroy {
     }
   }
   
+  // Effect para detectar errores del dashboard y mostrar error global
+  private dashboardErrorEffect = effect(() => {
+    const connectionError = this.dashboardService.connectionError();
+    const dashboardData = this.dashboardService.dashboardData();
+    const isLoading = this.kpisLoadingState.isLoading() || this.contentLoadingState.isLoading();
+    
+    // Si hay error de conexión y estamos cargando, mostrar error global
+    if (connectionError && isLoading && !dashboardData) {
+      this.globalErrorService.showError(
+        'No se pudieron cargar los datos del panel desde el servidor.',
+        'Error al cargar panel principal'
+      );
+      // Marcar errores en sequential state
+      this.sequentialState.setKPIsReady(true);
+      this.sequentialState.setContentReady(true);
+    }
+  });
+
   // Effects para detectar cuando los datos están listos
   private kpisEffect = effect(() => {
     // Los KPIs se calculan desde financialData y dailyRecords
     // Consideramos que están listos cuando dailyRecords tiene datos o después de un tiempo mínimo
     const hasRecords = this.dailyRecords().length > 0;
+    const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.kpisLoadingState.isLoading();
     
     // Cuando hay datos y está cargando, marcar como cargado directamente
-    if (hasRecords && isLoading && !this.sequentialState.kpisError()) {
+    if ((hasRecords || dashboardData) && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
       // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
@@ -791,10 +736,11 @@ export class Home implements OnInit, OnDestroy {
     // El contenido está listo cuando tenemos registros diarios o alertas cargadas
     const hasRecords = this.dailyRecords().length > 0;
     const hasAlerts = this.alertsInitialized; // Verificar si las alertas se inicializaron
+    const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.contentLoadingState.isLoading();
     
     // Cuando hay datos y está cargando, marcar como cargado directamente
-    if ((hasRecords || hasAlerts) && isLoading && !this.sequentialState.contentError()) {
+    if ((hasRecords || hasAlerts || dashboardData) && isLoading && !this.sequentialState.contentError()) {
       this.contentLoadingState.setDataLoaded();
       // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {

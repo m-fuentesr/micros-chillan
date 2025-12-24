@@ -15,12 +15,14 @@ import { NewRecordModalComponent } from './shared/components/new-record-modal/ne
 import { AlertModalComponent } from './shared/components/alert-modal/alert-modal';
 import { PaymentConfirmModalComponent } from './shared/components/payment-confirm-modal/payment-confirm-modal';
 import { ImageModalComponent } from './shared/components/image-modal/image-modal';
+import { GlobalErrorDisplayComponent } from './shared/components/global-error-display/global-error-display';
+import { GlobalErrorService } from './shared/services/global-error.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent, GlobalErrorDisplayComponent],
   template: `
     <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
     <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
@@ -50,16 +52,26 @@ import { filter, map, startWith } from 'rxjs';
           [attr.class]="adminMainClasses()"
           class="admin-main-content"
           style="padding-bottom: env(safe-area-inset-bottom, 0px);">
-          <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
-            <app-route-transition-outlet></app-route-transition-outlet>
-          </div>
+          @if (globalErrorService.hasError()) {
+            <!-- Error global dentro del main - sidebar sigue visible -->
+            <app-global-error-display></app-global-error-display>
+          } @else {
+            <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
+              <app-route-transition-outlet></app-route-transition-outlet>
+            </div>
+          }
         </main>
       </div>
     } @else if (shouldShowWorkerNav()) {
       <!-- Layout con Navbar Móvil (Trabajador) -->
       <div class="flex flex-col min-h-screen bg-base-200">
         <main class="flex-1 bg-base-200 p-4" style="padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); padding-top: calc(env(safe-area-inset-top, 0px) + 0.5rem);">
-          <router-outlet></router-outlet>
+          @if (globalErrorService.hasError()) {
+            <!-- Error global dentro del main - navbar sigue visible -->
+            <app-global-error-display></app-global-error-display>
+          } @else {
+            <router-outlet></router-outlet>
+          }
         </main>
         @if (!hideWorkerNav()) {
           <app-navbar-trabajador></app-navbar-trabajador>
@@ -67,7 +79,12 @@ import { filter, map, startWith } from 'rxjs';
       </div>
     } @else {
       <!-- Sin navbar/sidebar (Login) -->
-      <router-outlet></router-outlet>
+      @if (globalErrorService.hasError()) {
+        <!-- Error global sin sidebar/navbar -->
+        <app-global-error-display></app-global-error-display>
+      } @else {
+        <router-outlet></router-outlet>
+      }
     }
 
     <!-- Modal de confirmación global -->
@@ -284,6 +301,7 @@ export class App implements OnInit, OnDestroy {
   private routeTransitionService = inject(RouteTransitionService);
   private orchestrator = inject(TransitionOrchestratorService);
   private spinnerService = inject(SpinnerService);
+  globalErrorService = inject(GlobalErrorService);
 
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');

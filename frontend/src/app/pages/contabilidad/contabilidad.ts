@@ -15,6 +15,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { PaymentConfirmModalService } from '../../shared/services/payment-confirm-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
@@ -134,13 +135,10 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
             <div class="space-y-8 animate-tab-panel">
               <!-- KPIs: Skeleton o datos reales -->
               @if (summaryLoadingState.showSkeleton() && summaryLoadingState.isLoading()) {
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 skeleton-container">
-                  @for (i of [1,2,3,4]; track i) {
-                    <app-loading-skeleton 
-                      type="kpi" 
-                      [isExiting]="summaryLoadingState.isSkeletonExiting()" />
-                  }
-                </div>
+                <!-- 🎭 GhostWire Skeleton: Mapeo exacto de AccountingKPIs -->
+                <app-loading-skeleton 
+                  type="accounting-kpis" 
+                  [isExiting]="summaryLoadingState.isSkeletonExiting()" />
               } @else {
                 @if (summary()) {
                   <app-accounting-kpis [summary]="summary()!" />
@@ -158,12 +156,10 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
             @if (weeklyLoadingState.showSkeleton() && weeklyLoadingState.isLoading()) {
-              <div class="skeleton-container">
-                <app-loading-skeleton 
-                  type="table" 
-                  [count]="5"
-                  [isExiting]="weeklyLoadingState.isSkeletonExiting()" />
-              </div>
+              <!-- 🎭 GhostWire Skeleton: WeeklySummaryTable - Replica exacta del componente real -->
+              <app-loading-skeleton 
+                type="weekly-summary" 
+                [isExiting]="weeklyLoadingState.isSkeletonExiting()" />
             } @else if (weeklySummaries().length > 0) {
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-weekly-summary-table 
@@ -182,17 +178,6 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
             } @else if (payrollLoadingState.showSkeleton() && payrollLoadingState.isLoading() && liquidation()) {
               <!-- Skeleton personalizado cuando hay datos antiguos pero se están recargando -->
               <app-liquidation-table-skeleton [isExiting]="payrollLoadingState.isSkeletonExiting()" />
-            } @else if (payrollError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <ui-icon name="AlertCircle" size="lg" class="text-error" />
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar liquidación</h3>
-                    <p class="text-sm text-error/70 mb-4">{{ payrollError() }}</p>
-                    <button class="btn btn-sm btn-error" (click)="loadLiquidation()">Reintentar</button>
-                  </div>
-                </div>
-              </div>
             } @else if (liquidation()) {
               <div class="animate-tab-panel tab-panel-scroll data-transition entered">
                 <app-liquidation-table
@@ -227,12 +212,10 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
           @if (activeTab() === 'history') {
             <div class="animate-tab-panel">
               @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
-                <div class="skeleton-container">
-                  <app-loading-skeleton 
-                    type="table" 
-                    [count]="5"
-                    [isExiting]="historyLoadingState.isSkeletonExiting()" />
-                </div>
+                <!-- 🎭 GhostWire Skeleton: LiquidationHistory - Replica exacta del componente real -->
+                <app-loading-skeleton 
+                  type="liquidation-history" 
+                  [isExiting]="historyLoadingState.isSkeletonExiting()" />
               } @else {
                 <app-liquidation-history 
                   [liquidations]="liquidationHistory()"
@@ -376,6 +359,7 @@ export class Contabilidad implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private paymentModalService = inject(PaymentConfirmModalService);
   private alertModalService = inject(AlertModalService);
+  private globalErrorService = inject(GlobalErrorService);
 
 
   activeTab = signal<AccountingTab>('summary');
@@ -614,28 +598,16 @@ export class Contabilidad implements OnInit {
       .pipe(
         catchError((error) => {
           console.error('Error en loadSummary:', error);
-          // Mostrar mensaje de error al usuario
-          if (error?.status === 401) {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Error de Autenticación',
-              message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-              buttonText: 'Entendido'
-            });
-          } else if (error?.status === 403) {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Acceso Denegado',
-              message: 'No tienes permisos para acceder a esta información.',
-              buttonText: 'Entendido'
-            });
+          // Mostrar error global en lugar de error local
+          if (error?.status === 401 || error?.status === 403) {
+            // Errores de autenticación/autorización se manejan con el interceptor
+            return of(null);
           } else {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Error al Cargar Datos',
-              message: error?.error?.detail || error?.message || 'No se pudieron cargar los datos del resumen. Verifica tu conexión e intenta nuevamente.',
-              buttonText: 'Entendido'
-            });
+            // Error general - mostrar error global
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos financieros desde el servidor.',
+              'Error al cargar finanzas'
+            );
           }
           return of(null);
         })
@@ -725,8 +697,12 @@ export class Contabilidad implements OnInit {
         },
         error: (error: any) => {
           this.liquidationData.set(null);
-          const errorMessage = error?.error?.detail || error?.message || 'No se pudieron cargar los datos de liquidación.';
-          this.payrollError.set(errorMessage);
+          // Mostrar error global en lugar de error local
+          this.globalErrorService.showError(
+            'No se pudieron cargar los datos de liquidación desde el servidor.',
+            'Error al cargar liquidación'
+          );
+          this.payrollError.set(null); // Ya no se usa, pero mantener por compatibilidad
           this.payrollLoadingState.setDataLoaded();
         }
       });

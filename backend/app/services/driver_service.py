@@ -456,6 +456,60 @@ async def list_active_drivers():
     return items
 
 
+async def list_active_drivers_without_machine():
+    """
+    Retorna todos los choferes activos que NO tienen una máquina asignada.
+    Útil para mostrar en el selector de creación de máquinas.
+    """
+    # 1. Obtener todos los choferes activos
+    choferes_res = (
+        supabase.table("choferes")
+        .select("id, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno, estado")
+        .eq("estado", "activo")
+        .order("primer_nombre", desc=False)
+        .execute()
+    )
+
+    if getattr(choferes_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes activos: {choferes_res.error}")
+
+    # 2. Obtener todos los choferes que tienen máquina asignada (asignaciones activas)
+    asignaciones_res = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("chofer_id")
+        .is_("fecha_termino", None)
+        .execute()
+    )
+
+    if getattr(asignaciones_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo asignaciones activas: {asignaciones_res.error}")
+
+    # 3. Crear un set con los IDs de choferes que tienen máquina asignada
+    choferes_con_maquina = {asignacion["chofer_id"] for asignacion in asignaciones_res.data}
+
+    # 4. Filtrar choferes activos que NO están en el set de choferes con máquina
+    items = []
+
+    for c in choferes_res.data:
+        chofer_id = c["id"]
+        
+        # Solo incluir si NO tiene máquina asignada
+        if chofer_id not in choferes_con_maquina:
+            nombre = build_nombre_completo(
+                c.get('primer_nombre'),
+                c.get('segundo_nombre'),
+                c.get('apellido_paterno'),
+                c.get('apellido_materno')
+            )
+
+            items.append({
+                "id": chofer_id,
+                "nombre_completo": nombre
+            })
+
+    return items
+
+
 async def list_deleted_drivers():
     """
     Retorna choferes eliminados con los datos mínimos para reintegración.
@@ -577,6 +631,10 @@ async def get_driver_detail(driver_id: int):
         c.get('apellido_materno')
     )
 
+    fecha_contrato = None
+    if c.get("fecha_contrato"):
+        fecha_contrato = date.fromisoformat(c["fecha_contrato"])
+
     return {
         "id": c["id"],
         "nombre_completo": nombre_completo,
@@ -596,7 +654,8 @@ async def get_driver_detail(driver_id: int):
             "fecha_vencimiento": fv,
             "dias_restantes": dias,
             "estado": estado_lic
-        }
+        },
+        "fecha_contrato": fecha_contrato
     }
 
 
@@ -640,8 +699,15 @@ async def update_driver(driver_id: int, data):
         "telefono": data.telefono,
         "estado": data.estado,
         "porcentaje_pago": data.porcentaje_pago,
-        "fecha_venc_licencia": data.fecha_venc_licencia.isoformat()
+        "fecha_venc_licencia": data.fecha_venc_licencia.isoformat(),
     }
+    
+    # Solo incluir fecha_contrato si tiene valor, o establecerlo como None explícitamente si se quiere limpiar
+    if data.fecha_contrato:
+        update_payload["fecha_contrato"] = data.fecha_contrato.isoformat()
+    else:
+        # Si es None, establecer explícitamente como None para permitir limpiar el campo
+        update_payload["fecha_contrato"] = None
 
     upd = (
         supabase.table("choferes")
@@ -1008,6 +1074,10 @@ async def create_driver(data: DriverCreate):
             "fecha_venc_licencia": data.fecha_venc_licencia.isoformat(),
             "created_at": date.today().isoformat(),
         }
+        
+        # Solo incluir fecha_contrato si tiene valor
+        if data.fecha_contrato:
+            chofer_payload["fecha_contrato"] = data.fecha_contrato.isoformat()
 
         chofer_res = (
             supabase.table("choferes")
@@ -1108,15 +1178,32 @@ async def create_driver(data: DriverCreate):
     except HTTPException:
         # --------------------------
         # Rollback manual consistente
+        # Orden importante: primero usuario (que referencia chofer), luego chofer
         # --------------------------
-        if chofer_id:
-            supabase.table("choferes").delete().eq("id", chofer_id).execute()
-
         if usuario_id:
-            supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+            # Primero actualizar el usuario para remover la referencia al chofer
+            try:
+                supabase.table("usuarios").update({"chofer_id": None}).eq("id", usuario_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
+        
+        if usuario_id:
+            try:
+                supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
+
+        if chofer_id:
+            try:
+                supabase.table("choferes").delete().eq("id", chofer_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
 
         if supabase_uid:
-            supabase.auth.admin.delete_user(supabase_uid)
+            try:
+                supabase.auth.admin.delete_user(supabase_uid)
+            except Exception:
+                pass  # Si falla, continuar con el rollback
 
         raise
 
