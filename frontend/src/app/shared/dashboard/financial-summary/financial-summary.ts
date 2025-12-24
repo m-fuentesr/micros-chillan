@@ -11,7 +11,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   selector: 'app-financial-summary',
   imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
-    <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
+    <div class="card bg-white shadow-xl border border-zinc-200 flex flex-col overflow-hidden rounded-3xl animate-card-enter" [ngClass]="showChartOnly() ? 'h-[424px]' : 'h-full'">
       <div class="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 sm:gap-0 border-b border-zinc-100 bg-zinc-50/60">
         <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
         <div class="flex gap-1.5 sm:gap-2 flex-wrap">

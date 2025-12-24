@@ -2,7 +2,8 @@
 from typing import Optional
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
-from app.schemas.driver import DriverCreate
+from app.core.config import settings
+from app.schemas.driver import DriverCreate, DriverReintegrate
 from app.services import alert_service
 from app.utils.helpers import normalize_rut, validate_rut
 import logging
@@ -51,7 +52,18 @@ async def get_summary():
     """
 
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # ---------------------------------------------------------
     # 1) Obtener estados (activo / inactivo)
@@ -132,7 +144,18 @@ async def list_drivers(filters):
     Genera alertas automáticas si la licencia está por vencer.
     """
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # ---------------------------------------------------------
     # 1) Construir query base con filtros
@@ -248,7 +271,7 @@ async def list_drivers(filters):
 
             if dias < 0:
                 estado_lic = "danger"
-            elif dias <= 30:
+            elif dias <= dias_alerta:
                 estado_lic = "warning"
             else:
                 estado_lic = "ok"
@@ -342,7 +365,18 @@ async def get_license_alerts(estado: Optional[str] = None):
     Por defecto excluye conductores eliminados (solo activos e inactivos).
     """
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta)
 
     # 1) Obtener choferes (con filtro de estado si aplica)
     base_query = supabase.table("choferes").select("id, fecha_venc_licencia")
@@ -376,7 +410,7 @@ async def get_license_alerts(estado: Optional[str] = None):
 
         if dias < 0:
             vencidas += 1
-        elif dias <= 30:
+        elif dias <= dias_alerta:
             por_vencer += 1
         else:
             vigentes += 1
@@ -418,6 +452,45 @@ async def list_active_drivers():
             "id": c["id"],
             "nombre_completo": nombre
         })
+
+    return items
+
+
+async def list_deleted_drivers():
+    """
+    Retorna choferes eliminados con los datos mínimos para reintegración.
+    """
+    res = (
+        supabase.table("choferes")
+        .select(
+            "id, rut, telefono, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno"
+        )
+        .eq("estado", "eliminado")
+        .order("primer_nombre", desc=False)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo choferes eliminados: {res.error}")
+
+    items = []
+
+    for c in res.data:
+        nombre = build_nombre_completo(
+            c.get("primer_nombre"),
+            c.get("segundo_nombre"),
+            c.get("apellido_paterno"),
+            c.get("apellido_materno"),
+        )
+
+        items.append(
+            {
+                "id": c["id"],
+                "nombre_completo": nombre,
+                "rut": c.get("rut"),
+                "telefono": c.get("telefono"),
+            }
+        )
 
     return items
 
@@ -471,13 +544,25 @@ async def get_driver_detail(driver_id: int):
     # ---------------------------------------------------------
     # 3) Calcular estado de licencia
     # ---------------------------------------------------------
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_licencia_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta = cfg_res.data.get("dias_alerta_licencia_por_vencer") if cfg_res.data else None
+    if dias_alerta is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_licencia_por_vencer definido.")
+    
     hoy = date.today()
     fv = date.fromisoformat(c["fecha_venc_licencia"])
     dias = (fv - hoy).days
 
     if dias < 0:
         estado_lic = "danger"
-    elif dias <= 30:
+    elif dias <= dias_alerta:
         estado_lic = "warning"
     else:
         estado_lic = "ok"
@@ -833,13 +918,33 @@ async def create_driver(data: DriverCreate):
     supabase_uid = auth_user.id
 
     # --------------------------
-    # 2) Enviar correo para forzar cambio de contraseña
+    # 2) Enviar correo de bienvenida usando Magic Link (sign_in_with_otp)
+    # Esto usa la plantilla "Magic Link" en lugar de "Reset Password"
+    # El Magic Link loguea automáticamente al usuario y lo redirige a /restablecer-clave
+    # 
+    # NOTA: La URL de redirección debe configurarse en el Dashboard de Supabase:
+    # Authentication → URL Configuration → Redirect URLs
+    # Agregar: http://localhost:4200/restablecer-clave (dev) y tu dominio de producción
     # --------------------------
     try:
-        supabase.auth.reset_password_for_email(email)
+        # Construir URL completa de redirección usando FRONTEND_URL de configuración
+        # Esto evita problemas con rutas relativas que pueden fallar según la configuración de SITE_URL
+        redirect_url = f"{settings.FRONTEND_URL}/restablecer-clave"
+        
+        # Enviar Magic Link usando la API de Supabase
+        # sign_in_with_otp envía un correo con un link que loguea automáticamente
+        result = supabase.auth.sign_in_with_otp({
+            "email": email,
+            "options": {
+                "email_redirect_to": redirect_url
+            }
+        })
+        
+        if getattr(result, "error", None):
+            logger.warning(f"Supabase devolvió error al enviar Magic Link: {result.error}")
     except Exception as e:
         # No rompemos el flujo completo si falla el correo
-        logger.error(f"Error enviando correo de cambio de contraseña: {e}")
+        logger.error(f"Error enviando correo de bienvenida (Magic Link): {e}")
 
     # --------------------------
     # 3) Obtener porcentaje default
@@ -1124,6 +1229,291 @@ async def delete_driver(driver_id: int):
         raise HTTPException(400, f"Error marcando chofer como eliminado: {upd_ch.error}")
 
     return {"message": "Chofer eliminado correctamente"}
+
+
+async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
+    """
+    Reintegra un chofer previamente eliminado.
+
+    Flujo:
+    1) Validar que el chofer exista y esté marcado como eliminado.
+    2) Verificar que el correo nuevo no esté en uso (usuarios y Supabase Auth).
+    3) Crear usuario en Supabase Auth y enviar Magic Link.
+    4) Crear registro en tabla usuarios vinculado al chofer existente.
+    5) Cambiar estado del chofer a activo.
+    6) (Opcional) Asignar máquina, con las mismas validaciones de create_driver.
+    """
+
+    # 1) Obtener chofer y validar estado
+    chofer_res = (
+        supabase.table("choferes")
+        .select(
+            "id, estado, rut, primer_nombre, segundo_nombre, apellido_paterno, apellido_materno"
+        )
+        .eq("id", driver_id)
+        .single()
+        .execute()
+    )
+
+    if getattr(chofer_res, "error", None) or not chofer_res.data:
+        raise HTTPException(404, "Chofer no encontrado")
+
+    chofer_data = chofer_res.data
+
+    if chofer_data.get("estado") != "eliminado":
+        raise HTTPException(400, "Solo se pueden reintegrar choferes eliminados.")
+
+    # Normalizar y validar RUT almacenado
+    try:
+        normalized_rut = normalize_rut(chofer_data.get("rut", ""))
+    except ValueError:
+        raise HTTPException(400, "RUT inválido")
+
+    if not validate_rut(normalized_rut):
+        raise HTTPException(400, "RUT inválido")
+
+    email = data.correo_electronico.strip().lower()
+
+    # 2) Verificar duplicados en usuarios y asociación previa
+    existing = (
+        supabase.table("usuarios")
+        .select("id")
+        .eq("correo", email)
+        .limit(1)
+        .execute()
+    )
+
+    if getattr(existing, "error", None):
+        raise HTTPException(500, f"Error verificando correo: {existing.error}")
+
+    if existing.data:
+        raise HTTPException(
+            status_code=400,
+            detail="Ya existe un usuario registrado con ese correo.",
+        )
+
+    linked_user = (
+        supabase.table("usuarios")
+        .select("id")
+        .eq("chofer_id", driver_id)
+        .limit(1)
+        .execute()
+    )
+
+    if getattr(linked_user, "error", None):
+        raise HTTPException(500, f"Error verificando usuario asociado: {linked_user.error}")
+
+    if linked_user.data:
+        raise HTTPException(400, "El chofer ya tiene un usuario asociado.")
+
+    # Verificar duplicado en Auth
+    try:
+        listado_auth = supabase.auth.admin.list_users()
+        if any(u.email and u.email.lower() == email for u in getattr(listado_auth, "users", [])):
+            raise HTTPException(
+                status_code=400,
+                detail="Ya existe un usuario en Supabase Auth con este correo.",
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning(f"No se pudo verificar duplicado en Auth antes de crear usuario: {e}")
+
+    rut_password = normalized_rut.replace(".", "").replace("-", "")[:-1]
+
+    supabase_uid = None
+    usuario_id = None
+    chofer_reactivado = False
+
+    try:
+        try:
+            auth_res = supabase.auth.admin.create_user(
+                {
+                    "email": email,
+                    "password": rut_password,
+                    "email_confirm": True,
+                    "user_metadata": {
+                        "rol": "chofer",
+                        "rut": normalized_rut,
+                        "primer_nombre": chofer_data.get("primer_nombre"),
+                        "apellido_paterno": chofer_data.get("apellido_paterno"),
+                    },
+                }
+            )
+        except Exception as e:
+            detalle = str(e)
+            if "already registered" in detalle.lower():
+                detalle = "Ya existe un usuario en Supabase Auth con este correo."
+            raise HTTPException(status_code=400, detail=f"Error creando usuario en Supabase Auth: {detalle}")
+
+        auth_user = getattr(auth_res, "user", None)
+        if not auth_user or not getattr(auth_user, "id", None):
+            raise HTTPException(
+                status_code=500,
+                detail="Supabase no devolvió el UID del usuario Auth creado.",
+            )
+
+        supabase_uid = auth_user.id
+
+        # Enviar Magic Link para que establezca contraseña
+        try:
+            redirect_url = f"{settings.FRONTEND_URL}/restablecer-clave"
+            result = supabase.auth.sign_in_with_otp(
+                {
+                    "email": email,
+                    "options": {
+                        "email_redirect_to": redirect_url
+                    }
+                }
+            )
+
+            if getattr(result, "error", None):
+                logger.warning(f"Supabase devolvió error al enviar Magic Link: {result.error}")
+        except Exception as e:
+            logger.error(f"Error enviando correo de bienvenida (Magic Link): {e}")
+
+        usuario_payload = {
+            "correo": email,
+            "supabase_uid": supabase_uid,
+            "rol_id": 2,
+            "estado": "activo",
+            "chofer_id": driver_id,
+        }
+
+        usuario_res = (
+            supabase.table("usuarios")
+            .insert(usuario_payload)
+            .execute()
+        )
+
+        if getattr(usuario_res, "error", None):
+            raise HTTPException(
+                400, f"Error creando usuario asociado: {usuario_res.error}"
+            )
+
+        usuario_id = usuario_res.data[0]["id"]
+
+        maquina_id = data.maquina_asignada
+
+        if maquina_id is not None:
+            maquina_id = int(maquina_id)
+
+            maquina_res = (
+                supabase.table("maquinas")
+                .select("id, estado_operativo")
+                .eq("id", maquina_id)
+                .single()
+                .execute()
+            )
+
+            if getattr(maquina_res, "error", None) or not maquina_res.data:
+                raise HTTPException(
+                    400,
+                    "La máquina seleccionada no existe.",
+                )
+
+            if maquina_res.data["estado_operativo"] != "operativa":
+                raise HTTPException(
+                    400,
+                    "La máquina seleccionada no está operativa.",
+                )
+
+            asign_activa = (
+                supabase.table("asignaciones_chofer_maquina")
+                .select("id")
+                .eq("maquina_id", maquina_id)
+                .is_("fecha_termino", None)
+                .limit(1)
+                .execute()
+            )
+
+            if asign_activa.data:
+                raise HTTPException(
+                    400,
+                    "La máquina ya está asignada a otro chofer.",
+                )
+
+            chofer_asignacion = (
+                supabase.table("asignaciones_chofer_maquina")
+                .select("id")
+                .eq("chofer_id", driver_id)
+                .is_("fecha_termino", None)
+                .limit(1)
+                .execute()
+            )
+
+            if getattr(chofer_asignacion, "error", None):
+                raise HTTPException(400, f"Error verificando asignación del chofer: {chofer_asignacion.error}")
+
+            if chofer_asignacion.data:
+                raise HTTPException(400, "El chofer ya tiene una máquina asignada.")
+
+            asign_res = (
+                supabase.table("asignaciones_chofer_maquina")
+                .insert(
+                    {
+                        "maquina_id": maquina_id,
+                        "chofer_id": driver_id,
+                        "fecha_inicio": date.today().isoformat(),
+                        "fecha_termino": None,
+                    }
+                )
+                .execute()
+            )
+
+            if getattr(asign_res, "error", None):
+                raise HTTPException(
+                    400,
+                    f"Chofer reintegrado, pero error asignando máquina: {asign_res.error}",
+                )
+            
+        upd_res = (
+            supabase.table("choferes")
+            .update({"estado": "activo"})
+            .eq("id", driver_id)
+            .execute()
+        )
+
+        if getattr(upd_res, "error", None):
+            raise HTTPException(
+                400,
+                f"Error reactivando chofer: {upd_res.error}",
+            )
+
+        chofer_reactivado = True
+
+        return {"message": "Chofer reintegrado correctamente"}
+
+    except HTTPException:
+        if usuario_id:
+            supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+
+        if chofer_reactivado:
+            supabase.table("choferes").update({"estado": "eliminado"}).eq("id", driver_id).execute()
+
+        if supabase_uid:
+            try:
+                supabase.auth.admin.delete_user(supabase_uid)
+            except Exception as e:
+                logger.warning(f"Error eliminando usuario en Auth durante rollback: {e}")
+
+        raise
+
+    except Exception as e:
+        if usuario_id:
+            supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+
+        if chofer_reactivado:
+            supabase.table("choferes").update({"estado": "eliminado"}).eq("id", driver_id).execute()
+
+        if supabase_uid:
+            try:
+                supabase.auth.admin.delete_user(supabase_uid)
+            except Exception as ex:
+                logger.warning(f"Error eliminando usuario en Auth durante rollback: {ex}")
+
+        logger.error(f"Error inesperado reintegrando chofer: {e}")
+        raise HTTPException(500, "Error inesperado al reintegrar chofer")
 
 
 async def get_driver_liquidations(driver_id: int, filters):

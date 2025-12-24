@@ -994,9 +994,11 @@ export class RegistroDiarioDetail {
    * Mapear desde el modelo unificado a la vista de detalle
    */
   private mapToDetailView(record: DailyRecord): DailyRecordDetailView {
-    // Formatear fecha
-    const date = new Date(record.fecha);
-    const formattedDate = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' });
+    // Formatear fecha usando parseo local para evitar problemas de zona horaria
+    const date = this.parseLocalDate(record.fecha);
+    const formattedDate = date
+      ? date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
+      : record.fecha;
     
     // Mapear comprobante de diesel
     const receipt = record.comprobante_diesel ? {
@@ -1349,6 +1351,20 @@ export class RegistroDiarioDetail {
     `;
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 3000);
+  }
+
+  /**
+   * Parsea una fecha en formato YYYY-MM-DD como fecha local (evita problemas de zona horaria)
+   */
+  private parseLocalDate(value: string): Date | null {
+    if (!value) return null;
+    const parts = value.split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      return new Date(y, m - 1, d);
+    }
+    const parsed = new Date(value);
+    return isNaN(parsed.getTime()) ? null : parsed;
   }
 
   /**

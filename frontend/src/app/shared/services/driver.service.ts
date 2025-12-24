@@ -60,8 +60,8 @@ export class DriverService {
       } | null;
       licencia_estado: {
         fecha_vencimiento: string; // ISO date string
-        estado: 'ok' | 'warning' | 'danger';
-        dias_restantes: number;
+          estado: 'ok' | 'warning' | 'danger';
+          dias_restantes: number;
       };
     }
 
@@ -87,6 +87,11 @@ export class DriverService {
             porcentaje_pago: 0, // No viene en el listado, se obtiene en el detalle
             fecha_venc_licencia: backendDriver.licencia_estado.fecha_vencimiento,
             alerta_licencia: alertaLicencia,
+            licencia_estado: {
+              estado: backendDriver.licencia_estado.estado,
+              dias_restantes: backendDriver.licencia_estado.dias_restantes,
+              fecha_vencimiento: backendDriver.licencia_estado.fecha_vencimiento,
+            },
             estado: backendDriver.estado,
             maquina_actual: backendDriver.maquina_actual || null
           };
@@ -213,6 +218,11 @@ export class DriverService {
           porcentaje_pago: backendDriver.porcentaje_pago,
           fecha_venc_licencia: backendDriver.licencia.fecha_vencimiento,
           alerta_licencia: backendDriver.licencia.estado === 'danger' || backendDriver.licencia.estado === 'warning',
+          licencia_estado: {
+            estado: backendDriver.licencia.estado,
+            dias_restantes: backendDriver.licencia.dias_restantes,
+            fecha_vencimiento: backendDriver.licencia.fecha_vencimiento,
+          },
           estado: backendDriver.estado,
           maquina_actual: backendDriver.maquina_actual,
           nombre: nombre,

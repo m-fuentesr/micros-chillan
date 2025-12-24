@@ -41,6 +41,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Ban,
   // Otros
   Calendar,
@@ -51,6 +52,7 @@ import {
   ChevronDown,
   Search,
   RefreshCw,
+  RotateCcw,
   FileText,
   Info,
   Check,
@@ -59,6 +61,9 @@ import {
   Upload,
   Droplet,
   Phone,
+  // Finanzas
+  Percent,
+  DollarSign,
 } from 'lucide-angular';
 
 /**
@@ -114,6 +119,7 @@ export const LUCIDE_ICONS = [
   CheckCircle2,
   Clock,
   AlertCircle,
+  AlertTriangle,
   Ban,
   // Otros
   Calendar,
@@ -124,6 +130,7 @@ export const LUCIDE_ICONS = [
   ChevronDown,
   Search,
   RefreshCw,
+  RotateCcw,
   FileText,
   Info,
   Check,
@@ -132,5 +139,8 @@ export const LUCIDE_ICONS = [
   Upload,
   Droplet,
   Phone,
+  // Finanzas
+  Percent,
+  DollarSign,
 ];
 

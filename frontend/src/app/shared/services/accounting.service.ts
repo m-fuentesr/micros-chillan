@@ -454,8 +454,20 @@ export class AccountingService {
     throw new Error('El endpoint de cierre de período no está disponible en el backend actual');
   }
 
-  // GET /api/accounting/history/periods - Lista de períodos cerrados
-  getLiquidationHistory(): Observable<ClosedLiquidation[]> {
+  // GET /api/accounting/history/periods - Lista de períodos cerrados con paginación y filtros
+  getLiquidationHistory(filters?: {
+    mes_desde?: number;
+    mes_hasta?: number;
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    items: ClosedLiquidation[];
+    total: number;
+    total_global: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+  }> {
     // Interfaces para mapear desde el backend
     interface BackendHistoryPeriodSummary {
       periodo_texto: string;
@@ -466,13 +478,31 @@ export class AccountingService {
       estado: string;
     }
 
-    return this.http.get<BackendHistoryPeriodSummary[]>(`${this.apiUrl}/api/accounting/history/periods`).pipe(
-      map((data: BackendHistoryPeriodSummary[]) => {
-        if (!data || data.length === 0) return [];
-        
-        // Mapear HistoryPeriodSummary a ClosedLiquidation
-        // Inicialmente sin semanas, se cargarán cuando se expanda el período
-        return data.map((period, index) => ({
+    interface BackendResponse {
+      items: BackendHistoryPeriodSummary[];
+      total: number;
+      total_global: number;
+      page: number;
+      per_page: number;
+    }
+
+    let params = new HttpParams();
+    if (filters?.mes_desde) {
+      params = params.set('mes_desde', filters.mes_desde.toString());
+    }
+    if (filters?.mes_hasta) {
+      params = params.set('mes_hasta', filters.mes_hasta.toString());
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
+
+    return this.http.get<BackendResponse>(`${this.apiUrl}/api/accounting/history/periods`, { params }).pipe(
+      map((response: BackendResponse) => {
+        const items = (response.items || []).map((period, index) => ({
           id: index + 1, // ID temporal basado en índice
           periodo: period.periodo_texto,
           mes: period.mes,
@@ -483,10 +513,28 @@ export class AccountingService {
           semanas: [], // Se cargarán cuando se expanda
           choferes: [] // DEPRECATED, se mantiene para compatibilidad
         }));
+
+        const total_pages = Math.ceil(response.total / response.per_page);
+
+        return {
+          items,
+          total: response.total,
+          total_global: response.total_global,
+          page: response.page,
+          per_page: response.per_page,
+          total_pages
+        };
       }),
       catchError((error) => {
         console.error('Error obteniendo historial de liquidaciones:', error);
-        return of([]);
+        return of({
+          items: [],
+          total: 0,
+          total_global: 0,
+          page: 1,
+          per_page: 10,
+          total_pages: 0
+        });
       })
     );
   }

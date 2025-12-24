@@ -48,6 +48,13 @@ class DriverListItem(BaseModel):
     licencia_estado: DriverLicenseState
 
 
+class DriverDeletedListItem(BaseModel):
+    id: int
+    nombre_completo: str
+    rut: str
+    telefono: str
+
+
 class DriverDetail(BaseModel):
     id: int
     nombre_completo: str
@@ -93,6 +100,19 @@ class DriverCreate(DriverBase):
     maquina_asignada: Optional[int] = Field(
         None,
         description="ID de la máquina a asignar"
+    )
+
+
+class DriverReintegrate(BaseModel):
+    """
+    Datos requeridos para reintegrar un chofer eliminado.
+    """
+    correo_electronico: EmailStr = Field(
+        ..., description="Correo electrónico nuevo para el chofer"
+    )
+    maquina_asignada: Optional[int] = Field(
+        None,
+        description="ID de la máquina a asignar (opcional)"
     )
 
 

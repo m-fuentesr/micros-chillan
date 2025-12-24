@@ -1,6 +1,7 @@
-﻿from pydantic import BaseModel
+﻿from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import date
+from app.core.pagination import PaginationParams
 
 # ==========================================
 # 1. GESTIÓN DE PAGOS SEMANALES (Confirmación y Listado)
@@ -62,6 +63,11 @@ class PaymentConfirmResponse(BaseModel):
 # ==========================================
 # 2. HISTORIAL DE CIERRES (Jerárquico: Mes -> Semanas)
 # ==========================================
+
+# Filtros para historial de períodos
+class HistoryPeriodFilters(PaginationParams):
+    mes_desde: Optional[int] = Field(None, ge=1, le=12, description="Mes inicial del filtro")
+    mes_hasta: Optional[int] = Field(None, ge=1, le=12, description="Mes final del filtro")
 
 # A. Resumen del Mes (La fila principal del historial)
 class HistoryPeriodSummary(BaseModel):

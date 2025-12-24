@@ -145,7 +145,18 @@ async def get_summary():
     # 2) Contar máquinas con documentos en alerta
     # ---------------------------------------------------------
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta_docs = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if dias_alerta_docs is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta_docs)
 
     docs_raw = (
         supabase.table("documentos_maquina")
@@ -197,7 +208,17 @@ async def get_document_alerts(estado: Optional[str] = None):
     Opcionalmente filtra por estado operativo.
     """
     hoy = date.today()
-    alerta_dias = 30
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if alerta_dias is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
     limite_warning = hoy + timedelta(days=alerta_dias)
 
     # 1) Obtener máquinas (con filtro de estado si aplica)
@@ -277,7 +298,17 @@ async def get_document_alerts(estado: Optional[str] = None):
 
 async def list_machines(filters):
     hoy = date.today()
-    alerta_dias = 30
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if alerta_dias is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
     limite_warning = hoy + timedelta(days=alerta_dias)
 
     # 1) Construir query base con filtros
@@ -648,7 +679,31 @@ async def get_machine_detail(machine_id: int):
         chofer_actual_id = asign_raw.data[0]["chofer_id"]
 
     # ----------------------------------------
-    # 3. Obtener documentos
+    # 3. Configuración de documentos y alertas
+    # ----------------------------------------
+    hoy = date.today()
+
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, "Error obteniendo configuración general")
+
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer")
+    if alerta_dias is None:
+        raise HTTPException(
+            400,
+            "Configuración general no tiene dias_alerta_documento_por_vencer definido"
+        )
+
+    limite_warning = hoy + timedelta(days=alerta_dias)
+
+    # ----------------------------------------
+    # 4. Obtener documentos de la máquina
     # ----------------------------------------
     docs_raw = (
         supabase.table("documentos_maquina")
@@ -658,19 +713,33 @@ async def get_machine_detail(machine_id: int):
     )
 
     if getattr(docs_raw, "error", None):
-        raise HTTPException(400, f"Error obteniendo documentos: {docs_raw.error}")
+        raise HTTPException(400, "Error obteniendo documentos de la máquina")
 
-    # Convertir a mapa
-    docs_map = {d["tipo_documento"]: d["fecha_vencimiento"] for d in docs_raw.data}
+    documentos = {}
 
-    documentos = {
-        "fecha_venc_revision_tecnica": docs_map.get("revision_tecnica"),
-        "fecha_venc_permiso_circulacion": docs_map.get("permiso_circulacion"),
-        "fecha_venc_seguro_obligatorio": docs_map.get("seguro_obligatorio"),
-    }
+    for d in docs_raw.data:
+        tipo = d["tipo_documento"]
+        fecha_str = d["fecha_vencimiento"]
+
+        if not fecha_str:
+            continue
+
+        fv = date.fromisoformat(fecha_str)
+
+        if fv < hoy:
+            estado = "vencido"
+        elif fv <= limite_warning:
+            estado = "por_vencer"
+        else:
+            estado = "ok"
+
+        documentos[tipo] = {
+            "fecha_vencimiento": fv,
+            "estado": estado
+        }
 
     # ----------------------------------------
-    # 4. Respuesta final
+    # 5. Respuesta final
     # ----------------------------------------
     return {
         "id": m["id"],

@@ -15,7 +15,6 @@ import { MachineDailyRecord, MachineDailyRecordFilters, MachineAssignment, Maint
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
@@ -845,7 +844,7 @@ export class MachineDetail implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
-  
+
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
 
@@ -872,10 +871,10 @@ export class MachineDetail implements OnInit {
   editPermisoCirculacion = signal<string>('');
   editSeguroObligatorio = signal<string>('');
   editChoferId = signal<number | null>(null);
-  
+
   // Signal para el valor del select (para evitar problemas con el binding)
   choferSelectValue = signal<string>('');
-  
+
   // Computed signal para el valor del select que siempre está sincronizado
   choferSelectValueComputed = computed(() => {
     if (this.isEditingGeneral()) {
@@ -884,18 +883,18 @@ export class MachineDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editChoferId, verificar choferSelectValue (puede haber sido cambiado por el usuario)
       const selectValue = this.choferSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor de la máquina como fallback
       const machineId = this.machine()?.chofer_actual?.id;
       return machineId ? String(machineId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor de la máquina
     const machineId = this.machine()?.chofer_actual?.id;
     return machineId ? String(machineId) : '';
@@ -954,15 +953,9 @@ export class MachineDetail implements OnInit {
   // Estados de documentos
   docStatus = computed(() => {
     const m = this.machine();
-    if (!m) {
-      return {
-        revision_tecnica: undefined,
-        permiso_circulacion: undefined,
-        seguro_obligatorio: undefined
-      };
-    }
-    return calculateMachineDocumentStatus(m, 30);
+    return m?.documentos_estado ?? {};
   });
+
 
   // Cargar choferes activos desde backend (para el select)
   choferesSelectData = toSignal(
@@ -975,7 +968,7 @@ export class MachineDetail implements OnInit {
     ),
     { initialValue: [] }
   );
-  
+
   choferesSelect = computed(() => {
     return this.choferesSelectData() ?? [];
   });
@@ -984,19 +977,19 @@ export class MachineDetail implements OnInit {
   choferesSelectOrdered = computed(() => {
     const choferes = this.choferesSelect();
     const currentChoferId = this.machine()?.chofer_actual?.id;
-    
+
     if (!currentChoferId) {
       return choferes;
     }
-    
+
     // Separar el conductor asignado del resto
     const assignedChofer = choferes.find(c => c.id === currentChoferId);
     const otherChoferes = choferes.filter(c => c.id !== currentChoferId);
-    
+
     // Retornar el asignado primero, luego los demás
     return assignedChofer ? [assignedChofer, ...otherChoferes] : choferes;
   });
-  
+
   // Cargar choferes completos para otros componentes (MachineDailyRecords)
   choferesData = toSignal(
     this.driverService.getDrivers({ estado: 'activos' }).pipe(
@@ -1005,7 +998,7 @@ export class MachineDetail implements OnInit {
     ),
     { initialValue: [] }
   );
-  
+
   choferes = computed(() => this.choferesData() ?? []);
 
   // Registros diarios
@@ -1023,7 +1016,7 @@ export class MachineDetail implements OnInit {
   assignmentsTotalPages = signal<number>(0);
   assignmentsLoading = signal<boolean>(false);
   assignmentsFilter = signal<'todas' | 'actual' | 'cerradas'>('todas');
-  
+
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general'])); // 'general' siempre se carga
 
@@ -1043,11 +1036,11 @@ export class MachineDetail implements OnInit {
 
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
-    
+
     if (isEditing) {
       // Cambiar a la tab 'general' antes de activar el modo edición
       this.activeTab.set('general');
-      
+
       // Inicializar valores editables con los valores actuales
       const m = this.machine();
       if (m) {
@@ -1069,7 +1062,7 @@ export class MachineDetail implements OnInit {
       this.choferSelectValue.set('');
       this.editChoferId.set(null);
     }
-    
+
     this.isEditingGeneral.set(isEditing);
   }
 
@@ -1080,9 +1073,9 @@ export class MachineDetail implements OnInit {
     const choferId = this.editChoferId();
     const estado = this.editEstadoOperativo() as 'Operativa' | 'En Taller' | 'Inactiva' | undefined;
     const currentMachine = this.machine();
-    
+
     if (!currentMachine) return;
-    
+
     // Validar que las fechas de documentación estén presentes
     if (!this.editRevisionTecnica() || !this.editPermisoCirculacion() || !this.editSeguroObligatorio()) {
       this.alertModalService.show({
@@ -1093,10 +1086,10 @@ export class MachineDetail implements OnInit {
       });
       return;
     }
-    
+
     // Asegurar que chofer_id sea un número o null
     const choferIdFinal = choferId !== null && choferId !== undefined ? Number(choferId) : null;
-    
+
     const updateData: Partial<Machine> = {
       numero: currentMachine.numero,
       marca: this.editMarca(),
@@ -1128,24 +1121,24 @@ export class MachineDetail implements OnInit {
       .subscribe((updatedMachine) => {
         if (updatedMachine) {
           this.isEditingGeneral.set(false);
-          
+
           this.alertModalService.show({
             title: 'Cambios Guardados',
             message: 'La información de la máquina ha sido actualizada correctamente.',
             type: 'success',
             buttonText: 'Entendido'
           });
-          
+
           // Esperar un momento para asegurar que el backend haya procesado
           setTimeout(() => {
             // Forzar recarga de datos actualizando el refreshTrigger
             this.refreshTrigger.set(this.refreshTrigger() + 1);
-            
+
             // Verificar después de un momento si se cargó correctamente
             setTimeout(() => {
               const machine = this.machine();
               const choferes = this.choferes();
-              
+
               if (machine && machine.chofer_id && !machine.chofer_actual && choferes.length > 0) {
                 this.refreshTrigger.set(this.refreshTrigger() + 1);
               }
@@ -1160,15 +1153,15 @@ export class MachineDetail implements OnInit {
     if (this.isEditingGeneral()) {
       return;
     }
-    
+
     this.activeTab.set(tab);
-    
+
     // Cargar datos solo si el tab no ha sido cargado antes
     const loaded = this.loadedTabs();
     if (!loaded.has(tab)) {
       loaded.add(tab);
       this.loadedTabs.set(new Set(loaded));
-      
+
       // Cargar datos según el tab
       switch (tab) {
         case 'records':
@@ -1241,7 +1234,7 @@ export class MachineDetail implements OnInit {
     // Recargar los registros con los nuevos filtros
     this.loadDailyRecords();
   }
-  
+
   onDailyRecordsPageChange(page: number): void {
     this.dailyRecordsCurrentPage.set(page);
     this.loadDailyRecords();
@@ -1258,9 +1251,9 @@ export class MachineDetail implements OnInit {
 
     const filters = this.recordFilters();
     const currentPage = this.dailyRecordsCurrentPage();
-    
+
     this.dailyRecordsLoading.set(true);
-    
+
     this.dailyRecordService.getDailyRecords({
       maquina_id: machine.id,
       chofer_id: filters.chofer_id || undefined,
@@ -1272,7 +1265,7 @@ export class MachineDetail implements OnInit {
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
-        
+
         // Mapear DailyRecord a MachineDailyRecord
         const machineRecords: MachineDailyRecord[] = records.map((record: DailyRecord) => ({
           id: parseInt(record.id),
@@ -1349,11 +1342,11 @@ export class MachineDetail implements OnInit {
 
     const filters = this.maintenanceFilters();
     const currentPage = this.maintenanceCurrentPage();
-    
+
     console.log('Cargando mantenimientos:', { machineId, filters, currentPage, per_page: this.maintenanceItemsPerPage });
-    
+
     this.maintenanceLoading.set(true);
-    
+
     this.machineService.getMachineMaintenances(machineId, {
       categoria: filters.categoria && filters.categoria !== 'all' ? filters.categoria : undefined,
       item: filters.item,
@@ -1457,7 +1450,7 @@ export class MachineDetail implements OnInit {
     try {
       // Usar función helper que considera zona horaria de Chile
       const diffDays = getDaysDifferenceInChile(date);
-      
+
       if (diffDays === 0) return 'Hoy';
       if (diffDays === 1) return 'Hace 1 día';
       return `Hace ${diffDays} días`;
@@ -1484,18 +1477,18 @@ export class MachineDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editChoferId, usar choferSelectValue
       const selectValue = this.choferSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor de la máquina
       const machineId = this.machine()?.chofer_actual?.id;
       return machineId ? String(machineId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor de la máquina
     const machineId = this.machine()?.chofer_actual?.id;
     return machineId ? String(machineId) : '';
@@ -1504,17 +1497,17 @@ export class MachineDetail implements OnInit {
   handleChoferChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const value = target.value;
-    
+
     // Actualizar el signal del select primero
     this.choferSelectValue.set(value);
-    
+
     // Si el valor es una cadena vacía, establecer null inmediatamente
     if (value === '' || value === null || value === undefined) {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     // Llamar directamente a onChoferIdChange para valores no vacíos
     this.onChoferIdChange(value);
   }
@@ -1522,14 +1515,14 @@ export class MachineDetail implements OnInit {
   handleChoferChangeFromNgModel(value: string): void {
     // Actualizar el signal del select primero
     this.choferSelectValue.set(value);
-    
+
     // Si el valor es una cadena vacía, establecer null inmediatamente
     if (value === '' || value === null || value === undefined) {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     // Llamar directamente a onChoferIdChange para valores no vacíos
     this.onChoferIdChange(value);
   }
@@ -1537,14 +1530,14 @@ export class MachineDetail implements OnInit {
   onChoferIdChange(value: string | number | null | undefined): void {
     // Convertir a string si es necesario
     const stringValue = value === null || value === undefined ? '' : String(value);
-    
+
     // Si el valor es una cadena vacía, null, undefined, o el string "null", establecer null
     if (!stringValue || stringValue.trim() === '' || stringValue === 'null' || stringValue === 'undefined') {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     const numValue = parseInt(stringValue, 10);
     // Si es un número válido, establecerlo; de lo contrario, null
     if (!isNaN(numValue) && numValue > 0) {
@@ -1562,13 +1555,13 @@ export class MachineDetail implements OnInit {
 
     const choferId = value ? parseInt(value, 10) : null;
     const currentMachine = this.machine();
-    
+
     if (!currentMachine) return;
-    
+
     // Validar que las fechas de documentación estén presentes
-    if (!currentMachine.documentos?.revision_tecnica || 
-        !currentMachine.documentos?.permiso_circulacion || 
-        !currentMachine.documentos?.seguro_obligatorio) {
+    if (!currentMachine.documentos?.revision_tecnica ||
+      !currentMachine.documentos?.permiso_circulacion ||
+      !currentMachine.documentos?.seguro_obligatorio) {
       this.alertModalService.show({
         title: 'Documentación Pendiente',
         message: 'No se puede asignar un conductor a esta máquina porque faltan fechas de documentación. Por favor, edita la máquina y completa la documentación primero.',
@@ -1577,7 +1570,7 @@ export class MachineDetail implements OnInit {
       });
       return;
     }
-    
+
     const updateData: Partial<Machine> = {
       numero: currentMachine.numero,
       marca: currentMachine.marca,

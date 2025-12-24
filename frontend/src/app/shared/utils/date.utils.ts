@@ -8,7 +8,7 @@ const CHILE_TIMEZONE = 'America/Santiago';
  * Obtiene solo la parte de la fecha (año, mes, día) en zona horaria de Chile
  * Retorna un objeto con { year, month, day } para comparaciones precisas
  */
-function getDatePartsInChile(dateInput: string | Date): { year: number; month: number; day: number } {
+export function getDatePartsInChile(dateInput: string | Date): { year: number; month: number; day: number } {
   let date: Date;
   
   if (dateInput instanceof Date) {

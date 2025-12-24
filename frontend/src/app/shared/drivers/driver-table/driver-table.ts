@@ -99,7 +99,19 @@ export class DriverTable {
   drivers = input.required<Driver[]>();
 
   getLicenseStatus(driver: Driver) {
-    return calculateLicenseStatus(driver.fecha_venc_licencia, 30);
+    if (driver.licencia_estado) {
+      return {
+        fecha: driver.licencia_estado.fecha_vencimiento,
+        estado: driver.licencia_estado.estado === 'danger' ? 'error' : driver.licencia_estado.estado,
+        dias_restantes: driver.licencia_estado.dias_restantes,
+        texto: driver.licencia_estado.estado === 'danger'
+          ? `Vencida hace ${Math.abs(driver.licencia_estado.dias_restantes ?? 0)} días`
+          : driver.licencia_estado.estado === 'warning'
+            ? `Vence en ${driver.licencia_estado.dias_restantes ?? ''} días`
+            : 'Al día'
+      };
+    }
+    return calculateLicenseStatus(driver.fecha_venc_licencia);
   }
 }
 

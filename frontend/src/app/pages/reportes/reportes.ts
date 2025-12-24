@@ -15,6 +15,8 @@ import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 interface MachineProfit {
   rank: number;
   machine: string;
+  machineLabel: string; // Para tabla: "Máquina (numero_interno)"
+  patente: string | null; // Para mostrar debajo en gris
   income: number;
   dieselCost: number;
   driverPayment: number;
@@ -352,7 +354,12 @@ interface DriverProfit {
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
                                   <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
-                                <strong class="leading-tight">{{ item.machine }}</strong>
+                                <div class="flex flex-col">
+                                  <strong class="leading-tight">{{ item.machineLabel }}</strong>
+                                  @if (item.patente) {
+                                    <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                                  }
+                                </div>
                               </div>
                             </td>
                             <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -429,7 +436,12 @@ interface DriverProfit {
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
                               <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
+                            <div class="flex flex-col min-w-0">
+                              <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machineLabel">{{ item.machineLabel }}</h3>
+                              @if (item.patente) {
+                                <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                              }
+                            </div>
                           </div>
                         </div>
                         <div class="text-right min-w-[120px] sm:min-w-[140px]">
@@ -715,7 +727,12 @@ interface DriverProfit {
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
                                   <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
-                                <strong class="leading-tight">{{ item.machine }}</strong>
+                                <div class="flex flex-col">
+                                  <strong class="leading-tight">{{ item.machineLabel }}</strong>
+                                  @if (item.patente) {
+                                    <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                                  }
+                                </div>
                               </div>
                             </td>
                             <td class="text-right tabular-nums font-bold text-primary">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -780,7 +797,12 @@ interface DriverProfit {
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
                               <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
+                            <div class="flex flex-col min-w-0">
+                              <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machineLabel">{{ item.machineLabel }}</h3>
+                              @if (item.patente) {
+                                <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                              }
+                            </div>
                           </div>
                         </div>
                         <div class="text-right min-w-[120px] sm:min-w-[140px]">
@@ -1664,16 +1686,37 @@ export class Reportes implements OnInit {
   // Mapear datos de máquinas desde el servicio del backend
   private rawMachinesData = computed((): MachineProfit[] => {
     const machines = this.machineProfitabilityResponse();
-    return machines.map((item: MachineProfitabilityResponse, index: number) => ({
-      rank: index + 1,
-      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
-      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
-      income: item.ingresos_totales,
-      dieselCost: item.costos_diesel,
-      driverPayment: item.pago_choferes,
-      maintenance: item.gastos_mantenimiento > 0 ? item.gastos_mantenimiento : null,
-      netProfit: item.ganancia_neta
-    }));
+    if (!machines || machines.length === 0) {
+      return [];
+    }
+    return machines.map((item: MachineProfitabilityResponse, index: number) => {
+      // Formato para gráfico: "Máquina (numero_interno)"
+      // Manejar null, undefined, string vacío y números
+      let numeroInterno: string = '';
+      if (item.numero_interno !== null && item.numero_interno !== undefined) {
+        // Convertir a string si es número, o usar directamente si es string
+        numeroInterno = String(item.numero_interno).trim();
+      }
+      
+      // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
+      const machineLabel = numeroInterno 
+        ? `Máquina ${numeroInterno}` 
+        : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
+      
+      return {
+        rank: index + 1,
+        // Para gráfico: usar solo "Máquina (numero_interno)" o identificador completo
+        machine: machineLabel,
+        // Para tabla: mismo formato
+        machineLabel: machineLabel,
+        patente: item.patente?.trim() || null,
+        income: item.ingresos_totales,
+        dieselCost: item.costos_diesel,
+        driverPayment: item.pago_choferes,
+        maintenance: item.gastos_mantenimiento > 0 ? item.gastos_mantenimiento : null,
+        netProfit: item.ganancia_neta
+      };
+    });
   });
 
   // Datos hardcodeados de respaldo (temporal)
@@ -1699,7 +1742,8 @@ export class Reportes implements OnInit {
     const term = this.profitSearch().trim().toLowerCase();
     if (!term) return this.machinesData();
     return this.machinesData().filter(item =>
-      item.machine.toLowerCase().includes(term)
+      item.machineLabel.toLowerCase().includes(term) ||
+      (item.patente && item.patente.toLowerCase().includes(term))
     );
   });
 
@@ -1738,21 +1782,43 @@ export class Reportes implements OnInit {
   // Datos para Ranking de Ingresos (Bruto) desde el backend
   revenueRankingData = computed(() => {
     const ranking = this.grossIncomeRankingResponse();
-    return ranking.map((item: MachineGrossRankingResponse) => ({
-      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
-      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
-      income: item.ingresos_totales,
-      rank: item.ranking,
-      reports: 0, // No disponible en el backend actual
-      average: 0 // No disponible en el backend actual
-    }));
+    if (!ranking || ranking.length === 0) {
+      return [];
+    }
+    return ranking.map((item: MachineGrossRankingResponse) => {
+      // Formato para gráfico: "Máquina (numero_interno)"
+      // Manejar null, undefined, string vacío y números
+      let numeroInterno: string = '';
+      if (item.numero_interno !== null && item.numero_interno !== undefined) {
+        // Convertir a string si es número, o usar directamente si es string
+        numeroInterno = String(item.numero_interno).trim();
+      }
+      
+      // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
+      const machineLabel = numeroInterno 
+        ? `Máquina ${numeroInterno}` 
+        : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
+      
+      return {
+        machine: machineLabel,
+        machineLabel: machineLabel,
+        patente: item.patente?.trim() || null,
+        income: item.ingresos_totales,
+        rank: item.ranking,
+        reports: 0, // No disponible en el backend actual
+        average: 0 // No disponible en el backend actual
+      };
+    });
   });
 
   filteredRevenue = computed(() => {
     const term = this.revenueSearch().trim().toLowerCase();
     const data = [...this.revenueRankingData()];
     if (!term) return data;
-    return data.filter(item => item.machine.toLowerCase().includes(term));
+    return data.filter(item => 
+      item.machineLabel.toLowerCase().includes(term) ||
+      (item.patente && item.patente.toLowerCase().includes(term))
+    );
   });
 
   sortedRevenue = computed(() => {
@@ -1788,7 +1854,7 @@ export class Reportes implements OnInit {
   revenueChartData = computed<ChartData<'bar'>>(() => {
     const data = this.revenueRankingData();
     return {
-      labels: data.map((m: { machine: string; income: number }) => m.machine),
+      labels: data.map((m: { machineLabel: string; income: number }) => m.machineLabel),
       datasets: [
         {
           label: 'Ingreso Bruto',
@@ -2060,7 +2126,7 @@ export class Reportes implements OnInit {
   profitChartData = computed<ChartData<'bar'>>(() => {
     const data = this.machinesData();
     return {
-      labels: data.map(m => m.machine),
+      labels: data.map(m => m.machineLabel),
       datasets: [
         {
           label: 'Ganancia Neta',
