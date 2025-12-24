@@ -34,12 +34,14 @@ app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
 # CORS para permitir llamadas desde Angular (localhost:4200)
 origins = [
-    "http://localhost:4200",
+    "http://localhost:4200",      # Para cuando pruebas en tu PC
+    "http://192.168.4.55:4200",   # <--- ¡IMPORTANTE! El puerto del Frontend (Angular)
+    "http://192.168.4.55:8000",   # (Opcional) A veces útil para docs, pero el clave es el 4200
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=origins, # O si quieres ir a la segura pon ["*"] para probar
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
