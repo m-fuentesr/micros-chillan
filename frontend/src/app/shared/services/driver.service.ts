@@ -218,6 +218,7 @@ export class DriverService {
         dias_restantes: number;
         estado: 'ok' | 'warning' | 'danger';
       };
+      fecha_contrato?: string | null;
     }
 
     return this.http.get<BackendDriverDetail>(`${this.apiUrl}/api/drivers/${id}`).pipe(
@@ -247,7 +248,8 @@ export class DriverService {
           nombre: nombre,
           segundo_nombre: segundoNombre,
           apellido: apellido,
-          segundo_apellido: segundoApellido
+          segundo_apellido: segundoApellido,
+          fecha_contrato: backendDriver.fecha_contrato || undefined
         };
       }),
       catchError((error) => {

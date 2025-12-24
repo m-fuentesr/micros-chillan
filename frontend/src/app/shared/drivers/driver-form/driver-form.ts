@@ -27,7 +27,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="text"
               formControlName="rut"
               class="input input-bordered w-full"
-              placeholder="12.345.678-9"
+              placeholder="ej: 12.345.678-9"
               maxlength="12"
               (input)="onRutInput($event)"
               [class.input-error]="form.get('rut')?.invalid && form.get('rut')?.touched">
@@ -53,7 +53,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="text"
               formControlName="primer_nombre"
               class="input input-bordered w-full"
-              placeholder="Juan"
+              placeholder="ej: Juan"
               [class.input-error]="form.get('primer_nombre')?.invalid && form.get('primer_nombre')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -73,7 +73,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="text"
               formControlName="segundo_nombre"
               class="input input-bordered w-full"
-              placeholder="Carlos">
+              placeholder="ej: Carlos">
           </div>
 
           <div class="form-control">
@@ -86,7 +86,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="text"
               formControlName="apellido_paterno"
               class="input input-bordered w-full"
-              placeholder="Pérez"
+              placeholder="ej: Pérez"
               [class.input-error]="form.get('apellido_paterno')?.invalid && form.get('apellido_paterno')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -108,7 +108,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="text"
               formControlName="apellido_materno"
               class="input input-bordered w-full"
-              placeholder="González"
+              placeholder="ej: González"
               [class.input-error]="form.get('apellido_materno')?.invalid && form.get('apellido_materno')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -130,7 +130,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="tel"
               formControlName="telefono"
               class="input input-bordered w-full"
-              placeholder="+56 9 1234 5678"
+              placeholder="ej: +56 9 1234 5678"
               [class.input-error]="form.get('telefono')?.invalid && form.get('telefono')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -152,7 +152,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               type="email"
               formControlName="correo"
               class="input input-bordered w-full"
-              placeholder="ejemplo@correo.cl"
+              placeholder="ej: ejemplo@correo.cl"
               [class.input-error]="form.get('correo')?.invalid && form.get('correo')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -168,7 +168,8 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <label class="label">
               <span class="label-text font-bold">Máquina Asignada</span>
             </label>
-            <select formControlName="maquina_id" class="select select-bordered w-full">
+            <select formControlName="maquina_id" class="select select-bordered w-full" [class.placeholder-selected]="!form.get('maquina_id')?.value || form.get('maquina_id')?.value === '' || form.get('maquina_id')?.value === 'placeholder'">
+              <option value="placeholder" selected disabled>Seleccionar máquina</option>
               <option value="">Sin asignar</option>
               @for (maquina of maquinas(); track maquina.id) {
                 <option [value]="maquina.id">{{ maquina.identificador }}</option>
@@ -209,9 +210,74 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
           </div>
         </div>
       </div>
+
+      <div class="divider"></div>
+
+      <!-- Contrato -->
+      <div>
+        <h2 class="text-2xl font-bold mb-2">Contrato</h2>
+        <p class="text-sm text-base-content/70 mb-4">
+          Ingresa la fecha de contrato del chofer.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-bold">
+                Fecha de Contrato
+              </span>
+            </label>
+            <input
+              type="date"
+              formControlName="fecha_contrato"
+              class="input input-bordered w-full">
+          </div>
+        </div>
+      </div>
     </form>
   `,
-  styles: [],
+  styles: [`
+    /* Estilos para placeholders grises claros en todos los inputs */
+    /* El placeholder es el texto de ejemplo que aparece dentro del campo antes de escribir */
+    input::placeholder,
+    textarea::placeholder {
+      color: hsl(var(--bc) / 0.6) !important;
+      opacity: 1;
+    }
+    
+    /* Placeholder gris claro cuando el input tiene focus */
+    input:focus::placeholder,
+    textarea:focus::placeholder {
+      color: hsl(var(--bc) / 0.5) !important;
+      opacity: 1;
+    }
+    
+    /* Asegurar que los placeholders sean grises claros en todos los estados */
+    input:not(:focus)::placeholder,
+    textarea:not(:focus)::placeholder {
+      color: hsl(var(--bc) / 0.6) !important;
+    }
+    
+    /* Placeholders grises claros para inputs deshabilitados */
+    input:disabled::placeholder,
+    textarea:disabled::placeholder {
+      color: hsl(var(--bc) / 0.4) !important;
+      opacity: 1;
+    }
+    
+    /* Estilos para el placeholder del select (opción seleccionada cuando el valor es null/vacío) */
+    select option:first-child {
+      color: hsl(var(--bc) / 0.6) !important;
+    }
+    
+    /* Cuando el select tiene el valor placeholder seleccionado, mostrar el texto en gris claro */
+    select.placeholder-selected {
+      color: hsl(var(--bc) / 0.6) !important;
+    }
+    
+    select:not(.placeholder-selected) {
+      color: hsl(var(--bc)) !important;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DriverForm implements OnDestroy {
@@ -232,8 +298,9 @@ export class DriverForm implements OnDestroy {
     apellido_materno: ['', Validators.required],
     telefono: ['', Validators.required],
     correo: ['', [Validators.required, Validators.email]],
-    maquina_id: [null as number | null],
-    fecha_venc_licencia: ['']
+    maquina_id: ['placeholder' as string | number | null],
+    fecha_venc_licencia: [''],
+    fecha_contrato: ['']
   });
 
   constructor() {
@@ -255,8 +322,9 @@ export class DriverForm implements OnDestroy {
         telefono: value.telefono || undefined,
         correo: value.correo || undefined,
         estado: 'activo',
-        maquina_id: value.maquina_id ?? undefined,
-        fecha_venc_licencia: value.fecha_venc_licencia || undefined
+        maquina_id: (value.maquina_id === null || value.maquina_id === undefined || value.maquina_id === '' || value.maquina_id === 'placeholder' || value.maquina_id === 'null') ? undefined : (typeof value.maquina_id === 'number' ? value.maquina_id : Number(value.maquina_id) || undefined),
+        fecha_venc_licencia: value.fecha_venc_licencia || undefined,
+        fecha_contrato: value.fecha_contrato || undefined
       });
       this.formValid.emit(this.form.valid);
     });
@@ -272,7 +340,8 @@ export class DriverForm implements OnDestroy {
         apellido_materno: initial.segundo_apellido || '',
         telefono: initial.telefono || '',
         correo: initial.correo || '',
-        fecha_venc_licencia: initial.fecha_venc_licencia || ''
+        fecha_venc_licencia: initial.fecha_venc_licencia || '',
+        fecha_contrato: initial.fecha_contrato || ''
       }, { emitEvent: false }); // No emitir eventos al cargar datos iniciales
     }
   }
@@ -309,7 +378,8 @@ export class DriverForm implements OnDestroy {
       telefono: value.telefono || undefined,
       correo: value.correo || undefined,
       estado: 'activo',
-      fecha_venc_licencia: value.fecha_venc_licencia || undefined
+      fecha_venc_licencia: value.fecha_venc_licencia || undefined,
+      fecha_contrato: value.fecha_contrato || undefined
     };
   }
 

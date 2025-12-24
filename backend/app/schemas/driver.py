@@ -20,6 +20,10 @@ class DriverBase(BaseModel):
         ..., description="Fecha de vencimiento de licencia del chofer"
     )
 
+    fecha_contrato: Optional[date] = Field(
+        None, description="Fecha de contrato del chofer"
+    )
+
     estado: Literal["activo", "inactivo", "eliminado"] = Field(
         "activo", description="Estado del chofer"
     )
@@ -66,6 +70,7 @@ class DriverDetail(BaseModel):
 
     maquina_actual: Optional[DriverMachine]
     licencia: DriverLicenseState
+    fecha_contrato: Optional[date] = None
 
 
 class DriverSelect(BaseModel):
@@ -90,6 +95,7 @@ class DriverUpdate(BaseModel):
     maquina_id: Optional[int] = None
 
     fecha_venc_licencia: date
+    fecha_contrato: Optional[date] = None
 
 
 class DriverCreate(DriverBase):

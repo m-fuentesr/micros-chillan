@@ -314,28 +314,47 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                     </div>
                   </div>
 
-                  <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
-                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
-                      Porcentaje de Pago
-                    </span>
-                    @if (isEditingGeneral()) {
-                      <div class="flex items-center gap-2 mt-1">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Porcentaje de Pago
+                      </span>
+                      @if (isEditingGeneral()) {
+                        <div class="flex items-center gap-2 mt-1">
+                          <input
+                            type="number"
+                            class="input input-sm w-full"
+                            [value]="editPorcentajePago()"
+                            (input)="onPorcentajePagoChange($any($event.target).value)"
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                            step="0.5">
+                          <span class="text-sm font-bold">%</span>
+                        </div>
+                      } @else {
+                        <div class="font-bold text-lg text-primary">
+                          {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
+                        </div>
+                      }
+                    </div>
+
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Fecha de Contrato
+                      </span>
+                      @if (isEditingGeneral()) {
                         <input
-                          type="number"
-                          class="input input-sm w-full"
-                          [value]="editPorcentajePago()"
-                          (input)="onPorcentajePagoChange($any($event.target).value)"
-                          placeholder="0"
-                          min="0"
-                          max="100"
-                          step="0.5">
-                        <span class="text-sm font-bold">%</span>
-                      </div>
-                    } @else {
-                      <div class="font-bold text-lg text-primary">
-                        {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
-                      </div>
-                    }
+                          type="date"
+                          class="input input-sm w-full mt-1"
+                          [value]="editFechaContrato()"
+                          (input)="editFechaContrato.set($any($event.target).value)">
+                      } @else {
+                        <div class="font-semibold text-base-content">
+                          {{ driver()!.fecha_contrato ? formatDate(driver()!.fecha_contrato || null) : '— Sin fecha —' }}
+                        </div>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1516,6 +1535,7 @@ export class DriverDetail implements OnInit {
   editEstado = signal<'activo' | 'inactivo'>('activo');
   editPorcentajePago = signal<number>(0);
   editFechaVencLicencia = signal<string>('');
+  editFechaContrato = signal<string>('');
   editMaquinaId = signal<number | null>(null);
 
   // Signal para el valor del select de máquina (para evitar problemas con el binding)
@@ -1860,6 +1880,7 @@ export class DriverDetail implements OnInit {
         // Convertir de decimal (0.3) a porcentaje (30) para mostrar en el input
         this.editPorcentajePago.set(this.convertDecimalToPorcentaje(d.porcentaje_pago || 0));
         this.editFechaVencLicencia.set(d.fecha_venc_licencia || '');
+        this.editFechaContrato.set(d.fecha_contrato || '');
         const maquinaId = d.maquina_actual?.id || null;
         this.editMaquinaId.set(maquinaId);
         // Actualizar también el valor del select - asegurarse de que sea string
@@ -1920,6 +1941,7 @@ export class DriverDetail implements OnInit {
       // Convertir de porcentaje (30) a decimal (0.3) para guardar en el backend
       porcentaje_pago: this.convertPorcentajeToDecimal(this.editPorcentajePago()),
       fecha_venc_licencia: fechaVencLicencia.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      fecha_contrato: this.editFechaContrato() || null,
       maquina_id: this.editMaquinaId()
     };
 

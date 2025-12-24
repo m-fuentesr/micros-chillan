@@ -8,6 +8,7 @@ export interface Driver {
   correo: string;
   porcentaje_pago: number;
   fecha_venc_licencia: string;
+  fecha_contrato?: string;
   alerta_licencia: boolean;
   licencia_estado?: {
     estado: 'ok' | 'warning' | 'danger';

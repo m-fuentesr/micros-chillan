@@ -631,6 +631,10 @@ async def get_driver_detail(driver_id: int):
         c.get('apellido_materno')
     )
 
+    fecha_contrato = None
+    if c.get("fecha_contrato"):
+        fecha_contrato = date.fromisoformat(c["fecha_contrato"])
+
     return {
         "id": c["id"],
         "nombre_completo": nombre_completo,
@@ -650,7 +654,8 @@ async def get_driver_detail(driver_id: int):
             "fecha_vencimiento": fv,
             "dias_restantes": dias,
             "estado": estado_lic
-        }
+        },
+        "fecha_contrato": fecha_contrato
     }
 
 
@@ -694,8 +699,15 @@ async def update_driver(driver_id: int, data):
         "telefono": data.telefono,
         "estado": data.estado,
         "porcentaje_pago": data.porcentaje_pago,
-        "fecha_venc_licencia": data.fecha_venc_licencia.isoformat()
+        "fecha_venc_licencia": data.fecha_venc_licencia.isoformat(),
     }
+    
+    # Solo incluir fecha_contrato si tiene valor, o establecerlo como None explícitamente si se quiere limpiar
+    if data.fecha_contrato:
+        update_payload["fecha_contrato"] = data.fecha_contrato.isoformat()
+    else:
+        # Si es None, establecer explícitamente como None para permitir limpiar el campo
+        update_payload["fecha_contrato"] = None
 
     upd = (
         supabase.table("choferes")
@@ -1062,6 +1074,10 @@ async def create_driver(data: DriverCreate):
             "fecha_venc_licencia": data.fecha_venc_licencia.isoformat(),
             "created_at": date.today().isoformat(),
         }
+        
+        # Solo incluir fecha_contrato si tiene valor
+        if data.fecha_contrato:
+            chofer_payload["fecha_contrato"] = data.fecha_contrato.isoformat()
 
         chofer_res = (
             supabase.table("choferes")
@@ -1162,15 +1178,32 @@ async def create_driver(data: DriverCreate):
     except HTTPException:
         # --------------------------
         # Rollback manual consistente
+        # Orden importante: primero usuario (que referencia chofer), luego chofer
         # --------------------------
-        if chofer_id:
-            supabase.table("choferes").delete().eq("id", chofer_id).execute()
-
         if usuario_id:
-            supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+            # Primero actualizar el usuario para remover la referencia al chofer
+            try:
+                supabase.table("usuarios").update({"chofer_id": None}).eq("id", usuario_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
+        
+        if usuario_id:
+            try:
+                supabase.table("usuarios").delete().eq("id", usuario_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
+
+        if chofer_id:
+            try:
+                supabase.table("choferes").delete().eq("id", chofer_id).execute()
+            except Exception:
+                pass  # Si falla, continuar con el rollback
 
         if supabase_uid:
-            supabase.auth.admin.delete_user(supabase_uid)
+            try:
+                supabase.auth.admin.delete_user(supabase_uid)
+            except Exception:
+                pass  # Si falla, continuar con el rollback
 
         raise
 

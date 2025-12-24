@@ -7,42 +7,47 @@ import { DriverCreateSummary } from '../../../shared/drivers/driver-create-summa
 import { Driver } from '../../../shared/models/driver.models';
 import { catchError, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-driver-create',
-  imports: [DriverForm, DriverCreateSummary, RouterLink],
+  imports: [DriverForm, DriverCreateSummary, RouterLink, UiIconComponent],
   template: `
-    <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
-    <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
-        <!-- Header con borde izquierdo (estilo referencia) -->
-        <div class="page-entry-header border-l-4 border-l-primary pl-4 md:pl-6 mb-6">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-            <div class="flex-1 min-w-0">
-              <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
-                Registrar Nuevo Conductor
-              </h1>
-              <p class="text-base-content/70 text-sm md:text-base mt-2 max-w-2xl">
-                Completa la información para añadir un nuevo conductor al sistema. 
-                Todos los campos marcados con <span class="text-error font-semibold">*</span> son obligatorios.
-              </p>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
+      <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
+      <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div class="flex-1 min-w-0 space-y-3">
+            <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
+              <span class="text-primary">Conductores</span>
+              <span class="h-3 w-px bg-primary/20"></span>
+              <span class="text-base-content/60">Registro nuevo</span>
             </div>
-            <!-- Botón de acción secundaria -->
-            <a 
-              routerLink="/choferes" 
-              class="flex items-center gap-2 text-base-content/60 hover:text-base-content transition-colors text-sm font-medium group">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 group-hover:-translate-x-1 transition-transform">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-              </svg>
-              <span>Volver a Conductores</span>
-            </a>
+
+            <div class="flex flex-wrap items-center gap-3 sm:gap-4">
+              <a 
+                routerLink="/choferes"
+                class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 flex-shrink-0" 
+                aria-label="Volver">
+                <ui-icon name="ChevronLeft" size="md" />
+              </a>
+
+              <div class="flex items-center gap-3 flex-wrap">
+                <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-base-content tracking-tight">
+                  Registrar Nuevo Conductor
+                </h1>
+              </div>
+            </div>
+
+            <p class="text-xs sm:text-sm text-base-content/70 max-w-2xl">
+              Completa la información para añadir un nuevo conductor al sistema. 
+              Todos los campos marcados con <span class="text-error font-semibold">*</span> son obligatorios.
+            </p>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    <!-- ZONA 2: THE BODY - Contenido Principal con Ritmo Visual -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
+      <!-- ZONA 2: THE BODY - Contenido Principal con Ritmo Visual -->
       <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:gap-8">
         <!-- Formulario Principal (3 columnas en desktop) -->
         <div class="lg:col-span-3 space-y-0">
@@ -68,9 +73,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
                   class="btn btn-primary w-full sm:w-auto order-1 sm:order-2 shadow-lg"
                   [disabled]="!canSave()"
                   (click)="onSave()">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5 mr-2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
+                  <ui-icon name="Check" size="sm" class="mr-2" />
                   Guardar Conductor
                 </button>
               </div>
@@ -236,6 +239,7 @@ export class DriverCreate {
       correo_electronico: data.correo!,
       estado: 'activo',
       fecha_venc_licencia: data.fecha_venc_licencia!,
+      fecha_contrato: data.fecha_contrato ?? null,
       maquina_asignada: data.maquina_actual?.id ?? null,
     };
 
