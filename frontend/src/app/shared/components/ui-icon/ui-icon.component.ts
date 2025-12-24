@@ -83,6 +83,10 @@ const ICON_NAME_MAP: Record<string, string> = {
   Upload: 'upload',
   Droplet: 'droplet',
   Phone: 'phone',
+  Percent: 'percent',
+  DollarSign: 'dollar-sign',
+  RotateCcw: 'rotate-ccw',
+  AlertTriangle: 'alert-triangle',
 };
 
 @Component({
