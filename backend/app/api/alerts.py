@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from app.schemas.dashboard import DashboardAlerts
 from app.services import alert_service
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
@@ -50,6 +51,17 @@ async def list_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
 
     # 2. Retornar la lista limpia
     return await alert_service.get_admin_alerts()
+
+# Para el ADMIN: Ver resumen (KPIs) y detalle
+@router.get("/summary", response_model=DashboardAlerts)
+async def get_admin_alerts_summary(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Devuelve el resumen (KPIs) y detalle de alertas para el dashboard.
+    Ejecuta la limpieza de alertas informativas antiguas antes de construir la respuesta
+    """
+
+    require_admin(current_user)
+    return await alert_service.get_admin_alerts_overview()
 
 # Para el TRABAJADOR: Ver las suyas
 @router.get("/my-alerts/{worker_id}")

@@ -6,9 +6,6 @@ from fastapi import HTTPException
 
 from app.db.supabase_client import supabase
 from app.schemas.dashboard import (
-    DashboardAlertItem,
-    DashboardAlertSummary,
-    DashboardAlerts,
     DashboardFleetKpi,
     DashboardKpis,
     DashboardDailyRecordDriver,
@@ -18,7 +15,6 @@ from app.schemas.dashboard import (
     DashboardMachinePerformance,
     DashboardResponse,
 )
-from app.services import alert_service
 
 
 async def get_today_overview() -> DashboardResponse:
@@ -120,59 +116,6 @@ async def get_today_overview() -> DashboardResponse:
             )
         )
 
-    alertas_raw = await alert_service.get_admin_alerts()
-
-    resumen_alertas = defaultdict(int)
-    alert_items: List[DashboardAlertItem] = []
-
-    for alerta in alertas_raw:
-        severidad = (alerta.get("severidad") or "").lower()
-        if severidad == "critica":
-            resumen_alertas["criticas"] += 1
-        elif severidad == "advertencia":
-            resumen_alertas["advertencias"] += 1
-        else:
-            resumen_alertas["informativas"] += 1
-
-        alert_items.append(
-            DashboardAlertItem(
-                id=alerta.get("id"),
-                mensaje=alerta.get("mensaje", ""),
-                severidad=alerta.get("severidad", ""),
-                tipo=alerta.get("tipo", ""),
-                origen_tipo=alerta.get("origen_tipo", ""),
-                origen_id=alerta.get("origen_id", 0),
-                estado=alerta.get("estado", ""),
-                created_at=alerta.get("created_at"),
-            )
-        )
-
-    SEVERITY_PRIORITY = {
-        "critica": 0,
-        "informativa": 1,
-        "advertencia": 2,
-    }
-
-    alertas = DashboardAlerts(
-        resumen=DashboardAlertSummary(
-            criticas=resumen_alertas.get("criticas", 0),
-            advertencias=resumen_alertas.get("advertencias", 0),
-            informativas=resumen_alertas.get("informativas", 0),
-        ),
-        items=alert_items,
-    )
-
-    # 1) Agrupar por severidad
-    alert_items.sort(
-        key=lambda a: SEVERITY_PRIORITY.get(a.severidad, 99)
-    )
-
-    # 2) Ordenar por fecha DESC dentro de cada grupo
-    alert_items.sort(
-        key=lambda a: a.created_at,
-        reverse=True
-    )
-
     return DashboardResponse(
         fecha=hoy,
         kpis=DashboardKpis(
@@ -186,7 +129,6 @@ async def get_today_overview() -> DashboardResponse:
             )
         ),
         rendimiento=rendimiento_list,
-        alertas=alertas,
     )
 
 async def get_today_daily_records() -> DashboardDailyRecords:
