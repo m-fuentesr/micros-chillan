@@ -2,20 +2,20 @@ import { Component, ChangeDetectionStrategy, input, computed } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { Driver } from '../../models/driver.models';
 import { calculateLicenseStatus } from '../../utils/license.utils';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-driver-card',
   standalone: true,
-  imports: [RouterLink, DriverIcon],
+  imports: [RouterLink, UiIconComponent],
   template: `
     <!-- La tarjeta completa actúa como CTA principal -->
     <a 
       [routerLink]="['/choferes', driver().id]"
-      class="block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 rounded-xl"
+      class="block h-full no-underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100 rounded-3xl"
     >
       <div
-        class="card bg-base-100 border border-base-200 rounded-xl transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] cursor-pointer relative overflow-hidden h-full flex group"
+        class="card bg-base-100 border border-base-200 rounded-3xl transition-all duration-300 shadow-md hover:shadow-xl hover:scale-[1.02] cursor-pointer relative overflow-hidden h-full flex group"
       >
         <!-- Banda lateral de estado (estilo carnet) -->
         <div
@@ -56,7 +56,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
           <div class="flex gap-4 flex-grow min-h-0">
             <!-- Avatar (80x80 = w-20 h-20) -->
             <div class="w-20 h-20 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
-              <app-driver-icon class="w-full h-full p-2 text-primary" />
+              <ui-icon name="IdCard" size="lg" class="text-primary" />
             </div>
 
             <!-- Datos: Especificaciones -->
@@ -182,7 +182,19 @@ export class DriverCard {
   driver = input.required<Driver>();
 
   licenseStatus = computed(() => {
-    // Se asume que el segundo parámetro es el umbral de días para WARNING
-    return calculateLicenseStatus(this.driver().fecha_venc_licencia, 30);
+    const d = this.driver();
+    if (d.licencia_estado) {
+      return {
+        fecha: d.licencia_estado.fecha_vencimiento,
+        estado: d.licencia_estado.estado === 'danger' ? 'error' : d.licencia_estado.estado,
+        dias_restantes: d.licencia_estado.dias_restantes,
+        texto: d.licencia_estado.estado === 'danger'
+          ? `Vencida hace ${Math.abs(d.licencia_estado.dias_restantes ?? 0)} días`
+          : d.licencia_estado.estado === 'warning'
+            ? `Vence en ${d.licencia_estado.dias_restantes ?? ''} días`
+            : 'Al día'
+      };
+    }
+    return calculateLicenseStatus(d.fecha_venc_licencia);
   });
 }

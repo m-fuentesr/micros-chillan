@@ -31,6 +31,7 @@ export interface WeeklySummary {
   gasto_mantenimiento: number;
   total_egresos: number;
   ganancia_neta: number;
+  total_pago_choferes: number;
   choferes: WeeklyDriverBreakdown[];
 }
 

@@ -2,6 +2,7 @@ import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, 
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { AuthService } from '../../shared/services/auth.service';
 import { TransitionService } from '../../shared/services/transition.service';
 import { TransitionOrchestratorService } from '../../shared/services/transition-orchestrator.service';
@@ -9,7 +10,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, CommonModule, RouterLink],
+  imports: [ReactiveFormsModule, CommonModule, RouterLink, UiIconComponent],
   template: `
     <div
       class="min-h-screen flex flex-col lg:flex-row w-full bg-base-200 lg:bg-base-100 relative"
@@ -126,9 +127,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
               <div class="relative premium-input-wrapper" 
                    [class.premium-input-error]="loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())">
                 <div class="premium-input-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
-                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z" />
-                  </svg>
+                  <ui-icon name="User" size="md" />
                 </div>
                 <input
                   type="text"
@@ -140,9 +139,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                 />
                 @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
                   <div class="absolute right-4 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="AlertCircle" size="md" />
                   </div>
                 }
               </div>
@@ -157,9 +154,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                    [class.premium-input-error]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched)"
                    [class.premium-input-error-shake]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched) && !passwordErrorShown()">
                 <div class="premium-input-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="LockKeyhole" size="md" />
                 </div>
                 <input
                   [type]="showPassword() ? 'text' : 'password'"
@@ -178,14 +173,9 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 >
                   @if (!showPassword()) {
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <ui-icon name="Eye" size="md" />
                   } @else {
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
+                    <ui-icon name="EyeOff" size="md" />
                   }
                 </button>
               </div>
@@ -237,8 +227,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   @if (loginSuccess()) {
                     <div class="checkmark-premium-wrapper">
                       <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
-                  </svg>
+                        <path class="checkmark-path" d="M5 13l4 4L19 7"/>
+                      </svg>
                       <div class="checkmark-ripple"></div>
                     </div>
                   }
@@ -261,18 +251,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
             <div
               class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200/50 text-xs text-base-content/60"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="w-3 h-3"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <ui-icon name="Info" size="xs" />
               ¿Problemas de acceso? Contacta a RRHH
             </div>
           </div>
@@ -1747,7 +1726,12 @@ export class Login {
             
           case 'INVALID_CREDENTIALS':
           default:
-            userFriendlyMessage = 'Credenciales inválidas.\nVerifica tu correo y contraseña e inténtalo nuevamente.';
+            // Mensaje más amigable y accionable sin comprometer seguridad
+            userFriendlyMessage = 'No pudimos iniciar sesión con estos datos.\nVerifica tu correo y contraseña. Si olvidaste tu contraseña, usa "¿Olvidaste tu clave?".';
+            // Resaltar ambos campos para que el usuario revise ambos
+            this.loginForm.get('email')?.markAsTouched();
+            this.loginForm.get('password')?.markAsTouched();
+            this.passwordErrorShown.set(true);
             break;
         }
         

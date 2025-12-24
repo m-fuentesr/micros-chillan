@@ -156,6 +156,13 @@ export const routes: Routes = [
       import('./pages/trabajador/perfil/perfil').then(m => m.Perfil),
     canActivate: [authGuard]
   },
+  {
+    path: 'trabajador/centro-ayuda',
+    data: { role: 'worker' },
+    loadComponent: () =>
+      import('./pages/trabajador/centro-ayuda-trabajador/centro-ayuda-trabajador').then(m => m.CentroAyudaTrabajador),
+    canActivate: [authGuard]
+  },
 
   // --- Fallback 404 ---
   { path: '**', redirectTo: '/login' }

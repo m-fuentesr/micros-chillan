@@ -1,17 +1,21 @@
-﻿from fastapi import APIRouter, Body, Depends, status
+﻿from fastapi import APIRouter, Body, Depends, status, Query
 from datetime import date
 from typing import List, Literal, Optional
 
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
 from app.services import machine_service
+from app.core.pagination import PaginatedResponse
 from app.schemas.machine import (
     MachineSelect, 
     MachineListItem, 
     MachineCreate, 
     MachineDetail,
     MachineUpdate,
-    MachineAssignmentItem
+    MachineAssignmentItem,
+    MachineListFilters,
+    MachineDocumentAlerts,
+    MachineAssignmentFilters
 )
 from app.schemas.maintenance import (
     MaintenanceRecord,
@@ -48,16 +52,39 @@ async def get_machines_summary(current_user: UserInDB = Depends(get_current_user
 
 
 # ---------------------------------------------------------
+# 2.5. ALERTAS DE DOCUMENTACIÓN (Admin)
+# ---------------------------------------------------------
+@router.get("/document-alerts", response_model=MachineDocumentAlerts)
+async def get_document_alerts(
+    estado: Optional[str] = Query(None),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Obtiene conteos de máquinas por estado de documentos:
+    - vencidos: máquinas con al menos un documento vencido
+    - por_vencer: máquinas con al menos un documento por vencer (y ninguno vencido)
+    - al_dia: máquinas con todos los documentos al día
+    
+    Opcionalmente filtra por estado operativo.
+    """
+    require_admin(current_user)
+    return await machine_service.get_document_alerts(estado)
+
+
+# ---------------------------------------------------------
 # 3. LISTAR TODAS LAS MÁQUINAS, CON FILTROS (Admin)
 # ---------------------------------------------------------
-@router.get("", response_model=List[MachineListItem])
-async def list_machines(current_user: UserInDB = Depends(get_current_user)):
+@router.get("", response_model=PaginatedResponse[MachineListItem])
+async def list_machines(
+    filters: MachineListFilters = Depends(),
+    current_user: UserInDB = Depends(get_current_user)
+):
     """
-    Lista principal de máquinas para vista ADMIN.
+    Lista principal de máquinas para vista ADMIN con paginación.
     Incluye chofer asignado y estado de documentos.
     """
     require_admin(current_user)
-    return await machine_service.list_machines()
+    return await machine_service.list_machines(filters)
 
 
 # ---------------------------------------------------------
@@ -111,14 +138,14 @@ async def delete_machine(machine_id: int, current_user: UserInDB = Depends(get_c
 # ---------------------------------------------------------
 # 8. HISTORIAL DE ASIGNACIONES DE UNA MÁQUINA (Admin)
 # ---------------------------------------------------------
-@router.get("/{machine_id}/assignments", response_model=List[MachineAssignmentItem])
+@router.get("/{machine_id}/assignments", response_model=PaginatedResponse[MachineAssignmentItem])
 async def get_machine_assignments(
     machine_id: int,
-    filtro: Optional[Literal["todas", "actual", "cerradas"]] = None,
+    filters: MachineAssignmentFilters = Depends(),
     current_user: UserInDB = Depends(get_current_user),
 ):
     require_admin(current_user)
-    return await machine_service.get_machine_assignments(machine_id, filtro)
+    return await machine_service.get_machine_assignments(machine_id, filters)
 
 # ---------------------------------------------------------
 # 9. LISTAR MANTENIMIENTOS/REPUESTOS DE UNA MÁQUINA + RESUMEN (Admin)
@@ -130,11 +157,13 @@ async def get_machine_maintenances(
     item: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(12, ge=1, le=100),
     current_user: UserInDB = Depends(get_current_user)
 ):
     require_admin(current_user)
     return await machine_service.get_machine_maintenances(
-        machine_id, categoria, item, desde, hasta
+        machine_id, categoria, item, desde, hasta, page, per_page
     )
 
 # ---------------------------------------------------------

@@ -1280,19 +1280,30 @@ export class RestablecerClave implements OnInit {
       return;
     }
 
+    // Suscribirse a cambios de autenticación para detectar ambos flujos:
+    // 1. PASSWORD_RECOVERY: Usuario viene de "Olvidé mi clave" (resetPasswordForEmail)
+    // 2. SIGNED_IN: Usuario viene del correo de bienvenida (Magic Link)
+    this.auth.supabase.auth.onAuthStateChange(async (event, session) => {
+      // Caso 1: Viene de "Olvidé mi clave" (Reset Password)
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('PASSWORD_RECOVERY detectado - Usuario viene de recuperación de contraseña');
+        await this.validateToken();
+        return;
+      }
+      
+      // Caso 2: Viene del correo de Bienvenida (Magic Link)
+      // El Magic Link loguea automáticamente al usuario (SIGNED_IN)
+      if (event === 'SIGNED_IN' && session) {
+        console.log('SIGNED_IN detectado - Usuario nuevo o logueado entrando a cambiar clave desde Magic Link');
+        // Validar que la sesión es válida
+        this.tokenValid.set(true);
+        return;
+      }
+    });
+
     // Verificar si hay un token en la URL (Supabase lo maneja automáticamente)
     // El token puede venir como hash fragment (#access_token=...) o query param
     await this.validateToken();
-    
-    // Si el usuario ya está autenticado pero no hay token de recovery válido,
-    // mostrar mensaje informativo (pero permitir continuar si hay token válido)
-    //const currentUser = this.auth.currentUser();
-    //if (currentUser && this.tokenValid() !== true) {
-      // El usuario está autenticado pero no tiene token de recovery válido
-      // Esto puede ser porque accedió directamente sin el enlace del correo
-      // En este caso, permitimos el acceso pero el token será inválido
-      // y se mostrará el mensaje de error correspondiente
-    //}
   }
 
   private async validateToken() {

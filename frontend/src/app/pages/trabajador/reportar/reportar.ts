@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,36 +10,36 @@ import { WorkerService } from '../../../shared/services/worker.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { TransitionService } from '../../../shared/services/transition.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
 import { StorageService, UploadResult } from '../../../shared/services/storage.service';
+import type { MachineSelect } from '../../../shared/models/machine.models';
 
 @Component({
   selector: 'app-reportar',
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="reportar-background-enter bg-slate-50 font-sans">
       <header 
-        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-12 pb-24 px-6 relative overflow-hidden shadow-lg"
+        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-12 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
         [class.reportar-header-fade-out]="expanding()"
       >
         <a
           routerLink="/trabajador"
-          class="absolute top-12 left-4 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
+          class="absolute top-12 left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
           aria-label="Volver"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <ui-icon name="ChevronLeft" size="md" />
         </a>
 
-        <div class="relative z-10 text-left pl-4 border-l-4 border-l-white/30">
+        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30">
           <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.35em] mb-1">Nuevo registro</p>
           <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Reporte diario</h1>
         </div>
         <div
-          class="absolute top-0 left-0 w-full h-full opacity-10"
+          class="absolute top-0 left-0 w-full h-full opacity-10 rounded-b-3xl overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
         ></div>
       </header>
@@ -62,8 +62,8 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
       >
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1 overflow-hidden" [style.animation-delay.ms]="200">
           <div class="flex items-center p-4 gap-4">
-            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
-              🚛
+            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shadow-inner">
+              <ui-icon name="BusFront" size="lg" class="text-blue-600" />
             </div>
             <div class="flex-1">
               <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Máquina asignada</label>
@@ -73,14 +73,12 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="machine"
                 >
                   <option [value]="null" disabled selected>Selecciona una máquina</option>
-                  @for (machine of machines(); track machine.id) {
+                  @for (machine of sortedMachines(); track machine.id) {
                     <option [value]="machine.id">{{ machine.display_name }}</option>
                   }
                 </select>
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="ChevronDown" size="sm" />
                 </div>
               </div>
             </div>
@@ -89,10 +87,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-emerald-500 relative overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/50 transition-all" [style.animation-delay.ms]="300">
           <label class="flex items-center gap-2 text-xs font-bold text-emerald-600 uppercase tracking-[0.35em] mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.732 6.232a2.5 2.5 0 0 1 3.536 0 .75.75 0 1 0 1.06-1.06A4 4 0 0 0 6.5 8v.165c0 .364.034.709.13 1.04l.635 2.048a.75.75 0 0 1-1.428.442l-.636-2.047a5.507 5.507 0 0 1-.18-.762 3.996 3.996 0 0 1 .978-3.654Z" clip-rule="evenodd" />
-              <path d="M6.25 8a2.5 2.5 0 0 1 2.5-2.5h2.5a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1-2.5 2.5h-2.5a2.5 2.5 0 0 1-2.5-2.5V8Z" />
-            </svg>
+            <ui-icon name="Wallet" size="xs" />
             Total recaudado
           </label>
           <div class="flex items-center gap-2">
@@ -103,7 +98,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
               formControlName="amount"
               class="w-full text-4xl font-black text-slate-800 placeholder:text-slate-200 focus:outline-none border-none p-0 tabular-nums h-12 bg-transparent"
               aria-label="Total recaudado"
+              max="999999"
               (keydown)="preventInvalidNumberInput($event)"
+              (input)="limitAmountDigits($event)"
             />
           </div>
           <p class="text-xs text-slate-400 mt-2">Ingresa el monto final del día.</p>
@@ -111,7 +108,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="400">
           <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xs">⛽</div>
+            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+              <ui-icon name="Droplet" size="xs" />
+            </div>
             <span class="text-sm font-bold text-slate-700">Carga de combustible</span>
             <span class="ml-auto text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
           </div>
@@ -125,7 +124,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="fuelLiters"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  max="999"
                   (keydown)="preventInvalidNumberInput($event)"
+                  (input)="limitFieldDigits($event, 'fuelLiters', 3)"
                 />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">L</span>
               </div>
@@ -138,7 +139,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                   formControlName="fuelCost"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl pl-8 pr-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  max="999999"
                   (keydown)="preventInvalidNumberInput($event)"
+                  (input)="limitFieldDigits($event, 'fuelCost', 6)"
                 />
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">$</span>
               </div>
@@ -148,9 +151,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="500">
           <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em] mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Camera" size="xs" />
             Foto del comprobante del registro diario *
           </label>
 
@@ -165,9 +166,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
@@ -183,10 +182,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
               @if (!imagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-blue-600">Cambiar imagen</span>
@@ -199,9 +195,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="550">
           <div class="flex items-center gap-2 mb-3">
             <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em]">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-              </svg>
+              <ui-icon name="Camera" size="xs" />
               Foto del comprobante de combustible
             </label>
             <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
@@ -218,9 +212,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
@@ -236,10 +228,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
               @if (!dieselImagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-amber-600">Cambiar imagen</span>
@@ -259,7 +248,9 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
 
         <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="700">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">⚠️</div>
+            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">
+              <ui-icon name="TriangleAlert" size="sm" />
+            </div>
             <div>
               <p class="text-sm font-bold text-red-800">¿Hubo incidente?</p>
               <p class="text-[10px] text-red-600/70">Choque, falla mecánica, etc.</p>
@@ -272,8 +263,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
         </div>
 
         <div
-          class="reportar-button-enter fixed bottom-0 left-0 right-0 p-4 bg-white rounded-t-3xl shadow-xl shadow-blue-900/5 border-t border-slate-100 z-[60]"
-          style="padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 1rem);"
+          class="reportar-button-enter p-4 bg-white rounded-2xl shadow-xl shadow-blue-900/5"
         >
           <button
             #submitButton
@@ -309,9 +299,7 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
               }
               @if (reportSuccess() && !hasError()) {
                 <div class="checkmark-premium-wrapper">
-                  <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
-                  </svg>
+                  <ui-icon name="Check" size="lg" class="checkmark-premium" />
                   <div class="checkmark-ripple"></div>
                 </div>
               }
@@ -774,23 +762,28 @@ import { StorageService, UploadResult } from '../../../shared/services/storage.s
       position: relative;
       width: 28px;
       height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .checkmark-premium {
-      width: 100%;
-      height: 100%;
-      stroke: white;
-      stroke-dasharray: 24;
-      stroke-dashoffset: 24;
-      animation: checkmarkDrawReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      width: 28px;
+      height: 28px;
+      color: white;
+      animation: checkmarkScaleReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      transform: scale(0);
     }
 
-    @keyframes checkmarkDrawReportar {
+    @keyframes checkmarkScaleReportar {
       0% {
-        stroke-dashoffset: 24;
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.2);
       }
       100% {
-        stroke-dashoffset: 0;
+        transform: scale(1);
       }
     }
 
@@ -972,25 +965,79 @@ export class Reportar implements OnInit {
     { initialValue: [] }
   );
 
+  // Obtener perfil del trabajador para saber la máquina asignada
+  workerProfile = toSignal(
+    this.workerService.getProfile().pipe(
+      catchError(() => {
+        return of(null);
+      })
+    ),
+    { initialValue: null }
+  );
+
+  // Máquinas ordenadas: primero la asignada al chofer, luego las demás
+  sortedMachines = computed(() => {
+    const allMachines = this.machines();
+    const profile = this.workerProfile();
+    
+    if (allMachines.length === 0) {
+      return [];
+    }
+
+    // Si no hay perfil o no tiene máquina asignada, retornar las máquinas tal cual
+    if (!profile || !profile.maquina_detalle || profile.maquina_detalle === 'Sin Asignar') {
+      return allMachines;
+    }
+
+    // Extraer el número de máquina del maquina_detalle
+    // Formato del backend: "20 - Mercedes-Benz" (número antes del primer guion)
+    const maquinaDetalle = profile.maquina_detalle.trim();
+    const match = maquinaDetalle.match(/^(\d+)\s*-\s*/);
+    
+    if (!match) {
+      // Si no se puede extraer el número, retornar las máquinas tal cual
+      console.warn('No se pudo extraer el número de máquina del formato:', maquinaDetalle);
+      return allMachines;
+    }
+
+    const numeroAsignado = match[1];
+    
+    // Buscar la máquina asignada por numero_interno (es un string)
+    const assignedMachineIndex = allMachines.findIndex(
+      m => String(m.numero_interno) === String(numeroAsignado)
+    );
+
+    if (assignedMachineIndex === -1) {
+      // Si no se encuentra la máquina asignada en la lista, retornar las máquinas tal cual
+      console.warn('Máquina asignada no encontrada en la lista de máquinas activas:', numeroAsignado);
+      return allMachines;
+    }
+
+    // Reordenar: poner la máquina asignada primero
+    const sorted = [...allMachines];
+    const [assignedMachine] = sorted.splice(assignedMachineIndex, 1);
+    return [assignedMachine, ...sorted];
+  });
+
   // Effect como inicializador de campo (contexto de inyección válido)
   private machinesEffect = effect(() => {
     // Monitorear cuando el observable emite
     if (this.machinesEmitted() && this.machinesLoadingState.isLoading()) {
       this.machinesLoadingState.setDataLoaded();
       
-      // Establecer máquina por defecto si hay alguna disponible
-      const currentMachines = this.machines();
-      if (currentMachines.length > 0) {
-        this.reportForm.patchValue({ machine: currentMachines[0].id });
+      // Establecer máquina por defecto: primero la asignada, si no hay ninguna asignada, la primera disponible
+      const sortedMachines = this.sortedMachines();
+      if (sortedMachines.length > 0) {
+        this.reportForm.patchValue({ machine: sortedMachines[0].id });
       }
     }
   });
 
   reportForm = this.fb.group({
     machine: [null as number | null, Validators.required],
-    amount: [null as number | null, Validators.required],
-    fuelLiters: [null as number | null],
-    fuelCost: [null as number | null],
+    amount: [null as number | null, [Validators.required, this.maxDigitsValidator(6)]],
+    fuelLiters: [null as number | null, this.maxDigitsValidator(3)],
+    fuelCost: [null as number | null, this.maxDigitsValidator(6)],
     notes: [''],
     incident: [false],
   });
@@ -1369,6 +1416,63 @@ export class Reportar implements OnInit {
       event.preventDefault();
       return;
     }
+
+    // Prevenir entrada según el límite de dígitos del campo (excepto teclas de control)
+    const input = event.target as HTMLInputElement;
+    const formControlName = input.getAttribute('formcontrolname');
+    const currentValue = input.value || '';
+    const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    
+    // Determinar el límite según el campo
+    let maxDigits = 6; // Por defecto
+    if (formControlName === 'fuelLiters') {
+      maxDigits = 3;
+    } else if (formControlName === 'fuelCost' || formControlName === 'amount') {
+      maxDigits = 6;
+    }
+    
+    if (!controlKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
+      // Si el valor actual tiene el máximo de dígitos y no es una tecla de control, prevenir entrada
+      const digitsOnly = currentValue.replace(/[^0-9]/g, '');
+      if (digitsOnly.length >= maxDigits && /[0-9]/.test(event.key)) {
+        event.preventDefault();
+        return;
+      }
+    }
+  }
+
+  limitAmountDigits(event: Event): void {
+    this.limitFieldDigits(event, 'amount', 6);
+  }
+
+  limitFieldDigits(event: Event, fieldName: 'amount' | 'fuelLiters' | 'fuelCost', maxDigits: number): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value.replace(/[^0-9]/g, ''); // Solo números
+    
+    // Limitar a maxDigits dígitos
+    if (value.length > maxDigits) {
+      value = value.substring(0, maxDigits);
+    }
+    
+    // Actualizar el valor del input y del formulario
+    const numericValue = value === '' ? null : parseInt(value, 10);
+    input.value = value === '' ? '' : value;
+    this.reportForm.patchValue({ [fieldName]: numericValue }, { emitEvent: false });
+  }
+
+  private maxDigitsValidator(maxDigits: number) {
+    return (control: any) => {
+      if (!control.value) {
+        return null; // Permitir valores vacíos, el required se encarga de eso
+      }
+      
+      const value = control.value.toString().replace(/[^0-9]/g, '');
+      if (value.length > maxDigits) {
+        return { maxDigits: { maxDigits, actual: value.length } };
+      }
+      
+      return null;
+    };
   }
 
   private getErrorMessage(error: any): string {
@@ -1416,8 +1520,10 @@ export class Reportar implements OnInit {
     toast.className = 'toast toast-top toast-end z-[100]';
     toast.innerHTML = `
       <div class="alert alert-error shadow-lg animate-fade-in">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m15 9-6 6"/>
+          <path d="m9 9 6 6"/>
         </svg>
         <div class="flex-1">
           <h3 class="font-bold">Error al enviar reporte</h3>

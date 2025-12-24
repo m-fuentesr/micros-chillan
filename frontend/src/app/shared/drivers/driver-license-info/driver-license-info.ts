@@ -77,7 +77,42 @@ export class DriverLicenseInfo {
   });
 
   licenseStatus = computed(() => {
-    return calculateLicenseStatus(this.driver().fecha_venc_licencia, 30);
+    const driver = this.driver();
+
+    // Si viene estado de licencia desde backend, úsalo (respeta umbral configurable del backend)
+    if (driver.licencia_estado) {
+      const estadoBackend = driver.licencia_estado.estado;
+      const dias = driver.licencia_estado.dias_restantes;
+      const fecha = driver.licencia_estado.fecha_vencimiento || driver.fecha_venc_licencia || null;
+
+      if (estadoBackend === 'danger') {
+        return {
+          fecha,
+          estado: 'error' as const,
+          dias_restantes: dias,
+          texto: dias !== undefined ? `Vencida hace ${Math.abs(dias)} días` : 'Licencia vencida',
+        };
+      }
+
+      if (estadoBackend === 'warning') {
+        return {
+          fecha,
+          estado: 'warning' as const,
+          dias_restantes: dias,
+          texto: dias !== undefined ? `Vence en ${dias} días` : 'Licencia por vencer',
+        };
+      }
+
+      return {
+        fecha,
+        estado: 'ok' as const,
+        dias_restantes: dias,
+        texto: 'Al día',
+      };
+    }
+
+    // Fallback: calcular localmente (usa default de util)
+    return calculateLicenseStatus(driver.fecha_venc_licencia);
   });
 
   startEdit(): void {

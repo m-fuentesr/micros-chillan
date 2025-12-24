@@ -18,9 +18,9 @@ import { catchError, of } from 'rxjs';
       [class.modal-open]="modalService.isVisible()"
       class="modal"
       id="new-record-modal">
-      <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-2xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
+      <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-3xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
         <!-- Header -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
+        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
           <div class="p-3 sm:p-3.5 bg-primary/10 rounded-xl text-primary shrink-0 border border-primary/20 shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
               <path fill-rule="evenodd" d="M5.625 3A2.625 2.625 0 003 5.625v12.75A2.625 2.625 0 005.625 21h12.75A2.625 2.625 0 0021 18.375V9.75a.75.75 0 00-1.5 0v8.625c0 .621-.504 1.125-1.125 1.125H5.625c-.621 0-1.125-.504-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125h8.625a.75.75 0 000-1.5H5.625z" clip-rule="evenodd" />
@@ -50,7 +50,7 @@ import { catchError, of } from 'rxjs';
         <div class="overflow-y-auto overscroll-contain flex-1 min-h-0 pr-1 custom-scrollbar">
           <form (ngSubmit)="onSubmit($event)" #form="ngForm" class="grid grid-cols-1 gap-4 sm:gap-6">
             <!-- Estado de operación -->
-            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm">
+            <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm">
               <div class="p-4 sm:p-5 md:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 rounded-2xl"
                 [class.ring-1]="modalService.formData().noWorkDay"
                 [class.ring-primary/30]="modalService.formData().noWorkDay"
@@ -138,9 +138,12 @@ import { catchError, of } from 'rxjs';
                       class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
                       [ngModel]="modalService.formData().income"
                       (ngModelChange)="updateNumberField('income', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 6)"
+                      (input)="limitFieldDigits($event, 'income', 6)"
                       name="income"
                       placeholder="0"
                       min="0"
+                      max="999999"
                       required />
                   </div>
                 </div>
@@ -156,9 +159,12 @@ import { catchError, of } from 'rxjs';
                       class="input input-bordered w-full h-12 rounded-lg pl-8 pr-3 text-base font-semibold font-mono tabular-nums text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
                       [ngModel]="modalService.formData().dieselExpense"
                       (ngModelChange)="updateNumberField('dieselExpense', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 6)"
+                      (input)="limitFieldDigits($event, 'dieselExpense', 6)"
                       name="dieselExpense"
                       placeholder="0"
-                      min="0" />
+                      min="0"
+                      max="999999" />
                   </div>
                 </div>
                 <div class="form-control md:col-span-2">
@@ -172,10 +178,13 @@ import { catchError, of } from 'rxjs';
                       class="grow bg-transparent border-0 focus:outline-none text-base font-semibold font-mono text-base-content placeholder:text-base-content/50"
                       [ngModel]="modalService.formData().dieselLiters"
                       (ngModelChange)="updateNumberField('dieselLiters', $event)"
+                      (keydown)="preventInvalidNumberInput($event, 3, true)"
+                      (input)="limitFieldDigits($event, 'dieselLiters', 3, true)"
                       name="dieselLiters"
                       step="0.1"
                       placeholder="0.0"
-                      min="0" />
+                      min="0"
+                      max="999.9" />
                     <span class="px-2 py-1 rounded-md bg-base-200 text-[11px] font-mono text-base-content/80 border border-base-200">LTS</span>
                   </div>
                 </div>
@@ -576,6 +585,83 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   updateNumberField(field: 'income' | 'dieselExpense' | 'dieselLiters', value: string | number | null): void {
     const numValue = value === '' || value === null ? 0 : Number(value);
     this.modalService.updateFormData({ [field]: numValue });
+  }
+
+  preventInvalidNumberInput(event: KeyboardEvent, maxDigits: number, allowDecimals: boolean = false): void {
+    // Prevenir entrada de 'e', 'E', '+', '-' (no permitimos números negativos)
+    const invalidKeys = ['e', 'E', '+', '-'];
+    if (invalidKeys.includes(event.key)) {
+      event.preventDefault();
+      return;
+    }
+
+    // Prevenir entrada según el límite de dígitos del campo (excepto teclas de control)
+    const input = event.target as HTMLInputElement;
+    const currentValue = input.value || '';
+    const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
+    
+    if (!controlKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
+      // Si permite decimales, contar solo los dígitos enteros (antes del punto)
+      if (allowDecimals) {
+        const integerPart = currentValue.split('.')[0] || '';
+        const digitsOnly = integerPart.replace(/[^0-9]/g, '');
+        if (digitsOnly.length >= maxDigits && /[0-9]/.test(event.key)) {
+          event.preventDefault();
+          return;
+        }
+        // Permitir punto decimal solo si no existe ya
+        if (event.key === '.' && currentValue.includes('.')) {
+          event.preventDefault();
+          return;
+        }
+      } else {
+        // Para enteros, contar todos los dígitos
+        const digitsOnly = currentValue.replace(/[^0-9]/g, '');
+        if (digitsOnly.length >= maxDigits && /[0-9]/.test(event.key)) {
+          event.preventDefault();
+          return;
+        }
+      }
+    }
+  }
+
+  limitFieldDigits(event: Event, fieldName: 'income' | 'dieselExpense' | 'dieselLiters', maxDigits: number, allowDecimals: boolean = false): void {
+    const input = event.target as HTMLInputElement;
+    let value = input.value;
+    
+    if (allowDecimals) {
+      // Para campos con decimales, limitar solo la parte entera
+      const parts = value.split('.');
+      let integerPart = parts[0]?.replace(/[^0-9]/g, '') || '';
+      const decimalPart = parts[1]?.replace(/[^0-9]/g, '').substring(0, 1) || ''; // Máximo 1 decimal
+      
+      // Limitar parte entera a maxDigits dígitos
+      if (integerPart.length > maxDigits) {
+        integerPart = integerPart.substring(0, maxDigits);
+      }
+      
+      // Reconstruir el valor
+      if (decimalPart) {
+        value = `${integerPart}.${decimalPart}`;
+      } else if (value.includes('.')) {
+        value = `${integerPart}.`;
+      } else {
+        value = integerPart;
+      }
+    } else {
+      // Para enteros, limitar todos los dígitos
+      value = value.replace(/[^0-9]/g, '');
+      if (value.length > maxDigits) {
+        value = value.substring(0, maxDigits);
+      }
+    }
+    
+    // Actualizar el valor del input
+    input.value = value;
+    
+    // Actualizar el formulario
+    const numValue = value === '' ? 0 : (allowDecimals ? parseFloat(value) : parseInt(value, 10));
+    this.updateNumberField(fieldName, isNaN(numValue) ? 0 : numValue);
   }
 
   onFileChange(field: 'receiptPhoto' | 'fuelReceiptPhoto', event: Event): void {

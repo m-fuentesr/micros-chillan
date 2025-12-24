@@ -36,6 +36,8 @@ export interface MachineDailyRecordFilters {
   desde?: string | null;
   hasta?: string | null;
   orden?: 'mas_reciente' | 'mas_antiguo';
+  pagina?: number;
+  por_pagina?: number;
 }
 
 export interface MaintenanceRecord {

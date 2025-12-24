@@ -2,11 +2,14 @@ import { Component, ChangeDetectionStrategy, input, signal, computed, inject } f
 import { CommonModule } from '@angular/common';
 import { WeeklySummary, WeeklyDriverBreakdown } from '../../models/accounting.models';
 import { AccountingService } from '../../services/accounting.service';
+import { KpiCard } from '../../components/kpi-card/kpi-card';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-weekly-summary-table',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, KpiCard, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -28,61 +31,61 @@ import { AccountingService } from '../../services/accounting.service';
 
         <!-- KPIs: Grid 2x2 en móvil, 4 columnas en desktop -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
-          <!-- KPI: Total Recaudado -->
-          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-primary/30 transition-colors">
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Recaudado</span>
-              <div class="p-1.5 bg-primary/10 rounded text-primary">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <span class="text-base sm:text-xl font-bold tabular-nums tracking-tight">{{ totalRecaudado() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-          </div>
+          <!-- KPI: Recaudado -->
+          <app-kpi-card
+            title="Recaudado"
+            [subtitle]="'Producción bruta'"
+            [value]="(totalRecaudado() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+            type="financial"
+            size="medium"
+            [responsive]="true"
+            badgeText="Volumen real"
+            [animationDelay]="0">
+            <span icon><ui-icon name="Wallet" size="sm" /></span>
+          </app-kpi-card>
 
           <!-- KPI: Pago Choferes -->
-          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-warning/30 transition-colors">
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Pago Choferes</span>
-              <div class="p-1.5 bg-warning/10 rounded text-warning">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                </svg>
-              </div>
-            </div>
-            <span class="text-base sm:text-xl font-bold tabular-nums tracking-tight">{{ totalPagos() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-          </div>
+          <app-kpi-card
+            title="Pago Choferes"
+            [subtitle]="'Compensación flota'"
+            [value]="(totalPagos() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+            type="warning"
+            size="medium"
+            [responsive]="true"
+            badgeText="Por procesar"
+            [animationDelay]="1">
+            <span icon><ui-icon name="Users" size="sm" /></span>
+          </app-kpi-card>
 
           <!-- KPI: Gastos Operacionales -->
-          <div class="p-3 sm:p-4 rounded-xl border border-base-200 bg-base-100 flex flex-col justify-between hover:border-error/30 transition-colors">
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-xs font-bold text-base-content/50 uppercase tracking-wider">Gastos Op.</span>
-              <div class="p-1.5 bg-error/10 rounded text-error">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <span class="text-base sm:text-xl font-bold tabular-nums tracking-tight">{{ totalGastos() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-          </div>
+          <app-kpi-card
+            title="Gastos Op."
+            [subtitle]="'Costos de ejecución'"
+            [value]="(totalGastos() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+            type="danger"
+            size="medium"
+            [responsive]="true"
+            badgeText="Impacto margen"
+            [animationDelay]="2">
+            <span icon><ui-icon name="TriangleAlert" size="sm" /></span>
+          </app-kpi-card>
 
           <!-- KPI: Promedio Semanal -->
-          <div class="p-3 sm:p-4 rounded-xl border border-success/30 bg-success/5 flex flex-col justify-between">
-            <div class="flex justify-between items-start mb-2">
-              <span class="text-xs font-bold text-success/80 uppercase tracking-wider">Promedio Semanal</span>
-              <div class="p-1.5 bg-success text-white rounded shadow-sm">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 11.586 15.293 7.293A1 1 0 0115.586 7H12z" clip-rule="evenodd" />
-                </svg>
-              </div>
-            </div>
-            <span class="text-base sm:text-xl font-bold tabular-nums tracking-tight text-success">{{ promedioSemanal() | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-          </div>
+          <app-kpi-card
+            title="Promedio Semanal"
+            [subtitle]="'Eficiencia media'"
+            [value]="(promedioSemanal() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+            type="success"
+            size="medium"
+            [responsive]="true"
+            badgeText="Ritmo actual"
+            [animationDelay]="3">
+            <span icon><ui-icon name="TrendingUp" size="sm" /></span>
+          </app-kpi-card>
         </div>
 
         <!-- Vista Desktop: Tabla (md y arriba) -->
-        <div class="hidden md:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden md:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-100 border-b border-base-200">
               <tr>
@@ -116,10 +119,11 @@ import { AccountingService } from '../../services/accounting.service';
                   <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.total_egresos | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="text-right tabular-nums font-bold text-success pr-12 text-sm">{{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="pr-6 text-right">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                      [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ui-icon 
+                      name="ChevronDown" 
+                      size="sm" 
+                      class="transition-transform duration-300 text-base-content/40"
+                      [class.rotate-180]="expandedWeeks().has(summary.semana)" />
                   </td>
                 </tr>
 
@@ -209,7 +213,7 @@ import { AccountingService } from '../../services/accounting.service';
         <div class="md:hidden space-y-3">
           @for (summary of summariesWithDrivers(); track summary.semana) {
               <div 
-              class="border border-base-200 rounded-xl overflow-hidden transition-all duration-200"
+              class="border border-base-200 rounded-3xl overflow-hidden transition-all duration-200"
               [class.shadow-md]="expandedWeeks().has(summary.semana)"
               [class.border-primary]="expandedWeeks().has(summary.semana)"
               (click)="toggleWeek(summary.semana)">
@@ -229,10 +233,11 @@ import { AccountingService } from '../../services/accounting.service';
                 </div>
                 
                 <div class="btn btn-circle btn-ghost btn-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                    [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <ui-icon 
+                    name="ChevronDown" 
+                    size="sm" 
+                    class="transition-transform duration-300 text-base-content/40"
+                    [class.rotate-180]="expandedWeeks().has(summary.semana)" />
                 </div>
               </div>
 
@@ -381,8 +386,15 @@ export class WeeklySummaryTable {
 
   totalPagos = computed(() => 
     this.summariesWithDrivers().reduce((acc, s) => {
-      const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
-      return acc + pagoChoferes;
+      // Si los choferes están cargados, usar la suma individual (más preciso)
+      // Si no, usar el total del resumen semanal
+      if (s.choferes && s.choferes.length > 0) {
+        const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
+        return acc + pagoChoferes;
+      } else {
+        // Usar el total del resumen semanal cuando los choferes no están cargados
+        return acc + (s.total_pago_choferes || 0);
+      }
     }, 0)
   );
 
@@ -467,13 +479,12 @@ export class WeeklySummaryTable {
 
   formatDateRange(start: string, end: string): string {
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const startDay = startDate.getDate();
-      const endDay = endDate.getDate();
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const month = monthNames[startDate.getMonth()];
-      return `${startDay}-${endDay} ${month}`;
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = monthNames[startParts.month - 1];
+      return `${startParts.day}-${endParts.day} ${month}`;
     } catch {
       return `${start} - ${end}`;
     }

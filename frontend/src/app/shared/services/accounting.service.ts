@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AccountingSummary, DailyProfitabilityData, WeeklySummary, WeeklyDriverBreakdown, LiquidationPeriod, LiquidationDriver, ClosedLiquidation, ClosedLiquidationWeek } from '../models/accounting.models';
 import { environment } from '../../../environments/environment.development';
@@ -134,6 +134,7 @@ export class AccountingService {
             gasto_mantenimiento: week.total_mantenimiento,
             total_egresos: totalEgresos,
             ganancia_neta: week.ganancia_liquida,
+            total_pago_choferes: week.total_pago_choferes,
             choferes: [] // Se cargará cuando se expanda la semana
           };
         });
@@ -415,60 +416,9 @@ export class AccountingService {
         this.liquidationCache.set(cacheKey, { data, timestamp: Date.now() });
         return data;
       }),
-      catchError(() => {
-        // Mock data - método deprecated, usar getWeeklyLiquidation
-        const daysInMonth = new Date(anio, mes, 0).getDate();
-        const firstDay = new Date(anio, mes - 1, 1).getDay();
-        const weeksInMonth = Math.ceil((daysInMonth + firstDay) / 7);
-        const fechaInicio = new Date(anio, mes - 1, 1);
-        const fechaFin = new Date(anio, mes - 1, daysInMonth);
-        
-        const mock: LiquidationPeriod = {
-          semana: weeksInMonth, // Por defecto última semana
-          mes,
-          anio,
-          fecha_inicio: fechaInicio.toISOString().split('T')[0],
-          fecha_fin: fechaFin.toISOString().split('T')[0],
-          es_ultima_semana: true,
-          estado: 'abierto' as const,
-          choferes: [
-            {
-              chofer_id: 1,
-              chofer_nombre: 'Juan Pérez',
-              total_ganado: 450000,
-              acumulado_mensual: 450000,
-              minimo_garantizado: 400000,
-              monto_a_completar: 0,
-              pago_final: 450000,
-              aplicar_garantizado: true,
-              estado_pago: 'pendiente' as const
-            },
-            {
-              chofer_id: 2,
-              chofer_nombre: 'Pedro López',
-              total_ganado: 380000,
-              acumulado_mensual: 380000,
-              minimo_garantizado: 400000,
-              monto_a_completar: 20000,
-              pago_final: 400000,
-              aplicar_garantizado: true,
-              estado_pago: 'pendiente' as const
-            },
-            {
-              chofer_id: 3,
-              chofer_nombre: 'María Gómez',
-              total_ganado: 350000,
-              acumulado_mensual: 350000,
-              minimo_garantizado: 400000,
-              monto_a_completar: 50000,
-              pago_final: 400000,
-              aplicar_garantizado: true,
-              estado_pago: 'pendiente' as const
-            }
-          ]
-        };
-        this.liquidationCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-        return of(mock);
+      catchError((error) => {
+        console.error('Error obteniendo período de liquidación:', error);
+        return throwError(() => error);
       })
     );
   }
@@ -504,8 +454,20 @@ export class AccountingService {
     throw new Error('El endpoint de cierre de período no está disponible en el backend actual');
   }
 
-  // GET /api/accounting/history/periods - Lista de períodos cerrados
-  getLiquidationHistory(): Observable<ClosedLiquidation[]> {
+  // GET /api/accounting/history/periods - Lista de períodos cerrados con paginación y filtros
+  getLiquidationHistory(filters?: {
+    mes_desde?: number;
+    mes_hasta?: number;
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    items: ClosedLiquidation[];
+    total: number;
+    total_global: number;
+    page: number;
+    per_page: number;
+    total_pages: number;
+  }> {
     // Interfaces para mapear desde el backend
     interface BackendHistoryPeriodSummary {
       periodo_texto: string;
@@ -516,13 +478,31 @@ export class AccountingService {
       estado: string;
     }
 
-    return this.http.get<BackendHistoryPeriodSummary[]>(`${this.apiUrl}/api/accounting/history/periods`).pipe(
-      map((data: BackendHistoryPeriodSummary[]) => {
-        if (!data || data.length === 0) return [];
-        
-        // Mapear HistoryPeriodSummary a ClosedLiquidation
-        // Inicialmente sin semanas, se cargarán cuando se expanda el período
-        return data.map((period, index) => ({
+    interface BackendResponse {
+      items: BackendHistoryPeriodSummary[];
+      total: number;
+      total_global: number;
+      page: number;
+      per_page: number;
+    }
+
+    let params = new HttpParams();
+    if (filters?.mes_desde) {
+      params = params.set('mes_desde', filters.mes_desde.toString());
+    }
+    if (filters?.mes_hasta) {
+      params = params.set('mes_hasta', filters.mes_hasta.toString());
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
+
+    return this.http.get<BackendResponse>(`${this.apiUrl}/api/accounting/history/periods`, { params }).pipe(
+      map((response: BackendResponse) => {
+        const items = (response.items || []).map((period, index) => ({
           id: index + 1, // ID temporal basado en índice
           periodo: period.periodo_texto,
           mes: period.mes,
@@ -533,10 +513,28 @@ export class AccountingService {
           semanas: [], // Se cargarán cuando se expanda
           choferes: [] // DEPRECATED, se mantiene para compatibilidad
         }));
+
+        const total_pages = Math.ceil(response.total / response.per_page);
+
+        return {
+          items,
+          total: response.total,
+          total_global: response.total_global,
+          page: response.page,
+          per_page: response.per_page,
+          total_pages
+        };
       }),
       catchError((error) => {
         console.error('Error obteniendo historial de liquidaciones:', error);
-        return of([]);
+        return of({
+          items: [],
+          total: 0,
+          total_global: 0,
+          page: 1,
+          per_page: 10,
+          total_pages: 0
+        });
       })
     );
   }
@@ -658,190 +656,6 @@ export class AccountingService {
     return semanas;
   }
 
-  private getMockWeeklySummary(mes: number, anio: number): WeeklySummary[] {
-    return [
-      {
-        semana: 1,
-        fecha_inicio: `${anio}-${String(mes).padStart(2, '0')}-01`,
-        fecha_fin: `${anio}-${String(mes).padStart(2, '0')}-07`,
-        total_recaudado: 10270000,
-        gasto_diesel: 1550000,
-        gasto_mantenimiento: 0,
-        total_egresos: 4166000,
-        ganancia_neta: 6104000,
-        choferes: [
-          {
-            chofer_id: 1,
-            chofer_nombre: 'Juan Pérez',
-            maquina: 'Máquina 05',
-            dias_trabajados: 7,
-            recaudado: 3650000,
-            diesel: 550000,
-            mantenimiento: 0,
-            pago_chofer: 930000,
-            ganancia_neta: 2170000
-          },
-          {
-            chofer_id: 2,
-            chofer_nombre: 'María Gómez',
-            maquina: 'Máquina 02',
-            dias_trabajados: 6,
-            recaudado: 3120000,
-            diesel: 480000,
-            mantenimiento: 0,
-            pago_chofer: 792000,
-            ganancia_neta: 1848000
-          },
-          {
-            chofer_id: 3,
-            chofer_nombre: 'Pedro López',
-            maquina: 'Máquina 07',
-            dias_trabajados: 7,
-            recaudado: 3500000,
-            diesel: 520000,
-            mantenimiento: 0,
-            pago_chofer: 894000,
-            ganancia_neta: 2086000
-          }
-        ]
-      },
-      {
-        semana: 2,
-        fecha_inicio: `${anio}-${String(mes).padStart(2, '0')}-08`,
-        fecha_fin: `${anio}-${String(mes).padStart(2, '0')}-14`,
-        total_recaudado: 9840000,
-        gasto_diesel: 1470000,
-        gasto_mantenimiento: 450000,
-        total_egresos: 3981000,
-        ganancia_neta: 5859000,
-        choferes: [
-          {
-            chofer_id: 1,
-            chofer_nombre: 'Juan Pérez',
-            maquina: 'Máquina 05',
-            dias_trabajados: 7,
-            recaudado: 3700000,
-            diesel: 560000,
-            mantenimiento: 450000,
-            pago_chofer: 942000,
-            ganancia_neta: 1748000
-          },
-          {
-            chofer_id: 2,
-            chofer_nombre: 'María Gómez',
-            maquina: 'Máquina 02',
-            dias_trabajados: 7,
-            recaudado: 3640000,
-            diesel: 510000,
-            mantenimiento: 0,
-            pago_chofer: 939000,
-            ganancia_neta: 2191000
-          },
-          {
-            chofer_id: 3,
-            chofer_nombre: 'Pedro López',
-            maquina: 'Máquina 07',
-            dias_trabajados: 5,
-            recaudado: 2500000,
-            diesel: 400000,
-            mantenimiento: 0,
-            pago_chofer: 630000,
-            ganancia_neta: 1470000
-          }
-        ]
-      },
-      {
-        semana: 3,
-        fecha_inicio: `${anio}-${String(mes).padStart(2, '0')}-15`,
-        fecha_fin: `${anio}-${String(mes).padStart(2, '0')}-21`,
-        total_recaudado: 10710000,
-        gasto_diesel: 1545000,
-        gasto_mantenimiento: 205000,
-        total_egresos: 4294500,
-        ganancia_neta: 6415500,
-        choferes: [
-          {
-            chofer_id: 1,
-            chofer_nombre: 'Juan Pérez',
-            maquina: 'Máquina 05',
-            dias_trabajados: 7,
-            recaudado: 3680000,
-            diesel: 545000,
-            mantenimiento: 85000,
-            pago_chofer: 940500,
-            ganancia_neta: 2109500
-          },
-          {
-            chofer_id: 2,
-            chofer_nombre: 'María Gómez',
-            maquina: 'Máquina 02',
-            dias_trabajados: 7,
-            recaudado: 3580000,
-            diesel: 495000,
-            mantenimiento: 0,
-            pago_chofer: 925500,
-            ganancia_neta: 2160500
-          },
-          {
-            chofer_id: 3,
-            chofer_nombre: 'Pedro López',
-            maquina: 'Máquina 07',
-            dias_trabajados: 7,
-            recaudado: 3450000,
-            diesel: 505000,
-            mantenimiento: 120000,
-            pago_chofer: 883500,
-            ganancia_neta: 1941500
-          }
-        ]
-      },
-      {
-        semana: 4,
-        fecha_inicio: `${anio}-${String(mes).padStart(2, '0')}-22`,
-        fecha_fin: `${anio}-${String(mes).padStart(2, '0')}-28`,
-        total_recaudado: 10500000,
-        gasto_diesel: 1575000,
-        gasto_mantenimiento: 0,
-        total_egresos: 4252500,
-        ganancia_neta: 6247500,
-        choferes: [
-          {
-            chofer_id: 1,
-            chofer_nombre: 'Juan Pérez',
-            maquina: 'Máquina 05',
-            dias_trabajados: 7,
-            recaudado: 3720000,
-            diesel: 570000,
-            mantenimiento: 0,
-            pago_chofer: 945000,
-            ganancia_neta: 2205000
-          },
-          {
-            chofer_id: 2,
-            chofer_nombre: 'María Gómez',
-            maquina: 'Máquina 02',
-            dias_trabajados: 6,
-            recaudado: 3180000,
-            diesel: 475000,
-            mantenimiento: 0,
-            pago_chofer: 811500,
-            ganancia_neta: 1894500
-          },
-          {
-            chofer_id: 3,
-            chofer_nombre: 'Pedro López',
-            maquina: 'Máquina 07',
-            dias_trabajados: 7,
-            recaudado: 3600000,
-            diesel: 530000,
-            mantenimiento: 0,
-            pago_chofer: 921000,
-            ganancia_neta: 2149000
-          }
-        ]
-      }
-    ];
-  }
   
   /**
    * Invalidar caché (útil cuando se actualizan datos)

@@ -1,11 +1,11 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Machine, DocumentStatus } from '../../models/machine.models';
-import { BusIcon } from '../../components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-table',
-  imports: [RouterLink, BusIcon],
+  imports: [RouterLink, UiIconComponent],
   template: `
     <div class="overflow-x-auto rounded-lg border border-base-200 bg-base-100">
       <div class="inline-block min-w-full align-middle">
@@ -26,7 +26,7 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
                   <div class="flex gap-3 items-center">
                     <!-- Avatar del bus -->
                     <div class="w-12 h-12 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center">
-                      <app-bus-icon class="w-full h-full p-1.5 text-primary" />
+                      <ui-icon name="BusFront" size="lg" class="text-primary" />
                     </div>
                     <!-- Datos: Patente y Marca -->
                     <div class="flex flex-col gap-1 flex-grow min-w-0">
@@ -94,7 +94,7 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
                 <td colspan="5" class="py-16 sm:py-20">
                   <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                     <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                      <app-bus-icon class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40" />
+                      <ui-icon name="BusFront" size="lg" class="text-base-content/40" />
                     </div>
                     <div class="space-y-2">
                       <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay máquinas disponibles</h3>

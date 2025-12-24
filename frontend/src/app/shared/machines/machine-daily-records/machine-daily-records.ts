@@ -1,14 +1,15 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed, untracked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MachineDailyRecord, MachineDailyRecordFilters } from '../../models/machine-detail.models';
 import { Driver } from '../../models/driver.models';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-daily-records',
-  imports: [CommonModule, RouterLink, SearchFilters, DriverIcon],
+  imports: [CommonModule, RouterLink, SearchFilters, LoadingSpinner, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header Premium con gradiente sutil -->
@@ -27,23 +28,64 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
           <div class="flex items-center gap-3 shrink-0">
             <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
               <span class="w-2 h-2 rounded-full bg-primary"></span>
-              {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
+              {{ totalRecords() }} {{ totalRecords() === 1 ? 'registro' : 'registros' }}
             </span>
           </div>
         </div>
       </div>
 
       <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-        <!-- Filtros usando componente reutilizable -->
-        <app-search-filters
-          [fields]="filterFields()"
-          [filters]="filters()"
-          [columns]="4"
-          (filterChange)="onFiltersChange($event)" />
+        <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
+        <div class="md:hidden mb-4">
+          <div class="sticky top-2 z-20">
+            <button
+              type="button"
+              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+              (click)="toggleFiltersMobile()"
+              [attr.aria-expanded]="showFiltersMobile()">
+              <div class="flex items-center gap-2">
+                <span class="w-1 h-4 rounded-full bg-primary"></span>
+                <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
+              </div>
+              <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
+            </button>
+          </div>
+          @if (showFiltersMobile()) {
+            <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
+              <app-search-filters
+                [fields]="filterFields()"
+                [filters]="filters()"
+                [columns]="1"
+                (filterChange)="onFiltersChange($event)" />
+              <!-- Botón para cerrar el panel manualmente -->
+              <div class="p-4 pt-0 border-t border-base-200/50">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-primary w-full"
+                  (click)="showFiltersMobile.set(false)">
+                  Aplicar Filtros
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="hidden md:block">
+          <app-search-filters
+            [fields]="filterFields()"
+            [filters]="filters()"
+            [columns]="4"
+            (filterChange)="onFiltersChange($event)" />
+        </div>
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
-          @for (record of filteredRecords(); track record.id; let i = $index) {
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando registros..." />
+            </div>
+          } @else {
+            @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
               class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
               [style.animation-delay.ms]="i * 50"
@@ -79,7 +121,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                 <div class="flex items-center gap-3 mb-4 p-3 bg-base-50 rounded-lg border border-base-200">
                   <div class="shrink-0">
                     <div class="bg-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-primary/20">
-                      <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
+                      <ui-icon name="IdCard" size="md" class="text-primary" />
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
@@ -135,27 +177,33 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                 </div>
               </div>
             </div>
-          } @empty {
-            <div class="py-16 sm:py-20">
-              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                  </svg>
-                </div>
-                <div class="space-y-2">
-                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
-                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                    Ajusta los filtros para ver más resultados.
-                  </p>
+            } @empty {
+              <div class="py-16 sm:py-20">
+                <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                  <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                  </div>
+                  <div class="space-y-2">
+                    <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                    <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                      Ajusta los filtros para ver más resultados.
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            }
           }
         </div>
 
         <!-- Vista Desktop: Tabla -->
         <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
+          @if (isLoading()) {
+            <div class="flex justify-center items-center py-12">
+              <app-loading-spinner size="md" text="Cargando registros..." />
+            </div>
+          } @else {
           <table class="table w-full table-min-height">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
@@ -195,7 +243,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     <div class="flex items-center gap-2">
                       <div class="shrink-0">
                         <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
-                          <app-driver-icon class="w-4 h-4 text-primary"></app-driver-icon>
+                          <ui-icon name="IdCard" size="sm" class="text-primary" />
                         </div>
                       </div>
                       <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.chofer">
@@ -292,7 +340,38 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               }
             </tbody>
           </table>
+          }
         </div>
+        
+        <!-- Paginación -->
+        @if (totalPages() > 0 && !isLoading()) {
+          <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+            <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalRecords() }} registros</span>
+            <div class="join">
+              <button 
+                (click)="goToPreviousPage()" 
+                [disabled]="currentPage() === 1 || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === 1 || isLoading()">
+                «
+              </button>
+              @for (page of pages(); track page) {
+                <button 
+                  (click)="goToPage(page)" 
+                  [disabled]="isLoading()" 
+                  [class.btn-active]="page === currentPage()" 
+                  class="join-item btn btn-sm px-4">{{ page }}</button>
+              }
+              <button 
+                (click)="goToNextPage()" 
+                [disabled]="currentPage() === totalPages() || isLoading()" 
+                class="join-item btn btn-sm px-3" 
+                [class.btn-disabled]="currentPage() === totalPages() || isLoading()">
+                »
+              </button>
+            </div>
+          </div>
+        }
       </div>
     </div>
   `,
@@ -437,47 +516,67 @@ export class MachineDailyRecords {
   records = input.required<MachineDailyRecord[]>();
   choferes = input<Driver[]>([]);
   filters = input<MachineDailyRecordFilters>({});
+  totalRecords = input<number>(0);
+  currentPage = input<number>(1);
+  totalPages = input<number>(0);
+  isLoading = input<boolean>(false);
   
   filterChange = output<MachineDailyRecordFilters>();
+  pageChange = output<number>();
   viewDetail = output<MachineDailyRecord>();
 
+  showFiltersMobile = signal(false);
+
   filteredRecords = computed(() => {
-    let filtered = [...this.records()];
-    const filters = this.filters();
-
-    // Filtrar por chofer
-    if (filters.chofer_id) {
-      filtered = filtered.filter(r => r.chofer_id === filters.chofer_id);
-    }
-
-    // Filtrar por fecha desde
-    if (filters.desde) {
-      const desde = new Date(filters.desde);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        return fecha >= desde;
-      });
-    }
-
-    // Filtrar por fecha hasta
-    if (filters.hasta) {
-      const hasta = new Date(filters.hasta);
-      hasta.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        return fecha <= hasta;
-      });
-    }
-
-    // Ordenar
-    if (filters.orden === 'mas_antiguo') {
-      filtered.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-    } else {
-      filtered.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    }
-
-    return filtered;
+    // Los filtros y paginación ahora se aplican en el backend
+    // Solo retornamos los registros recibidos
+    return this.records();
   });
+  
+  // Funciones de paginación
+  pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    
+    for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  });
+  
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 10;
+    return (page - 1) * pageSize + 1;
+  });
+  
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = 10;
+    const total = this.totalRecords();
+    return Math.min(page * pageSize, total);
+  });
+  
+  goToPreviousPage(): void {
+    if (this.currentPage() > 1) {
+      this.pageChange.emit(this.currentPage() - 1);
+    }
+  }
+  
+  goToNextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.pageChange.emit(this.currentPage() + 1);
+    }
+  }
+  
+  goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return;
+    }
+    this.pageChange.emit(page);
+  }
 
   hasActiveFilters = computed(() => {
     const f = this.filters();
@@ -504,17 +603,9 @@ export class MachineDailyRecords {
   }
 
   filterFields = computed((): FilterField[] => {
+    // En el contexto de detalle de máquina, no mostramos el filtro de chofer
+    // porque todos los registros son de la misma máquina y por lo tanto del mismo chofer
     return [
-      {
-        key: 'chofer_id',
-        label: 'Chofer',
-        type: 'select',
-        icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path d="M10 8a3 3 0 100-6 3 3 0 000 6zM3.465 14.493a1.23 1.23 0 00.41 1.412A9.957 9.957 0 0010 18c2.31 0 4.438-.784 6.131-2.1.43-.333.604-.903.408-1.41a7.002 7.002 0 00-13.074.003z" /></svg>',
-        options: [
-          { value: '', label: 'Todos los choferes' },
-          ...this.choferes().map(c => ({ value: c.id, label: c.nombre_completo }))
-        ]
-      },
       {
         key: 'desde',
         label: 'Desde',
@@ -577,6 +668,10 @@ export class MachineDailyRecords {
 
   onClearFilters(): void {
     this.filterChange.emit({});
+  }
+
+  toggleFiltersMobile(): void {
+    this.showFiltersMobile.update(open => !open);
   }
 
   onViewDetail(record: MachineDailyRecord): void {

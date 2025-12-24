@@ -40,8 +40,15 @@ async def resolve_single_alert(
 async def list_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
     """
     Trae las alertas globales para el panel de administración.
+    Realiza una limpieza automática de notificaciones viejas antes de responder.
     """
-    require_admin(current_user) # Bloquea a usuarios no administradores
+    require_admin(current_user) 
+    
+    # 1. Limpieza silenciosa (Lazy Cleanup) 🧹
+    # Esto archiva las informativas de >24hrs antes de pedir la lista
+    await alert_service.limpiar_alertas_antiguas()
+
+    # 2. Retornar la lista limpia
     return await alert_service.get_admin_alerts()
 
 # Para el TRABAJADOR: Ver las suyas

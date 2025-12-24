@@ -2,12 +2,13 @@ import { Component, ChangeDetectionStrategy, input, output, computed, signal } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-liquidation-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, DriverIcon],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -85,7 +86,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         </div>
 
         <!-- Vista Desktop: Tabla con Ecuación Visual (solo XL y mayores) -->
-        <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
+        <div class="hidden xl:block overflow-hidden rounded-3xl border border-base-200">
           <table class="table w-full">
             <thead class="bg-base-200/50 border-b border-base-200">
               <tr>
@@ -152,13 +153,12 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-3">
                       <div class="bg-primary/10 text-primary rounded-full w-10 h-10 flex items-center justify-center p-2">
-                        <app-driver-icon class="w-full h-full" />
+                        <ui-icon name="IdCard" size="md" />
                       </div>
                       <div class="flex flex-col">
                         <span class="font-bold text-base-content">{{ chofer.chofer_nombre }}</span>
-                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide" 
-                              [class.text-success]="chofer.estado_pago === 'pagado'">
-                          {{ chofer.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente' }}
+                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide">
+                          {{ formatDateRange(liquidation().fecha_inicio, liquidation().fecha_fin) }}
                         </span>
                       </div>
                     </div>
@@ -280,7 +280,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
             @if (liquidation().choferes.length === 0) {
               <!-- Skeleton para móvil cuando no hay datos (cargando o esperando datos) -->
               @for (i of [1,2,3,4,5,6]; track i) {
-                <div class="bg-base-100 border border-base-200 rounded-xl p-4 shadow-sm">
+                <div class="bg-base-100 border border-base-200 rounded-3xl p-4 shadow-sm">
                   <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
                       <div class="w-12 h-12 rounded-full bg-base-200 animate-pulse"></div>
@@ -331,7 +331,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
                   <div class="bg-primary/10 text-primary rounded-full w-12 h-12 flex items-center justify-center p-2.5">
-                    <app-driver-icon class="w-full h-full" />
+                    <ui-icon name="IdCard" size="lg" />
                   </div>
                   <div>
                     <div class="font-bold text-lg">{{ chofer.chofer_nombre }}</div>
@@ -564,6 +564,28 @@ export class LiquidationTable {
   onClosePeriod(): void {
     if (confirm('¿Está seguro de que desea cerrar y finalizar este período de liquidación? Esta acción es irreversible.')) {
       this.closePeriod.emit();
+    }
+  }
+
+  formatDateRange(start: string, end: string): string {
+    try {
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const startMonth = monthNames[startParts.month - 1];
+      const endMonth = monthNames[endParts.month - 1];
+      
+      // Si es el mismo mes, mostrar formato corto: "1-7 nov"
+      if (startParts.month === endParts.month) {
+        return `${startParts.day}-${endParts.day} ${startMonth}`;
+      }
+      
+      // Si son meses diferentes, mostrar formato completo: "30 nov - 6 dic"
+      return `${startParts.day} ${startMonth} - ${endParts.day} ${endMonth}`;
+    } catch {
+      return `${start} - ${end}`;
     }
   }
 }

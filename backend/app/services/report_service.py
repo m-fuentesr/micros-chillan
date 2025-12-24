@@ -4,84 +4,6 @@ from typing import List
 import calendar
 from datetime import date
 
-async def get_machine_profitability(mes: int, anio: int):
-    """
-    Reporte 1: Rentabilidad por Máquina (Filtrado por Mes/Año).
-    Fórmula: Ingreso - Diesel - Chofer - Mantenimiento = Ganancia Neta.
-    """
-    # 1. Calcular Rango de Fechas Automáticamente
-    _, last_day = calendar.monthrange(anio, mes)
-    fecha_inicio = date(anio, mes, 1).isoformat()
-    fecha_fin = date(anio, mes, last_day).isoformat()
-
-    # 2. Obtener catálogo de máquinas (Usamos columnas reales)
-    res_maquinas = supabase.table("maquinas").select("id, numero_interno, marca, patente").execute()
-    maquinas = res_maquinas.data
-
-    # 3. Obtener Registros Operativos
-    res_regs = (
-        supabase.table("registros_diarios")
-        .select("maquina_id, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
-        .gte("fecha", fecha_inicio)
-        .lte("fecha", fecha_fin)
-        .execute()
-    )
-    registros = res_regs.data
-
-    # 4. Obtener Gastos de Mantenimiento (Repuestos)
-    res_mant = (
-        supabase.table("compras_repuestos")
-        .select("maquina_id, costo")
-        .gte("fecha_compra", fecha_inicio)
-        .lte("fecha_compra", fecha_fin)
-        .execute()
-    )
-    mantenimientos = res_mant.data
-
-    # 5. Procesar Datos
-    reporte = []
-
-    for mq in maquinas:
-        mid = mq["id"]
-        
-        # Construir nombre: "JCB 10" o "CAT (AB-12-CD)"
-        marca = mq.get("marca") or "Maq"
-        num = mq.get("numero_interno") or ""
-        patente = mq.get("patente") or ""
-        
-        if num:
-            identificador = f"{marca} {num}".strip()
-        else:
-            identificador = f"{marca} ({patente})".strip()
-
-        # Filtrar en memoria
-        regs_mq = [r for r in registros if r["maquina_id"] == mid]
-        mant_mq = [m for m in mantenimientos if m["maquina_id"] == mid]
-
-        # Sumatorias
-        ingresos = sum((r.get("monto_recaudado") or 0) for r in regs_mq)
-        diesel = sum((r.get("costo_total_diesel") or 0) for r in regs_mq)
-        choferes = sum((r.get("monto_porcentaje_chofer") or 0) for r in regs_mq)
-        gastos_mant = sum((m.get("costo") or 0) for m in mant_mq)
-
-        # Resultado
-        neto = ingresos - diesel - choferes - gastos_mant
-
-        reporte.append({
-            "maquina_id": mid,
-            "identificador": identificador,
-            "ingresos_totales": int(ingresos),
-            "costos_diesel": int(diesel),
-            "pago_choferes": int(choferes),
-            "gastos_mantenimiento": int(gastos_mant),
-            "ganancia_neta": int(neto)
-        })
-
-    # Ordenar por Ganancia Neta
-    reporte.sort(key=lambda x: x["ganancia_neta"], reverse=True)
-
-    return reporte
-
 async def _calculate_machines_financials(mes: int, anio: int):
     """
     Obtiene los datos crudos y calcula los totales por máquina.
@@ -121,12 +43,23 @@ async def _calculate_machines_financials(mes: int, anio: int):
         
         # Identificador
         marca = mq.get("marca") or "Maq"
-        num = mq.get("numero_interno") or ""
-        patente = mq.get("patente") or ""
+        num_raw = mq.get("numero_interno")
+        # Convertir a string si es número, manejar None y strings vacíos
+        if num_raw is None:
+            num = None
+        elif isinstance(num_raw, (int, float)):
+            num = str(int(num_raw)) if num_raw else None
+        elif isinstance(num_raw, str):
+            num = num_raw.strip() if num_raw.strip() else None
+        else:
+            num = str(num_raw).strip() if str(num_raw).strip() else None
+        
+        patente_raw = mq.get("patente")
+        patente = (patente_raw.strip() if isinstance(patente_raw, str) and patente_raw.strip() else None) if patente_raw else None
         if num:
             identificador = f"{marca} {num}".strip()
         else:
-            identificador = f"{marca} ({patente})".strip()
+            identificador = f"{marca} ({patente})".strip() if patente else f"{marca}".strip()
 
         # Filtros y Sumas
         regs_mq = [r for r in registros if r["maquina_id"] == mid]
@@ -141,6 +74,8 @@ async def _calculate_machines_financials(mes: int, anio: int):
         resultados.append({
             "maquina_id": mid,
             "identificador": identificador,
+            "numero_interno": str(num) if num is not None else None,  # Asegurar que siempre sea string o None
+            "patente": patente,
             "ingresos_totales": int(ingresos),
             "costos_diesel": int(diesel),
             "pago_choferes": int(choferes),
@@ -178,6 +113,8 @@ async def get_gross_income_ranking(mes: int, anio: int):
             "ranking": index + 1, # 
             "maquina_id": item["maquina_id"],
             "identificador": item["identificador"],
+            "numero_interno": item.get("numero_interno"),
+            "patente": item.get("patente"),
             "ingresos_totales": item["ingresos_totales"],
             "costos_diesel": item["costos_diesel"],
             "pago_choferes": item["pago_choferes"],

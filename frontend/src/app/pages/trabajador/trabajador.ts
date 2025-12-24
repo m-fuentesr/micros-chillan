@@ -6,34 +6,35 @@ import { DailyRecordService } from '../../shared/services/daily-record.service';
 import { TodayRecordStatusService } from '../../shared/services/today-record-status.service';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, delay } from 'rxjs';
 import type { DailyRecord } from '../../shared/models/daily-record.models';
+import { formatRelativeDate } from '../../shared/utils/date.utils';
 
 @Component({
   selector: 'app-trabajador',
   standalone: true,
-  imports: [CommonModule, RouterLink, LoadingSkeleton, BusIcon],
+  imports: [CommonModule, RouterLink, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="trabajador-background-enter min-h-screen bg-slate-50 pb-28 font-sans">
-      @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+      @if (profileLoadingState.isLoading()) {
         <app-loading-skeleton type="worker-header" />
       } @else {
-      <header class="trabajador-header-enter relative pt-10 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
-        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0"></div>
+      <header class="trabajador-header-enter relative pt-0 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0 rounded-b-[3rem]"></div>
         <div
-          class="absolute inset-0 opacity-10 z-0"
+          class="absolute inset-0 opacity-10 z-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
         ></div>
         <div class="absolute -top-24 -right-24 w-64 h-64 bg-blue-400/30 rounded-full blur-3xl pointer-events-none"></div>
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-indigo-500/30 rounded-full blur-2xl pointer-events-none"></div>
-        <div class="relative z-10 text-white flex justify-between items-start">
+        <div class="relative z-10 text-white flex justify-between items-start" [style.padding-top]="'calc(40px + env(safe-area-inset-top, 0px))'">
           <div>
             <p class="text-blue-100 text-xs font-bold uppercase tracking-[0.35em] mb-1 opacity-80">Bienvenido</p>
             <h1 class="text-3xl font-black tracking-tight drop-shadow-sm">{{ workerName() }}</h1>
             <div class="mt-3 inline-flex items-center gap-2 bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1.5 rounded-full shadow-sm">
-              <app-bus-icon class="w-5 h-5 text-white drop-shadow-md"></app-bus-icon>
+              <ui-icon name="BusFront" size="md" class="text-white drop-shadow-md" />
               <span class="font-mono font-bold text-sm tracking-wide">{{ assignedMachine() }}</span>
             </div>
           </div>
@@ -46,7 +47,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
       }
 
       <div class="px-5 mt-4 relative z-20 trabajador-content-enter">
-        @if (profileLoadingState.showSkeleton() && profileLoadingState.isLoading()) {
+        @if (profileLoadingState.isLoading() || statusLoadingState.isLoading()) {
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
             <div class="p-6 space-y-4">
@@ -55,7 +56,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
               <div class="h-12 w-full skeleton-shimmer rounded-xl"></div>
             </div>
           </div>
-        } @else if (todayRecordStatus() === null || (statusLoadingState.showSkeleton() && statusLoadingState.isLoading())) {
+        } @else if (todayRecordStatus() === null) {
           <!-- Skeleton mientras carga el estado del reporte -->
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
             <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
@@ -121,7 +122,7 @@ import type { DailyRecord } from '../../shared/models/daily-record.models';
         <div class="flex justify-between items-end mb-6">
           <h3 class="text-xs font-black text-slate-400 uppercase tracking-[0.35em]">Actividad reciente</h3>
         </div>
-        @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+        @if (historyLoadingState.isLoading()) {
           <app-loading-skeleton type="worker-timeline" />
           @if (historyLoadingState.showFeedback()) {
             <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-center">
@@ -421,21 +422,8 @@ export class Trabajador implements OnInit, OnDestroy {
 
     // Agregar registros recientes
     recentRecords.forEach((record) => {
-      const date = new Date(record.fecha);
-      const now = new Date();
-      const diffTime = Math.abs(now.getTime() - date.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      let timeLabel = '';
-      if (diffDays === 0) {
-        timeLabel = 'Hoy';
-      } else if (diffDays === 1) {
-        timeLabel = 'Ayer';
-      } else if (diffDays < 7) {
-        timeLabel = `Hace ${diffDays} días`;
-      } else {
-        timeLabel = date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-      }
+      // Usar función helper que considera zona horaria de Chile
+      const timeLabel = formatRelativeDate(record.fecha);
 
       const estadoLower = record.estado.toLowerCase();
       const statusText = estadoLower.includes('completo')
@@ -453,7 +441,7 @@ export class Trabajador implements OnInit, OnDestroy {
       });
     });
 
-    // Agregar actividad de asignación (mock por ahora)
+    // Agregar actividad de asignación
     if (activities.length < 3) {
       activities.push({
         id: 'assignment-1',

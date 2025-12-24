@@ -139,6 +139,10 @@ class DailyRecordUpdate(BaseModel):
     motivo_no_trabajado_otro: Optional[str] = None
 
     incidente_critico: bool = False
+    
+    # Campos de imágenes para actualización
+    imagen_url: Optional[str] = None  # Comprobante del registro diario
+    imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
 
 
 class DailyRecordAuditDetail(BaseModel):

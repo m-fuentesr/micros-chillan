@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
+import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../../environments/environment.development';
 
@@ -71,6 +71,8 @@ export interface ReportFilters {
 export interface MachineProfitabilityResponse {
   maquina_id: number;
   identificador: string;
+  numero_interno?: string | null;
+  patente?: string | null;
   ingresos_totales: number;
   costos_diesel: number;
   pago_choferes: number;
@@ -85,6 +87,8 @@ export interface MachineGrossRankingResponse {
   ranking: number;
   maquina_id: number;
   identificador: string;
+  numero_interno?: string | null;
+  patente?: string | null;
   ingresos_totales: number;
   costos_diesel: number;
   pago_choferes: number;
@@ -178,10 +182,9 @@ export class ReportsService {
           this.profitabilityCache.set(cacheKey, { data: report, timestamp: Date.now() });
           return report;
         }),
-        catchError(() => {
-          const mock = this.getMockProfitabilityReport(filters);
-          this.profitabilityCache.set(cacheKey, { data: mock, timestamp: Date.now() });
-          return of(mock);
+        catchError((error) => {
+          console.error('Error obteniendo reporte de rentabilidad:', error);
+          return throwError(() => error);
         })
       );
   }
@@ -265,9 +268,9 @@ export class ReportsService {
             : 0
         }))
       ),
-      catchError(() => {
-        const mock = this.getMockDriverRanking(filters);
-        return of(mock);
+      catchError((error) => {
+        console.error('Error obteniendo ranking de choferes:', error);
+        return throwError(() => error);
       })
     );
   }
@@ -290,9 +293,9 @@ export class ReportsService {
           choferes_asignados: 0 // No disponible en el backend actual
         }))
       ),
-      catchError(() => {
-        const mock = this.getMockMachineRanking(filters);
-        return of(mock);
+      catchError((error) => {
+        console.error('Error obteniendo ranking de máquinas:', error);
+        return throwError(() => error);
       })
     );
   }
@@ -330,106 +333,5 @@ export class ReportsService {
     );
   }
 
-  // ========== Mocks temporales (para desarrollo) ==========
-
-  private getMockProfitabilityReport(filters: ProfitabilityFilters): ProfitabilityReport {
-    const desde = filters.desde || '2025-11-01';
-    const hasta = filters.hasta || '2025-11-28';
-
-    return {
-      periodo: { desde, hasta },
-      totales: {
-        total_ingresos: 15123456,
-        total_egresos: 7012912,
-        ganancia_neta: 8110544,
-        margen_ganancia: 53.6
-      },
-      datos: [
-        { fecha: '2025-11-01', ingresos: 450000, egresos: 180000, ganancia: 270000, margen_ganancia: 60 },
-        { fecha: '2025-11-02', ingresos: 520000, egresos: 200000, ganancia: 320000, margen_ganancia: 61.5 },
-        { fecha: '2025-11-03', ingresos: 480000, egresos: 190000, ganancia: 290000, margen_ganancia: 60.4 }
-      ],
-      por_maquina: [
-        { maquina_id: 1, maquina_identificador: 'Máquina 01', ingresos: 5000000, egresos: 2300000, ganancia: 2700000 },
-        { maquina_id: 2, maquina_identificador: 'Máquina 02', ingresos: 4800000, egresos: 2200000, ganancia: 2600000 },
-        { maquina_id: 3, maquina_identificador: 'Máquina 03', ingresos: 5323456, egresos: 2512912, ganancia: 2810544 }
-      ],
-      por_chofer: [
-        { chofer_id: 1, chofer_nombre: 'Juan Pérez', ingresos: 3500000, egresos: 1600000, ganancia: 1900000 },
-        { chofer_id: 2, chofer_nombre: 'Luis Martínez', ingresos: 3200000, egresos: 1500000, ganancia: 1700000 },
-        { chofer_id: 3, chofer_nombre: 'Ana Gómez', ingresos: 3000000, egresos: 1400000, ganancia: 1600000 }
-      ]
-    };
-  }
-
-  private getMockDriverRanking(filters: any): DriverRanking[] {
-    return [
-      {
-        posicion: 1,
-        chofer_id: 1,
-        chofer_nombre: 'Juan Pérez',
-        maquina_identificador: 'Máquina 05',
-        total_recaudado: 3500000,
-        total_ganancia: 1900000,
-        dias_trabajados: 25,
-        promedio_diario: 140000
-      },
-      {
-        posicion: 2,
-        chofer_id: 2,
-        chofer_nombre: 'Luis Martínez',
-        maquina_identificador: 'Máquina 04',
-        total_recaudado: 3200000,
-        total_ganancia: 1700000,
-        dias_trabajados: 24,
-        promedio_diario: 133333
-      },
-      {
-        posicion: 3,
-        chofer_id: 3,
-        chofer_nombre: 'Ana Gómez',
-        maquina_identificador: 'Máquina 02',
-        total_recaudado: 3000000,
-        total_ganancia: 1600000,
-        dias_trabajados: 23,
-        promedio_diario: 130435
-      }
-    ];
-  }
-
-  private getMockMachineRanking(filters: any): MachineRanking[] {
-    return [
-      {
-        posicion: 1,
-        maquina_id: 3,
-        maquina_identificador: 'Máquina 03',
-        total_recaudado: 5323456,
-        total_ganancia: 2810544,
-        dias_operativos: 26,
-        promedio_diario: 204748,
-        choferes_asignados: 2
-      },
-      {
-        posicion: 2,
-        maquina_id: 1,
-        maquina_identificador: 'Máquina 01',
-        total_recaudado: 5000000,
-        total_ganancia: 2700000,
-        dias_operativos: 25,
-        promedio_diario: 200000,
-        choferes_asignados: 1
-      },
-      {
-        posicion: 3,
-        maquina_id: 2,
-        maquina_identificador: 'Máquina 02',
-        total_recaudado: 4800000,
-        total_ganancia: 2600000,
-        dias_operativos: 24,
-        promedio_diario: 200000,
-        choferes_asignados: 1
-      }
-    ];
-  }
 }
 

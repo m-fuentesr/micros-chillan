@@ -15,14 +15,15 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { PaymentConfirmModalService } from '../../shared/services/payment-confirm-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
         <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
           <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
             Finanzas y Nómina
@@ -45,10 +46,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'summary'"
               [class.text-primary-content]="activeTab() === 'summary'"
               (click)="setActiveTab('summary')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-              </svg>
+              <ui-icon name="ChartNoAxesCombined" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Resumen</span>
             </button>
 
@@ -59,9 +57,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'weekly'"
               [class.text-primary-content]="activeTab() === 'weekly'"
               (click)="setActiveTab('weekly')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-              </svg>
+              <ui-icon name="Calendar" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Semanal</span>
             </button>
 
@@ -72,9 +68,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'payroll'"
               [class.text-primary-content]="activeTab() === 'payroll'"
               (click)="setActiveTab('payroll')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
+              <ui-icon name="HandCoins" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Liquidación</span>
             </button>
 
@@ -85,9 +79,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'history'"
               [class.text-primary-content]="activeTab() === 'history'"
               (click)="setActiveTab('history')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
+              <ui-icon name="Clock" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Historial Liquidaciones</span>
             </button>
           </div>
@@ -95,9 +87,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
         <!-- Filtros Globales (solo para Resumen General y Resumen Semanal) -->
         @if (activeTab() === 'summary' || activeTab() === 'weekly') {
-          <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
-              <div class="relative w-full">
+          <div class="flex flex-row items-center gap-2 w-full lg:w-auto">
+            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+              <div class="relative w-full min-w-0">
                 <select 
                   class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedMonth()" 
@@ -107,17 +99,15 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
 
               <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
 
-              <div class="relative w-full">
+              <div class="relative w-full min-w-0">
                 <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedYear()" 
                   (change)="onYearChange($event)">
                   @for (year of years(); track year.value) {
@@ -125,16 +115,12 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
             </div>
-            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0" (click)="applyFilters()" title="Actualizar">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
+            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
+              <ui-icon name="RefreshCw" size="xs" />
             </button>
           </div>
         }
@@ -146,6 +132,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
           <!-- Tab: Resumen General -->
           @if (activeTab() === 'summary') {
             <div class="space-y-8 animate-tab-panel">
+              <!-- KPIs: Skeleton o datos reales -->
               @if (summaryLoadingState.showSkeleton() && summaryLoadingState.isLoading()) {
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4 skeleton-container">
                   @for (i of [1,2,3,4]; track i) {
@@ -155,17 +142,16 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </div>
               } @else {
-                <!-- KPIs: Contenedor independiente -->
                 @if (summary()) {
                   <app-accounting-kpis [summary]="summary()!" />
                 }
-
-                <!-- Separador Visual y Gráfico: Contexto independiente -->
-                @if (dailyData().length > 0) {
-                  <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
-                  <app-accounting-chart [dailyData]="dailyData()" />
-                }
               }
+
+              <!-- Separador Visual y Gráfico: Siempre visible (con skeleton si está cargando) -->
+              <div class="divider text-base-content/30 text-xs uppercase tracking-widest my-8">Análisis de Tendencia</div>
+              <app-accounting-chart 
+                [dailyData]="dailyData()" 
+                [isLoading]="summaryLoadingState.isLoading()" />
             </div>
           }
 
@@ -197,11 +183,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               <!-- Skeleton personalizado cuando hay datos antiguos pero se están recargando -->
               <app-liquidation-table-skeleton [isExiting]="payrollLoadingState.isSkeletonExiting()" />
             } @else if (payrollError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-xl p-6">
+              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+                  <ui-icon name="AlertCircle" size="lg" class="text-error" />
                   <div>
                     <h3 class="text-lg font-semibold text-error mb-2">Error al cargar liquidación</h3>
                     <p class="text-sm text-error/70 mb-4">{{ payrollError() }}</p>
@@ -226,11 +210,9 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               </div>
             } @else {
               <!-- Solo mostrar "No hay datos" si NO está cargando -->
-              <div class="card bg-base-100 border border-base-200 rounded-xl p-6">
+              <div class="card bg-base-100 border border-base-200 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <ui-icon name="FileText" size="lg" class="text-base-content/40" />
                   <div>
                     <h3 class="text-lg font-semibold text-base-content mb-2">No hay datos de liquidación</h3>
                     <p class="text-sm text-base-content/70 mb-4">No se encontraron datos para la semana seleccionada.</p>
@@ -243,18 +225,58 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
-              <div class="skeleton-container">
-                <app-loading-skeleton 
-                  type="table" 
-                  [count]="5"
-                  [isExiting]="historyLoadingState.isSkeletonExiting()" />
-              </div>
-            } @else if (liquidationHistory().length > 0) {
-              <div class="animate-tab-panel tab-panel-scroll">
-                <app-liquidation-history [liquidations]="liquidationHistory()" />
-              </div>
-            }
+            <div class="animate-tab-panel">
+              @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+                <div class="skeleton-container">
+                  <app-loading-skeleton 
+                    type="table" 
+                    [count]="5"
+                    [isExiting]="historyLoadingState.isSkeletonExiting()" />
+                </div>
+              } @else {
+                <app-liquidation-history 
+                  [liquidations]="liquidationHistory()"
+                  [totalGlobal]="historyTotalGlobal()"
+                  [isLoading]="historyLoadingState.isLoading()"
+                  [filters]="{
+                    fecha_desde: historyFilters().fecha_desde || null,
+                    fecha_hasta: historyFilters().fecha_hasta || null
+                  }"
+                  (filterChange)="onHistoryFilterChange($event)"
+                />
+                
+                <!-- Paginación -->
+                @if (historyTotalPages() > 1 && !historyLoadingState.isLoading()) {
+                  <div class="flex justify-center mt-6">
+                    <div class="join">
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === 1"
+                        (click)="onHistoryPageChange(historyCurrentPage() - 1)">
+                        «
+                      </button>
+                      @for (page of getHistoryPages(); track page) {
+                        <button
+                          type="button"
+                          class="btn btn-sm join-item"
+                          [class.btn-active]="page === historyCurrentPage()"
+                          (click)="onHistoryPageChange(page)">
+                          {{ page }}
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === historyTotalPages()"
+                        (click)="onHistoryPageChange(historyCurrentPage() + 1)">
+                        »
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
           }
         </div>
       </div>
@@ -385,6 +407,17 @@ export class Contabilidad implements OnInit {
   weeklySummaries = signal<WeeklySummary[]>([]);
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
+  
+  // Signals para historial con paginación y filtros
+  historyFilters = signal<{ 
+    fecha_desde?: string | null; 
+    fecha_hasta?: string | null; 
+  }>({});
+  historyTotal = signal<number>(0);
+  historyTotalGlobal = signal<number>(0);
+  historyCurrentPage = signal<number>(1);
+  historyTotalPages = signal<number>(0);
+  historyPerPage = 10;
 
 
   // Selector de semana para liquidación
@@ -701,12 +734,98 @@ export class Contabilidad implements OnInit {
 
   loadLiquidationHistory(): void {
     this.historyLoadingState.setLoading(true);
-    this.accountingService.getLiquidationHistory()
-      .pipe(catchError(() => of([])))
-      .subscribe((history: ClosedLiquidation[]) => {
-        this.liquidationHistoryData.set(history);
+    const filters = this.historyFilters();
+    const currentPage = this.historyCurrentPage();
+    
+    // Convertir fechas a mes (las fechas vienen como YYYY-MM-DD)
+    let mes_desde: number | undefined;
+    let mes_hasta: number | undefined;
+    
+    if (filters.fecha_desde) {
+      const parts = filters.fecha_desde.split('-');
+      if (parts.length === 3) {
+        mes_desde = parseInt(parts[1], 10);
+      }
+    }
+    
+    if (filters.fecha_hasta) {
+      const parts = filters.fecha_hasta.split('-');
+      if (parts.length === 3) {
+        mes_hasta = parseInt(parts[1], 10);
+      }
+    }
+    
+    this.accountingService.getLiquidationHistory({
+      mes_desde: mes_desde,
+      mes_hasta: mes_hasta,
+      page: currentPage,
+      per_page: this.historyPerPage
+    }).subscribe({
+      next: (response) => {
+        this.liquidationHistoryData.set(response.items);
+        this.historyTotal.set(response.total);
+        this.historyTotalGlobal.set(response.total_global);
+        this.historyTotalPages.set(response.total_pages);
         this.historyLoadingState.setDataLoaded();
-      });
+      },
+      error: (error) => {
+        console.error('Error cargando historial:', error);
+        this.liquidationHistoryData.set([]);
+        this.historyTotal.set(0);
+        this.historyTotalGlobal.set(0);
+        this.historyTotalPages.set(0);
+        this.historyLoadingState.setDataLoaded();
+      }
+    });
+  }
+
+  onHistoryFilterChange(filters: Record<string, any>): void {
+    // Si el objeto está vacío, limpiar todos los filtros
+    if (Object.keys(filters).length === 0) {
+      this.historyFilters.set({});
+      this.historyCurrentPage.set(1);
+      this.loadLiquidationHistory();
+      return;
+    }
+    
+    const processedFilters: { 
+      fecha_desde?: string | null; 
+      fecha_hasta?: string | null; 
+    } = {
+      fecha_desde: filters['fecha_desde'] || null,
+      fecha_hasta: filters['fecha_hasta'] || null
+    };
+    
+    this.historyFilters.set(processedFilters);
+    this.historyCurrentPage.set(1);
+    this.loadLiquidationHistory();
+  }
+
+  onHistoryPageChange(page: number): void {
+    this.historyCurrentPage.set(page);
+    this.loadLiquidationHistory();
+  }
+
+  getHistoryPages(): number[] {
+    const totalPages = this.historyTotalPages();
+    if (totalPages <= 1) return [];
+    const pages: number[] = [];
+    const current = this.historyCurrentPage();
+    const total = totalPages;
+    
+    // Mostrar máximo 7 páginas
+    let start = Math.max(1, current - 3);
+    let end = Math.min(total, start + 6);
+    
+    if (end - start < 6) {
+      start = Math.max(1, end - 6);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   }
 
 

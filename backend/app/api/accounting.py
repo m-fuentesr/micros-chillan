@@ -12,7 +12,8 @@ from app.schemas.settlement import (
     WeeklyPaymentResponse, 
     WeeklyPaymentConfirmRequest, 
     HistoryPeriodSummary, 
-    HistoryMonthDetailResponse 
+    HistoryMonthDetailResponse,
+    HistoryPeriodFilters
 )
 
 router = APIRouter(prefix="/api/accounting", tags=["Accounting"])
@@ -112,15 +113,16 @@ async def confirm_weekly_payment_endpoint(
 # 3. HISTORIAL DE CIERRES (JERÁRQUICO)
 # =================================================================
 
-@router.get("/history/periods", response_model=List[HistoryPeriodSummary])
+@router.get("/history/periods")
 async def get_settlement_history_periods(
+    filters: HistoryPeriodFilters = Depends(),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Obtiene la lista de meses cerrados (Agrupados por mes/año).
+    Obtiene la lista de meses cerrados con paginación y filtros (Agrupados por mes/año).
     """
     require_admin(current_user)
-    return await accounting_service.get_history_periods()
+    return await accounting_service.get_history_periods(filters)
 
 @router.get("/history/month-detail", response_model=HistoryMonthDetailResponse)
 async def get_settlement_history_month_detail(

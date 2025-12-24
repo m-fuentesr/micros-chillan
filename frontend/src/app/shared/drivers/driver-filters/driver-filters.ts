@@ -74,7 +74,11 @@ export class DriverFilters {
     let al_dia = 0;
 
     drivers.forEach(driver => {
-      const status = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
+      const status = driver.licencia_estado
+        ? {
+            estado: driver.licencia_estado.estado === 'danger' ? 'error' : driver.licencia_estado.estado,
+          }
+        : calculateLicenseStatus(driver.fecha_venc_licencia);
       if (status.estado === 'error') {
         vencidas++;
       } else if (status.estado === 'warning') {
