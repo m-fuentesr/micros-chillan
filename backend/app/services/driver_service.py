@@ -712,7 +712,7 @@ async def update_driver(driver_id: int, data):
             .execute()
         )
 
-        if asign_raw.data:
+        if asign_raw and asign_raw.data:
             supabase.table("asignaciones_chofer_maquina").update(
                 {"fecha_termino": hoy}
             ).eq("id", asign_raw.data["id"]).execute()
