@@ -542,7 +542,11 @@ async def list_daily_records_for_admin(
     start = (filters.page - 1) * filters.per_page
     end = start + filters.per_page - 1
 
-    paginated_query = base_query.order(sort_field, desc=sort_desc).range(start, end)
+    paginated_query = (
+        base_query.order(sort_field, desc=sort_desc)
+        .order("created_at", desc=sort_desc)
+        .range(start, end)
+    )
     res = paginated_query.execute()
 
     if getattr(res, "error", None):
