@@ -9,7 +9,6 @@ from app.schemas.daily_record import (
     DailyRecordListFilters,
     DailyRecordUpdate
 )
-from app.core.realtime import dashboard_realtime
 from app.services import alert_service
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
@@ -278,10 +277,6 @@ async def _create_daily_record_core(
         except Exception as e:
             # No detenemos el proceso si falla la alerta, solo lo logueamos
             print(f"⚠️ Error enviando alerta de registro: {e}")
-
-    if fecha == date.today():
-        await dashboard_realtime.broadcast_refresh()
-    # -------------------------------------------------------
 
     return registro
 
@@ -986,9 +981,6 @@ async def update_daily_record(
     updated = {**original, **updates}
     campos_modificados = [a["campo"] for a in auditoria]
 
-    if updated.get("fecha") == date.today().isoformat():
-        await dashboard_realtime.broadcast_refresh()
-
     return {
         "message": "Registro diario actualizado correctamente",
         "registro": {
@@ -1113,7 +1105,5 @@ async def resolve_incident(
     # ----------------------------------------
     # 7. Retornar registro actualizado usando get_daily_record_detail
     # ----------------------------------------
-    if original.get("fecha") == date.today().isoformat():
-        await dashboard_realtime.broadcast_refresh()
 
     return await get_daily_record_detail(record_id)
