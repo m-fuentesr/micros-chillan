@@ -108,6 +108,7 @@ interface DailyRecordView {
               [value]="formatCurrency(totalRevenue())"
               type="financial"
               [badgeText]="currentMonthName()"
+              [responsive]="true"
               [animationDelay]="0">
               <ui-icon name="Wallet" size="md" icon />
             </app-kpi-card>
@@ -120,6 +121,7 @@ interface DailyRecordView {
               type="warning"
               [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
               [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
+              [responsive]="true"
               [animationDelay]="1">
               <ui-icon name="AlertCircle" size="md" icon />
             </app-kpi-card>
@@ -132,6 +134,7 @@ interface DailyRecordView {
               type="danger"
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
               [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
+              [responsive]="true"
               [animationDelay]="2">
               <ui-icon name="TriangleAlert" size="md" icon />
             </app-kpi-card>
@@ -567,25 +570,30 @@ interface DailyRecordView {
 
                     <!-- Información Principal -->
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-start justify-between gap-2 mb-2">
-                        <div class="flex-1 min-w-0">
-                          <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="record.machine">
+                      <!-- Vista móvil: Layout vertical con elementos separados -->
+                      <div class="space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                          <h3 class="font-bold text-base text-base-content tooltip" [attr.data-tip]="record.machine">
                             {{ record.machine }}
                           </h3>
-                          <div class="flex items-center gap-2 mt-1.5">
-                            <div class="avatar placeholder shrink-0">
-                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                                <ui-icon name="IdCard" size="sm" />
-                              </div>
-                            </div>
-                            <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
-                              {{ record.driver }}
-                            </span>
-                          </div>
                         </div>
-                        
-                        <!-- Badge Estado -->
-                        <div class="shrink-0">
+                        <div class="flex items-center gap-2">
+                          <div class="avatar placeholder shrink-0">
+                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                              <ui-icon name="IdCard" size="sm" />
+                            </div>
+                          </div>
+                          <span 
+                            class="text-sm tooltip break-words" 
+                            [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                            [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                            [class.italic]="record.driver === 'Sin asignar'"
+                            [attr.data-tip]="record.driver">
+                            {{ record.driver }}
+                          </span>
+                        </div>
+                        <!-- Badge Estado - Debajo del nombre -->
+                        <div>
                           @if (record.status === 'complete') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/10">
                               Completo

@@ -14,9 +14,9 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
     <div 
       class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]"
       [ngClass]="{
-        'gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]': effectiveSize() === 'default',
-        'gap-2 md:gap-3 p-3 md:p-4 min-h-[112px] md:min-h-[128px]': effectiveSize() === 'medium',
-        'gap-1.5 md:gap-2 p-2 md:p-2.5 min-h-[75px] md:min-h-[85px]': effectiveSize() === 'compact'
+        'gap-1.5 md:gap-2.5 p-2.5 md:p-3.5 min-h-[100px] md:min-h-[120px]': effectiveSize() === 'default',
+        'gap-1 md:gap-2 p-2 md:p-3 min-h-[80px] md:min-h-[100px]': effectiveSize() === 'medium',
+        'gap-0.5 md:gap-1.5 p-1.5 md:p-2.5 min-h-[60px] md:min-h-[80px]': effectiveSize() === 'compact'
       }"
       [class.animate-card-enter]="animationDelay() === 0"
       [class.animate-card-enter-delay-1]="animationDelay() === 1"
@@ -29,7 +29,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
         [ngClass]="{
           '-mt-4 -mr-4 h-24 w-24': effectiveSize() === 'default',
           '-mt-3 -mr-3 h-20 w-20': effectiveSize() === 'medium',
-          '-mt-2 -mr-2 h-12 w-12': effectiveSize() === 'compact',
+          '-mt-1.5 -mr-1.5 md:-mt-2 md:-mr-2 h-8 w-8 md:h-12 md:w-12': effectiveSize() === 'compact',
           'bg-primary/5': type() === 'financial' || type() === 'info',
           'bg-error/5': type() === 'danger',
           'bg-warning/5': type() === 'warning',
@@ -42,14 +42,14 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
         [ngClass]="{
           'gap-3': effectiveSize() === 'default',
           'gap-2.5': effectiveSize() === 'medium',
-          'gap-2': effectiveSize() === 'compact'
+          'gap-1.5 md:gap-2': effectiveSize() === 'compact'
         }">
         <div 
           class="flex items-center justify-center rounded-xl ring-1 shrink-0"
           [ngClass]="{
             'h-10 w-10': effectiveSize() === 'default',
             'h-8 w-8': effectiveSize() === 'medium',
-            'h-5 w-5': effectiveSize() === 'compact',
+            'h-4 w-4 md:h-5 md:w-5': effectiveSize() === 'compact',
             'bg-primary/10 text-primary ring-primary/15': type() === 'financial' || type() === 'info',
             'bg-error/10 text-error ring-error/15': type() === 'danger',
             'bg-warning/10 text-warning ring-warning/15': type() === 'warning',
@@ -62,7 +62,8 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
             class="font-bold uppercase tracking-wider text-base-content"
             [ngClass]="{
               'text-xs': effectiveSize() === 'default',
-              'text-[10px]': effectiveSize() === 'medium' || effectiveSize() === 'compact'
+              'text-[10px]': effectiveSize() === 'medium',
+              'text-[9px] md:text-[10px]': effectiveSize() === 'compact'
             }">
             {{ title() }}
           </h3>
@@ -72,7 +73,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
               [ngClass]="{
                 'text-[10px] mt-0.5': effectiveSize() === 'default',
                 'text-[9px] mt-0.5': effectiveSize() === 'medium',
-                'text-[8px] mt-0.5': effectiveSize() === 'compact'
+                'text-[7px] md:text-[8px] mt-0.5': effectiveSize() === 'compact'
               }">
               {{ subtitle() }}
             </p>
@@ -87,7 +88,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
           [ngClass]="{
             'text-base sm:text-lg md:text-xl lg:text-2xl pl-[52px]': effectiveSize() === 'default',
             'text-[10px] sm:text-xs md:text-sm lg:text-base pl-[39px]': effectiveSize() === 'medium',
-            'text-[9px] sm:text-[10px] md:text-xs lg:text-sm pl-[28px]': effectiveSize() === 'compact'
+            'text-[8px] sm:text-[9px] md:text-xs lg:text-sm pl-[20px] md:pl-[28px]': effectiveSize() === 'compact'
           }">
           @if (numericValue() !== undefined) {
             <span 
@@ -105,10 +106,10 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
           [ngClass]="{
             'mt-2 min-h-[24px]': effectiveSize() === 'default',
             'mt-1.5 min-h-[20px]': effectiveSize() === 'medium',
-            'mt-1 min-h-[16px]': effectiveSize() === 'compact',
+            'mt-0.5 md:mt-1 min-h-[14px] md:min-h-[16px]': effectiveSize() === 'compact',
             'pl-[52px]': (badgeText() || successText()) && effectiveSize() === 'default',
             'pl-[39px]': (badgeText() || successText()) && effectiveSize() === 'medium',
-            'pl-[28px]': (badgeText() || successText()) && effectiveSize() === 'compact'
+            'pl-[20px] md:pl-[28px]': (badgeText() || successText()) && effectiveSize() === 'compact'
           }">
           @if (badgeText()) {
             <span 
@@ -116,7 +117,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
               [ngClass]="{
                 'px-1.5 py-0.5 text-[10px]': effectiveSize() === 'default',
                 'px-1 py-0.5 text-[9px]': effectiveSize() === 'medium',
-                'px-1 py-0.5 text-[8px]': effectiveSize() === 'compact',
+                'px-0.5 md:px-1 py-0.5 text-[7px] md:text-[8px]': effectiveSize() === 'compact',
                 'bg-primary/10 text-primary ring-primary/15': type() === 'financial' || type() === 'info',
                 'bg-error/10 text-error ring-error/15': type() === 'danger',
                 'bg-warning/10 text-warning ring-warning/15': type() === 'warning',
@@ -132,14 +133,14 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
               [ngClass]="{
                 'px-1.5 py-0.5 text-[10px]': effectiveSize() === 'default',
                 'px-1 py-0.5 text-[9px]': effectiveSize() === 'medium',
-                'px-1 py-0.5 text-[8px]': effectiveSize() === 'compact'
+                'px-0.5 md:px-1 py-0.5 text-[7px] md:text-[8px]': effectiveSize() === 'compact'
               }">
               <svg 
                 class="fill-none stroke-current"
                 [ngClass]="{
                   'h-3 w-3': effectiveSize() === 'default',
                   'h-2.5 w-2.5': effectiveSize() === 'medium',
-                  'h-2 w-2': effectiveSize() === 'compact'
+                  'h-1.5 w-1.5 md:h-2 md:w-2': effectiveSize() === 'compact'
                 }"
                 viewBox="0 0 24 24" 
                 stroke-width="2">
@@ -156,7 +157,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
               [ngClass]="{
                 'text-[11px]': effectiveSize() === 'default',
                 'text-[10px]': effectiveSize() === 'medium',
-                'text-[9px]': effectiveSize() === 'compact',
+                'text-[8px] md:text-[9px]': effectiveSize() === 'compact',
                 'text-primary hover:text-primary-focus': type() === 'financial' || type() === 'info',
                 'text-error hover:text-error-focus': type() === 'danger',
                 'text-warning hover:text-warning-focus': type() === 'warning',
@@ -169,7 +170,7 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
                 [ngClass]="{
                   'w-3 h-3': effectiveSize() === 'default',
                   'w-2.5 h-2.5': effectiveSize() === 'medium',
-                  'w-2 h-2': effectiveSize() === 'compact'
+                  'w-1.5 h-1.5 md:w-2 md:h-2': effectiveSize() === 'compact'
                 }"
                 viewBox="0 0 24 24" 
                 stroke-width="2">
