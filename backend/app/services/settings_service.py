@@ -1,6 +1,33 @@
 from fastapi import HTTPException
 from app.db.supabase_client import supabase
-from app.schemas.settings import UpdateSettingsRequest, UpdateSettingsResponse
+from app.schemas.settings import GeneralSettingsResponse, UpdateSettingsRequest, UpdateSettingsResponse
+
+
+async def get_settings() -> GeneralSettingsResponse:
+    """Obtiene la configuración general actual."""
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select(
+            "id, porcentaje_default, sueldo_minimo, "
+            "dias_alerta_licencia_por_vencer, dias_alerta_documento_por_vencer"
+        )
+        .single()
+        .execute()
+    )
+
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error obteniendo configuración: {cfg_res.error}",
+        )
+
+    data = cfg_res.data or {}
+    return GeneralSettingsResponse(
+        porcentaje_default=data.get("porcentaje_default"),
+        sueldo_minimo=data.get("sueldo_minimo"),
+        dias_alerta_licencia_por_vencer=data.get("dias_alerta_licencia_por_vencer"),
+        dias_alerta_documento_por_vencer=data.get("dias_alerta_documento_por_vencer"),
+    )
 
 
 async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsResponse:
@@ -9,15 +36,16 @@ async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsRespo
     ejecuta lógicas asociadas (ej: propagar porcentaje_default a choferes).
     No toca registros diarios ni pagos históricos.
     """
-    updates = {}
+    updates: dict[str, float | int] = {}
     propagate_percentage = False
 
     # 1) Leer configuración actual
     cfg_res = (
         supabase.table("configuracion_general")
-        .select("id, porcentaje_default, sueldo_minimo, "
-                "dias_alerta_licencia_por_vencer, dias_alerta_documento_por_vencer"
-                )
+        .select(
+            "id, porcentaje_default, sueldo_minimo, "
+            "dias_alerta_licencia_por_vencer, dias_alerta_documento_por_vencer"
+        )
         .single()
         .execute()
     )
@@ -97,6 +125,7 @@ async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsRespo
         upd_drivers = (
             supabase.table("choferes")
             .update({"porcentaje_pago": porcentaje_nuevo})
+            .neq("id", 0)
             .execute()
         )
 
@@ -115,10 +144,30 @@ async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsRespo
         porcentaje_anterior=porcentaje_anterior if propagate_percentage else None,
         porcentaje_nuevo=porcentaje_nuevo if propagate_percentage else None,
         choferes_actualizados=choferes_actualizados,
-        sueldo_minimo_anterior=sueldo_minimo_anterior if payload.sueldo_minimo is not None else None,
-        sueldo_minimo_nuevo=sueldo_minimo_nuevo if payload.sueldo_minimo is not None else None,
-        dias_alerta_licencia_anterior=dias_alerta_licencia_anterior if payload.dias_alerta_licencia_por_vencer is not None else None,
-        dias_alerta_licencia_nuevo=dias_alerta_licencia_nuevo if payload.dias_alerta_licencia_por_vencer is not None else None,
-        dias_alerta_documento_anterior=dias_alerta_documento_anterior if payload.dias_alerta_documento_por_vencer is not None else None,
-        dias_alerta_documento_nuevo=dias_alerta_documento_nuevo if payload.dias_alerta_documento_por_vencer is not None else None,
+        sueldo_minimo_anterior=(
+            sueldo_minimo_anterior if payload.sueldo_minimo is not None else None
+        ),
+        sueldo_minimo_nuevo=(
+            sueldo_minimo_nuevo if payload.sueldo_minimo is not None else None
+        ),
+        dias_alerta_licencia_anterior=(
+            dias_alerta_licencia_anterior
+            if payload.dias_alerta_licencia_por_vencer is not None
+            else None
+        ),
+        dias_alerta_licencia_nuevo=(
+            dias_alerta_licencia_nuevo
+            if payload.dias_alerta_licencia_por_vencer is not None
+            else None
+        ),
+        dias_alerta_documento_anterior=(
+            dias_alerta_documento_anterior
+            if payload.dias_alerta_documento_por_vencer is not None
+            else None
+        ),
+        dias_alerta_documento_nuevo=(
+            dias_alerta_documento_nuevo
+            if payload.dias_alerta_documento_por_vencer is not None
+            else None
+        ),
     )

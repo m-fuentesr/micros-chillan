@@ -1,6 +1,13 @@
 from pydantic import BaseModel, Field
 
 
+class GeneralSettingsResponse(BaseModel):
+    porcentaje_default: float | None = None
+    sueldo_minimo: int | None = None
+    dias_alerta_licencia_por_vencer: int | None = None
+    dias_alerta_documento_por_vencer: int | None = None
+
+
 class UpdateSettingsRequest(BaseModel):
     """
     Permite actualizar uno o más campos de configuración general.

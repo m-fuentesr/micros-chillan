@@ -1,6 +1,18 @@
 ﻿from fastapi import APIRouter, Depends, Query, status
 from typing import Literal
-from app.schemas.driver import DriverCreate, DriverListItem, DriverDetail, DriverSelect, DriverUpdate, DriverListFilters, DriverLicenseAlerts, DriverLiquidationFilters, DriverLiquidationItem
+from app.schemas.driver import (
+    DriverCreate,
+    DriverDeletedListItem, 
+    DriverListItem,
+    DriverDetail,
+    DriverReintegrate, 
+    DriverSelect, 
+    DriverUpdate, 
+    DriverListFilters, 
+    DriverLicenseAlerts, 
+    DriverLiquidationFilters, 
+    DriverLiquidationItem,
+    )
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
 from app.services import driver_service
@@ -61,6 +73,15 @@ async def list_active_drivers(current_user: UserInDB = Depends(get_current_user)
     return await driver_service.list_active_drivers()
 
 
+@router.get("/deleted", response_model=list[DriverDeletedListItem])
+async def list_deleted_drivers(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Lista solo choferes eliminados para reintegración administrativa.
+    """
+    require_admin(current_user)
+    return await driver_service.list_deleted_drivers()
+
+
 @router.get("/{driver_id}", response_model=DriverDetail)
 async def get_driver_detail(
     driver_id: int,
@@ -97,6 +118,16 @@ async def delete_driver(
 ):
     require_admin(current_user)
     return await driver_service.delete_driver(driver_id)
+
+
+@router.post("/{driver_id}/reintegrate")
+async def reintegrate_driver(
+    driver_id: int,
+    payload: DriverReintegrate,
+    current_user: UserInDB = Depends(get_current_user)
+):
+    require_admin(current_user)
+    return await driver_service.reintegrate_driver(driver_id, payload)
 
 
 @router.get("/{driver_id}/liquidations")
