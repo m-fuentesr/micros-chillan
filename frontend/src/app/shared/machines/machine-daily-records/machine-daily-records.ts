@@ -7,9 +7,11 @@ import { SearchFilters, FilterField } from '../../components/search-filters/sear
 import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
+import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/machine-daily-records-skeleton';
+
 @Component({
   selector: 'app-machine-daily-records',
-  imports: [CommonModule, RouterLink, SearchFilters, LoadingSpinner, UiIconComponent],
+  imports: [CommonModule, RouterLink, SearchFilters, LoadingSpinner, UiIconComponent, MachineDailyRecordsSkeleton],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header Premium con gradiente sutil -->
@@ -35,6 +37,11 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
       </div>
 
       <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+        @if (isLoading()) {
+          <!-- Skeleton de alta fidelidad mientras carga -->
+          <app-machine-daily-records-skeleton />
+        } @else {
+        
         <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
         <div class="md:hidden mb-4">
           <div class="sticky top-2 z-20">
@@ -80,11 +87,6 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
         <!-- Vista Móvil: Cards -->
         <div class="block xl:hidden space-y-4">
-          @if (isLoading()) {
-            <div class="flex justify-center items-center py-12">
-              <app-loading-spinner size="md" text="Cargando registros..." />
-            </div>
-          } @else {
             @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
               class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
@@ -199,11 +201,6 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
         <!-- Vista Desktop: Tabla -->
         <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-          @if (isLoading()) {
-            <div class="flex justify-center items-center py-12">
-              <app-loading-spinner size="md" text="Cargando registros..." />
-            </div>
-          } @else {
           <table class="table w-full table-min-height">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
@@ -340,7 +337,6 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               }
             </tbody>
           </table>
-          }
         </div>
         
         <!-- Paginación -->
@@ -371,6 +367,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               </button>
             </div>
           </div>
+        }
         }
       </div>
     </div>

@@ -15,11 +15,16 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { AnimatedCounterDirective } from '../../shared/directives/animated-counter.directive';
+import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, KpiCard, AnimatedCounterDirective, UiIconComponent],
+  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, KpiCard, AnimatedCounterDirective, UiIconComponent, HomeSkeleton],
   template: `
+    @if ((kpisLoadingState.isLoading() || contentLoadingState.isLoading()) && !sequentialState.kpisError() && !sequentialState.contentError()) {
+      <!-- Skeleton completo de alta fidelidad mientras carga -->
+      <app-home-skeleton />
+    } @else {
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
       <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
@@ -38,16 +43,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="pl-3 md:pl-4">
-        @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="dashboard-kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
+        @if (sequentialState.kpisError()) {
           <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
             <div class="flex items-center gap-3">
               <ui-icon name="AlertCircle" size="md" class="text-error" />
@@ -670,6 +666,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
         }
       </div>
     </div>
+    }
   `,
   styles: [
     `
