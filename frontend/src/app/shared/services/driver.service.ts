@@ -179,6 +179,25 @@ export class DriverService {
     );
   }
 
+  // GET /api/drivers/active/without-machine - Lista choferes activos sin máquina asignada
+  getActiveDriversWithoutMachine(): Observable<Array<{ id: number; nombre_completo: string }>> {
+    return this.http.get<Array<{ id: number; nombre_completo: string }>>(
+      `${this.apiUrl}/api/drivers/active/without-machine`
+    ).pipe(
+      map((response) => {
+        // Asegurar que la respuesta sea un array
+        if (Array.isArray(response)) {
+          return response;
+        }
+        return [];
+      }),
+      catchError((error) => {
+        console.error('Error obteniendo choferes activos sin máquina:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
   // GET /api/drivers/{id} - Obtener detalle de chofer
   getDriverById(id: number): Observable<Driver> {
     interface BackendDriverDetail {

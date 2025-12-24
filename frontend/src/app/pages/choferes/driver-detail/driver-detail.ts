@@ -16,6 +16,7 @@ import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
+import { GlobalErrorService } from '../../../shared/services/global-error.service';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
 import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
@@ -1495,6 +1496,7 @@ export class DriverDetail implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
+  private globalErrorService = inject(GlobalErrorService);
   
   // Estado de carga con umbral de 200ms
   driverLoadingState = this.loadingStateService.createLoadingState();
@@ -1568,7 +1570,15 @@ export class DriverDetail implements OnInit {
           return of<Driver | null>(null);
         }
         return this.driverService.getDriverById(id).pipe(
-          catchError(() => of<Driver | null>(null))
+          catchError((error) => {
+            console.error('Error cargando chofer:', error);
+            // Mostrar error global
+            this.globalErrorService.showError(
+              'No se pudo cargar la información del chofer desde el servidor.',
+              'Error al cargar chofer'
+            );
+            return of<Driver | null>(null);
+          })
         );
       })
     ),

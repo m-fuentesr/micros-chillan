@@ -4,15 +4,18 @@ import { RouterLink } from '@angular/router';
 import { MachineDailyRecord, MachineDailyRecordFilters } from '../../models/machine-detail.models';
 import { Driver } from '../../models/driver.models';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
-import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/machine-daily-records-skeleton';
 
 @Component({
   selector: 'app-machine-daily-records',
-  imports: [CommonModule, RouterLink, SearchFilters, LoadingSpinner, UiIconComponent, MachineDailyRecordsSkeleton],
+  imports: [CommonModule, RouterLink, SearchFilters, UiIconComponent, MachineDailyRecordsSkeleton],
   template: `
+    @if (isLoading()) {
+      <!-- Skeleton de alta fidelidad mientras carga -->
+      <app-machine-daily-records-skeleton />
+    } @else {
     <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header Premium con gradiente sutil -->
       <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
@@ -37,10 +40,6 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
       </div>
 
       <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-        @if (isLoading()) {
-          <!-- Skeleton de alta fidelidad mientras carga -->
-          <app-machine-daily-records-skeleton />
-        } @else {
         
         <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
         <div class="md:hidden mb-4">
@@ -196,8 +195,7 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                 </div>
               </div>
             }
-          }
-        </div>
+          </div>
 
         <!-- Vista Desktop: Tabla -->
         <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
@@ -368,9 +366,9 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
             </div>
           </div>
         }
-        }
       </div>
     </div>
+    }
   `,
   styles: [`
     @keyframes componentEnter {

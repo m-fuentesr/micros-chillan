@@ -143,7 +143,7 @@ import { Machine } from '../../models/machine.models';
               [attr.size]="choferes().length > 10 ? 10 : null"
               style="max-height: 16rem; overflow-y: auto;"
             >
-              <option value="">-- Seleccionar Chofer --</option>
+              <option value="" selected disabled>Seleccionar chofer disponible</option>
               @for (chofer of choferes(); track chofer.id) {
                 <option [value]="chofer.id">{{ chofer.nombre_completo }}</option>
               }
@@ -170,7 +170,35 @@ import { Machine } from '../../models/machine.models';
       </div>
     </form>
   `,
-  styles: [],
+  styles: [`
+    /* Estilos para placeholders grises en todos los inputs */
+    /* El placeholder es el texto de ejemplo que aparece dentro del campo antes de escribir */
+    input::placeholder,
+    textarea::placeholder {
+      color: hsl(var(--bc) / 0.5) !important;
+      opacity: 1;
+    }
+    
+    /* Placeholder gris cuando el input tiene focus */
+    input:focus::placeholder,
+    textarea:focus::placeholder {
+      color: hsl(var(--bc) / 0.4) !important;
+      opacity: 1;
+    }
+    
+    /* Asegurar que los placeholders sean grises en todos los estados */
+    input:not(:focus)::placeholder,
+    textarea:not(:focus)::placeholder {
+      color: hsl(var(--bc) / 0.5) !important;
+    }
+    
+    /* Placeholders grises para inputs deshabilitados */
+    input:disabled::placeholder,
+    textarea:disabled::placeholder {
+      color: hsl(var(--bc) / 0.3) !important;
+      opacity: 1;
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MachineForm {
@@ -193,7 +221,7 @@ export class MachineForm {
     marca: ['', [Validators.required, Validators.minLength(2)]],
     patente: ['', [Validators.required, Validators.pattern(/^[A-Z]{4}-\d{2}$/i)]],
     año: [null as number | null, [Validators.min(1900), Validators.max(new Date().getFullYear())]],
-    chofer_id: [null as number | null],
+    chofer_id: ['' as string | number | null],
     estado_operativo: ['Operativa', Validators.required]
   });
 
@@ -211,7 +239,7 @@ export class MachineForm {
         patente: value.patente || undefined,
         año: Number.isFinite(parsedYear) ? parsedYear : undefined,
         estado_operativo: value.estado_operativo as 'Operativa' | 'En Taller' | 'Inactiva' || 'Operativa',
-        chofer_id: value.chofer_id !== null && value.chofer_id !== undefined
+        chofer_id: value.chofer_id !== null && value.chofer_id !== undefined && value.chofer_id !== ''
           ? Number(value.chofer_id)
           : undefined
       });

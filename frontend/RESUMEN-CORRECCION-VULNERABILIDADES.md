@@ -115,3 +115,4 @@ Para más detalles, consultar: `REPORTE-VULNERABILIDADES.md`
 
 **Conclusión:** Las vulnerabilidades críticas han sido corregidas exitosamente sin afectar la funcionalidad de la aplicación. El proyecto ahora está en un estado seguro para continuar el desarrollo y despliegue.
 
+

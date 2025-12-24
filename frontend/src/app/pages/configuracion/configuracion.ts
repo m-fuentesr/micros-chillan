@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { SettingsService } from '../../shared/services/settings.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
 import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { GeneralSettings, UpdateSettingsRequest } from '../../shared/models/settings.models';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
@@ -422,6 +423,7 @@ export class Configuracion implements OnInit {
   readonly settingsService = inject(SettingsService);
   private readonly alertModalService = inject(AlertModalService);
   private readonly confirmModalService = inject(ConfirmModalService);
+  private readonly globalErrorService = inject(GlobalErrorService);
 
   // Exponer Math para usar en el template
   readonly Math = Math;
@@ -461,12 +463,11 @@ export class Configuracion implements OnInit {
       });
     } catch (error) {
       console.error('Error cargando configuración:', error);
-      this.alertModalService.show({
-        title: 'Error al cargar',
-        message: 'No se pudo cargar la configuración. Por favor, recarga la página o contacta a soporte.',
-        type: 'error',
-        buttonText: 'Entendido'
-      });
+      // Mostrar error global en lugar de error local
+      this.globalErrorService.showError(
+        'No se pudo cargar la configuración desde el servidor.',
+        'Error al cargar configuración'
+      );
     }
   }
 

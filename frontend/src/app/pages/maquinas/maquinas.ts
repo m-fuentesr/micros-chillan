@@ -12,6 +12,7 @@ import { calculateMachineDocumentStatus } from '../../shared/utils/document.util
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
@@ -41,31 +42,10 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
         @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-            <div class="flex items-center gap-3">
-              <ui-icon name="AlertCircle" size="sm" class="text-error" />
-              <div>
-                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
-              </div>
-            </div>
-          </div>
-          <div 
-            [class.opacity-0]="!sequentialState.canShowKPIs()" 
-            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
-            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-            <app-machine-kpis [kpis]="kpis()" />
-          </div>
+          <!-- Skeleton responsive - replica exacta de las KPI cards -->
+          <app-loading-skeleton 
+            type="responsive-kpis" 
+            [isExiting]="kpisLoadingState.isSkeletonExiting()" />
         } @else {
           <div 
             [class.opacity-0]="!sequentialState.canShowKPIs()" 
@@ -87,19 +67,6 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
               type="machine-list" 
               [count]="6"
               [isExiting]="machinesLoadingState.isSkeletonExiting()" />
-          } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-              <div class="flex flex-col items-center gap-4 text-center">
-                <ui-icon name="AlertCircle" size="xl" class="text-error" />
-                <div>
-                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
-                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
-                  <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                    Reintentar
-                  </button>
-                </div>
-              </div>
-            </div>
           } @else {
             <!-- Mantener skeleton visible hasta que canShowContent sea true -->
             <app-loading-skeleton 
@@ -114,22 +81,7 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
             [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
-                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                      Reintentar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (!sequentialState.contentError()) {
               <app-machine-list
                 [machines]="machines()"
                 [viewMode]="viewMode()"
@@ -198,6 +150,7 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
 export class Maquinas implements OnInit, OnDestroy {
   private machineService = inject(MachineService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private router = inject(Router);
   private navigationSubscription?: Subscription;
 
@@ -299,6 +252,14 @@ export class Maquinas implements OnInit, OnDestroy {
     this.machineService.getMachines(filters).pipe(
       catchError((error) => {
         console.error('Error cargando máquinas:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.machinesResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar las máquinas desde el servidor.',
+            'Error al cargar máquinas'
+          );
+        }
         this.sequentialState.setContentReady(true); // Marcar error
         this.machinesLoadingState.setDataLoaded();
         this.isLoadingPage.set(false);
@@ -326,6 +287,14 @@ export class Maquinas implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Error cargando máquinas:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.machinesResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar las máquinas desde el servidor.',
+            'Error al cargar máquinas'
+          );
+        }
         this.sequentialState.setContentReady(true);
         this.machinesLoadingState.setDataLoaded();
         this.isLoadingPage.set(false);
@@ -343,6 +312,11 @@ export class Maquinas implements OnInit, OnDestroy {
     this.machineService.getKPIs().pipe(
       catchError((error) => {
         console.error('Error cargando KPIs:', error);
+        // Mostrar error global en lugar de error local
+        this.globalErrorService.showError(
+          'No se pudieron cargar los datos desde el servidor.',
+          'Error al cargar máquinas'
+        );
         this.sequentialState.setKPIsReady(true); // Marcar error
         setTimeout(() => {
           this.kpisLoadingState.setDataLoaded();
@@ -459,15 +433,11 @@ export class Maquinas implements OnInit, OnDestroy {
   // });
   // ============================================
 
-  // Función para reintentar carga
+  // Función para reintentar carga (ya no se usa, pero se mantiene por compatibilidad)
   retryLoad(): void {
-    this.sequentialState.resetErrors();
-    this.sequentialState.reset();
-    this.machinesLoadingState.setLoading(true);
-    this.currentPage.set(1);
-    
-    // Recargar máquinas
-    this.loadMachines();
+    // Limpiar error global y recargar página
+    this.globalErrorService.clearError();
+    this.globalErrorService.reloadPage();
   }
 
   // Cargar alertas de documentación desde el backend (sin filtro de documentos)

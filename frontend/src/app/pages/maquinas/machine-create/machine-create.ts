@@ -233,9 +233,9 @@ export class MachineCreate {
   saving = signal(false);
   feedback = signal<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
 
-  // Choferes para el select
+  // Choferes para el select (solo los que no tienen máquina asignada)
   choferesData = toSignal(
-    this.driverService.getActiveDrivers().pipe(
+    this.driverService.getActiveDriversWithoutMachine().pipe(
       catchError(() => of<Array<{ id: number; nombre_completo: string }>>([]))
     ),
     { initialValue: [] }

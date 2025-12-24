@@ -18,6 +18,7 @@ import { map } from 'rxjs/operators';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
+import { GlobalErrorService } from '../../../shared/services/global-error.service';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
 
@@ -844,6 +845,7 @@ export class MachineDetail implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
+  private globalErrorService = inject(GlobalErrorService);
 
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
@@ -941,7 +943,15 @@ export class MachineDetail implements OnInit {
             }
             return machine;
           }),
-          catchError(() => of<Machine | null>(null))
+          catchError((error) => {
+            console.error('Error cargando máquina:', error);
+            // Mostrar error global
+            this.globalErrorService.showError(
+              'No se pudo cargar la información de la máquina desde el servidor.',
+              'Error al cargar máquina'
+            );
+            return of<Machine | null>(null);
+          })
         );
       })
     ),

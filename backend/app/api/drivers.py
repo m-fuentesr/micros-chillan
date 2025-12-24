@@ -73,6 +73,17 @@ async def list_active_drivers(current_user: UserInDB = Depends(get_current_user)
     return await driver_service.list_active_drivers()
 
 
+@router.get("/active/without-machine", response_model=list[DriverSelect])
+async def list_active_drivers_without_machine(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Retorna todos los choferes activos que NO tienen una máquina asignada.
+    Se usa en:
+      - Crear Máquina (solo mostrar choferes disponibles)
+    """
+    require_admin(current_user)
+    return await driver_service.list_active_drivers_without_machine()
+
+
 @router.get("/deleted", response_model=list[DriverDeletedListItem])
 async def list_deleted_drivers(current_user: UserInDB = Depends(get_current_user)):
     """
