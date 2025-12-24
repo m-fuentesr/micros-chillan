@@ -55,7 +55,6 @@ class DashboardResponse(BaseModel):
     fecha: date
     kpis: DashboardKpis
     rendimiento: List[DashboardMachinePerformance]
-    alertas: DashboardAlerts
 
 
 class DashboardDailyRecordDriver(BaseModel):

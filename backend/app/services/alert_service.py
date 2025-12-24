@@ -1,6 +1,12 @@
 ﻿from fastapi import HTTPException
+from typing import List
 from app.db.supabase_client import supabase
 from datetime import datetime, timezone, timedelta
+from app.schemas.dashboard import (
+    DashboardAlertItem,
+    DashboardAlerts,
+    DashboardAlertSummary,
+)
 
 # Definimos los enums aquí para usarlos en código
 SEVERIDAD_CRITICA = "CRITICA"
@@ -97,6 +103,7 @@ async def marcar_como_leida(alerta_id: int):
         print(f"Error marcando alerta como leída: {e}")
         return False
     
+
 async def marcar_todas_admin_como_resueltas():
     """
     Marca como 'resuelta' TODAS las alertas activas del Admin.
@@ -113,18 +120,22 @@ async def marcar_todas_admin_como_resueltas():
         }
 
         # Ejecutamos el update masivo con FILTROS DE SEGURIDAD
+        alertas_admin = await get_admin_alerts()
+
+        ids_a_resolver = [
+            alerta.get("id")
+            for alerta in alertas_admin
+            if alerta.get("tipo") != "incidente_critico"
+        ]
+
+        if not ids_a_resolver:
+            return 0
+        
         res = (
             supabase.table("alertas")
             .update(datos_actualizar)
+            .in_("id", ids_a_resolver)
             .eq("estado", "activa")              
-            
-            # Filtro 1: No tocar alertas privadas del chofer
-            .neq("tipo", "asignacion_maquina")   
-            
-            # Filtro 2: GUARDÍAN - No tocar incidentes críticos
-            # Esto hace que aunque le den a "Borrar todo", los incidentes persistan.
-            .neq("tipo", "incidente_critico")    
-            
             .execute()
         )
         
@@ -138,6 +149,7 @@ async def marcar_todas_admin_como_resueltas():
         print(f"Error en resolución masiva: {e}")
         return -1
     
+
 async def get_alerts_by_worker(chofer_id: int):
     """
     Obtiene las alertas activas específicas para un chofer.
@@ -160,6 +172,7 @@ async def get_alerts_by_worker(chofer_id: int):
         print(f"Error obteniendo alertas del trabajador {chofer_id}: {e}")
         return []
 
+
 async def get_admin_alerts():
     """
     Obtiene todas las alertas activas para el panel de administración.
@@ -177,10 +190,81 @@ async def get_admin_alerts():
             .order("created_at", desc=True)    # Luego las más nuevas
             .execute()
         )
-        return res.data if res.data else []
+        alertas = res.data if res.data else []
+
+        # Excluir solo las alertas personales del chofer que no son relevantes al admin
+        alertas_filtradas = [
+            alerta for alerta in alertas
+            if not (
+                alerta.get("origen_tipo") == "chofer"
+                and alerta.get("tipo") in {"registro_faltante"}
+            )
+        ]
+
+        return alertas_filtradas
     except Exception as e:
         print(f"Error obteniendo alertas de admin: {e}")
         return []
+    
+
+def _build_alerts_summary(alertas_raw: List[dict]) -> DashboardAlerts:
+    resumen = {"criticas": 0, "advertencias": 0, "informativas": 0}
+    alert_items: List[DashboardAlertItem] = []
+
+    for alerta in alertas_raw:
+        severidad = (alerta.get("severidad") or "").lower()
+
+        if severidad == "critica":
+            resumen["criticas"] += 1
+        elif severidad == "advertencia":
+            resumen["advertencias"] += 1
+        else:
+            resumen["informativas"] += 1
+
+        alert_items.append(
+            DashboardAlertItem(
+                id=alerta.get("id"),
+                mensaje=alerta.get("mensaje", ""),
+                severidad=alerta.get("severidad", ""),
+                tipo=alerta.get("tipo", ""),
+                origen_tipo=alerta.get("origen_tipo", ""),
+                origen_id=alerta.get("origen_id", 0),
+                estado=alerta.get("estado", ""),
+                created_at=alerta.get("created_at"),
+            )
+        )
+
+    SEVERITY_PRIORITY = {
+        "critica": 0,
+        "informativa": 1,
+        "advertencia": 2,
+    }
+
+    # 1) Agrupar por severidad
+    alert_items.sort(key=lambda a: SEVERITY_PRIORITY.get(a.severidad, 99))
+
+    # 2) Ordenar por fecha DESC dentro de cada grupo
+    alert_items.sort(key=lambda a: a.created_at, reverse=True)
+
+    return DashboardAlerts(
+        resumen=DashboardAlertSummary(
+            criticas=resumen.get("criticas", 0),
+            advertencias=resumen.get("advertencias", 0),
+            informativas=resumen.get("informativas", 0),
+        ),
+        items=alert_items,
+    )
+
+
+async def get_admin_alerts_overview() -> DashboardAlerts:
+    """
+    Devuelve la lista de alertas de administrador junto con el resumen (KPIs).
+    """
+
+    await limpiar_alertas_antiguas()
+    alertas_raw = await get_admin_alerts()
+    return _build_alerts_summary(alertas_raw)
+
 
 async def resolver_todas_alertas_chofer(chofer_id: int):
     """
