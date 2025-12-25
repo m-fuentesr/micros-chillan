@@ -51,6 +51,11 @@ import { ImageModalService } from '../../services/image-modal.service';
                   [style.transform]="getImageTransform()"
                   [style.transform-origin]="transformOrigin()"
                   (click)="onImageClick($event)"
+                  (wheel)="onWheel($event)"
+                  (mousedown)="onMouseDown($event)"
+                  (mousemove)="onMouseMove($event)"
+                  (mouseup)="onMouseUp($event)"
+                  (mouseleave)="onMouseUp($event)"
                   (touchstart)="onTouchStart($event)"
                   (touchmove)="onTouchMove($event)"
                   (touchend)="onTouchEnd($event)"
@@ -399,22 +404,36 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   // Control de zoom
   zoomLevel = signal(1); // 1 = tamaño normal, 2 = zoom 2x
   transformOrigin = signal('center center');
+  currentX = signal(0);
+  currentY = signal(0);
   private lastTap = 0;
+  private lastClick = 0;
+  private lastClickX = 0;
+  private lastClickY = 0;
   private tapTimeout: any;
   private isDragging = false;
+  private isMouseDragging = false;
+  private wasDragging = false; // Flag para prevenir click después de arrastrar
   private startX = 0;
   private startY = 0;
-  private currentX = 0;
-  private currentY = 0;
   private initialDistance = 0;
+  private minZoom = 1;
+  private maxZoom = 5;
+  private mouseDownTime = 0;
+  private mouseDownX = 0;
+  private mouseDownY = 0;
+  private baseImageWidth = 0;
+  private baseImageHeight = 0;
 
   // Computed para transformación de la imagen
   getImageTransform = computed(() => {
     const zoom = this.zoomLevel();
+    const x = this.currentX();
+    const y = this.currentY();
     if (zoom === 1) {
       return 'scale(1) translate3d(0, 0, 0)';
     }
-    return `scale(${zoom}) translate3d(${this.currentX}px, ${this.currentY}px, 0)`;
+    return `scale(${zoom}) translate3d(${x}px, ${y}px, 0)`;
   });
 
   ngAfterViewInit(): void {
@@ -467,6 +486,50 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     }
   }
 
+  // Listeners globales para arrastre con mouse (cuando el mouse sale de la imagen)
+  @HostListener('document:mousemove', ['$event'])
+  onDocumentMouseMove(event: MouseEvent): void {
+    if (this.isMouseDragging && this.zoomLevel() > 1) {
+      event.preventDefault();
+      event.stopPropagation();
+      
+      // Calcular distancia movida para detectar si es arrastre
+      const deltaX = Math.abs(event.clientX - this.mouseDownX);
+      const deltaY = Math.abs(event.clientY - this.mouseDownY);
+      
+      // Si se movió más de 3px, es un arrastre
+      if (deltaX > 3 || deltaY > 3) {
+        this.wasDragging = true;
+      }
+      
+      // Calcular nueva posición inmediatamente
+      const newX = event.clientX - this.startX;
+      const newY = event.clientY - this.startY;
+      
+      // Aplicar movimiento usando signals para que el computed se actualice
+      this.currentX.set(newX);
+      this.currentY.set(newY);
+    }
+  }
+
+  @HostListener('document:mouseup', ['$event'])
+  onDocumentMouseUp(event: MouseEvent): void {
+    if (this.isMouseDragging) {
+      // Si fue arrastre, prevenir el click
+      if (this.wasDragging) {
+        // Prevenir el click después de arrastrar con un delay
+        setTimeout(() => {
+          this.isMouseDragging = false;
+          this.wasDragging = false;
+        }, 100);
+      } else {
+        // Fue un click, permitir que se dispare el evento click
+        this.isMouseDragging = false;
+        this.wasDragging = false;
+      }
+    }
+  }
+
   ngOnDestroy(): void {
     // Asegurar que el scroll del body se restaure al destruir el componente
     document.body.style.overflow = '';
@@ -475,14 +538,66 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  // Detectar doble tap para zoom (solo en móvil)
+  // Click para zoom en desktop, doble tap en móvil
   onImageClick(event: MouseEvent): void {
-    // En desktop, no hacer nada (el zoom se puede hacer con rueda del mouse si se quiere)
-    // En móvil, el doble tap se maneja en onTouchStart
-    if (window.innerWidth <= 768) {
-      // Prevenir que el click cierre el modal
-      event.stopPropagation();
+    // Prevenir que el click cierre el modal
+    event.stopPropagation();
+    
+    // En desktop
+    if (window.innerWidth > 768) {
+      // No hacer zoom si estamos arrastrando
+      if (this.isMouseDragging || this.wasDragging) {
+        // Resetear wasDragging después de un tiempo para permitir clicks futuros
+        setTimeout(() => {
+          this.wasDragging = false;
+        }, 200);
+        return;
+      }
+      
+      const image = this.imageRef?.nativeElement;
+      if (!image) return;
+      
+      const currentTime = new Date().getTime();
+      const clickLength = currentTime - this.lastClick;
+      const deltaX = Math.abs(event.clientX - this.lastClickX);
+      const deltaY = Math.abs(event.clientY - this.lastClickY);
+      
+      // Detectar doble click (dentro de 300ms y en la misma área)
+      if (clickLength < 300 && clickLength > 0 && deltaX < 10 && deltaY < 10) {
+        // Doble click detectado
+        const rect = image.getBoundingClientRect();
+        const relativeX = (event.clientX - rect.left) / rect.width;
+        const relativeY = (event.clientY - rect.top) / rect.height;
+        
+        // Establecer origen de transformación en el punto del click
+        this.transformOrigin.set(`${relativeX * 100}% ${relativeY * 100}%`);
+        
+        if (this.zoomLevel() === 1) {
+          // Si NO está en zoom: hacer zoom in
+          this.baseImageWidth = rect.width;
+          this.baseImageHeight = rect.height;
+          this.zoomLevel.set(2);
+          this.currentX.set(0);
+          this.currentY.set(0);
+        } else {
+          // Si SÍ está en zoom: hacer zoom out
+          this.zoomLevel.set(1);
+          this.currentX.set(0);
+          this.currentY.set(0);
+          this.baseImageWidth = 0;
+          this.baseImageHeight = 0;
+        }
+        this.lastClick = 0;
+        return;
+      }
+      
+      // Click simple - no hacer nada (solo el doble click hace zoom)
+      // Guardar información del click para detectar doble click
+      this.lastClick = currentTime;
+      this.lastClickX = event.clientX;
+      this.lastClickY = event.clientY;
     }
+    // En móvil, el doble tap se maneja en onTouchStart
   }
 
   // Manejar eventos táctiles para doble tap
@@ -507,8 +622,8 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         this.lastTap = currentTime;
         if (this.zoomLevel() > 1) {
           this.isDragging = true;
-          this.startX = touch.clientX - this.currentX;
-          this.startY = touch.clientY - this.currentY;
+          this.startX = touch.clientX - this.currentX();
+          this.startY = touch.clientY - this.currentY();
         }
       }
     } else if (event.touches.length === 2) {
@@ -533,16 +648,39 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
       const newX = touch.clientX - this.startX;
       const newY = touch.clientY - this.startY;
       
-      // Limitar el movimiento para que la imagen no se salga del área visible
-      const image = this.imageRef?.nativeElement;
-      if (image) {
-        const rect = image.getBoundingClientRect();
-        const zoom = this.zoomLevel();
-        const maxX = (rect.width * (zoom - 1)) / 2;
-        const maxY = (rect.height * (zoom - 1)) / 2;
-        
-        this.currentX = Math.max(-maxX, Math.min(maxX, newX));
-        this.currentY = Math.max(-maxY, Math.min(maxY, newY));
+      // Aplicar movimiento directamente primero
+      this.currentX.set(newX);
+      this.currentY.set(newY);
+      
+      // Luego aplicar límites si tenemos las dimensiones base
+      if (this.baseImageWidth > 0 && this.baseImageHeight > 0) {
+        const image = this.imageRef?.nativeElement;
+        if (image) {
+          const container = image.parentElement;
+          if (container) {
+            const containerRect = container.getBoundingClientRect();
+            const zoom = this.zoomLevel();
+            
+            // Calcular dimensiones escaladas
+            const scaledWidth = this.baseImageWidth * zoom;
+            const scaledHeight = this.baseImageHeight * zoom;
+            
+            // Calcular límites
+            if (scaledWidth > containerRect.width) {
+              const maxX = (scaledWidth - containerRect.width) / 2;
+              this.currentX.set(Math.max(-maxX, Math.min(maxX, this.currentX())));
+            } else {
+              this.currentX.set(0);
+            }
+            
+            if (scaledHeight > containerRect.height) {
+              const maxY = (scaledHeight - containerRect.height) / 2;
+              this.currentY.set(Math.max(-maxY, Math.min(maxY, this.currentY())));
+            } else {
+              this.currentY.set(0);
+            }
+          }
+        }
       }
     }
   }
@@ -551,6 +689,91 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   onTouchEnd(event: TouchEvent): void {
     this.isDragging = false;
     this.initialDistance = 0;
+  }
+
+  // Manejar rueda del mouse para zoom en desktop
+  onWheel(event: WheelEvent): void {
+    // Solo en desktop
+    if (window.innerWidth <= 768) return;
+    
+    // Prevenir scroll de la página
+    event.preventDefault();
+    event.stopPropagation();
+    
+    const image = this.imageRef?.nativeElement;
+    if (!image) return;
+    
+    // Guardar dimensiones base si no están guardadas y estamos en zoom 1
+    if (this.zoomLevel() === 1 && (this.baseImageWidth === 0 || this.baseImageHeight === 0)) {
+      const rect = image.getBoundingClientRect();
+      this.baseImageWidth = rect.width;
+      this.baseImageHeight = rect.height;
+    }
+    
+    // Calcular punto del mouse relativo a la imagen
+    const rect = image.getBoundingClientRect();
+    const relativeX = (event.clientX - rect.left) / rect.width;
+    const relativeY = (event.clientY - rect.top) / rect.height;
+    
+    // Establecer origen de transformación en el punto del mouse
+    this.transformOrigin.set(`${relativeX * 100}% ${relativeY * 100}%`);
+    
+    // Calcular nuevo nivel de zoom
+    const zoomDelta = event.deltaY > 0 ? -0.1 : 0.1;
+    const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel() + zoomDelta));
+    
+    // Si el zoom cambia significativamente, actualizar
+    if (Math.abs(newZoom - this.zoomLevel()) > 0.05) {
+      this.zoomLevel.set(newZoom);
+      
+      // Si vuelve a 1x, resetear posición y dimensiones base
+      if (newZoom <= 1) {
+        this.currentX.set(0);
+        this.currentY.set(0);
+        this.zoomLevel.set(1);
+        this.baseImageWidth = 0;
+        this.baseImageHeight = 0;
+      }
+    }
+  }
+
+  // Iniciar arrastre con mouse en desktop
+  onMouseDown(event: MouseEvent): void {
+    // Solo en desktop y cuando está zoomed
+    if (window.innerWidth <= 768 || this.zoomLevel() <= 1) return;
+    
+    // Solo botón izquierdo
+    if (event.button !== 0) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Guardar posición y tiempo inicial para detectar si es arrastre o click
+    this.mouseDownTime = new Date().getTime();
+    this.mouseDownX = event.clientX;
+    this.mouseDownY = event.clientY;
+    this.wasDragging = false; // Resetear flag de arrastre
+    
+    // Marcar que estamos arrastrando
+    this.isMouseDragging = true;
+    this.startX = event.clientX - this.currentX();
+    this.startY = event.clientY - this.currentY();
+  }
+
+  // Manejar movimiento del mouse para arrastre en desktop (cuando está sobre la imagen)
+  onMouseMove(event: MouseEvent): void {
+    // La lógica está en onDocumentMouseMove para capturar movimiento global
+    // Este método se mantiene por compatibilidad pero la lógica principal está en el listener global
+    if (this.isMouseDragging && this.zoomLevel() > 1) {
+      event.preventDefault();
+      // La lógica real está en onDocumentMouseMove
+    }
+  }
+
+  // Finalizar arrastre con mouse (cuando está sobre la imagen)
+  onMouseUp(event: MouseEvent): void {
+    // La lógica está en onDocumentMouseUp para capturar el release global
+    this.isMouseDragging = false;
   }
 
   // Manejar doble tap para zoom
@@ -566,26 +789,35 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     // Establecer origen de transformación
     this.transformOrigin.set(`${relativeX * 100}% ${relativeY * 100}%`);
 
-    // Toggle zoom
+    // Comportamiento consistente con desktop: doble tap hace zoom in si no está zoomed, zoom out si está zoomed
     if (this.zoomLevel() === 1) {
-      // Zoom in a 2x
+      // Si NO está en zoom: hacer zoom in
+      this.baseImageWidth = rect.width;
+      this.baseImageHeight = rect.height;
       this.zoomLevel.set(2);
-      this.currentX = 0;
-      this.currentY = 0;
+      this.currentX.set(0);
+      this.currentY.set(0);
     } else {
-      // Zoom out a 1x
+      // Si SÍ está en zoom: hacer zoom out
       this.zoomLevel.set(1);
-      this.currentX = 0;
-      this.currentY = 0;
+      this.currentX.set(0);
+      this.currentY.set(0);
+      this.baseImageWidth = 0;
+      this.baseImageHeight = 0;
     }
   }
 
   // Resetear zoom cuando se cierra el modal
   private resetZoom(): void {
     this.zoomLevel.set(1);
-    this.currentX = 0;
-    this.currentY = 0;
+    this.currentX.set(0);
+    this.currentY.set(0);
     this.isDragging = false;
+    this.isMouseDragging = false;
+    this.wasDragging = false;
+    this.mouseDownTime = 0;
+    this.mouseDownX = 0;
+    this.mouseDownY = 0;
     this.transformOrigin.set('center center');
   }
 }
