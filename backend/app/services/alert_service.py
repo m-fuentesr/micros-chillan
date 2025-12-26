@@ -1,5 +1,5 @@
-﻿from fastapi import HTTPException
-from typing import List
+﻿from fastapi import HTTPException, status
+from typing import List, Optional
 from app.db.supabase_client import supabase
 from datetime import datetime, timezone, timedelta
 from app.schemas.dashboard import (
@@ -7,6 +7,7 @@ from app.schemas.dashboard import (
     DashboardAlerts,
     DashboardAlertSummary,
 )
+from app.schemas.user import UserInDB
 
 # Definimos los enums aquí para usarlos en código
 SEVERIDAD_CRITICA = "CRITICA"
@@ -47,16 +48,17 @@ async def crear_alerta(
             print(f"❌ Error CRÍTICO creando alerta: {e}")
             # Aquí podrías hacer raise e si quieres que el endpoint falle
 
-async def marcar_como_leida(alerta_id: int):
+async def marcar_como_leida(alerta_id: int, current_user: Optional[UserInDB] = None):
     """
     Cambia el estado de una alerta de 'activa' a 'resuelta'.
     🛡️ GUARDIÁN: Bloquea la acción si es un Incidente Crítico.
+    🔒 SEGURIDAD: Si es trabajador, solo puede resolver sus propias alertas.
     """
     try:
-        # 1. LEER PRIMERO: Necesitamos saber qué tipo de alerta es
+        # 1. LEER PRIMERO: Necesitamos saber qué tipo de alerta es y su origen
         alerta_res = (
             supabase.table("alertas")
-            .select("tipo, origen_tipo")
+            .select("tipo, origen_tipo, origen_id")
             .eq("id", alerta_id)
             .single()
             .execute()
@@ -68,7 +70,24 @@ async def marcar_como_leida(alerta_id: int):
 
         alerta = alerta_res.data
 
-        # 2. VALIDAR REGLA DE NEGOCIO (El Guardián)
+        # 2. VALIDACIÓN DE SEGURIDAD: Si es trabajador, solo puede resolver sus propias alertas
+        if current_user and current_user.chofer_id:
+            # Verificar que la alerta pertenece a este chofer
+            if (alerta.get("origen_tipo") == "chofer" and 
+                alerta.get("origen_id") != current_user.chofer_id):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para resolver esta alerta. Solo puedes resolver tus propias notificaciones."
+                )
+            # Si la alerta no es del chofer pero el usuario es trabajador, también bloquear
+            # (excepto si es admin, pero los admins no tienen chofer_id)
+            elif alerta.get("origen_tipo") != "chofer":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="No tienes permiso para resolver esta alerta."
+                )
+
+        # 3. VALIDAR REGLA DE NEGOCIO (El Guardián)
         # Si es crítica Y viene de un registro diario, PROHIBIDO cerrar aquí.
         if (alerta.get("tipo") == "incidente_critico" and 
             alerta.get("origen_tipo") == "registro_diario"):

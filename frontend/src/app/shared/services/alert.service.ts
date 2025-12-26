@@ -1,8 +1,14 @@
 import { inject, Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { catchError, retry } from 'rxjs/operators';
-import { Alert, AlertCounts } from '../models/dashboard.models';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Observable, of, throwError } from 'rxjs';
+import { catchError, retry, map } from 'rxjs/operators';
+import { 
+  Alert, 
+  AlertCounts,
+  DashboardAlerts,
+  DashboardAlertSummary,
+  DashboardAlertItem 
+} from '../models/dashboard.models';
 import { environment } from '../../../environments/environment.development';
 
 @Injectable({
@@ -12,51 +18,122 @@ export class AlertService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
 
-  // Obtener todas las alertas (registros diarios + documentación)
-  getAlerts(): Observable<Alert[]> {
-    // En producción, esto combinaría alertas de registros diarios y documentación
-    // Por ahora retornamos datos de ejemplo
-    return of(this.generateMockAlerts());
+  /**
+   * Obtener resumen y lista de alertas para el dashboard
+   * Endpoint: GET /api/alerts/summary
+   */
+  getAdminAlertsSummary(): Observable<DashboardAlerts> {
+    return this.http.get<DashboardAlerts>(`${this.apiUrl}/api/alerts/summary`).pipe(
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error obteniendo alertas:', error);
+        // Retornar estructura vacía en caso de error
+        return of({
+          resumen: { criticas: 0, advertencias: 0, informativas: 0 },
+          items: []
+        });
+      })
+    );
   }
 
-  // Contar alertas por severidad
-  getAlertCounts(): Observable<AlertCounts> {
+  /**
+   * Obtener alertas personales de un trabajador
+   * Endpoint: GET /api/alerts/my-alerts/{worker_id}
+   */
+  getWorkerAlerts(workerId: number): Observable<Alert[]> {
+    return this.http.get<DashboardAlertItem[]>(`${this.apiUrl}/api/alerts/my-alerts/${workerId}`).pipe(
+      map((items) => {
+        // Convertir cada DashboardAlertItem a Alert
+        return items.map(item => this.convertBackendAlertToFrontend(item));
+      }),
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error obteniendo alertas del trabajador:', error);
+        // Retornar array vacío en caso de error
+        return of([]);
+      })
+    );
+  }
+
+  /**
+   * Obtener alertas convertidas al formato del frontend
+   * Usa getAdminAlertsSummary() y filtra solo alertas activas
+   */
+  getAlerts(): Observable<Alert[]> {
     return new Observable(observer => {
-      this.getAlerts().subscribe(alerts => {
-        const counts: AlertCounts = {
-          critical: alerts.filter(a => a.severity === 'critical').length,
-          warning: alerts.filter(a => a.severity === 'warning').length,
-          info: alerts.filter(a => a.severity === 'info').length
-        };
-        observer.next(counts);
-        observer.complete();
+      this.getAdminAlertsSummary().subscribe({
+        next: (data) => {
+          const alerts = data.items
+            .filter(item => item.estado === 'activa') // Solo alertas activas
+            .map(item => this.convertBackendAlertToFrontend(item));
+          observer.next(alerts);
+          observer.complete();
+        },
+        error: (error) => {
+          console.error('Error obteniendo alertas:', error);
+          observer.next([]);
+          observer.complete();
+        }
       });
     });
   }
 
-  // DELETE /api/alerts/{id} - Eliminar una alerta
-  deleteAlert(alertId: string): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/alerts/${alertId}`).pipe(
+  /**
+   * Contar alertas por severidad
+   * Usa los datos del summary para consistencia
+   */
+  getAlertCounts(): Observable<AlertCounts> {
+    return new Observable(observer => {
+      this.getAdminAlertsSummary().subscribe({
+        next: (data) => {
+          observer.next({
+            critical: data.resumen.criticas,
+            warning: data.resumen.advertencias,
+            info: data.resumen.informativas
+          });
+          observer.complete();
+        },
+        error: () => {
+          observer.next({ critical: 0, warning: 0, info: 0 });
+          observer.complete();
+        }
+      });
+    });
+  }
+
+  /**
+   * Resolver una alerta individual
+   * Endpoint: PATCH /api/alerts/{alert_id}/resolve
+   */
+  resolveAlert(alertId: number): Observable<{ message: string }> {
+    return this.http.patch<{ message: string }>(
+      `${this.apiUrl}/api/alerts/${alertId}/resolve`,
+      {}
+    ).pipe(
       retry({
         count: 3,
         delay: (error, retryCount) => {
-          // Solo retry para errores de red (5xx, timeout)
           if (error.status >= 500 || error.status === 0) {
             return new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
           }
           throw error;
         }
       }),
-      catchError(() => {
-        // En desarrollo, simular éxito
-        return of(undefined);
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error resolviendo alerta:', error);
+        // Re-lanzar el error para que el componente pueda manejarlo
+        return throwError(() => error);
       })
     );
   }
 
-  // DELETE /api/alerts - Eliminar todas las alertas
-  deleteAllAlerts(): Observable<void> {
-    return this.http.delete<void>(`${this.apiUrl}/alerts`).pipe(
+  /**
+   * Resolver todas las alertas de admin (bulk)
+   * Endpoint: PATCH /api/alerts/admin/resolve-all
+   */
+  resolveAllAdminAlerts(): Observable<{ message: string }> {
+    return this.http.patch<{ message: string }>(
+      `${this.apiUrl}/api/alerts/admin/resolve-all`,
+      {}
+    ).pipe(
       retry({
         count: 3,
         delay: (error, retryCount) => {
@@ -66,139 +143,171 @@ export class AlertService {
           throw error;
         }
       }),
-      catchError(() => {
-        // En desarrollo, simular éxito
-        return of(undefined);
+      catchError((error: HttpErrorResponse) => {
+        console.error('Error resolviendo todas las alertas:', error);
+        return throwError(() => error);
       })
     );
   }
 
-  private generateMockAlerts(): Alert[] {
-    const today = new Date().toISOString();
-    const yesterday = new Date(Date.now() - 86400000).toISOString();
-    const twoDaysAgo = new Date(Date.now() - 172800000).toISOString();
-    const threeHoursAgo = new Date(Date.now() - 10800000).toISOString();
-    const oneHourAgo = new Date(Date.now() - 3600000).toISOString();
-    const thirtyMinutesAgo = new Date(Date.now() - 1800000).toISOString();
+  /**
+   * Convertir DashboardAlertItem del backend a Alert del frontend
+   */
+  private convertBackendAlertToFrontend(item: DashboardAlertItem): Alert {
+    // Mapear severidad del backend al frontend (case-insensitive)
+    // El backend puede enviar en mayúsculas o minúsculas
+    const severityNormalized = (item.severidad || '').toUpperCase();
+    const severityMap: Record<string, 'critical' | 'warning' | 'info' | 'success'> = {
+      'CRITICA': 'critical',
+      'ADVERTENCIA': 'warning',
+      'INFORMATIVA': 'info'
+    };
 
-    const todayDate = today.split('T')[0];
-    const yesterdayDate = yesterday.split('T')[0];
-    const twoDaysAgoDate = twoDaysAgo.split('T')[0];
+    // Determinar tipo basado en el tipo y origen
+    let type: 'operational' | 'incident' | 'document' = 'operational';
+    if (item.tipo === 'incidente_critico') {
+      type = 'incident';
+    } else if (item.origen_tipo === 'documento' || item.tipo.includes('documento')) {
+      type = 'document';
+    } else if (item.origen_tipo === 'registro_diario') {
+      type = 'operational';
+    }
 
-    return [
-      {
-        id: 'record-worker-02-' + yesterdayDate,
-        type: 'operational',
-        severity: 'critical',
-        title: 'Registro Incompleto - Máquina 02',
-        description: `Falta completar información del trabajador para el registro del ${yesterdayDate}.`,
-        machineId: '02',
-        driverName: 'Ana Gómez',
-        date: yesterday,
-        actionLabel: 'Resolver',
-        actionHref: `/registro-diario?maquina=02&fecha=${yesterdayDate}&estado=pending-trabajador&mode=edit`
-      },
-      {
-        id: 'record-incidente-04-' + todayDate,
-        type: 'incident',
-        severity: 'critical',
-        title: '⚠️ Incidente Crítico - Máquina 04',
-        description: `El chofer reportó un incidente crítico. Revisar detalles del choque leve en parachoques trasero.`,
-        machineId: '04',
-        driverName: 'Luis Martínez',
-        date: thirtyMinutesAgo,
-        actionLabel: 'Revisar Incidente',
-        actionHref: `/registro-diario?maquina=04&fecha=${todayDate}&estado=incidente&mode=edit`
-      },
-      {
-        id: 'record-worker-05-' + twoDaysAgoDate,
-        type: 'operational',
-        severity: 'warning',
-        title: 'Registro Pendiente - Máquina 05',
-        description: `Registro del ${twoDaysAgoDate} pendiente de revisión. Falta firma del chofer.`,
-        machineId: '05',
-        driverName: 'Juan Pérez',
-        date: twoDaysAgo,
-        actionLabel: 'Completar Datos',
-        actionHref: `/registro-diario?maquina=05&fecha=${twoDaysAgoDate}&estado=pending-trabajador&mode=edit`
-      },
-      {
-        id: 'document-expiry-01',
-        type: 'document',
-        severity: 'warning',
-        title: 'Documentación Próxima a Vencer',
-        description: `Licencia de conducir de Carlos Rodríguez vence en 15 días. Renovar antes del vencimiento.`,
-        machineId: '01',
-        driverName: 'Carlos Rodríguez',
-        date: oneHourAgo,
-        actionLabel: 'Ver Documentos',
-        actionHref: `/choferes/carlos-rodriguez/documentos`
-      },
-      {
-        id: 'record-complete-03-' + todayDate,
-        type: 'operational',
-        severity: 'info',
-        title: 'Registro Diario Completado',
-        description: `El conductor completó el registro diario del ${todayDate}. Revisar y verificar.`,
-        machineId: '03',
-        driverName: 'María López',
-        date: threeHoursAgo,
-        actionLabel: 'Ver Registro',
-        actionHref: `/registro-diario?maquina=03&fecha=${todayDate}&estado=completo&mode=view`
-      },
-      {
-        id: 'record-worker-07-' + todayDate,
-        type: 'operational',
-        severity: 'warning',
-        title: 'Registro Incompleto - Máquina 07',
-        description: `Falta información de recaudación del día ${todayDate}.`,
-        machineId: '07',
-        driverName: 'Pedro Gómez',
-        date: oneHourAgo,
-        actionLabel: 'Completar',
-        actionHref: `/registro-diario?maquina=07&fecha=${todayDate}&estado=pending-trabajador&mode=edit`
-      },
-      {
-        id: 'record-complete-06-' + todayDate,
-        type: 'operational',
-        severity: 'info',
-        title: 'Registro Diario Completado',
-        description: `El conductor registró el registro diario del ${todayDate}. Listo para revisión.`,
-        machineId: '06',
-        driverName: 'María López',
-        date: oneHourAgo,
-        actionLabel: 'Ver Registro',
-        actionHref: `/registro-diario?maquina=06&fecha=${todayDate}&estado=completo&mode=view`
-      },
-      {
-        id: 'record-complete-01-' + todayDate,
-        type: 'operational',
-        severity: 'success',
-        title: 'Registro Completado Exitosamente',
-        description: `Registro del ${todayDate} completado y verificado correctamente.`,
-        machineId: '01',
-        driverName: 'Carlos Rodríguez',
-        date: yesterday,
-        actionLabel: 'Ver Detalle',
-        actionHref: `/registro-diario?maquina=01&fecha=${todayDate}&estado=completo&mode=view`,
-        resolved: true,
-        resolvedAt: yesterday
-      },
-      {
-        id: 'record-complete-03-' + yesterdayDate,
-        type: 'operational',
-        severity: 'success',
-        title: 'Registro Verificado',
-        description: `Registro del ${yesterdayDate} verificado y cerrado.`,
-        machineId: '03',
-        driverName: 'María López',
-        date: twoDaysAgo,
-        actionLabel: 'Ver Historial',
-        actionHref: `/registro-diario?maquina=03&fecha=${yesterdayDate}&estado=completo&mode=view`,
-        resolved: true,
-        resolvedAt: yesterday
+    // Extraer información de máquina y chofer del mensaje
+    const parsed = this.parseAlertMessage(item.mensaje, item.tipo);
+    
+    // Construir actionHref basado en el origen
+    const actionHref = this.getActionHref(item);
+
+    return {
+      id: item.id.toString(),
+      type: type,
+      severity: severityMap[severityNormalized] || 'info',
+      title: parsed.title,
+      description: item.mensaje,
+      machineId: parsed.machineId,
+      driverName: parsed.driverName,
+      date: item.created_at,
+      actionLabel: this.getActionLabel(item.tipo, item.severidad),
+      actionHref: actionHref,
+      resolved: item.estado === 'resuelta',
+      resolvedAt: item.estado === 'resuelta' ? item.created_at : undefined
+    };
+  }
+
+  /**
+   * Parsear el mensaje de la alerta para extraer información
+   */
+  private parseAlertMessage(mensaje: string, tipo: string): { 
+    title: string; 
+    machineId?: string; 
+    driverName?: string 
+  } {
+    // Extraer número de máquina
+    const machineMatch = mensaje.match(/Máquina\s+(\d+)/i) || 
+                        mensaje.match(/maquina\s+(\d+)/i) ||
+                        mensaje.match(/M(\d+)/i);
+    
+    // Extraer nombre del chofer (formato: "Nombre Apellido")
+    const driverMatch = mensaje.match(/-?\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/) ||
+                       mensaje.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+
+    // Extraer título
+    let title = mensaje;
+    if (tipo === 'incidente_critico') {
+      title = '⚠️ Incidente Crítico';
+    } else {
+      // Intentar extraer el título (primera parte antes de " - " o "Máquina")
+      const titleMatch = mensaje.match(/^([^-]+?)(?:\s*-\s*|$)/);
+      if (titleMatch) {
+        title = titleMatch[1].trim();
       }
-    ];
+    }
+
+    return {
+      title: title,
+      machineId: machineMatch ? machineMatch[1] : undefined,
+      driverName: driverMatch ? driverMatch[1].trim() : undefined
+    };
+  }
+
+  /**
+   * Obtener el label de la acción según el tipo y severidad
+   */
+  private getActionLabel(tipo: string, severidad: string): string {
+    if (tipo === 'incidente_critico') {
+      return 'Revisar Incidente';
+    }
+    const severityNormalized = (severidad || '').toUpperCase();
+    if (severityNormalized === 'CRITICA') {
+      return 'Resolver';
+    }
+    if (severityNormalized === 'ADVERTENCIA') {
+      return 'Ver Detalle';
+    }
+    return 'Ver';
+  }
+
+  /**
+   * Construir la URL de acción según el origen de la alerta
+   */
+  private getActionHref(item: DashboardAlertItem): string {
+    // 1. Registros diarios (incidentes críticos o registros normales)
+    if (item.origen_tipo === 'registro_diario') {
+      return `/registro-diario/${item.origen_id}`;
+    }
+    
+    // 2. Alertas de máquinas (documentos vencidos o por vencer)
+    if (item.origen_tipo === 'maquina') {
+      return `/maquinas/${item.origen_id}`;
+    }
+    
+    // 3. Alertas de choferes (licencias, registros faltantes)
+    if (item.origen_tipo === 'chofer') {
+      return `/choferes/${item.origen_id}`;
+    }
+    
+    // 4. Fallback para documentos (si existe este origen_tipo)
+    if (item.origen_tipo === 'documento') {
+      // Intentar extraer máquina del mensaje como fallback
+      const machineMatch = item.mensaje.match(/Máquina\s+(\d+)/i);
+      if (machineMatch) {
+        return `/maquinas/${machineMatch[1]}`;
+      }
+      return '/maquinas';
+    }
+    
+    // 5. Por defecto, ir al dashboard
+    return '/dashboard';
+  }
+
+  // ========== Métodos legacy para compatibilidad ==========
+
+  /**
+   * DELETE /api/alerts/{id} - Eliminar una alerta (LEGACY)
+   * Ahora usa resolveAlert internamente
+   */
+  deleteAlert(alertId: string): Observable<void> {
+    return this.resolveAlert(parseInt(alertId)).pipe(
+      map(() => undefined),
+      catchError(() => {
+        // En caso de error, retornar undefined para mantener compatibilidad
+        return of(undefined);
+      })
+    );
+  }
+
+  /**
+   * DELETE /api/alerts - Eliminar todas las alertas (LEGACY)
+   * Ahora usa resolveAllAdminAlerts internamente
+   */
+  deleteAllAlerts(): Observable<void> {
+    return this.resolveAllAdminAlerts().pipe(
+      map(() => undefined),
+      catchError(() => {
+        // En caso de error, retornar undefined para mantener compatibilidad
+        return of(undefined);
+      })
+    );
   }
 }
-

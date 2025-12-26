@@ -787,6 +787,18 @@ export class Home implements OnInit, OnDestroy {
       this.alertsInitialized = true;
     }
   });
+
+  // Effect para refrescar alertas cuando hay cambios en Realtime (detectados a través de dashboardData)
+  private alertsRealtimeEffect = effect(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    // Cuando dashboardData cambia (incluyendo cambios de Realtime en alertas), refrescar alertas
+    if (dashboardData && this.alertsInitialized) {
+      // Refrescar alertas después de un pequeño delay para evitar múltiples llamadas
+      setTimeout(() => {
+        this.refreshAlerts();
+      }, 500);
+    }
+  });
   
   alerts = computed(() => {
     const loaded = this.alertsData();
@@ -937,25 +949,37 @@ export class Home implements OnInit, OnDestroy {
 
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
+    const alertToDelete = previousAlerts.find(a => a.id === alertId);
     
     // 2. Optimistic update: Remover inmediatamente de la UI
     this._alerts.set(previousAlerts.filter(a => a.id !== alertId));
     this.isDeletingAlert.set(true);
     
-    // 3. Llamar al servidor en segundo plano
-    this.alertService.deleteAlert(alertId).pipe(
-      catchError((error) => {
+    // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
+    this.alertService.resolveAlert(parseInt(alertId)).pipe(
+      catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
         
-        // 5. Notificar al usuario
-        this.showErrorToast('No se pudo eliminar la alerta. Intenta nuevamente.');
+        // 5. Manejar errores específicos
+        if (error?.status === 409) {
+          // Error 409: Incidente crítico que debe resolverse desde el Registro Diario
+          this.showErrorToast('Los incidentes críticos deben resolverse desde el Registro Diario.');
+        } else if (error?.status === 400) {
+          this.showErrorToast('No se pudo resolver la alerta. Verifica los datos e intenta nuevamente.');
+        } else if (error?.status >= 500) {
+          this.showErrorToast('Error del servidor. Intenta nuevamente más tarde.');
+        } else {
+          this.showErrorToast('No se pudo resolver la alerta. Intenta nuevamente.');
+        }
         
         return EMPTY;
       })
     ).subscribe({
       next: () => {
         this.isDeletingAlert.set(false);
+        // Refrescar alertas después de resolver
+        this.refreshAlerts();
       },
       error: () => {
         this.isDeletingAlert.set(false);
@@ -976,23 +1000,46 @@ export class Home implements OnInit, OnDestroy {
     this._alerts.set([]);
     this.isDeletingAllAlerts.set(true);
     
-    // 3. Llamar al servidor en segundo plano
-    this.alertService.deleteAllAlerts().pipe(
-      catchError((error) => {
+    // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
+    this.alertService.resolveAllAdminAlerts().pipe(
+      catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
         
-        // 5. Notificar al usuario
-        this.showErrorToast('No se pudieron eliminar las alertas. Intenta nuevamente.');
+        // 5. Manejar errores específicos
+        if (error?.status === 400) {
+          this.showErrorToast('No se pudieron resolver todas las alertas. Verifica los datos e intenta nuevamente.');
+        } else if (error?.status >= 500) {
+          this.showErrorToast('Error del servidor. Intenta nuevamente más tarde.');
+        } else {
+          this.showErrorToast('No se pudieron resolver todas las alertas. Intenta nuevamente.');
+        }
         
         return EMPTY;
       })
     ).subscribe({
       next: () => {
         this.isDeletingAllAlerts.set(false);
+        // Refrescar alertas después de resolver
+        this.refreshAlerts();
       },
       error: () => {
         this.isDeletingAllAlerts.set(false);
+      }
+    });
+  }
+
+  /**
+   * Refrescar alertas desde el servidor
+   * Se llama después de resolver alertas o cuando hay cambios en Realtime
+   */
+  private refreshAlerts(): void {
+    this.alertService.getAlerts().pipe(
+      catchError(() => of<Alert[]>([]))
+    ).subscribe({
+      next: (alerts) => {
+        this._alerts.set(alerts);
+        this.alertsInitialized = true;
       }
     });
   }
