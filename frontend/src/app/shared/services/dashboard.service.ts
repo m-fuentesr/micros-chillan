@@ -46,36 +46,9 @@ export class DashboardService {
   private realtimeChannel: RealtimeChannel | null = null;
 
   // Caché simple en memoria (para métodos legacy)
-  private alertsCache: { data: Alert[]; timestamp: number } | null = null;
   private financialSummaryCache: Map<string, { data: FinancialSummary; timestamp: number }> = new Map();
   private dailyRecordsCache: Map<string, { data: DailyRecord[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-  /**
-   * Obtener alertas del dashboard
-   * Endpoint: GET /api/dashboard/alerts (según PDF)
-   */
-  getAlerts(): Observable<Alert[]> {
-    // Verificar caché
-    if (this.alertsCache && Date.now() - this.alertsCache.timestamp < this.CACHE_TTL) {
-      return of(this.alertsCache.data);
-    }
-
-    return this.http.get<Alert[]>(`${this.apiUrl}/dashboard/alerts`)
-      .pipe(
-        map(alerts => {
-          // Guardar en caché
-          this.alertsCache = { data: alerts, timestamp: Date.now() };
-          return alerts;
-        }),
-        catchError(() => {
-          // Mock temporal - en producción vendría del endpoint
-          const alerts: Alert[] = [];
-          this.alertsCache = { data: alerts, timestamp: Date.now() };
-          return of(alerts);
-        })
-      );
-  }
 
   /**
    * Obtener resumen financiero
@@ -183,7 +156,6 @@ export class DashboardService {
    * Invalidar caché (útil cuando se actualizan datos)
    */
   clearCache(): void {
-    this.alertsCache = null;
     this.financialSummaryCache.clear();
     this.dailyRecordsCache.clear();
   }
@@ -288,15 +260,25 @@ export class DashboardService {
     const supabase = this.authService.supabase;
 
     const channel = supabase
-      .channel('dashboard-registros')
+      .channel('dashboard-updates')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'registros_diarios' },
         (payload) => {
-          console.log('📦 Payload Realtime completo:', payload);
+          console.log('📦 Cambio en registros_diarios:', payload);
 
           this.fetchOverview();
           this.fetchDailyRecords();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'alertas' },
+        (payload) => {
+          console.log('🚨 Cambio en alertas:', payload);
+
+          // Refrescar overview que incluye los KPIs de alertas
+          this.fetchOverview();
         }
       )
       .subscribe((status) => {

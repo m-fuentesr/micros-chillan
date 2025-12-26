@@ -625,26 +625,37 @@ async def get_daily_record_detail(record_id: int):
             .execute()
         )
     except APIError as e:
+        # Si el registro no existe (error PGRST116: 0 rows)
+        if 'PGRST116' in str(e) or '0 rows' in str(e).lower() or 'result contains 0 rows' in str(e).lower():
+            raise HTTPException(status_code=404, detail=f"Registro diario con ID {record_id} no encontrado")
+        
         # Si los campos de timestamp no existen (error 42703), hacer SELECT sin ellos
         # Esto puede pasar si la migración aún no se ha ejecutado
         if '42703' in str(e) or 'does not exist' in str(e).lower():
-            registro = (
-                supabase.table("registros_diarios")
-                .select("""
-                    id, fecha, estado,
-                    monto_recaudado, litros_diesel, costo_total_diesel,
-                    porcentaje_aplicado, monto_porcentaje_chofer,
-                    observaciones,
-                    es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
-                    imagen_url, imagen_comprobante_diesel_url,
-                    created_at, updated_at,
-                    choferes(id, primer_nombre, apellido_paterno),
-                    maquinas(id, numero_interno)
-                """)
-                .eq("id", record_id)
-                .single()
-                .execute()
-            )
+            try:
+                registro = (
+                    supabase.table("registros_diarios")
+                    .select("""
+                        id, fecha, estado,
+                        monto_recaudado, litros_diesel, costo_total_diesel,
+                        porcentaje_aplicado, monto_porcentaje_chofer,
+                        observaciones,
+                        es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                        imagen_url, imagen_comprobante_diesel_url,
+                        created_at, updated_at,
+                        choferes(id, primer_nombre, apellido_paterno),
+                        maquinas(id, numero_interno)
+                    """)
+                    .eq("id", record_id)
+                    .single()
+                    .execute()
+                )
+            except APIError as e2:
+                # Si aún así no existe el registro
+                if 'PGRST116' in str(e2) or '0 rows' in str(e2).lower() or 'result contains 0 rows' in str(e2).lower():
+                    raise HTTPException(status_code=404, detail=f"Registro diario con ID {record_id} no encontrado")
+                # Si es otro error, relanzarlo
+                raise
         else:
             # Si es otro error, relanzarlo
             raise

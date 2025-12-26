@@ -46,9 +46,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
             aria-label="Marcar todas las alertas como leídas">
             <ui-icon name="X" size="sm" />
           </button>
-          <button class="btn btn-square btn-ghost btn-xs text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100" type="button">
+          <a
+            routerLink="/configuracion"
+            class="btn btn-square btn-ghost btn-xs text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100 tooltip tooltip-left"
+            data-tip="Configuración"
+            aria-label="Ir a configuración">
             <ui-icon name="Settings" size="sm" />
-          </button>
+          </a>
         </div>
       </div>
 

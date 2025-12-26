@@ -21,7 +21,7 @@ async def resolve_single_alert(
     Endpoint para el botón 'X' o 'Entendido'.
     Marca una alerta específica como 'resuelta'.
     """
-    exito = await alert_service.marcar_como_leida(alert_id)
+    exito = await alert_service.marcar_como_leida(alert_id, current_user)
     
     if not exito:
         raise HTTPException(
