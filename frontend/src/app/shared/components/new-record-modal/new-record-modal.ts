@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { NewRecordModalService, NewRecordFormData } from '../../services/new-record-modal.service';
 import { MachineService } from '../../services/machine.service';
 import { DriverService } from '../../services/driver.service';
+import { AuthService } from '../../services/auth.service';
 import { MachineSelect } from '../../models/machine.models';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
-import { catchError, of } from 'rxjs';
+import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-new-record-modal',
@@ -526,26 +527,43 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   modalService = inject(NewRecordModalService);
   machineService = inject(MachineService);
   driverService = inject(DriverService);
+  authService = inject(AuthService);
   destroyRef = inject(DestroyRef);
   
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
-  // Usar toSignal para cargar datos automáticamente, igual que los otros componentes que funcionan
+  // Cargar datos solo cuando el modal esté visible Y el usuario esté autenticado
   machines = toSignal(
-    this.machineService.getActiveMachines().pipe(
-      catchError((error) => {
-        console.error('Error obteniendo máquinas activas:', error);
-        return of([]);
+    combineLatest([
+      toObservable(this.modalService.isVisible),
+      toObservable(this.authService.currentUser)
+    ]).pipe(
+      filter(([isVisible, user]) => isVisible && !!user),
+      switchMap(() => {
+        return this.machineService.getActiveMachines().pipe(
+          catchError((error) => {
+            console.error('Error obteniendo máquinas activas:', error);
+            return of([]);
+          })
+        );
       })
     ),
     { initialValue: [] }
   );
 
   drivers = toSignal(
-    this.driverService.getActiveDrivers().pipe(
-      catchError((error) => {
-        console.error('Error obteniendo choferes activos:', error);
-        return of([]);
+    combineLatest([
+      toObservable(this.modalService.isVisible),
+      toObservable(this.authService.currentUser)
+    ]).pipe(
+      filter(([isVisible, user]) => isVisible && !!user),
+      switchMap(() => {
+        return this.driverService.getActiveDrivers().pipe(
+          catchError((error) => {
+            console.error('Error obteniendo choferes activos:', error);
+            return of([]);
+          })
+        );
       })
     ),
     { initialValue: [] }
