@@ -705,3 +705,36 @@ def count_weeks_in_month(mes: int, anio: int) -> int:
         next_sunday = fecha_actual + timedelta(days=days_to_sunday)
         fecha_actual = next_sunday + timedelta(days=1)
     return semanas
+#Deshacer Pago
+async def undo_weekly_payment(chofer_id: int, mes: int, anio: int, semana: int):
+    """
+    Elimina el registro de pago de la base de datos.
+    Al hacerlo, el sistema volverá a calcular el monto como 'pendiente' automáticamente
+    la próxima vez que se consulte la lista.
+    """
+    # 1. Ejecutar borrado en Supabase buscando por la clave compuesta única
+    res = (
+        supabase.table("pagos_semanales")
+        .delete()
+        .eq("chofer_id", chofer_id)
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .eq("semana", semana)
+        .execute()
+    )
+
+    # 2. Manejo de errores de BD
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error al eliminar pago: {res.error.message}")
+
+    # 3. Validar si realmente se borró algo (si data está vacío, no existía el pago)
+    if not res.data:
+        raise HTTPException(status_code=404, detail="No se encontró un pago realizado para este chofer en la semana indicada.")
+
+    # NOTA: No borramos la alerta enviada (si existe) para no complicar la lógica buscando IDs de alertas.
+    # El chofer tendrá la notificación antigua, pero en su saldo verá que está pendiente de nuevo.
+    
+    return {
+        "message": "Pago deshecho correctamente. El estado ha vuelto a 'pendiente'.",
+        "deleted_id": res.data[0]["id"]
+    }

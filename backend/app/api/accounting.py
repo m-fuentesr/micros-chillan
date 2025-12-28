@@ -136,3 +136,15 @@ async def get_settlement_history_month_detail(
     """
     require_admin(current_user)
     return await accounting_service.get_history_month_detail(mes, anio)
+@router.delete("/undo")
+async def undo_payment_endpoint(
+    chofer_id: int = Query(..., description="ID del chofer"),
+    mes: int = Query(..., description="Mes del pago"),
+    anio: int = Query(..., description="Año del pago"),
+    semana: int = Query(..., description="Número de semana")
+):
+    """
+    Deshace (elimina) un pago realizado. 
+    Vuelve el estado de la semana a 'pendiente'.
+    """
+    return await accounting_service.undo_weekly_payment(chofer_id, mes, anio, semana)
