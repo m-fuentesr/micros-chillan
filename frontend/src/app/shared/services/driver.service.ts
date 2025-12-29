@@ -13,6 +13,50 @@ export class DriverService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
 
+  private splitNombreCompleto(nombreCompleto: string | null | undefined) {
+    const fallback = {
+      primerNombreFallback: '',
+      segundoNombreFallback: undefined as string | undefined,
+      apellidoPaternoFallback: '',
+      apellidoMaternoFallback: ''
+    };
+
+    if (!nombreCompleto) {
+      return fallback;
+    }
+
+    const parts = nombreCompleto
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!parts.length) {
+      return fallback;
+    }
+
+    const [primerNombre, ...resto] = parts;
+    let segundoNombreFallback = fallback.segundoNombreFallback;
+    let apellidoPaternoFallback = fallback.apellidoPaternoFallback;
+    let apellidoMaternoFallback = fallback.apellidoMaternoFallback;
+
+    if (resto.length === 1) {
+      apellidoPaternoFallback = resto[0];
+    } else if (resto.length >= 2) {
+      apellidoMaternoFallback = resto.pop() ?? '';
+      apellidoPaternoFallback = resto.pop() ?? '';
+      if (resto.length) {
+        segundoNombreFallback = resto.join(' ');
+      }
+    }
+
+    return {
+      primerNombreFallback: primerNombre,
+      segundoNombreFallback,
+      apellidoPaternoFallback,
+      apellidoMaternoFallback
+    };
+  }
+
   // GET /api/drivers - Listar choferes con paginación
   getDrivers(filters?: {
     search?: string;
@@ -223,11 +267,18 @@ export class DriverService {
 
     return this.http.get<BackendDriverDetail>(`${this.apiUrl}/api/drivers/${id}`).pipe(
       map((backendDriver): Driver => {
-        // Usar los campos individuales si están disponibles, sino extraer del nombre_completo
-        const nombre = backendDriver.primer_nombre || '';
-        const segundoNombre = backendDriver.segundo_nombre || undefined;
-        const apellido = backendDriver.apellido_paterno || '';
-        const segundoApellido = backendDriver.apellido_materno || '';
+        // Usar los campos individuales si están disponibles; si no, derivarlos desde nombre_completo
+        const {
+          primerNombreFallback,
+          segundoNombreFallback,
+          apellidoPaternoFallback,
+          apellidoMaternoFallback
+        } = this.splitNombreCompleto(backendDriver.nombre_completo);
+
+        const nombre = backendDriver.primer_nombre || primerNombreFallback;
+        const segundoNombre = backendDriver.segundo_nombre ?? segundoNombreFallback;
+        const apellido = backendDriver.apellido_paterno || apellidoPaternoFallback;
+        const segundoApellido = backendDriver.apellido_materno || apellidoMaternoFallback;
 
         return {
           id: backendDriver.id,

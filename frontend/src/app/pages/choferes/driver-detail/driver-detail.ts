@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DriverService } from '../../../shared/services/driver.service';
 import { MachineService } from '../../../shared/services/machine.service';
@@ -1890,18 +1891,10 @@ export class DriverDetail implements OnInit {
       const d = this.driver();
       if (d) {
         // Si no hay campos individuales, intentar extraer del nombre_completo
-        if (!d.nombre && d.nombre_completo) {
-          const parts = d.nombre_completo.trim().split(/\s+/);
-          this.editNombre.set(parts[0] || '');
-          this.editSegundoNombre.set(parts[1] || '');
-          this.editApellido.set(parts[2] || '');
-          this.editSegundoApellido.set(parts[3] || '');
-        } else {
-          this.editNombre.set(d.nombre || '');
-          this.editSegundoNombre.set(d.segundo_nombre || '');
-          this.editApellido.set(d.apellido || '');
-          this.editSegundoApellido.set(d.segundo_apellido || '');
-        }
+        this.editNombre.set(d.nombre || '');
+        this.editSegundoNombre.set(d.segundo_nombre || '');
+        this.editApellido.set(d.apellido || '');
+        this.editSegundoApellido.set(d.segundo_apellido || '');
         this.editRut.set(d.rut || '');
         this.editTelefono.set(d.telefono || '');
         this.editCorreo.set(d.correo || '');
@@ -2060,12 +2053,17 @@ export class DriverDetail implements OnInit {
 
     this.driverService.deleteDriver(driverId)
       .pipe(
-        catchError((error) => {
+        catchError((error: HttpErrorResponse | any) => {
           console.error('Error al eliminar chofer:', error);
-          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          const isNetworkError = error instanceof HttpErrorResponse && error.status === 0;
+          const detailMessage = error?.error?.detail || error?.error?.message || error?.message;
+          const friendlyMessage = isNetworkError
+            ? 'No se pudo contactar al servidor. Verifica tu conexión e intenta nuevamente.'
+            : detailMessage || 'Ocurrió un error inesperado al eliminar el chofer.';
+
           this.alertModalService.show({
             title: 'Error al Eliminar',
-            message: `Hubo un error al eliminar el chofer: ${errorMessage}. Por favor, intenta nuevamente.`,
+            message: `Hubo un error al eliminar el chofer: ${friendlyMessage}`,
             type: 'error',
             buttonText: 'Entendido'
           });
