@@ -202,7 +202,9 @@ export class DashboardService {
       const records: DailyRecord[] = response.items.map(item => ({
         id: item.registro_id?.toString() || item.chofer?.id?.toString() || '',
         machineId: item.maquina?.numero_interno?.toString() || item.maquina?.id?.toString() || 'N/A',
+        machineIdNum: item.maquina?.id,
         driver: item.chofer?.nombre?.trim() || 'Sin asignar',
+        driverId: item.chofer?.id,
         date: item.fecha,
         status: item.estado?.toUpperCase() || 'EN_ESPERA',
         recaudacion: item.monto_recaudado,

@@ -28,7 +28,9 @@ interface DailyRecordView {
   id: string;
   date: string; // Formateado para display
   machine: string; // maquina_identificador o derivado
+  machineId: number; // maquina_id para navegación
   driver: string; // chofer_nombre
+  driverId: number; // chofer_id para navegación
   status: 'complete' | 'pending' | 'incident' | 'no_worked'; // Mapeo de DailyRecordStatus
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
@@ -313,10 +315,9 @@ interface DailyRecordView {
                     <tbody>
                       @for (record of paginatedRecords(); track record.id; let i = $index) {
                         <tr 
-                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
+                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                           [style.animation-delay.ms]="i * 30"
-                          [style.animation-fill-mode]="'both'"
-                          (click)="onViewRecordDetail(record)">
+                          [style.animation-fill-mode]="'both'">
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
@@ -331,10 +332,16 @@ interface DailyRecordView {
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
                               <ui-icon name="IdCard" size="md" class="text-primary" />
-                              <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
+                              <div 
+                                class="font-bold text-base-content truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.driver"
+                                (click)="onViewDriverDetail(record.driverId, $event)">
                                 {{ record.driver }}
                               </div>
-                              <div class="text-xs text-base-content/50 truncate max-w-[150px] tooltip" [attr.data-tip]="record.machine">
+                              <div 
+                                class="text-xs text-base-content/50 truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.machine"
+                                (click)="onViewMachineDetail(record.machineId, $event)">
                                 {{ record.machine }}
                               </div>
                             </div>
@@ -442,10 +449,9 @@ interface DailyRecordView {
                     <tbody>
                       @for (record of paginatedRecords(); track record.id; let i = $index) {
                         <tr 
-                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
+                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                           [style.animation-delay.ms]="i * 30"
-                          [style.animation-fill-mode]="'both'"
-                          (click)="onViewRecordDetail(record)">
+                          [style.animation-fill-mode]="'both'">
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
@@ -460,10 +466,16 @@ interface DailyRecordView {
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
                               <ui-icon name="IdCard" size="md" class="text-primary" />
-                              <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
+                              <div 
+                                class="font-bold text-base-content truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.driver"
+                                (click)="onViewDriverDetail(record.driverId, $event)">
                                 {{ record.driver }}
                               </div>
-                              <div class="text-xs text-base-content/50 truncate max-w-[150px] tooltip" [attr.data-tip]="record.machine">
+                              <div 
+                                class="text-xs text-base-content/50 truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.machine"
+                                (click)="onViewMachineDetail(record.machineId, $event)">
                                 {{ record.machine }}
                               </div>
                             </div>
@@ -1205,7 +1217,9 @@ export class BitacoraOperaciones implements OnInit {
       id: record.id,
       date: formattedDate,
       machine: record.maquina_identificador || `Máquina ${record.maquina_id}`,
+      machineId: record.maquina_id,
       driver: record.chofer_nombre || '',
+      driverId: record.chofer_id,
       status,
       income: record.recaudado,
       dieselExpense: record.costo_diesel,
@@ -1518,6 +1532,16 @@ export class BitacoraOperaciones implements OnInit {
   
   onViewRecordDetail(record: DailyRecordView): void {
     this.router.navigate(['/registro-diario', record.id]);
+  }
+
+  onViewMachineDetail(machineId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
   }
 }
 

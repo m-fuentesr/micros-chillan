@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, inject, effect, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, effect, ViewChild, ElementRef, AfterViewInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
@@ -36,21 +36,42 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
               </label>
               <select
                 class="select select-bordered w-full"
-                [ngModel]="modalService.formData().item"
-                (ngModelChange)="updateField('item', $event)"
-                name="item"
-                required>
+                [ngModel]="getSelectValue()"
+                (ngModelChange)="onItemChange($event)"
+                [name]="showCustomItem() ? 'item_select' : 'item'"
+                [required]="!showCustomItem()">
                 <option value="">Seleccione un ítem</option>
                 @for (item of modalService.availableItems(); track item) {
                   <option [value]="item">{{ item }}</option>
                 }
+                <option value="__OTRO__">Otro (especificar)</option>
               </select>
-              <label class="label">
-                <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <ui-icon name="Info" size="xs" class="inline mr-1" />
-                  Ingrese el nombre del repuesto o ítem comprado
-                </span>
-              </label>
+              
+              @if (showCustomItem()) {
+                <div class="mt-3">
+                  <input
+                    type="text"
+                    class="input input-bordered w-full"
+                    [ngModel]="modalService.formData().item"
+                    (ngModelChange)="updateField('item', $event)"
+                    name="item"
+                    placeholder="Ej: Batería, Radiador, Amortiguadores, etc."
+                    required>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/50">
+                      <ui-icon name="Info" size="xs" class="inline mr-1" />
+                      Especifique el nombre del ítem o repuesto
+                    </span>
+                  </label>
+                </div>
+              } @else {
+                <label class="label">
+                  <span class="label-text-alt text-base-content/50 hidden sm:block">
+                    <ui-icon name="Info" size="xs" class="inline mr-1" />
+                    Seleccione un ítem de la lista o elija "Otro" para especificar
+                  </span>
+                </label>
+              }
             </div>
 
             <!-- Costo -->
@@ -64,20 +85,22 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
               <div class="relative">
                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-mono">$</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
                   class="input input-bordered w-full pl-8 font-mono"
-                  [ngModel]="modalService.formData().costo"
+                  [ngModel]="modalService.formData().costo === null ? '' : modalService.formData().costo?.toString()"
                   (ngModelChange)="updateCosto($event)"
+                  (input)="onCostoInput($event)"
                   name="costo"
-                  min="0"
-                  step="1"
                   placeholder="0"
+                  maxlength="7"
                   required>
               </div>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
                   <ui-icon name="Info" size="xs" class="inline mr-1" />
-                  Ingrese el costo en pesos chilenos
+                  Ingrese el costo en pesos chilenos (solo números)
                 </span>
               </label>
             </div>
@@ -94,14 +117,16 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
                 type="text"
                 class="input input-bordered w-full font-mono"
                 [ngModel]="modalService.formData().numero_factura"
-                (ngModelChange)="updateField('numero_factura', $event)"
+                (input)="onFacturaInput($event)"
                 name="numero_factura"
                 placeholder="Ej: 001-00001234"
+                maxlength="20"
+                pattern="[0-9\-]+"
                 required>
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
                   <ui-icon name="Info" size="xs" class="inline mr-1" />
-                  Número de factura o boleta para trazabilidad contable/SII
+                  Solo números y guion (-). Máximo 20 caracteres. Ej: 001-00001234
                 </span>
               </label>
             </div>
@@ -200,6 +225,8 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
   modalService = inject(MaintenanceFormModalService);
   
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
+  
+  showCustomItem = signal(false);
 
   ngAfterViewInit(): void {
     // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
@@ -212,18 +239,87 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
           dialog.showModal();
         } else {
           dialog.close();
+          // Resetear el estado del input personalizado cuando se cierra el modal
+          this.showCustomItem.set(false);
         }
       }
     });
+  }
+
+  getSelectValue(): string {
+    const currentItem = this.modalService.formData().item;
+    // Si el item actual no está en la lista de disponibles y no es vacío, significa que es personalizado
+    const availableItems = this.modalService.availableItems();
+    if (currentItem && !availableItems.includes(currentItem)) {
+      return '__OTRO__';
+    }
+    return currentItem || '';
+  }
+
+  onItemChange(value: string): void {
+    if (value === '__OTRO__') {
+      this.showCustomItem.set(true);
+      // Limpiar el item para que el usuario pueda escribir uno nuevo
+      this.updateField('item', '');
+    } else {
+      this.showCustomItem.set(false);
+      this.updateField('item', value);
+    }
   }
 
   updateField(field: 'item' | 'costo' | 'numero_factura' | 'categoria' | 'fecha', value: any): void {
     this.modalService.updateFormData({ [field]: value });
   }
 
+  onCostoInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    // Remover cualquier carácter que no sea un dígito (0-9)
+    let numericValue = input.value.replace(/[^0-9]/g, '');
+    
+    // Limitar a máximo 9,999,999 (7 dígitos)
+    const maxValue = 9999999;
+    if (numericValue && Number(numericValue) > maxValue) {
+      numericValue = maxValue.toString();
+    }
+    
+    // Actualizar el valor del input
+    input.value = numericValue;
+    // Actualizar el modelo
+    this.updateCosto(numericValue);
+  }
+
   updateCosto(value: string | number | null): void {
-    const numValue = value === '' || value === null ? null : Number(value);
+    // Si es string, remover caracteres no numéricos
+    if (typeof value === 'string') {
+      value = value.replace(/[^0-9]/g, '');
+    }
+    
+    // Limitar a máximo 9,999,999
+    const maxValue = 9999999;
+    let numValue = value === '' || value === null || value === undefined ? null : Number(value);
+    
+    if (numValue !== null && numValue > maxValue) {
+      numValue = maxValue;
+    }
+    
     this.modalService.updateFormData({ costo: numValue });
+  }
+
+  onFacturaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    // Solo permitir dígitos (0-9) y guion medio (-)
+    // Remover letras, espacios y otros caracteres especiales
+    let cleanValue = input.value.replace(/[^0-9\-]/g, '');
+    
+    // Limitar a máximo 20 caracteres
+    if (cleanValue.length > 20) {
+      cleanValue = cleanValue.substring(0, 20);
+    }
+    
+    // Actualizar el valor del input
+    input.value = cleanValue;
+    // Actualizar el modelo
+    this.updateField('numero_factura', cleanValue);
   }
 
   onSubmit(event: Event): void {

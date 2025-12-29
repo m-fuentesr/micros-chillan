@@ -32,16 +32,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
               class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter"
-              [class.cursor-pointer]="record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA'"
-              [class.cursor-default]="!(record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA')"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
               [class.bg-warning/5]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.bg-error/5]="record.status === 'INCIDENTE_REPORTADO'"
               [style.animation-delay.ms]="i * 50"
-              [style.animation-fill-mode]="'both'"
-              (click)="onRecordClick(record, $event)">
+              [style.animation-fill-mode]="'both'">
               <div class="card-body p-5">
                 <!-- Header: Avatares y Estado -->
                 <div class="flex items-start gap-4 mb-4">
@@ -67,7 +64,10 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                     <!-- Vista móvil: Layout vertical con elementos separados -->
                     <div class="sm:hidden space-y-2.5">
                       <div class="flex items-start justify-between gap-2">
-                        <h3 class="font-bold text-base text-base-content tooltip" [attr.data-tip]="'Máquina ' + record.machineId">
+                        <h3 
+                          class="font-bold text-base text-base-content tooltip cursor-pointer hover:text-primary transition-colors" 
+                          [attr.data-tip]="'Máquina ' + record.machineId"
+                          (click)="onViewMachineDetail(record.machineIdNum, $event)">
                           Máquina {{ record.machineId }}
                         </h3>
                       </div>
@@ -78,11 +78,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                           </div>
                         </div>
                         <span 
-                          class="text-sm tooltip break-words" 
+                          class="text-sm tooltip break-words cursor-pointer hover:text-primary transition-colors" 
                           [class.text-base-content/70]="record.driver !== 'Sin asignar'"
                           [class.text-base-content/40]="record.driver === 'Sin asignar'"
                           [class.italic]="record.driver === 'Sin asignar'"
-                          [attr.data-tip]="record.driver">
+                          [attr.data-tip]="record.driver"
+                          (click)="onViewDriverDetail(record.driverId, $event)">
                           {{ record.driver }}
                         </span>
                       </div>
@@ -136,7 +137,10 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                     <div class="hidden sm:block">
                       <div class="flex items-start justify-between gap-2 mb-2">
                         <div class="flex-1 min-w-0">
-                          <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="'Máquina ' + record.machineId">
+                          <h3 
+                            class="font-bold text-base text-base-content truncate tooltip cursor-pointer hover:text-primary transition-colors" 
+                            [attr.data-tip]="'Máquina ' + record.machineId"
+                            (click)="onViewMachineDetail(record.machineIdNum, $event)">
                             Máquina {{ record.machineId }}
                           </h3>
                           <div class="flex items-center gap-2 mt-1.5">
@@ -146,11 +150,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                               </div>
                             </div>
                             <span 
-                              class="text-sm truncate tooltip" 
+                              class="text-sm truncate tooltip cursor-pointer hover:text-primary transition-colors" 
                               [class.text-base-content/70]="record.driver !== 'Sin asignar'"
                               [class.text-base-content/40]="record.driver === 'Sin asignar'"
                               [class.italic]="record.driver === 'Sin asignar'"
-                              [attr.data-tip]="record.driver">
+                              [attr.data-tip]="record.driver"
+                              (click)="onViewDriverDetail(record.driverId, $event)">
                               {{ record.driver }}
                             </span>
                           </div>
@@ -275,12 +280,9 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                   [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
                   [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
                   [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
-                  [class.cursor-pointer]="record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA'"
-                  [class.cursor-default]="!(record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA')"
                   class="hover:bg-base-50/50 transition-colors group border-b border-base-100 last:border-0 animate-table-row-enter"
                   [style.animation-delay.ms]="i * 30"
-                  [style.animation-fill-mode]="'both'"
-                  (click)="onRecordClick(record, $event)">
+                  [style.animation-fill-mode]="'both'">
                   <td class="pl-4 xl:pl-6 font-medium min-w-0">
                     <div class="flex items-center gap-2 xl:gap-3">
                       <div class="avatar placeholder shrink-0">
@@ -299,7 +301,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                         </div>
                       </div>
                       <div class="flex flex-col min-w-0">
-                        <span class="font-bold text-base-content truncate tooltip" [attr.data-tip]="'Máquina ' + record.machineId">Máquina {{ record.machineId }}</span>
+                        <span 
+                          class="font-bold text-base-content truncate tooltip cursor-pointer hover:text-primary transition-colors" 
+                          [attr.data-tip]="'Máquina ' + record.machineId"
+                          (click)="onViewMachineDetail(record.machineIdNum, $event)">
+                          Máquina {{ record.machineId }}
+                        </span>
                         <span class="text-[10px] text-base-content/40">Bus</span>
                       </div>
                     </div>
@@ -312,11 +319,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                         </div>
                       </div>
                       <span 
-                        class="font-medium truncate tooltip" 
+                        class="font-medium truncate tooltip cursor-pointer hover:text-primary transition-colors" 
                         [class.text-base-content/80]="record.driver !== 'Sin asignar'"
                         [class.text-base-content/40]="record.driver === 'Sin asignar'"
                         [class.italic]="record.driver === 'Sin asignar'"
-                        [attr.data-tip]="record.driver">
+                        [attr.data-tip]="record.driver"
+                        (click)="onViewDriverDetail(record.driverId, $event)">
                         {{ record.driver }}
                       </span>
                     </div>
@@ -535,6 +543,18 @@ export class DailyRecordsTable {
     if (record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA') {
       this.router.navigate(['/registro-diario', record.id]);
     }
+  }
+
+  onViewMachineDetail(machineId: number | undefined, event: Event): void {
+    if (!machineId) return;
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
+  onViewDriverDetail(driverId: number | undefined, event: Event): void {
+    if (!driverId) return;
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
   }
 
   formatCurrency(value: number): string {

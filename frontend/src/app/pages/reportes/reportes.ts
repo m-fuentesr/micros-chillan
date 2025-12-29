@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, e
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { switchMap, tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
@@ -18,6 +19,7 @@ interface MachineProfit {
   rank: number;
   machine: string;
   machineLabel: string; // Para tabla: "Máquina (numero_interno)"
+  machineId: number; // ID numérico de la máquina para navegación
   patente: string | null; // Para mostrar debajo en gris
   income: number;
   dieselCost: number;
@@ -29,6 +31,7 @@ interface MachineProfit {
 interface DriverProfit {
   rank: number;
   driver: string;
+  driverId: number; // ID numérico del chofer para navegación
   income: number;
   dieselCost: number;
   payment: number;
@@ -404,7 +407,11 @@ interface DriverProfit {
                                   <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
                                 <div class="flex flex-col">
-                                  <strong class="leading-tight">{{ item.machineLabel }}</strong>
+                                  <strong 
+                                    class="leading-tight cursor-pointer hover:text-primary transition-colors" 
+                                    (click)="onViewMachineDetail(item.machineId, $event)">
+                                    {{ item.machineLabel }}
+                                  </strong>
                                   @if (item.patente) {
                                     <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
                                   }
@@ -474,7 +481,12 @@ interface DriverProfit {
                               <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
                             <div class="flex flex-col min-w-0">
-                              <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machineLabel">{{ item.machineLabel }}</h3>
+                              <h3 
+                                class="font-bold text-base sm:text-lg leading-snug truncate cursor-pointer hover:text-primary transition-colors" 
+                                [title]="item.machineLabel"
+                                (click)="onViewMachineDetail(item.machineId, $event)">
+                                {{ item.machineLabel }}
+                              </h3>
                               @if (item.patente) {
                                 <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
                               }
@@ -812,7 +824,11 @@ interface DriverProfit {
                                   <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
                                 <div class="flex flex-col">
-                                  <strong class="leading-tight">{{ item.machineLabel }}</strong>
+                                  <strong 
+                                    class="leading-tight cursor-pointer hover:text-primary transition-colors" 
+                                    (click)="onViewMachineDetail(item.machineId, $event)">
+                                    {{ item.machineLabel }}
+                                  </strong>
                                   @if (item.patente) {
                                     <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
                                   }
@@ -870,7 +886,12 @@ interface DriverProfit {
                               <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
                             <div class="flex flex-col min-w-0">
-                              <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machineLabel">{{ item.machineLabel }}</h3>
+                              <h3 
+                                class="font-bold text-base sm:text-lg leading-snug truncate cursor-pointer hover:text-primary transition-colors" 
+                                [title]="item.machineLabel"
+                                (click)="onViewMachineDetail(item.machineId, $event)">
+                                {{ item.machineLabel }}
+                              </h3>
                               @if (item.patente) {
                                 <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
                               }
@@ -920,56 +941,106 @@ interface DriverProfit {
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                @if (driverLoadingState.isLoading() && !driverSequentialState.canShowKPIs()) {
-                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
-                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
-                    <!-- Background blur effect skeleton -->
-                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
-                    
-                    <!-- Header: Icon + Title (gap-2 para compact) -->
-                    <div class="relative flex items-center gap-2">
-                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
-                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
-                      <div class="flex-1 min-w-0">
-                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL CHOFERES" -->
-                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
-                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Retribución neta" -->
-                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
-                      </div>
-                    </div>
-                    
-                    <!-- Body: Value -->
-                    <div class="relative flex flex-col">
-                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
-                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                <div class="flex flex-wrap items-center gap-3">
+                  @if (driverLoadingState.isLoading() && !driverSequentialState.canShowKPIs()) {
+                    <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                    <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                      <!-- Background blur effect skeleton -->
+                      <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
                       
-                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
-                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
-                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Compensación final" -->
-                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      <!-- Header: Icon + Title (gap-2 para compact) -->
+                      <div class="relative flex items-center gap-2">
+                        <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                        <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                        <div class="flex-1 min-w-0">
+                          <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL CHOFERES" -->
+                          <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                          <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Retribución neta" -->
+                          <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- Body: Value -->
+                      <div class="relative flex flex-col">
+                        <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                        <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                        
+                        <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                        <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                          <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Compensación final" -->
+                          <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                } @else {
-                  <app-kpi-card
-                    title="Ganancia Neta Total Choferes"
-                    [subtitle]="'Retribución neta'"
-                    [value]="(totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
-                    type="info"
-                    size="compact"
-                    badgeText="Compensación final"
-                    [animationDelay]="0"
-                    [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
-                    [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
-                    [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-                    [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                  </app-kpi-card>
-                }
+                    <!-- 🎭 GhostWire Skeleton: Segunda KpiCard -->
+                    <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                      <!-- Background blur effect skeleton -->
+                      <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                      
+                      <!-- Header: Icon + Title (gap-2 para compact) -->
+                      <div class="relative flex items-center gap-2">
+                        <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                        <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                        <div class="flex-1 min-w-0">
+                          <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "TOTAL PAGO CHOFERES" -->
+                          <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                          <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Pago total" -->
+                          <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- Body: Value -->
+                      <div class="relative flex flex-col">
+                        <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                        <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                        
+                        <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                        <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                          <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Total pagado" -->
+                          <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  } @else {
+                    <app-kpi-card
+                      title="Ganancia Neta Total Choferes"
+                      [subtitle]="'Retribución neta'"
+                      [value]="(totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                      type="info"
+                      size="compact"
+                      badgeText="Compensación final"
+                      [animationDelay]="0"
+                      [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
+                      [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
+                      [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                    </app-kpi-card>
+                    <app-kpi-card
+                      title="Total Pago Choferes"
+                      [subtitle]="'Pago total'"
+                      [value]="(totalDriverPayment() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                      type="financial"
+                      size="compact"
+                      badgeText="Total pagado"
+                      [animationDelay]="100"
+                      [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
+                      [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
+                      [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+                      [style.transition-delay]="driverSequentialState.canShowKPIs() ? '100ms' : '0ms'"
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="20" height="12" rx="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M6 12h.01M18 12h.01"/>
+                      </svg>
+                    </app-kpi-card>
+                  }
+                </div>
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
                   <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
@@ -1204,7 +1275,13 @@ interface DriverProfit {
                         @for (item of driverVisible(); track item.rank) {
                           <tr class="hover">
                             <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
-                            <td><strong>{{ item.driver }}</strong></td>
+                            <td>
+                              <strong 
+                                class="cursor-pointer hover:text-primary transition-colors" 
+                                (click)="onViewDriverDetail(item.driverId, $event)">
+                                {{ item.driver }}
+                              </strong>
+                            </td>
                             <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                             <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                             <td class="text-right tabular-nums text-base-content/70">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -1254,7 +1331,12 @@ interface DriverProfit {
                         <div class="flex justify-between items-start mb-3 gap-3">
                           <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
                             <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate mt-2.5 sm:mt-2" [title]="item.driver">{{ item.driver }}</h3>
+                            <h3 
+                              class="font-bold text-base sm:text-lg leading-snug truncate mt-2.5 sm:mt-2 cursor-pointer hover:text-primary transition-colors" 
+                              [title]="item.driver"
+                              (click)="onViewDriverDetail(item.driverId, $event)">
+                              {{ item.driver }}
+                            </h3>
                           </div>
                           <div class="text-right min-w-[120px] sm:min-w-[140px]">
                             <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
@@ -1513,6 +1595,7 @@ export class Reportes implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private globalErrorService = inject(GlobalErrorService);
   private cdr = inject(ChangeDetectorRef);
+  private router = inject(Router);
   
   // Inicializar con valores del mes y año actual calculados una sola vez
   private static getInitialMonth(): number {
@@ -1960,6 +2043,7 @@ export class Reportes implements OnInit {
         machine: machineLabel,
         // Para tabla: mismo formato
         machineLabel: machineLabel,
+        machineId: item.maquina_id,
         patente: item.patente?.trim() || null,
         income: item.ingresos_totales,
         dieselCost: item.costos_diesel,
@@ -2053,6 +2137,7 @@ export class Reportes implements OnInit {
       return {
         machine: machineLabel,
         machineLabel: machineLabel,
+        machineId: item.maquina_id,
         patente: item.patente?.trim() || null,
         income: item.ingresos_totales,
         rank: item.ranking,
@@ -2110,7 +2195,11 @@ export class Reportes implements OnInit {
         {
           label: 'Ingreso Bruto',
           data: data.map((m: { machine: string; income: number }) => m.income),
-          backgroundColor: '#10b981',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#10b981'; // Rojo si es negativo, verde si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -2195,6 +2284,7 @@ export class Reportes implements OnInit {
     return drivers.map((item: DriverProfitabilityResponse) => ({
       rank: item.ranking,
       driver: item.nombre_chofer,
+      driverId: item.chofer_id,
       income: item.ingresos_totales,
       dieselCost: item.costos_diesel,
       payment: item.pago_chofer,
@@ -2251,6 +2341,11 @@ export class Reportes implements OnInit {
     return data.reduce((sum: number, d: DriverProfit) => sum + d.netProfit, 0);
   });
 
+  totalDriverPayment = computed(() => {
+    const data = this.rawDriversData();
+    return data.reduce((sum: number, d: DriverProfit) => sum + d.payment, 0);
+  });
+
   driverChartData = computed<ChartData<'bar'>>(() => {
     const data = this.driversData();
     return {
@@ -2259,7 +2354,11 @@ export class Reportes implements OnInit {
         {
           label: 'Ganancia Neta',
           data: data.map(d => d.netProfit),
-          backgroundColor: '#8b5cf6',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#8b5cf6'; // Rojo si es negativo, púrpura si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -2382,7 +2481,11 @@ export class Reportes implements OnInit {
         {
           label: 'Ganancia Neta',
           data: data.map(m => m.netProfit),
-          backgroundColor: '#2563eb',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#2563eb'; // Rojo si es negativo, azul si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -2783,4 +2886,14 @@ export class Reportes implements OnInit {
       }
     }
   };
+
+  onViewMachineDetail(machineId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
+  }
 }

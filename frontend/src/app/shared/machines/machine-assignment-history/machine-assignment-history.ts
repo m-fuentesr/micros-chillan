@@ -1,5 +1,6 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, computed } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { MachineAssignment } from '../../models/machine-detail.models';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
@@ -98,12 +99,12 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
               <div class="card-body p-5">
                 <!-- Header: Chofer y Estado -->
                 <div class="flex items-start justify-between gap-4 mb-4">
-                  <div class="flex items-center gap-3 flex-1 min-w-0">
+                  <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer group" (click)="onViewDriverDetail(assignment.chofer.id, $event)">
                     <div class="w-10 h-10 shrink-0 flex items-center justify-center">
-                      <ui-icon name="IdCard" size="md" class="text-primary" />
+                      <ui-icon name="IdCard" size="md" class="text-primary group-hover:scale-110 transition-transform" />
                     </div>
                     <div class="flex-1 min-w-0">
-                      <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
+                      <h3 class="font-bold text-base text-base-content group-hover:text-primary transition-colors truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
                         {{ assignment.chofer.nombre_completo }}
                       </h3>
                     </div>
@@ -226,13 +227,13 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
                   [style.animation-fill-mode]="'both'">
                   
                   <td class="pl-6 py-4">
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 cursor-pointer group" (click)="onViewDriverDetail(assignment.chofer.id, $event)">
                       <div class="shrink-0">
-                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
                           <ui-icon name="IdCard" size="sm" class="text-primary" />
                         </div>
                       </div>
-                      <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
+                      <span class="font-medium text-base-content/80 group-hover:text-primary transition-colors truncate tooltip" [attr.data-tip]="assignment.chofer.nombre_completo">
                         {{ assignment.chofer.nombre_completo }}
                       </span>
                     </div>
@@ -483,8 +484,15 @@ export class MachineAssignmentHistory {
     this.pageChange.emit(page);
   }
 
+  private router = inject(Router);
+
   onFilterChange(filter: 'todas' | 'actual' | 'cerradas'): void {
     this.filterChange.emit(filter);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
   }
 
   getInitials(name: string): string {

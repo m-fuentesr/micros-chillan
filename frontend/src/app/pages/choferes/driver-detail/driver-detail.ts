@@ -634,6 +634,21 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                           <!-- Divider -->
                           <div class="divider my-2 opacity-30"></div>
 
+                          <!-- Máquina -->
+                          @if (record.maquina_id && record.maquina_identificador) {
+                            <div class="mb-3">
+                              <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Máquina</div>
+                              <div class="flex items-center gap-2 cursor-pointer group" (click)="onViewMachineDetail(record.maquina_id, $event)">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
+                                  <ui-icon name="BusFront" size="xs" class="text-primary" />
+                                </div>
+                                <span class="font-bold text-base-content group-hover:text-primary transition-colors">
+                                  {{ record.maquina_identificador }}
+                                </span>
+                              </div>
+                            </div>
+                          }
+
                           <!-- Información Financiera -->
                       <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -700,6 +715,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                     <thead class="bg-base-50 border-b border-base-200">
                       <tr>
                         <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[150px]">Máquina</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
@@ -726,6 +742,21 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                               <div class="text-xs text-base-content/50 font-mono">{{ formatDateFull(record.fecha) }}</div>
                             </div>
                           </div>
+                        </td>
+                            
+                        <td class="text-center py-4" (click)="$event.stopPropagation()">
+                          @if (record.maquina_id && record.maquina_identificador) {
+                            <div class="flex items-center justify-center gap-2 cursor-pointer group" (click)="onViewMachineDetail(record.maquina_id, $event)">
+                              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
+                                <ui-icon name="BusFront" size="xs" class="text-primary" />
+                              </div>
+                              <span class="font-bold text-base-content group-hover:text-primary transition-colors tooltip" [attr.data-tip]="record.maquina_identificador">
+                                {{ record.maquina_identificador }}
+                              </span>
+                            </div>
+                          } @else {
+                            <span class="text-base-content/30 italic">—</span>
+                          }
                         </td>
                             
                             <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
@@ -776,7 +807,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                       </tr>
                     } @empty {
                       <tr>
-                            <td colspan="7" class="py-16 sm:py-20">
+                            <td colspan="8" class="py-16 sm:py-20">
                               <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
                                   <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
@@ -795,7 +826,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                       @if (dailyRecords().length > 0 && dailyRecords().length < 5) {
                         @for (i of getEmptyRows(); track i) {
                           <tr class="empty-row-spacer">
-                            <td colspan="7" class="h-20"></td>
+                            <td colspan="8" class="h-20"></td>
                           </tr>
                         }
                       }
@@ -2104,6 +2135,12 @@ export class DriverDetail implements OnInit {
     this.router.navigate(['/registro-diario', record.id]);
   }
 
+  onViewMachineDetail(machineId: number | undefined, event: Event): void {
+    if (!machineId) return;
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
   private parseLocalDate(value: string | null): Date | null {
     if (!value) return null;
     const parts = value.split('-').map(Number);
@@ -2163,7 +2200,9 @@ export class DriverDetail implements OnInit {
             estado,
             recaudado: record.recaudado || 0,
             diesel: record.costo_diesel || 0,
-            tiene_observaciones: record.tiene_observaciones || false
+            tiene_observaciones: record.tiene_observaciones || false,
+            maquina_id: record.maquina_id,
+            maquina_identificador: record.maquina_identificador || `Máquina ${record.maquina_id || 'N/A'}`
           };
         });
 
