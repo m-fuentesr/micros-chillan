@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { MachineAssignment } from '../../models/machine-detail.models';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-machine-assignment-history',
@@ -43,7 +44,7 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
           </div>
           <div class="flex flex-wrap gap-2">
             <button
-              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent shrink-0"
               [class.bg-primary]="activeFilter() === 'todas'"
               [class.text-primary-content]="activeFilter() === 'todas'"
               [class.text-base-content]="activeFilter() === 'todas'"
@@ -55,7 +56,7 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
               Todas
             </button>
             <button
-              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent shrink-0"
               [class.bg-success]="activeFilter() === 'actual'"
               [class.text-success-content]="activeFilter() === 'actual'"
               [class.text-base-content]="activeFilter() === 'actual'"
@@ -67,7 +68,7 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
               Activas
             </button>
             <button
-              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent flex-shrink-0"
+              class="px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 border border-transparent shrink-0"
               [class.bg-base-content/60]="activeFilter() === 'cerradas'"
               [class.text-base-100]="activeFilter() === 'cerradas'"
               [class.text-base-content]="activeFilter() === 'cerradas'"
@@ -436,7 +437,7 @@ export class MachineAssignmentHistory {
   totalPages = input<number>(0);
   isLoading = input<boolean>(false);
   activeFilter = input<'todas' | 'actual' | 'cerradas'>('todas');
-  
+
   filterChange = output<'todas' | 'actual' | 'cerradas'>();
   pageChange = output<number>();
 
@@ -444,39 +445,39 @@ export class MachineAssignmentHistory {
     const total = this.totalPages();
     const current = this.currentPage();
     const pages: number[] = [];
-    
+
     for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
       pages.push(i);
     }
-    
+
     return pages;
   });
-  
+
   startRecord = computed(() => {
     const page = this.currentPage();
     const pageSize = 10;
     return (page - 1) * pageSize + 1;
   });
-  
+
   endRecord = computed(() => {
     const page = this.currentPage();
     const pageSize = 10;
     const total = this.totalAssignments();
     return Math.min(page * pageSize, total);
   });
-  
+
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
       this.pageChange.emit(this.currentPage() - 1);
     }
   }
-  
+
   goToNextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.pageChange.emit(this.currentPage() + 1);
     }
   }
-  
+
   goToPage(page: number): void {
     if (page === this.currentPage()) {
       return;
@@ -504,29 +505,36 @@ export class MachineAssignmentHistory {
     return name.substring(0, 2).toUpperCase();
   }
 
-  formatDate(date: string): string {
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        day: '2-digit', 
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return date;
+  private parseDateInChile(date: string): Date | null {
+    if (!date) return null;
+
+    const { year, month, day } = getDatePartsInChile(date);
+
+    if (!year || !month || !day) {
+      return null;
     }
+    return new Date(year, month - 1, day);
+  }
+
+  formatDate(date: string): string {
+    const parsedDate = this.parseDateInChile(date);
+    if (!parsedDate) return '';
+
+    return parsedDate.toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
   }
 
   formatDateFull(date: string): string {
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
-    }
+    const parsedDate = this.parseDateInChile(date);
+    if (!parsedDate) return '';
+
+    return parsedDate.toLocaleDateString('es-CL', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short'
+    });
   }
 }

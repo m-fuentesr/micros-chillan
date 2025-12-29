@@ -1,5 +1,28 @@
 import { DriverLicenseStatus } from '../models/driver.models';
 
+export function formatLicenseWarningText(days?: number): string {
+  if (days === undefined) {
+    return 'Licencia por vencer';
+  }
+
+  if (days === 0) {
+    return 'Vence hoy';
+  }
+
+  const suffix = days === 1 ? 'día' : 'días';
+  return `Vence en ${days} ${suffix}`;
+}
+
+export function formatLicenseExpiredText(days?: number): string {
+  if (days === undefined) {
+    return 'Licencia vencida';
+  }
+
+  const absDays = Math.abs(days);
+  const suffix = absDays === 1 ? 'día' : 'días';
+  return `Vencida hace ${absDays} ${suffix}`;
+}
+
 export function calculateLicenseStatus(fecha: string | null | undefined, alertThreshold: number = 30): DriverLicenseStatus {
   if (!fecha) {
     return {
@@ -30,7 +53,7 @@ export function calculateLicenseStatus(fecha: string | null | undefined, alertTh
       fecha,
       estado: 'error',
       dias_restantes: Math.abs(diffDays),
-      texto: `Vencida hace ${Math.abs(diffDays)} días`
+      texto: formatLicenseExpiredText(diffDays)
     };
   }
 
@@ -39,7 +62,7 @@ export function calculateLicenseStatus(fecha: string | null | undefined, alertTh
       fecha,
       estado: 'warning',
       dias_restantes: diffDays,
-      texto: `Vence en ${diffDays} días`
+      texto: formatLicenseWarningText(diffDays)
     };
   }
 

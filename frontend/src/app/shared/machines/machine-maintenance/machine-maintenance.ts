@@ -8,6 +8,7 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
 import { KpiCard } from '../../components/kpi-card/kpi-card';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-machine-maintenance',
@@ -66,7 +67,7 @@ import { LoadingSpinner } from '../../components/loading-spinner/loading-spinner
           <div class="sticky top-2 z-20">
             <button
               type="button"
-              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
               (click)="toggleFiltersMobile()"
               [attr.aria-expanded]="showFiltersMobile()">
               <div class="flex items-center gap-2">
@@ -519,48 +520,48 @@ export class MachineMaintenance implements OnInit, OnDestroy {
     const total = this.totalPages();
     const current = this.currentPage();
     const pages: number[] = [];
-    
+
     // Mostrar máximo 5 páginas
     const maxPages = 5;
     let start = Math.max(1, current - Math.floor(maxPages / 2));
     let end = Math.min(total, start + maxPages - 1);
-    
+
     if (end - start < maxPages - 1) {
       start = Math.max(1, end - maxPages + 1);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   });
-  
+
   startRecord = computed(() => {
     const page = this.currentPage();
     const pageSize = 12;
     return (page - 1) * pageSize + 1;
   });
-  
+
   endRecord = computed(() => {
     const page = this.currentPage();
     const pageSize = 12;
     const total = this.totalRecords();
     return Math.min(page * pageSize, total);
   });
-  
+
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
       this.pageChange.emit(this.currentPage() - 1);
     }
   }
-  
+
   goToNextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.pageChange.emit(this.currentPage() + 1);
     }
   }
-  
+
   goToPage(page: number): void {
     if (page === this.currentPage()) {
       return;
@@ -584,7 +585,7 @@ export class MachineMaintenance implements OnInit, OnDestroy {
       { value: 'all', label: 'Todos los repuestos' },
       ...items.map(item => ({ value: item, label: item }))
     ];
-    
+
     return [
       {
         key: 'item',
@@ -602,12 +603,12 @@ export class MachineMaintenance implements OnInit, OnDestroy {
           { value: 'correctivo', label: 'Correctivo' }
         ]
       },
-    {
-      key: 'desde',
-      label: 'Desde',
-      type: 'date',
-      placeholder: 'Seleccionar fecha'
-    },
+      {
+        key: 'desde',
+        label: 'Desde',
+        type: 'date',
+        placeholder: 'Seleccionar fecha'
+      },
       {
         key: 'hasta',
         label: 'Hasta',
@@ -619,24 +620,24 @@ export class MachineMaintenance implements OnInit, OnDestroy {
 
   onFiltersChange(newFilters: Record<string, any>): void {
     const updatedFilters: MaintenanceFilters = {};
-    
+
     // Procesar cada filtro
     if (newFilters['item'] && typeof newFilters['item'] === 'string' && newFilters['item'].trim() && newFilters['item'] !== 'all') {
       updatedFilters.item = newFilters['item'].trim();
     }
-    
+
     if (newFilters['categoria'] && newFilters['categoria'] !== 'all' && newFilters['categoria'] !== '') {
       updatedFilters.categoria = newFilters['categoria'] as 'preventivo' | 'correctivo';
     }
-    
+
     if (newFilters['desde'] && typeof newFilters['desde'] === 'string' && newFilters['desde'].trim()) {
       updatedFilters.desde = newFilters['desde'].trim();
     }
-    
+
     if (newFilters['hasta'] && typeof newFilters['hasta'] === 'string' && newFilters['hasta'].trim()) {
       updatedFilters.hasta = newFilters['hasta'].trim();
     }
-    
+
     this.filterChange.emit(updatedFilters);
   }
 
@@ -668,32 +669,37 @@ export class MachineMaintenance implements OnInit, OnDestroy {
     }).format(value).replace('CLP', '$');
   }
 
-  formatDate(date: string): string {
-    if (!date) return '';
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        day: '2-digit', 
-        month: 'short',
-        year: 'numeric'
-      });
-    } catch {
-      return date;
+  private parseDateInChile(date: string): Date | null {
+    if (!date) return null;
+
+    const { year, month, day } = getDatePartsInChile(date);
+
+    if (!year || !month || !day) {
+      return null;
     }
+    return new Date(year, month - 1, day);
+  }
+
+  formatDate(date: string): string {
+    const parsedDate = this.parseDateInChile(date);
+    if (!parsedDate) return '';
+
+    return parsedDate.toLocaleDateString('es-CL', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
   }
 
   formatDateFull(date: string): string {
-    if (!date) return '';
-    try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { 
-        weekday: 'short',
-        day: '2-digit', 
-        month: 'short'
-      });
-    } catch {
-      return '';
-    }
+    const parsedDate = this.parseDateInChile(date);
+    if (!parsedDate) return '';
+
+    return parsedDate.toLocaleDateString('es-CL', {
+      weekday: 'short',
+      day: '2-digit',
+      month: 'short'
+    });
   }
 
   openDeleteModal(recordId: number): void {

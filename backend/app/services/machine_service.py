@@ -538,9 +538,9 @@ async def list_machines(filters):
 
 
 async def create_machine(data):
-    # ----------------------------------------
-    # 0. Verificar que no exista el número interno
-    # ----------------------------------------
+    # ----------------------------------------------------------
+    # 0. Verificar que no exista el número interno ni la patente
+    # ----------------------------------------------------------
     existe = (
         supabase.table("maquinas")
         .select("id")
@@ -549,7 +549,29 @@ async def create_machine(data):
     )
 
     if existe.data:
-        raise HTTPException(400, "El número de máquina ya está registrado.")
+        raise HTTPException(
+            400, 
+            f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+        )
+    
+    # ----------------------------------------
+    # Normalizar patente (mayúsculas)
+    # ----------------------------------------
+    patente_normalizada = data.patente.strip().upper() if data.patente else None
+    
+    if patente_normalizada:
+        patente_duplicada = (
+            supabase.table("maquinas")
+            .select("id")
+            .ilike("patente", patente_normalizada)
+            .execute()
+        )
+
+        if patente_duplicada.data:
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada} ya está registrada en otra máquina.",
+            )
 
     # ----------------------------------------
     # 1. Insertar máquina
@@ -558,14 +580,27 @@ async def create_machine(data):
         "numero_interno": data.numero_interno,
         "marca": data.marca,
         "anio_fabricacion": data.anio_fabricacion,
-        "patente": data.patente,
+        "patente": patente_normalizada,
         "estado_operativo": data.estado_operativo,
         "descripcion": None,
     }
 
-    res = supabase.table("maquinas").insert(maquina_payload).execute()
+    try:
+        res = supabase.table("maquinas").insert(maquina_payload).execute()
+    except Exception as exc:
+        raise HTTPException(
+            500, f"Error inesperado al crear la máquina: {exc}"
+        ) from exc
 
     if getattr(res, "error", None):
+        error_msg = str(res.error)
+
+        if "patente" in error_msg.lower():
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada or data.patente} ya está registrada en otra máquina.",
+            )
+        
         raise HTTPException(400, f"Error creando máquina: {res.error}")
 
     maquina_id = res.data[0]["id"]
@@ -765,24 +800,77 @@ async def update_machine(machine_id: int, data):
 
     if getattr(m_raw, "error", None):
         raise HTTPException(404, "Máquina no encontrada")
+    
+    # Validar número interno duplicado
+    numero_duplicado = (
+        supabase.table("maquinas")
+        .select("id")
+        .eq("numero_interno", data.numero_interno)
+        .neq("id", machine_id)
+        .execute()
+    )
+
+    if numero_duplicado.data:
+        raise HTTPException(
+            400, 
+            f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+        )
+    
+    # ----------------------------------------
+    # Normalizar patente (mayúsculas)
+    # ----------------------------------------
+    patente_normalizada = data.patente.strip().upper() if data.patente else None
+
+    # Validar patente duplicada
+    if patente_normalizada:
+        patente_duplicada = (
+            supabase.table("maquinas")
+            .select("id")
+            .ilike("patente", patente_normalizada)
+            .neq("id", machine_id)
+            .execute()
+        )
+
+        if patente_duplicada.data:
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada} ya está registrada en otra máquina.",
+            )
 
     # 1. Actualizar datos máquina (Sin cambios)
     update_payload = {
         "numero_interno": data.numero_interno,
-        "patente": data.patente,
+        "patente": patente_normalizada,
         "marca": data.marca,
         "anio_fabricacion": data.anio_fabricacion,
         "estado_operativo": data.estado_operativo,
     }
 
-    upd_res = (
-        supabase.table("maquinas")
-        .update(update_payload)
-        .eq("id", machine_id)
-        .execute()
-    )
-
+    try:
+        upd_res = (
+            supabase.table("maquinas")
+            .update(update_payload)
+            .eq("id", machine_id)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Error inesperado al actualizar la máquina: {exc}") from exc
+    
     if getattr(upd_res, "error", None):
+        error_msg = str(upd_res.error)
+
+        if "patente" in error_msg.lower():
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada or data.patente} ya está registrada en otra máquina.",
+            )
+
+        if "numero_interno" in error_msg.lower():
+            raise HTTPException(
+                400, 
+                f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+            )
+        
         raise HTTPException(400, f"Error actualizando máquina: {upd_res.error}")
 
     # 2. Actualizar documentos

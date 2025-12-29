@@ -15,7 +15,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
   imports: [MachineForm, MachineDocumentationForm, MachineCreateSummary, RouterLink, UiIconComponent],
   template: `
     <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
-    <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
+    <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 border-b-2 border-b-primary/10">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 lg:py-16">
         <!-- Header con borde izquierdo (estilo referencia) -->
         <div class="page-entry-header border-l-4 border-l-primary pl-4 md:pl-6 mb-6">
