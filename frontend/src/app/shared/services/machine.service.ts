@@ -234,15 +234,20 @@ export class MachineService {
 
             documentos[tipo] = fecha;
 
+            const estado = mapEstadoDocumento(doc.estado);
+            const texto =
+              doc.estado === 'vencido'
+                ? tipo === 'revision_tecnica'
+                  ? 'Vencida'
+                  : 'Vencido'
+                : doc.estado === 'por_vencer'
+                  ? 'Por vencer'
+                  : 'Vigente';
+
             documentos_estado[tipo] = {
               fecha,
-              estado: mapEstadoDocumento(doc.estado),
-              texto:
-                doc.estado === 'vencido'
-                  ? 'Vencido'
-                  : doc.estado === 'por_vencer'
-                    ? 'Por vencer'
-                    : 'Al día'
+              estado,
+              texto
             };
           }
 

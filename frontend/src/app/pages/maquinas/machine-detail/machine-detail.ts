@@ -29,7 +29,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
         <!-- Hero Section Premium -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
             <div class="relative">
@@ -58,7 +58,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               <!-- Información de la máquina -->
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
-                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <div class="w-12 h-12 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
                     <ui-icon name="BusFront" size="md" />
                   </div>
                   <div class="min-w-0">
@@ -295,8 +295,14 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Revisión Técnica
                       </p>
-                      @if (!isEditingGeneral() && docStatus().revision_tecnica?.estado === 'error') {
-                        <span class="badge badge-xs badge-error badge-outline">Vencida</span>
+                      @if (!isEditingGeneral() && docStatus().revision_tecnica) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().revision_tecnica?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().revision_tecnica?.estado === 'warning'"
+                          [class.badge-error]="docStatus().revision_tecnica?.estado === 'error'">
+                          {{ docStatus().revision_tecnica?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -333,8 +339,14 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Permiso Circulación
                       </p>
-                      @if (!isEditingGeneral() && docStatus().permiso_circulacion?.estado === 'error') {
-                        <span class="badge badge-xs badge-error badge-outline">Vencido</span>
+                      @if (!isEditingGeneral() && docStatus().permiso_circulacion) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().permiso_circulacion?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().permiso_circulacion?.estado === 'warning'"
+                          [class.badge-error]="docStatus().permiso_circulacion?.estado === 'error'">
+                          {{ docStatus().permiso_circulacion?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -371,8 +383,14 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Seguro SOAP
                       </p>
-                      @if (!isEditingGeneral() && docStatus().seguro_obligatorio?.estado === 'ok') {
-                        <span class="badge badge-xs badge-success badge-outline">Vigente</span>
+                      @if (!isEditingGeneral() && docStatus().seguro_obligatorio) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().seguro_obligatorio?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().seguro_obligatorio?.estado === 'warning'"
+                          [class.badge-error]="docStatus().seguro_obligatorio?.estado === 'error'">
+                          {{ docStatus().seguro_obligatorio?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -393,7 +411,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               
               <!-- Conductor responsable -->
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden h-full animate-card-stagger" [style.animation-delay]="'200ms'">
-                <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                 <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                   @if (machine()!.chofer_actual) {
                     <div class="avatar mb-4">
@@ -548,7 +566,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
           <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
           <div class="space-y-6 lg:space-y-8 animate-fade-in">
             <!-- Hero Section Skeleton -->
-            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
+            <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
               <div class="flex flex-col gap-6">
                 <!-- Header con Botón Volver -->
                 <div class="relative">
@@ -649,7 +667,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               
               <!-- Conductor responsable Skeleton -->
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden h-full">
-                <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                 <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                   <div class="w-24 h-24 skeleton-shimmer rounded-full mb-4"></div>
                   <div class="h-6 w-40 skeleton-shimmer rounded mb-2"></div>
@@ -1121,7 +1139,7 @@ export class MachineDetail implements OnInit {
           const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
           this.alertModalService.show({
             title: 'Error al Guardar',
-            message: `Hubo un error al guardar los cambios de la máquina: ${errorMessage}. Por favor, intenta nuevamente.`,
+            message: `Hubo un error al guardar los cambios de la máquina: ${errorMessage} Por favor, intenta nuevamente.`,
             type: 'error',
             buttonText: 'Entendido'
           });
@@ -1401,10 +1419,23 @@ export class MachineDetail implements OnInit {
         // Recargar los registros para obtener la lista actualizada con paginación
         this.maintenanceCurrentPage.set(1);
         this.loadMaintenanceRecords();
+        this.alertModalService.show({
+          title: 'Mantenimiento registrado',
+          message: 'El registro de mantenimiento de la máquina se guardó correctamente.',
+          type: 'success',
+          buttonText: 'Entendido'
+        });
       },
       error: (error) => {
         console.error('Error al crear mantenimiento:', error);
         // Mostrar error al usuario
+        const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+        this.alertModalService.show({
+          title: 'No se pudo registrar el mantenimiento',
+          message: `Ocurrió un error al guardar el registro de mantenimiento: ${errorMessage}. Por favor, intenta nuevamente.`,
+          type: 'error',
+          buttonText: 'Entendido'
+        });
       }
     });
   }
@@ -1414,10 +1445,24 @@ export class MachineDetail implements OnInit {
       next: () => {
         // Recargar los registros para obtener la lista actualizada con paginación
         this.loadMaintenanceRecords();
+        this.alertModalService.show({
+          title: 'Mantenimiento eliminado',
+          message: 'El registro de mantenimiento se eliminó correctamente.',
+          type: 'success',
+          buttonText: 'Entendido'
+        });
       },
       error: (error) => {
         console.error('Error al eliminar mantenimiento:', error);
         // Mostrar error al usuario
+        const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+
+        this.alertModalService.show({
+          title: 'Error al Eliminar',
+          message: `No se pudo eliminar el mantenimiento: ${errorMessage}. Por favor, intenta nuevamente.`,
+          type: 'error',
+          buttonText: 'Entendido'
+        });
       }
     });
   }
@@ -1448,8 +1493,16 @@ export class MachineDetail implements OnInit {
   formatDocumentDate(date: string | null): string {
     if (!date) return 'Sin fecha';
     try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' });
+      // Normalizar a fecha local para evitar desfasajes por zona horaria
+      const normalizedDate = date.split('T')[0];
+      const [year, month, day] = normalizedDate.split('-').map(Number);
+
+      if (!year || !month || !day) {
+        return date;
+      }
+
+      const localDate = new Date(year, month - 1, day);
+      return localDate.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
       return date;
     }

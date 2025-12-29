@@ -12,7 +12,7 @@ import type { Machine } from '../../../shared/models/machine.models';
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
+import { calculateLicenseStatus, formatLicenseExpiredText, formatLicenseWarningText } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
@@ -28,7 +28,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
     <div class="space-y-6 lg:space-y-8">
       @if (driver()) {
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
         <div class="relative">
@@ -57,7 +57,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
               <!-- Información del chofer -->
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
-                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                  <div class="w-12 h-12 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
                     <ui-icon name="IdCard" size="md" />
                   </div>
                   <div class="min-w-0">
@@ -428,11 +428,11 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
 
             <!-- Máquina Asignada -->
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
-              <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+              <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
 
               <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                 @if (driver()!.maquina_actual) {
-                  <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
+                  <div class="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
                     <ui-icon name="BusFront" size="lg" />
                   </div>
 
@@ -558,7 +558,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                     <div class="sticky top-2 z-20">
                       <button
                         type="button"
-                        class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+                        class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
                         (click)="toggleFiltersMobile()"
                         [attr.aria-expanded]="showFiltersMobile()">
                         <div class="flex items-center gap-2">
@@ -720,7 +720,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-20">OBS.</th>
                         <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
                       </tr>
                     </thead>
@@ -1163,7 +1163,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
           <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
           <div class="space-y-6 lg:space-y-8 animate-fade-in">
             <!-- Hero Section Skeleton -->
-            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
+            <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
               <div class="flex flex-col gap-6">
                 <!-- Header con Botón Volver -->
                 <div class="relative">
@@ -1270,7 +1270,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
 
                 <!-- Máquina Asignada Skeleton -->
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
-                  <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                  <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                   <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                     <div class="w-16 h-16 skeleton-shimmer rounded-2xl mb-4"></div>
                     <div class="h-6 w-32 skeleton-shimmer rounded mb-2"></div>
@@ -1660,7 +1660,7 @@ export class DriverDetail implements OnInit {
           fecha,
           estado: 'error' as const,
           dias_restantes: dias,
-          texto: dias !== undefined ? `Vencida hace ${Math.abs(dias)} días` : 'Licencia vencida'
+          texto: formatLicenseExpiredText(dias)
         };
       }
 
@@ -1669,7 +1669,7 @@ export class DriverDetail implements OnInit {
           fecha,
           estado: 'warning' as const,
           dias_restantes: dias,
-          texto: dias !== undefined ? `Vence en ${dias} días` : 'Licencia por vencer'
+          texto: formatLicenseWarningText(dias)
         };
       }
 

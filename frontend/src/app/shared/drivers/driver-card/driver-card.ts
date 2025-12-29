@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input, computed } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Driver } from '../../models/driver.models';
-import { calculateLicenseStatus } from '../../utils/license.utils';
+import { calculateLicenseStatus, formatLicenseExpiredText, formatLicenseWarningText } from '../../utils/license.utils';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
@@ -19,13 +19,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
       >
         <!-- Banda lateral de estado (estilo carnet) -->
         <div
-          class="w-2 flex-shrink-0 transition-all duration-300 carnet-strip"
+          class="w-2 shrink-0 transition-all duration-300 carnet-strip"
           [class.bg-success-accent]="driver().estado === 'activo'"
           [class.bg-warning-accent]="driver().estado === 'inactivo'"
           aria-hidden="true"
         ></div>
 
-        <div class="card-body p-4 flex flex-col justify-between flex-grow gap-3">
+        <div class="card-body p-4 flex flex-col justify-between grow gap-3">
           <!-- Header: Nombre del conductor + Estado -->
           <div class="flex justify-between items-start border-b border-dashed border-base-300 pb-2">
             <div class="flex flex-col min-w-0 gap-1">
@@ -44,7 +44,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               </span>
             </div>
             <span
-              class="badge badge-sm font-semibold uppercase text-[0.65rem] tracking-wider flex-shrink-0"
+              class="badge badge-sm font-semibold uppercase text-[0.65rem] tracking-wider shrink-0"
                 [class.badge-success]="driver().estado === 'activo'"
                 [class.badge-warning]="driver().estado === 'inactivo'"
               >
@@ -53,14 +53,14 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           </div>
 
           <!-- Contenido principal: Avatar + Datos -->
-          <div class="flex gap-4 flex-grow min-h-0">
+          <div class="flex gap-4 grow min-h-0">
             <!-- Avatar (80x80 = w-20 h-20) -->
-            <div class="w-20 h-20 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
+            <div class="w-20 h-20 rounded-lg bg-base-200 shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
               <ui-icon name="IdCard" size="lg" class="text-primary" />
             </div>
 
             <!-- Datos: Especificaciones -->
-            <div class="flex flex-col justify-between flex-grow min-w-0">
+            <div class="flex flex-col justify-between grow min-w-0">
               <!-- Grilla de especificaciones -->
               <div class="grid grid-cols-2 gap-2">
                 @if (driver().maquina_actual) {
@@ -107,7 +107,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
             <div class="text-[0.7rem] @xs:text-xs font-semibold text-base-content/60 mb-2">
               Estado de Licencia
             </div>
-            <div class="flex flex-wrap gap-2 min-h-[1.75rem]">
+            <div class="flex flex-wrap gap-2 min-h-7">
               <span
                 class="badge badge-outline badge-sm text-[0.7rem] font-medium px-2 py-1 rounded-full"
                 [class.text-success]="licenseStatus().estado === 'ok'"
@@ -117,13 +117,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                 [class.text-error]="licenseStatus().estado === 'error'"
                 [class.border-error-outline]="licenseStatus().estado === 'error'"
               >
-                @if (licenseStatus().estado === 'error') {
-                  VENCIDA
-                } @else if (licenseStatus().estado === 'warning') {
-                  Vence en {{ licenseStatus().dias_restantes }} días
-                } @else {
-                  Vigente
-                }
+                {{ licenseStatus().texto }}
               </span>
             </div>
           </div>
@@ -184,14 +178,16 @@ export class DriverCard {
   licenseStatus = computed(() => {
     const d = this.driver();
     if (d.licencia_estado) {
+      const estado = d.licencia_estado.estado === 'danger' ? 'error' : d.licencia_estado.estado;
+      const dias = d.licencia_estado.dias_restantes;
       return {
         fecha: d.licencia_estado.fecha_vencimiento,
-        estado: d.licencia_estado.estado === 'danger' ? 'error' : d.licencia_estado.estado,
-        dias_restantes: d.licencia_estado.dias_restantes,
-        texto: d.licencia_estado.estado === 'danger'
-          ? `Vencida hace ${Math.abs(d.licencia_estado.dias_restantes ?? 0)} días`
-          : d.licencia_estado.estado === 'warning'
-            ? `Vence en ${d.licencia_estado.dias_restantes ?? ''} días`
+        estado,
+        dias_restantes: dias,
+        texto: estado === 'error'
+          ? formatLicenseExpiredText(dias)
+          : estado === 'warning'
+            ? formatLicenseWarningText(dias)
             : 'Al día'
       };
     }

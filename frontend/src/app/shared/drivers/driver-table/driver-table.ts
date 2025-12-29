@@ -1,7 +1,7 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Driver } from '../../models/driver.models';
-import { calculateLicenseStatus } from '../../utils/license.utils';
+import { calculateLicenseStatus, formatLicenseExpiredText, formatLicenseWarningText } from '../../utils/license.utils';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
@@ -27,11 +27,11 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                 <td class="min-w-[170px] py-4">
                   <div class="flex gap-3 items-center">
                     <!-- Avatar del chofer -->
-                    <div class="w-12 h-12 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center">
+                    <div class="w-12 h-12 rounded-lg bg-base-200 shrink-0 overflow-hidden border border-base-300 flex items-center justify-center">
                       <ui-icon name="IdCard" size="lg" class="text-primary" />
                     </div>
                     <!-- Datos: Nombre y Correo -->
-                    <div class="flex flex-col gap-1 flex-grow min-w-0">
+                    <div class="flex flex-col gap-1 grow min-w-0">
                       <span class="text-sm font-semibold text-base-content truncate tooltip" [attr.data-tip]="driver.nombre_completo">{{ driver.nombre_completo }}</span>
                       <span class="text-xs text-base-content/70 truncate tooltip" [attr.data-tip]="driver.correo">{{ driver.correo }}</span>
                     </div>
@@ -100,14 +100,16 @@ export class DriverTable {
 
   getLicenseStatus(driver: Driver) {
     if (driver.licencia_estado) {
+      const estado = driver.licencia_estado.estado === 'danger' ? 'error' : driver.licencia_estado.estado;
+      const dias = driver.licencia_estado.dias_restantes;
       return {
         fecha: driver.licencia_estado.fecha_vencimiento,
-        estado: driver.licencia_estado.estado === 'danger' ? 'error' : driver.licencia_estado.estado,
-        dias_restantes: driver.licencia_estado.dias_restantes,
-        texto: driver.licencia_estado.estado === 'danger'
-          ? `Vencida hace ${Math.abs(driver.licencia_estado.dias_restantes ?? 0)} días`
-          : driver.licencia_estado.estado === 'warning'
-            ? `Vence en ${driver.licencia_estado.dias_restantes ?? ''} días`
+        estado,
+        dias_restantes: dias,
+        texto: estado === 'error'
+          ? formatLicenseExpiredText(dias)
+          : estado === 'warning'
+            ? formatLicenseWarningText(dias)
             : 'Al día'
       };
     }
