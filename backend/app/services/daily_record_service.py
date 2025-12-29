@@ -18,6 +18,65 @@ from app.utils.helpers import normalize_value
 # Logger para el servicio de registros diarios
 logger = logging.getLogger(__name__)
 
+def _resolve_auditoria_actor_id(current_user: UserInDB) -> int:
+    """
+    Obtiene el ID del actor_auditoria asociado al usuario autenticado.
+
+    - Choferes: prioriza coincidencia por usuario_id y chofer_id, luego cae a chofer_id.
+    - Administradores: coincide por usuario_id.
+    """
+    if current_user.chofer_id:
+        primary = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "chofer")
+            .eq("chofer_id", current_user.chofer_id)
+            .eq("usuario_id", current_user.id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(primary, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {primary.error}")
+
+        if primary.data:
+            return primary.data[0]["id"]
+
+        fallback = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "chofer")
+            .eq("chofer_id", current_user.chofer_id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(fallback, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {fallback.error}")
+
+        data = fallback.data
+    else:
+        admin_res = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "admin")
+            .eq("usuario_id", current_user.id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(admin_res, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {admin_res.error}")
+
+        data = admin_res.data
+
+    if data:
+        return data[0]["id"]
+
+    raise HTTPException(
+        status_code=500,
+        detail="No se encontró actor de auditoría para el usuario actual",
+    )
 
 def _format_timestamp(timestamp) -> Optional[str]:
     """
@@ -121,7 +180,7 @@ async def _create_daily_record_core(
     imagen_comprobante_diesel_url: Optional[str],
     observaciones: Optional[str],
     incidente_critico: bool,
-    creado_por_usuario_id: int,
+    actor_id: int,
     tipo_creador: str,  # "worker" | "admin"
 ):
     # --------------------------------------------------
@@ -259,11 +318,11 @@ async def _create_daily_record_core(
         "campo": "registro",
         "valor_anterior": "-",
         "valor_nuevo": (
-            "Creado por trabajador"
+            "Creado por el trabajador"
             if tipo_creador == "worker"
             else "Creado por administrador"
         ),
-        "modificado_por": creado_por_usuario_id,
+        "actor_id": actor_id,
         "comentario": observaciones_sanitizadas,
     }).execute()
 
@@ -345,7 +404,7 @@ async def create_daily_record(
         imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
         observaciones=payload.observaciones,
         incidente_critico=payload.incidente_critico,
-        creado_por_usuario_id=current_user.id,
+        actor_id=_resolve_auditoria_actor_id(current_user),
         tipo_creador="worker",
     )
 
@@ -368,7 +427,7 @@ async def create_daily_record_admin(
         imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
         observaciones=payload.observaciones,
         incidente_critico=payload.incidente_critico,
-        creado_por_usuario_id=current_user.id,
+        actor_id=_resolve_auditoria_actor_id(current_user),
         tipo_creador="admin",
     )
 
@@ -761,7 +820,7 @@ async def get_daily_record_history(record_id: int):
         supabase.table("registros_diarios_auditoria")
         .select(
             "id, version, campo, valor_anterior, valor_nuevo, fecha_modificacion, "
-            "usuarios(nombre, apellido)"
+            "actor_auditoria(nombre_completo, rol_nombre, tipo_actor)"
         )
         .eq("registro_diario_id", record_id)
         .order("version", desc=True)
@@ -779,16 +838,19 @@ async def get_daily_record_history(record_id: int):
         version = row["version"]
 
         if version not in history:
-            usuario = row.get("usuarios") or {}
-            nombre_usuario = (
-                f"{usuario.get('nombre', '')} {usuario.get('apellido', '')}".strip()
-            )
+            actor = row.get("actor_auditoria") or {}
+            nombre_actor = actor.get("nombre_completo") or "Sistema"
 
             history[version] = {
                 "id": row["id"],
                 "fecha_cambio": row["fecha_modificacion"],
-                "usuario_responsable": nombre_usuario or "Sistema",
-                "tipo_cambio": "Edición",
+                "usuario_responsable": nombre_actor,
+                "actor": {
+                    "nombre_completo": actor.get("nombre_completo"),
+                    "rol": actor.get("rol_nombre"),
+                    "tipo_actor": actor.get("tipo_actor"),
+                },
+                "tipo_cambio": "Creación" if version == 1 else "Edición",
                 "detalles": [],
             }
 
@@ -854,6 +916,7 @@ async def update_daily_record(
         raise HTTPException(status_code=404, detail="Registro diario no encontrado")
 
     original = record_res.data
+    actor_id = _resolve_auditoria_actor_id(current_user)
 
     updates = {}
     auditoria = []
@@ -1014,7 +1077,7 @@ async def update_daily_record(
                 "campo": nombre_campo,  # Usar nombre amigable
                 "valor_anterior": valor_anterior_str,
                 "valor_nuevo": valor_nuevo_str,
-                "modificado_por": current_user.id,
+                "actor_id": actor_id,
                 "comentario": payload.observaciones,
             })
 
@@ -1092,6 +1155,8 @@ async def resolve_incident(
             detail=f"El registro no está en estado de incidente. Estado actual: {original['estado']}"
         )
 
+    actor_id = _resolve_auditoria_actor_id(current_user)
+
     # ----------------------------------------
     # 3. Obtener versión para auditoría
     # ----------------------------------------
@@ -1133,7 +1198,7 @@ async def resolve_incident(
         "campo": "estado",
         "valor_anterior": "incidente_reportado",
         "valor_nuevo": "completo",
-        "modificado_por": current_user.id,
+        "actor_id": actor_id,
         "comentario": "Incidente marcado como resuelto",
     }
 
