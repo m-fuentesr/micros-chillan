@@ -1,6 +1,7 @@
 ﻿from fastapi import HTTPException
 from datetime import date, timedelta, datetime, timezone
 from typing import Optional
+import logging
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
 from app.schemas.daily_record import (
@@ -10,8 +11,12 @@ from app.schemas.daily_record import (
     DailyRecordUpdate
 )
 from app.services import alert_service
+from app.services.alert_service import SEVERIDAD_CRITICA, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
+
+# Logger para el servicio de registros diarios
+logger = logging.getLogger(__name__)
 
 
 def _format_timestamp(timestamp) -> Optional[str]:
@@ -87,6 +92,20 @@ def _map_motivo_inactividad_to_enum(motivo: str) -> str:
     return motivo
 
 
+def _sanitize_observations(observaciones: Optional[str]) -> Optional[str]:
+    """
+    Sanitiza las observaciones para prevenir ataques XSS.
+    Escapa caracteres HTML especiales convirtiéndolos a entidades HTML.
+    """
+    if observaciones is None:
+        return None
+    
+    import html
+    # Escapar caracteres HTML especiales (<, >, &, ", ')
+    sanitized = html.escape(observaciones, quote=True)
+    return sanitized
+
+
 async def _create_daily_record_core(
     *,
     chofer_id: int,
@@ -105,6 +124,15 @@ async def _create_daily_record_core(
     creado_por_usuario_id: int,
     tipo_creador: str,  # "worker" | "admin"
 ):
+    # --------------------------------------------------
+    # 0. Observaciones ya vienen sanitizadas del schema de Pydantic
+    # No es necesario sanitizar nuevamente aquí para evitar doble escape
+    # --------------------------------------------------
+    # Las observaciones ya fueron sanitizadas en el schema de Pydantic
+    # (DailyRecordCreate, DailyRecordCreateAdmin, DailyRecordUpdate)
+    observaciones_sanitizadas = observaciones
+    motivo_no_trabajado_otro_sanitizado = motivo_no_trabajado_otro
+
     # --------------------------------------------------
     # 1. Validar duplicado por chofer + fecha
     # --------------------------------------------------
@@ -170,13 +198,13 @@ async def _create_daily_record_core(
             "estado": "no_trabajado",
             "es_dia_no_trabajado": True,
             "motivo_no_trabajado": motivo_enum,
-            "motivo_no_trabajado_otro": motivo_no_trabajado_otro,
+            "motivo_no_trabajado_otro": motivo_no_trabajado_otro_sanitizado,
             "monto_recaudado": 0,
             "litros_diesel": 0,
             "costo_total_diesel": 0,
             "porcentaje_aplicado": porcentaje,
             "monto_porcentaje_chofer": 0,
-            "observaciones": observaciones,
+            "observaciones": observaciones_sanitizadas,
             "imagen_url": imagen_url,
             "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
         }
@@ -207,7 +235,7 @@ async def _create_daily_record_core(
             "costo_total_diesel": costo_total_diesel,
             "porcentaje_aplicado": porcentaje,
             "monto_porcentaje_chofer": monto_pago,
-            "observaciones": observaciones,
+            "observaciones": observaciones_sanitizadas,
             "imagen_url": imagen_url,
             "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
         }
@@ -236,18 +264,22 @@ async def _create_daily_record_core(
             else "Creado por administrador"
         ),
         "modificado_por": creado_por_usuario_id,
-        "comentario": observaciones,
+        "comentario": observaciones_sanitizadas,
     }).execute()
 
-    # ✅ 6. LÓGICA DE ALERTAS: REGISTRO NORMAL vs INCIDENTE
+    # ✅ 6. LÓGICA DE ALERTAS: REGISTRO NORMAL vs INCIDENTE (TC-29, TC-30)
     # -------------------------------------------------------
+    # TC-30: Fallo silencioso - El registro ya está guardado (línea 242),
+    # por lo que si falla la alerta, el error se captura silenciosamente
+    # y el registro se retorna exitosamente. El fallo del sistema de
+    # notificaciones no debe impedir que el chofer registre su trabajo.
     # Solo generamos alerta si fue creado por el chofer (worker)
     if tipo_creador == "worker":
         try:
             if incidente_critico:
-                # --- CASO 1: INCIDENTE CRÍTICO (ROJO) ---
-                # Preparamos el detalle de la observación
-                detalle = f": {observaciones}" if observaciones else ""
+                # --- CASO 1: INCIDENTE CRÍTICO (ROJO) - TC-29 ---
+                # Preparamos el detalle de la observación (ya sanitizado)
+                detalle = f": {observaciones_sanitizadas}" if observaciones_sanitizadas else ""
                 
                 # Cortamos si es muy largo para no romper la UI de la alerta
                 if len(detalle) > 60:
@@ -255,7 +287,7 @@ async def _create_daily_record_core(
 
                 alert_payload = {
                     "mensaje": f"⚠️ Incidente reportado por {nombre_chofer}{detalle}",
-                    "severidad": "critica",          # ROJO en el panel
+                    "severidad": SEVERIDAD_CRITICA,  # ROJO en el panel (TC-29)
                     "tipo": "incidente_critico",     # Usamos el ENUM existente
                     "origen_tipo": "registro_diario",
                     "origen_id": registro["id"]
@@ -265,18 +297,29 @@ async def _create_daily_record_core(
                 # --- CASO 2: REGISTRO NORMAL (INFORMATIVO) ---
                 alert_payload = {
                     "mensaje": f"Nuevo registro diario de {nombre_chofer}",
-                    "severidad": "informativa",      # AZUL/GRIS en el panel
+                    "severidad": SEVERIDAD_INFO,     # AZUL/GRIS en el panel
                     "tipo": "registro_diario",       # Tipo estándar
                     "origen_tipo": "registro_diario",
                     "origen_id": registro["id"]
                 }
 
-            # Llamada al servicio de alertas
+            # Llamada al servicio de alertas (TC-30: fallo silencioso)
             await alert_service.crear_alerta(**alert_payload)
+            logger.info(
+                f"Alerta creada exitosamente para registro diario ID {registro['id']} "
+                f"(tipo: {alert_payload['tipo']}, severidad: {alert_payload['severidad']})"
+            )
             
         except Exception as e:
-            # No detenemos el proceso si falla la alerta, solo lo logueamos
-            print(f"⚠️ Error enviando alerta de registro: {e}")
+            # TC-30: No detenemos el proceso si falla la alerta
+            # El registro ya está guardado (línea 242), solo logueamos el error
+            # El registro se retorna exitosamente a pesar del fallo de la alerta
+            logger.warning(
+                f"Error enviando alerta de registro (TC-30 - Fallo silencioso): "
+                f"Registro ID {registro.get('id', 'N/A')} guardado exitosamente, "
+                f"pero falló la creación de alerta. Error: {str(e)}",
+                exc_info=True
+            )
 
     return registro
 
@@ -895,6 +938,7 @@ async def update_daily_record(
 
     # Campo común (ambos casos)
     if payload.observaciones is not None:
+        # Las observaciones ya vienen sanitizadas del schema DailyRecordUpdate
         updates["observaciones"] = payload.observaciones
 
     # Actualizar URLs de imágenes si se proporcionan
