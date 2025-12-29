@@ -1,6 +1,6 @@
-import { Component, ChangeDetectionStrategy, input, output, signal, computed, untracked } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed, untracked, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { RouterLink, Router } from '@angular/router';
 import { MachineDailyRecord, MachineDailyRecordFilters } from '../../models/machine-detail.models';
 import { Driver } from '../../models/driver.models';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
@@ -119,14 +119,14 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                 </div>
 
                 <!-- Chofer -->
-                <div class="flex items-center gap-3 mb-4 p-3 bg-base-50 rounded-lg border border-base-200">
+                <div class="flex items-center gap-3 mb-4 p-3 bg-base-50 rounded-lg border border-base-200 cursor-pointer hover:bg-primary/5 hover:border-primary/20 transition-colors group" (click)="onViewDriverDetail(record.chofer_id, $event)">
                   <div class="shrink-0">
-                    <div class="bg-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                    <div class="bg-primary/10 w-10 h-10 rounded-full text-primary flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
                       <ui-icon name="IdCard" size="md" class="text-primary" />
                     </div>
                   </div>
                   <div class="flex-1 min-w-0">
-                    <p class="font-semibold text-sm text-base-content truncate tooltip" [attr.data-tip]="record.chofer">
+                    <p class="font-semibold text-sm text-base-content group-hover:text-primary transition-colors truncate tooltip" [attr.data-tip]="record.chofer">
                       {{ record.chofer }}
                     </p>
                     <p class="text-xs text-base-content/50">Conductor</p>
@@ -215,10 +215,9 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
             <tbody>
               @for (record of filteredRecords(); track record.id; let i = $index) {
                 <tr 
-                  class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
+                  class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                   [style.animation-delay.ms]="i * 30"
-                  [style.animation-fill-mode]="'both'"
-                  (click)="onViewDetail(record)">
+                  [style.animation-fill-mode]="'both'">
                   
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-3">
@@ -234,14 +233,14 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                     </div>
                   </td>
                   
-                  <td class="py-4">
-                    <div class="flex items-center gap-2">
+                  <td class="py-4" (click)="$event.stopPropagation()">
+                    <div class="flex items-center gap-2 cursor-pointer group" (click)="onViewDriverDetail(record.chofer_id, $event)">
                       <div class="shrink-0">
-                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20">
+                        <div class="bg-primary/10 w-8 h-8 rounded-full text-primary flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
                           <ui-icon name="IdCard" size="sm" class="text-primary" />
                         </div>
                       </div>
-                      <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.chofer">
+                      <span class="font-medium text-base-content/80 group-hover:text-primary transition-colors truncate tooltip" [attr.data-tip]="record.chofer">
                         {{ record.chofer }}
                       </span>
                     </div>
@@ -669,8 +668,15 @@ export class MachineDailyRecords {
     this.showFiltersMobile.update(open => !open);
   }
 
+  private router = inject(Router);
+
   onViewDetail(record: MachineDailyRecord): void {
     this.viewDetail.emit(record);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
   }
 
   getInitials(name: string): string {

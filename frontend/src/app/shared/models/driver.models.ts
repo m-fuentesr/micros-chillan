@@ -60,6 +60,8 @@ export interface DriverDailyRecord {
   diesel: number; // Alias de costo_diesel para compatibilidad
   observaciones?: string | null; // Texto opcional mostrado en historial
   tiene_observaciones: boolean; // Booleano que indica si tiene observaciones
+  maquina_id?: number; // ID de la máquina
+  maquina_identificador?: string; // Identificador de la máquina (ej: "Máquina 05")
 }
 
 export interface DriverLiquidation {

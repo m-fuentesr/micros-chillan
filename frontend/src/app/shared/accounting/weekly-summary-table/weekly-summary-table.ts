@@ -90,12 +90,11 @@ import { getDatePartsInChile } from '../../utils/date.utils';
             <thead class="bg-base-100 border-b border-base-200">
               <tr>
                 <th class="pl-6 w-48 text-base-content/70 text-xs font-bold uppercase tracking-wider">Semana</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Recaudado</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Combustible</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Mant.</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Egresos</th>
-                <th class="text-left pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Ganancia Neta</th>
-                <th class="w-10"></th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[140px]">Recaudado</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[120px]">Combustible</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[120px]">Egresos</th>
+                <th class="text-right pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[140px]">Ganancia Neta</th>
+                <th class="w-10 pr-6"></th>
               </tr>
             </thead>
             <tbody>
@@ -115,9 +114,10 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                   
                   <td class="text-right tabular-nums font-medium text-sm">{{ summary.total_recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                  <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.total_egresos | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                  <td class="text-right tabular-nums font-bold text-success pr-12 text-sm">{{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums font-bold pr-12 text-sm" [class.text-success]="summary.ganancia_neta >= 0" [class.text-error]="summary.ganancia_neta < 0">
+                    {{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                  </td>
                   <td class="pr-6 text-right">
                     <ui-icon 
                       name="ChevronDown" 
@@ -129,7 +129,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
 
                 <!-- Fila detalle semana (siempre presente, con animación de altura) -->
                 <tr>
-                  <td colspan="7" class="p-0 border-b border-base-200">
+                  <td colspan="6" class="p-0 border-b border-base-200">
                     <div class="collapse-anim" [class.collapse-expanded]="expandedWeeks().has(summary.semana)">
                       <div class="bg-base-200/30 flex shadow-inner motion-panel" [attr.id]="'week-detail-' + summary.semana">
                         <div class="w-1 bg-primary self-stretch shrink-0"></div>
@@ -138,19 +138,18 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                             <table class="table table-sm w-full">
                               <thead class="bg-base-100 border-b border-base-200">
                                 <tr>
-                                  <th class="pl-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Chofer</th>
-                                  <th class="text-center py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Días</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Recaudado</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Combustible</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Mantenimiento</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Pago Chofer</th>
-                                  <th class="text-right pr-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Contribución</th>
+                                  <th class="pl-6 w-48 text-xs font-bold uppercase tracking-widest text-base-content/70">Chofer</th>
+                                  <th class="text-center py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 min-w-[80px]">Días</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[140px]">Recaudado</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[120px]">Combustible</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
+                                  <th class="text-right pr-12 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[140px]">Contribución</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 @if (isLoadingWeek(summary.semana)) {
                                   <tr>
-                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                    <td colspan="6" class="text-center py-8 text-base-content/50">
                                       <div class="flex items-center justify-center gap-2">
                                         <span class="loading loading-spinner loading-sm"></span>
                                         <span>Cargando detalles...</span>
@@ -159,37 +158,28 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                                   </tr>
                                 } @else if (summary.choferes.length === 0) {
                                   <tr>
-                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                    <td colspan="6" class="text-center py-8 text-base-content/50">
                                       No hay datos de choferes para esta semana
                                     </td>
                                   </tr>
                                 } @else {
                                   @for (chofer of summary.choferes; track chofer.chofer_id) {
                                   <tr class="hover:bg-base-50 border-b border-base-100 last:border-none">
-                                    <td class="font-bold pl-4 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
-                                    <td class="text-center"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
-                                    <td class="text-right tabular-nums text-xs font-medium">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                                    <td class="text-right">
-                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
+                                    <td class="font-bold pl-6 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
+                                    <td class="text-center py-3"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
+                                    <td class="text-right tabular-nums text-xs font-medium py-3">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                                    <td class="text-right py-3">
+                                      <div class="inline-block text-right px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
                                         -{{ chofer.diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </div>
                                     </td>
-                                    <td class="text-right">
-                                      @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
-                                        <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
-                                          -{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                                        </div>
-                                      } @else {
-                                        <span class="text-base-content/30 text-xs">—</span>
-                                      }
-                                    </td>
-                                    <td class="text-right">
-                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs tabular-nums tracking-tight font-bold">
+                                    <td class="text-right py-3">
+                                      <div class="inline-block text-right px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs tabular-nums tracking-tight font-bold">
                                         -{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </div>
                                     </td>
-                                    <td class="text-right pr-4">
-                                      <span class="tabular-nums tracking-tight font-bold text-success text-sm">
+                                    <td class="text-right pr-12 py-3">
+                                      <span class="tabular-nums tracking-tight font-bold text-sm" [class.text-success]="chofer.ganancia_neta >= 0" [class.text-error]="chofer.ganancia_neta < 0">
                                         {{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </span>
                                     </td>
@@ -226,7 +216,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                   </div>
                   <div>
                     <div class="text-xs text-base-content/50 font-medium">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</div>
-                    <div class="font-bold text-success text-lg tabular-nums tracking-tight">
+                    <div class="font-bold text-lg tabular-nums tracking-tight" [class.text-success]="summary.ganancia_neta >= 0" [class.text-error]="summary.ganancia_neta < 0">
                       {{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
                     </div>
                   </div>
@@ -289,13 +279,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                           <span class="whitespace-normal">Pago:</span>
                           <span class="tabular-nums tracking-tight text-right break-words">-{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                         </div>
-                        @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
-                          <div class="flex justify-between items-center gap-2 text-error/70 sm:col-span-2">
-                            <span class="whitespace-normal">Mantenimiento:</span>
-                            <span class="tabular-nums tracking-tight text-right break-words">-{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-                          </div>
-                        }
-                        <div class="flex justify-between items-center gap-2 text-success font-bold sm:col-span-2">
+                        <div class="flex justify-between items-center gap-2 font-bold sm:col-span-2" [class.text-success]="chofer.ganancia_neta >= 0" [class.text-error]="chofer.ganancia_neta < 0">
                           <span class="whitespace-normal">Neto:</span>
                           <span class="tabular-nums tracking-tight text-right break-words">{{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                         </div>
