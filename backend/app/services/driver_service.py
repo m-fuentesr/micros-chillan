@@ -1268,15 +1268,18 @@ async def delete_driver(driver_id: int):
         .execute()
     )
 
-    if getattr(asign_raw, "error", None):
-        raise HTTPException(400, f"Error buscando asignación activa: {asign_raw.error}")
+    asign_error = getattr(asign_raw, "error", None) if asign_raw is not None else None
+    asign_data = getattr(asign_raw, "data", None) if asign_raw is not None else None
 
-    if asign_raw.data:
+    if asign_error:
+        raise HTTPException(400, f"Error buscando asignación activa: {asign_error}")
+
+    if asign_data:
         # Cerrar asignación
         supabase.table("asignaciones_chofer_maquina").update(
             {"fecha_termino": hoy}
-        ).eq("id", asign_raw.data["id"]).execute()
-
+        ).eq("id", asign_data["id"]).execute()
+        
     # ---------------------------------------------------------
     # 4) Eliminar usuario interno (tabla usuarios)
     # ---------------------------------------------------------
