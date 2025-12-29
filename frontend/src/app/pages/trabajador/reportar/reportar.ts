@@ -124,12 +124,17 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   formControlName="fuelLiters"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  [class.border-2]="reportForm.get('fuelLiters')?.invalid && reportForm.get('fuelLiters')?.touched"
+                  [class.border-red-500]="reportForm.get('fuelLiters')?.invalid && reportForm.get('fuelLiters')?.touched"
                   max="999"
                   (keydown)="preventInvalidNumberInput($event)"
                   (input)="limitFieldDigits($event, 'fuelLiters', 3)"
                 />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">L</span>
               </div>
+              @if (reportForm.get('fuelLiters')?.errors?.['fuelCoherence'] && reportForm.get('fuelLiters')?.touched) {
+                <p class="text-xs text-red-600 font-semibold ml-1">{{ reportForm.get('fuelLiters')?.errors?.['fuelCoherence']?.message }}</p>
+              }
             </div>
             <div class="space-y-2">
               <label class="text-xs text-slate-400 font-normal ml-1">Costo total</label>
@@ -139,12 +144,17 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   formControlName="fuelCost"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl pl-8 pr-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  [class.border-2]="reportForm.get('fuelCost')?.invalid && reportForm.get('fuelCost')?.touched"
+                  [class.border-red-500]="reportForm.get('fuelCost')?.invalid && reportForm.get('fuelCost')?.touched"
                   max="999999"
                   (keydown)="preventInvalidNumberInput($event)"
                   (input)="limitFieldDigits($event, 'fuelCost', 6)"
                 />
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">$</span>
               </div>
+              @if (reportForm.get('fuelCost')?.errors?.['fuelCoherence'] && reportForm.get('fuelCost')?.touched) {
+                <p class="text-xs text-red-600 font-semibold ml-1">{{ reportForm.get('fuelCost')?.errors?.['fuelCoherence']?.message }}</p>
+              }
             </div>
           </div>
         </div>
@@ -172,7 +182,13 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           }
 
           <!-- Input de archivo -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
+          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative overflow-hidden" 
+            [class.border-red-500]="showPhotoError() && !imagePreview()"
+            [class.bg-red-50]="showPhotoError() && !imagePreview()"
+            [class.border-slate-300]="!showPhotoError() || imagePreview()"
+            [class.hover:border-blue-400]="!showPhotoError() || imagePreview()"
+            [class.opacity-50]="isSubmitting()" 
+            [class.cursor-not-allowed]="isSubmitting()">
             <input 
               type="file" 
               class="hidden" 
@@ -181,7 +197,10 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               (change)="onEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
+            <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
+              [class.text-slate-400]="!showPhotoError() || imagePreview()"
+              [class.text-red-600]="showPhotoError() && !imagePreview()"
+              [class.hover:text-blue-500]="!showPhotoError() || imagePreview()">
               @if (!imagePreview()) {
                 <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto</span>
@@ -190,6 +209,9 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               }
             </div>
           </label>
+          @if (showPhotoError() && !imagePreview()) {
+            <p class="text-xs text-red-600 font-semibold mt-2 ml-1">Campo requerido</p>
+          }
         </div>
 
         <!-- Comprobante de combustible (opcional) -->
@@ -219,7 +241,15 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           }
 
           <!-- Input de archivo combustible -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
+          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl transition-colors cursor-pointer relative overflow-hidden" 
+            [class.border-amber-400]="shouldShowDieselPhotoWarning()"
+            [class.bg-amber-50]="shouldShowDieselPhotoWarning()"
+            [class.border-slate-300]="!shouldShowDieselPhotoWarning()"
+            [class.bg-slate-50]="!shouldShowDieselPhotoWarning()"
+            [class.hover:bg-slate-100]="!shouldShowDieselPhotoWarning()"
+            [class.hover:border-amber-400]="!shouldShowDieselPhotoWarning() || shouldShowDieselPhotoWarning()"
+            [class.opacity-50]="isSubmitting()" 
+            [class.cursor-not-allowed]="isSubmitting()">
             <input 
               type="file" 
               class="hidden" 
@@ -228,7 +258,10 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               (change)="onDieselEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
+            <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
+              [class.text-slate-400]="!shouldShowDieselPhotoWarning()"
+              [class.text-amber-600]="shouldShowDieselPhotoWarning()"
+              [class.hover:text-amber-500]="true">
               @if (!dieselImagePreview()) {
                 <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
@@ -237,18 +270,18 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               }
             </div>
           </label>
+          @if (shouldShowDieselPhotoWarning()) {
+            <div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <p class="text-xs text-amber-700 font-semibold flex items-center gap-1">
+                <ui-icon name="TriangleAlert" size="xs" />
+                Advertencia: Has declarado gasto de combustible pero no has adjuntado el comprobante. Se recomienda agregarlo.
+              </p>
+            </div>
+          }
         </div>
 
-        <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="600">
-          <textarea
-            placeholder="Observaciones o notas adicionales..."
-            formControlName="notes"
-            class="w-full bg-slate-50 rounded-xl p-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all resize-none"
-            rows="3"
-          ></textarea>
-        </div>
-
-        <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="700">
+        <!-- ¿Hubo incidente? - Movido antes de observaciones (TC-24) -->
+        <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="600">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">
               <ui-icon name="TriangleAlert" size="sm" />
@@ -259,9 +292,31 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
             </div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" formControlName="incident" />
+            <input type="checkbox" class="sr-only peer" formControlName="incident" (change)="onIncidentToggle()" />
             <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
           </label>
+        </div>
+
+        <!-- Observaciones - Ahora después de incidente (TC-24) -->
+        <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="650">
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em] mb-3">
+            <ui-icon name="FileText" size="xs" />
+            Observaciones
+            @if (reportForm.get('incident')?.value) {
+              <span class="text-red-600">*</span>
+            }
+          </label>
+          <textarea
+            placeholder="Observaciones o notas adicionales..."
+            formControlName="notes"
+            class="w-full bg-slate-50 rounded-xl p-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all resize-none"
+            [class.border-2]="reportForm.get('notes')?.invalid && reportForm.get('notes')?.touched"
+            [class.border-red-500]="reportForm.get('notes')?.invalid && reportForm.get('notes')?.touched"
+            rows="3"
+          ></textarea>
+          @if (reportForm.get('notes')?.errors?.['required'] && reportForm.get('notes')?.touched) {
+            <p class="text-xs text-red-600 font-semibold mt-2 ml-1">Las observaciones son obligatorias cuando hay un incidente</p>
+          }
         </div>
 
         <div
@@ -931,6 +986,7 @@ export class Reportar implements OnInit {
   evidenceName = signal('');
   evidenceFile = signal<File | null>(null);
   imagePreview = signal<string | null>(null);
+  showPhotoError = signal(false); // Para mostrar error visual cuando falta la foto
   
   // Imagen del comprobante de diesel (opcional)
   dieselEvidenceName = signal('');
@@ -1035,14 +1091,130 @@ export class Reportar implements OnInit {
     }
   });
 
+  /**
+   * Validador de coherencia de combustible (TC-21)
+   * Si hay litros > 0, entonces costo > 0 es requerido
+   * Si hay costo > 0, entonces litros > 0 es requerido
+   */
+  private fuelCoherenceValidator(fieldType: 'liters' | 'cost') {
+    return (control: any) => {
+      const form = control.parent;
+      if (!form) {
+        return null;
+      }
+
+      const fuelLiters = form.get('fuelLiters')?.value;
+      const fuelCost = form.get('fuelCost')?.value;
+
+      // Si ambos están vacíos, es válido (combustible es opcional)
+      if ((!fuelLiters || fuelLiters === 0) && (!fuelCost || fuelCost === 0)) {
+        return null;
+      }
+
+      // Si hay litros > 0 pero costo es 0 o vacío
+      if (fieldType === 'cost' && fuelLiters > 0 && (!fuelCost || fuelCost === 0)) {
+        return { fuelCoherence: { message: 'Si ingresas litros, debes ingresar el costo total' } };
+      }
+
+      // Si hay costo > 0 pero litros es 0 o vacío
+      if (fieldType === 'liters' && fuelCost > 0 && (!fuelLiters || fuelLiters === 0)) {
+        return { fuelCoherence: { message: 'Si ingresas costo, debes ingresar los litros' } };
+      }
+
+      return null;
+    };
+  }
+
+  private maxDigitsValidator(maxDigits: number) {
+    return (control: any) => {
+      if (!control.value) {
+        return null; // Permitir valores vacíos, el required se encarga de eso
+      }
+      
+      const value = control.value.toString().replace(/[^0-9]/g, '');
+      if (value.length > maxDigits) {
+        return { maxDigits: { maxDigits, actual: value.length } };
+      }
+      
+      return null;
+    };
+  }
+
+  // Effect para actualizar validación de combustible cuando cambian los valores
+  private fuelValidationEffect = effect(() => {
+    // Suscribirse a cambios en fuelLiters y fuelCost para actualizar validación cruzada
+    const fuelLitersControl = this.reportForm.get('fuelLiters');
+    const fuelCostControl = this.reportForm.get('fuelCost');
+    
+    if (fuelLitersControl && fuelCostControl) {
+      // Cuando cambia fuelLiters, actualizar validación de fuelCost
+      fuelLitersControl.valueChanges.subscribe(() => {
+        fuelCostControl.updateValueAndValidity();
+      });
+      
+      // Cuando cambia fuelCost, actualizar validación de fuelLiters
+      fuelCostControl.valueChanges.subscribe(() => {
+        fuelLitersControl.updateValueAndValidity();
+      });
+    }
+  });
+
+  // Effect para validación condicional de observaciones cuando hay incidente (TC-24)
+  private incidentValidationEffect = effect(() => {
+    const incidentControl = this.reportForm.get('incident');
+    const notesControl = this.reportForm.get('notes');
+    
+    if (incidentControl && notesControl) {
+      // Suscribirse a cambios en el toggle de incidente
+      incidentControl.valueChanges.subscribe((hasIncident) => {
+        if (hasIncident) {
+          // Si hay incidente, hacer observaciones obligatorias
+          notesControl.setValidators([Validators.required]);
+        } else {
+          // Si no hay incidente, quitar validación requerida
+          notesControl.clearValidators();
+        }
+        notesControl.updateValueAndValidity();
+      });
+    }
+  });
+
+  // Computed: Detectar si hay gasto de combustible sin foto (TC-23)
+  // Se actualiza inmediatamente cuando el usuario escribe en los campos (en tiempo real)
+  shouldShowDieselPhotoWarning = computed(() => {
+    // Usar los signals reactivos que se actualizan en tiempo real mientras el usuario escribe
+    const fuelCost = this.fuelCostValue();
+    const fuelLiters = this.fuelLitersValue();
+    const hasDieselFile = this.dieselEvidenceFile() !== null;
+    
+    // Mostrar advertencia si hay gasto de combustible pero no hay foto
+    // Se muestra inmediatamente cuando el usuario escribe (sin necesidad de hacer blur)
+    const hasFuelCost = fuelCost !== null && fuelCost > 0;
+    const hasFuelLiters = fuelLiters !== null && fuelLiters > 0;
+    
+    return (hasFuelCost || hasFuelLiters) && !hasDieselFile;
+  });
+
   reportForm = this.fb.group({
     machine: [null as number | null, Validators.required],
     amount: [null as number | null, [Validators.required, this.maxDigitsValidator(6)]],
-    fuelLiters: [null as number | null, this.maxDigitsValidator(3)],
-    fuelCost: [null as number | null, this.maxDigitsValidator(6)],
+    fuelLiters: [null as number | null, [this.maxDigitsValidator(3), this.fuelCoherenceValidator('liters')]],
+    fuelCost: [null as number | null, [this.maxDigitsValidator(6), this.fuelCoherenceValidator('cost')]],
     notes: [''],
     incident: [false],
   });
+
+  // Signals reactivos para los valores de combustible (se actualizan en tiempo real mientras el usuario escribe)
+  // Estos signals se actualizan inmediatamente cuando el usuario escribe en los campos
+  fuelCostValue = toSignal(
+    this.reportForm.get('fuelCost')?.valueChanges ?? of(null),
+    { initialValue: this.reportForm.get('fuelCost')?.value ?? null }
+  );
+  
+  fuelLitersValue = toSignal(
+    this.reportForm.get('fuelLiters')?.valueChanges ?? of(null),
+    { initialValue: this.reportForm.get('fuelLiters')?.value ?? null }
+  );
 
   ngOnInit(): void {
     // Verificar si ya tiene un reporte para hoy
@@ -1085,15 +1257,53 @@ export class Reportar implements OnInit {
   async enviarReporte() {
     if (this.reportForm.invalid) {
       this.reportForm.markAllAsTouched();
+      
+      // Mostrar mensaje específico si hay error de coherencia de combustible
+      const fuelLitersError = this.reportForm.get('fuelLiters')?.errors?.['fuelCoherence'];
+      const fuelCostError = this.reportForm.get('fuelCost')?.errors?.['fuelCoherence'];
+      if (fuelLitersError || fuelCostError) {
+        const errorMessage = fuelLitersError?.message || fuelCostError?.message || 'Los datos de combustible deben ser coherentes';
+        this.showErrorToast(errorMessage);
+        return;
+      }
+      
+      // Mostrar mensaje específico si hay incidente pero no hay observaciones (TC-24)
+      const hasIncident = this.reportForm.get('incident')?.value === true;
+      const notesError = this.reportForm.get('notes')?.errors?.['required'];
+      if (hasIncident && notesError) {
+        this.showErrorToast('Las observaciones son obligatorias cuando hay un incidente');
+        // Scroll suave al campo de observaciones
+        setTimeout(() => {
+          const notesField = document.querySelector('[formcontrolname="notes"]');
+          if (notesField) {
+            notesField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+        return;
+      }
+      
       return;
     }
 
-    // Validar que haya foto del comprobante (obligatorio)
+    // Validar que haya foto del comprobante (obligatorio) - TC-22
     if (!this.evidenceFile()) {
       this.isSubmitting.set(false);
+      this.showPhotoError.set(true); // Mostrar error visual
       this.showErrorToast('Debes adjuntar una foto del comprobante');
+      // Scroll suave al campo de foto para que el usuario vea el error
+      setTimeout(() => {
+        const photoField = document.querySelector('[formcontrolname="photo"]') || 
+                          document.querySelector('label[for*="photo"]') ||
+                          document.querySelector('.reportar-field-enter:nth-of-type(4)');
+        if (photoField) {
+          photoField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
+    
+    // Si hay foto, ocultar el error
+    this.showPhotoError.set(false);
 
     this.isSubmitting.set(true);
     this.reportSuccess.set(false);
@@ -1327,6 +1537,7 @@ export class Reportar implements OnInit {
 
       this.evidenceName.set(file.name);
       this.evidenceFile.set(file);
+      this.showPhotoError.set(false); // Ocultar error cuando se selecciona una foto
 
       // Generar preview inmediato
       this.storageService.createPreviewUrl(file).subscribe({
@@ -1366,6 +1577,26 @@ export class Reportar implements OnInit {
     const inputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
     if (inputs.length > 0) {
       inputs[0].value = '';
+    }
+  }
+
+  // Método para manejar el toggle de incidente (TC-24)
+  onIncidentToggle(): void {
+    const incidentControl = this.reportForm.get('incident');
+    const notesControl = this.reportForm.get('notes');
+    
+    if (!incidentControl || !notesControl) return;
+    
+    const hasIncident = incidentControl.value === true;
+    
+    if (hasIncident) {
+      // Si hay incidente, hacer observaciones obligatorias
+      notesControl.setValidators([Validators.required]);
+      notesControl.updateValueAndValidity();
+    } else {
+      // Si no hay incidente, quitar validación requerida
+      notesControl.clearValidators();
+      notesControl.updateValueAndValidity();
     }
   }
 
@@ -1462,31 +1693,83 @@ export class Reportar implements OnInit {
     this.reportForm.patchValue({ [fieldName]: numericValue }, { emitEvent: false });
   }
 
-  private maxDigitsValidator(maxDigits: number) {
-    return (control: any) => {
-      if (!control.value) {
-        return null; // Permitir valores vacíos, el required se encarga de eso
-      }
-      
-      const value = control.value.toString().replace(/[^0-9]/g, '');
-      if (value.length > maxDigits) {
-        return { maxDigits: { maxDigits, actual: value.length } };
-      }
-      
-      return null;
-    };
-  }
-
   private getErrorMessage(error: any): string {
     // Error de red (sin conexión)
     if (!error.status || error.status === 0) {
       return 'No hay conexión a internet. Verifica tu conexión e intenta nuevamente.';
     }
     
-    // Error 400 (Bad Request) - Validación
+    // Error 422 (Unprocessable Entity) - Validación de Pydantic (TC-27)
+    if (error.status === 422) {
+      const detail = error.error?.detail;
+      
+      // Si detail es un array, son errores de validación de campos específicos
+      if (Array.isArray(detail) && detail.length > 0) {
+        const errorMessages: string[] = [];
+        
+        detail.forEach((err: any) => {
+          const field = err.loc?.[err.loc.length - 1]; // Último elemento del path
+          const message = err.msg || 'Campo inválido';
+          
+          // Mapear nombres de campos técnicos a nombres amigables
+          const fieldNames: Record<string, string> = {
+            'maquina_id': 'Máquina',
+            'fecha': 'Fecha',
+            'monto_recaudado': 'Monto recaudado',
+            'litros_diesel': 'Litros de diésel',
+            'costo_total_diesel': 'Costo de diésel',
+            'imagen_url': 'Foto del comprobante',
+            'imagen_comprobante_diesel_url': 'Foto del comprobante de combustible',
+            'observaciones': 'Observaciones',
+            'incidente_critico': 'Incidente crítico'
+          };
+          
+          const friendlyFieldName = fieldNames[field] || field;
+          
+          // Mensajes más amigables según el tipo de error
+          let friendlyMessage = message;
+          if (message.includes('field required')) {
+            friendlyMessage = `${friendlyFieldName} es obligatorio`;
+          } else if (message.includes('value is not a valid')) {
+            friendlyMessage = `${friendlyFieldName} tiene un formato inválido`;
+          } else if (message.includes('cannot be negative')) {
+            friendlyMessage = `${friendlyFieldName} no puede ser negativo`;
+          } else if (message.includes('greater than')) {
+            friendlyMessage = `${friendlyFieldName} debe ser mayor a 0`;
+          }
+          
+          errorMessages.push(friendlyMessage);
+        });
+        
+        // Si hay múltiples errores, mostrar los primeros 3
+        if (errorMessages.length > 3) {
+          return `${errorMessages.slice(0, 3).join('. ')}. Y ${errorMessages.length - 3} error(es) más.`;
+        }
+        
+        return errorMessages.join('. ');
+      }
+      
+      // Si detail es un string, es un mensaje de error general
+      if (typeof detail === 'string') {
+        return detail;
+      }
+      
+      // Fallback para errores 422 sin formato esperado
+      return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';
+    }
+    
+    // Error 400 (Bad Request) - Validación general
     if (error.status === 400) {
       const errorDetail = error.error?.detail || error.error?.message;
       if (errorDetail) {
+        // Si es un string, mostrarlo directamente
+        if (typeof errorDetail === 'string') {
+          return errorDetail;
+        }
+        // Si es un objeto, intentar extraer el mensaje
+        if (typeof errorDetail === 'object') {
+          return errorDetail.message || JSON.stringify(errorDetail);
+        }
         return `Error de validación: ${errorDetail}`;
       }
       return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';

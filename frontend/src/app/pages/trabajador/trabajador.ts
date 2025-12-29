@@ -170,7 +170,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
                     <span class="text-[10px] font-normal text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{{ activity.time }}</span>
                     @if (activity.type === 'notification') {
                       <button
-                        class="btn btn-xs btn-ghost btn-square text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                        class="btn btn-xs btn-ghost btn-square text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-opacity"
                         type="button"
                         (click)="onDismissNotification(activity.id)"
                         aria-label="Marcar como leída">
@@ -179,7 +179,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
                     }
                     @if (activity.type === 'report' || activity.type === 'warning') {
                       <button
-                        class="btn btn-xs btn-ghost btn-square text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-opacity"
+                        class="btn btn-xs btn-ghost btn-square text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-opacity"
                         type="button"
                         (click)="onHideReport(activity.id)"
                         aria-label="Ocultar reporte">
