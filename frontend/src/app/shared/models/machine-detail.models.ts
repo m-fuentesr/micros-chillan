@@ -15,6 +15,8 @@ export interface MachineDailyRecord {
   chofer_id: number;
   recaudado: number;
   diesel: number; // Alias de costo_diesel para compatibilidad
+  pago_chofer: number;
+  neto?: number;
   observaciones?: string | null;
   estado: DailyRecordStatus;
 }

@@ -49,9 +49,13 @@ def normalize_rut(raw_rut: str) -> str:
     cuerpo = clean[:-1]
     dv = clean[-1]
 
-    cuerpo = cuerpo.zfill(8)
-
-    return f"{cuerpo[:-6]}.{cuerpo[-6:-3]}.{cuerpo[-3:]}-{dv}"
+    # Formatear sin anteponer ceros para mantener el cuerpo real del RUT
+    if len(cuerpo) == 7:
+        return f"{cuerpo[0]}.{cuerpo[1:4]}.{cuerpo[4:]}-{dv}"
+    if len(cuerpo) == 8:
+        return f"{cuerpo[0:2]}.{cuerpo[2:5]}.{cuerpo[5:]}-{dv}"
+    
+    raise ValueError("RUT inválido")
 
 
 def validate_rut(rut: str) -> bool:

@@ -8,7 +8,8 @@ import { AuthService } from '../../services/auth.service';
 import { MachineSelect } from '../../models/machine.models';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
-import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
+import { catchError, of, combineLatest, filter, switchMap, firstValueFrom } from 'rxjs';
+import { calculateLicenseStatus } from '../../utils/license.utils';
 
 @Component({
   selector: 'app-new-record-modal',
@@ -21,7 +22,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
       id="new-record-modal">
       <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-3xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
         <!-- Header -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 shrink-0 animate-fade-in-down">
           <div class="p-3 sm:p-3.5 bg-primary/10 rounded-xl text-primary shrink-0 border border-primary/20 shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
               <path fill-rule="evenodd" d="M5.625 3A2.625 2.625 0 003 5.625v12.75A2.625 2.625 0 005.625 21h12.75A2.625 2.625 0 0021 18.375V9.75a.75.75 0 00-1.5 0v8.625c0 .621-.504 1.125-1.125 1.125H5.625c-.621 0-1.125-.504-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125h8.625a.75.75 0 000-1.5H5.625z" clip-rule="evenodd" />
@@ -39,7 +40,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
           </div>
           <button 
             type="button"
-            class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:bg-base-200 hover:text-base-content flex-shrink-0"
+            class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:bg-base-200 hover:text-base-content shrink-0"
             (click)="modalService.cancel()">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -60,7 +61,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                   <span class="text-xs uppercase tracking-wide text-base-content/60">Estado de Operación</span>
                   <span class="text-sm font-semibold text-base-content">¿La máquina trabajó hoy?</span>
                 </div>
-                <label class="cursor-pointer inline-flex items-center gap-3 flex-shrink-0">
+                <label class="cursor-pointer inline-flex items-center gap-3 shrink-0">
                   <span class="text-xs font-semibold uppercase tracking-[0.08em] transition-colors whitespace-nowrap" 
                     [class.text-base-content/50]="!modalService.formData().noWorkDay" 
                     [class.text-primary]="modalService.formData().noWorkDay">
@@ -166,7 +167,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                 <select 
                   class="select select-bordered w-full h-11 rounded-lg text-sm text-base-content focus:border-primary focus:ring-2 focus:ring-primary/30"
                   [ngModel]="modalService.formData().driver"
-                  (ngModelChange)="updateField('driver', $event)"
+                  (ngModelChange)="handleDriverChange($event)"
                   name="driver"
                   required>
                   <option value="">Seleccionar chofer</option>
@@ -177,6 +178,14 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                     <option [value]="driver.id.toString()">{{ driver.nombre_completo }}</option>
                   }
                 </select>
+                @if (driverLicenseWarning()) {
+                  <div class="flex items-start gap-2 mt-2 text-sm text-warning">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.5a.75.75 0 00-1.5 0v5a.75.75 0 001.5 0v-5zm0 7a.75.75 0 00-1.5 0v1a.75.75 0 001.5 0v-1z" clip-rule="evenodd" />
+                    </svg>
+                    <span class="leading-snug">{{ driverLicenseWarning() }}</span>
+                  </div>
+                }
               </div>
             </div>
 
@@ -264,10 +273,10 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                   <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Foto Comprobante <span class="text-error">*</span>
                   </span>
-                  <span class="label-text-alt text-[10px] font-medium text-base-content/50 bg-error/10 text-error px-2 py-0.5 rounded-md">Obligatorio</span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">Obligatorio</span>
                 </label>
                 <label 
-                  class="group relative block w-full min-h-[140px] sm:min-h-[160px] rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden
+                  class="group relative block w-full min-h-[140px] sm:min-h-40 rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden
                     [&:has(input:focus)]:border-primary [&:has(input:focus)]:ring-2 [&:has(input:focus)]:ring-primary/20 [&:has(input:focus)]:bg-primary/5
                     hover:border-primary/50 hover:bg-base-50/50
                     [&.has-file]:border-primary/30 [&.has-file]:bg-primary/5
@@ -307,7 +316,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                       </div>
                     </div>
                   }
-                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-[160px] p-5 sm:p-6 gap-3.5">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-40 p-5 sm:p-6 gap-3.5">
                     <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center border-2 border-primary/20 group-hover:bg-primary/15 group-hover:border-primary/30 transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
                         <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
@@ -321,7 +330,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                         {{ modalService.formData().receiptPhoto ? fileLabel(modalService.formData().receiptPhoto, '') : 'Subir foto (máx. 5MB)' }}
                       </p>
                       <p class="text-[10px] sm:text-xs text-base-content/50 mt-2 flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 shrink-0">
                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                         </svg>
                         <span>JPG, PNG, WebP</span>
@@ -331,7 +340,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                 </label>
                 @if (fileError('receiptPhoto')) {
                   <p class="text-xs text-error mt-2.5 flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 shrink-0">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                     </svg>
                     <span>La foto comprobante es obligatoria.</span>
@@ -348,7 +357,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                   <span class="label-text-alt text-[10px] font-medium text-base-content/50 bg-base-200 px-2 py-0.5 rounded-md">Opcional</span>
                 </label>
                 <label 
-                  class="group relative block w-full min-h-[140px] sm:min-h-[160px] rounded-lg border-2 border-dashed border-base-300 transition-all duration-200 cursor-pointer overflow-hidden
+                  class="group relative block w-full min-h-[140px] sm:min-h-40 rounded-lg border-2 border-dashed border-base-300 transition-all duration-200 cursor-pointer overflow-hidden
                     [&:has(input:focus)]:border-primary [&:has(input:focus)]:ring-2 [&:has(input:focus)]:ring-primary/20 [&:has(input:focus)]:bg-primary/5
                     hover:border-primary/40 hover:bg-base-50/50
                     [&.has-file]:border-primary/30 [&.has-file]:bg-primary/5
@@ -386,7 +395,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                       </div>
                     </div>
                   }
-                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-[160px] p-5 sm:p-6 gap-3.5">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-40 p-5 sm:p-6 gap-3.5">
                     <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-base-200 text-base-content/70 flex items-center justify-center border-2 border-base-300 group-hover:bg-base-300 group-hover:text-base-content group-hover:border-base-400 transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
                         <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
@@ -400,7 +409,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                         {{ modalService.formData().fuelReceiptPhoto ? fileLabel(modalService.formData().fuelReceiptPhoto, '') : 'Subir comprobante' }}
                       </p>
                       <p class="text-[10px] sm:text-xs text-base-content/50 mt-2 flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 shrink-0">
                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                         </svg>
                         <span>JPG, PNG, WebP</span>
@@ -417,7 +426,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
             <div class="rounded-2xl border border-error/30 bg-error/10 shadow-sm p-4 sm:p-5 md:p-6">
               <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-error shadow-sm border border-error/10 flex-shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-error shadow-sm border border-error/10 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
@@ -427,14 +436,14 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
                     <p class="text-xs text-error/80 italic">Choque, falla mecánica, etc.</p>
                   </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
                   <input 
                     type="checkbox" 
                     class="sr-only peer" 
                     [ngModel]="modalService.formData().hasIncident"
                     (ngModelChange)="updateField('hasIncident', $event)"
                     name="hasIncident" />
-                  <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                 </label>
               </div>
             </div>
@@ -458,7 +467,7 @@ import { catchError, of, combineLatest, filter, switchMap } from 'rxjs';
         </div>
 
         <!-- Footer -->
-        <div class="modal-action sticky bottom-0 left-0 right-0 bg-base-100 mt-2 pt-3 pb-3 border-t border-base-200 flex-shrink-0 justify-end gap-2 sm:gap-3 px-0 sm:px-2">
+        <div class="modal-action sticky bottom-0 left-0 right-0 bg-base-100 mt-2 pt-3 pb-3 border-t border-base-200 shrink-0 justify-end gap-2 sm:gap-3 px-0 sm:px-2">
           <button 
             type="button" 
             class="btn btn-ghost gap-2 font-normal text-base-content hover:bg-base-200 hover:text-base-content"
@@ -569,6 +578,8 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     { initialValue: [] }
   );
 
+  driverLicenseWarning = signal<string | null>(null);
+
   ngAfterViewInit(): void {
     // Convertir signal a Observable para suscribirse (sin paréntesis para pasar el signal, no su valor)
     const isVisible$ = toObservable(this.modalService.isVisible);
@@ -603,6 +614,43 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     this.modalService.updateFormData({ [field]: value });
   }
 
+  async handleDriverChange(value: string): Promise<void> {
+    this.updateField('driver', value);
+    this.driverLicenseWarning.set(null);
+
+    const driverId = Number(value);
+    if (!value || Number.isNaN(driverId)) {
+      return;
+    }
+
+    try {
+      const driver = await firstValueFrom(this.driverService.getDriverById(driverId));
+      const licenseStatus = driver.licencia_estado || calculateLicenseStatus(driver.fecha_venc_licencia);
+
+      const status = licenseStatus?.estado;
+      const days = licenseStatus?.dias_restantes;
+      const isExpired = status === 'danger' || status === 'error' || (typeof days === 'number' && days <= 0);
+
+      if (!licenseStatus || !isExpired) {
+        return;
+      }
+
+      const absDays = typeof days === 'number' ? Math.abs(days) : undefined;
+      const dayLabel = absDays === 1 ? 'día' : 'días';
+      const timing = absDays ? `venció hace ${absDays} ${dayLabel}` : 'tiene la licencia vencida';
+      const expirationDate = 'fecha_vencimiento' in licenseStatus
+        ? licenseStatus.fecha_vencimiento
+        : licenseStatus.fecha || driver.fecha_venc_licencia;
+
+      const message = `La licencia de ${driver.nombre_completo} ${timing}${expirationDate ? ` (el ${expirationDate})` : ''}. Contacta al chofer para gestionar la renovación.`;
+
+      this.driverLicenseWarning.set(message);
+    } catch (error) {
+      console.warn('No se pudo verificar la licencia del chofer', error);
+      this.driverLicenseWarning.set(null);
+    }
+  }
+  
   updateNumberField(field: 'income' | 'dieselExpense' | 'dieselLiters', value: string | number | null): void {
     const numValue = value === '' || value === null ? 0 : Number(value);
     this.modalService.updateFormData({ [field]: numValue });

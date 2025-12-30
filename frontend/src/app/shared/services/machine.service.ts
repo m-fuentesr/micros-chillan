@@ -15,6 +15,8 @@ export class MachineService {
   // Sistema de caché para máquinas activas
   private activeMachinesCache: MachineSelect[] | null = null;
   private activeMachinesCacheTimestamp: number = 0;
+  private activeMachinesWithoutDriverCache: MachineSelect[] | null = null;
+  private activeMachinesWithoutDriverCacheTimestamp: number = 0;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
   // GET /api/machines/active - Listar máquinas operativas (para selector de choferes)
@@ -43,6 +45,30 @@ export class MachineService {
           return of([]);
         })
       );
+  }
+
+  // GET /api/machines/active/without-driver - Listar máquinas operativas sin chofer asignado (para selector en Crear Chofer)
+  getActiveMachinesWithoutDriver(forceRefresh = false): Observable<MachineSelect[]> {
+    const now = Date.now();
+
+    if (!forceRefresh && this.activeMachinesWithoutDriverCache && (now - this.activeMachinesWithoutDriverCacheTimestamp) < this.CACHE_TTL) {
+      return of(this.activeMachinesWithoutDriverCache);
+    }
+
+    return this.http.get<MachineSelect[]>(`${this.apiUrl}/api/machines/active/without-driver`).pipe(
+      tap((machines) => {
+        this.activeMachinesWithoutDriverCache = machines;
+        this.activeMachinesWithoutDriverCacheTimestamp = now;
+      }),
+      shareReplay(1),
+      catchError((error) => {
+        console.error('Error obteniendo máquinas activas sin chofer:', error);
+        if (this.activeMachinesWithoutDriverCache) {
+          return of(this.activeMachinesWithoutDriverCache);
+        }
+        return of([]);
+      })
+    );
   }
 
   // GET /api/machines - Listar máquinas con paginación

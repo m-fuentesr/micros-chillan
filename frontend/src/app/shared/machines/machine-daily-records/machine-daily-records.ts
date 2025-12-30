@@ -18,7 +18,7 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
     } @else {
     <div class="card bg-base-100 shadow-xl border border-base-200/50 rounded-2xl overflow-hidden animate-component-enter">
       <!-- Header Premium con gradiente sutil -->
-      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50 bg-linear-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div class="flex-1 min-w-0">
             <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
@@ -46,7 +46,7 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
           <div class="sticky top-2 z-20">
             <button
               type="button"
-              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+              class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
               (click)="toggleFiltersMobile()"
               [attr.aria-expanded]="showFiltersMobile()">
               <div class="flex items-center gap-2">
@@ -150,6 +150,18 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                       {{ formatCurrency(record.diesel) }}
                     </div>
                   </div>
+                   <div>
+                    <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Pago Chofer</div>
+                    <div class="font-bold text-base tabular-nums text-error">
+                      {{ formatCurrency(record.pago_chofer) }}
+                    </div>
+                  </div>
+                  <div>
+                    <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Neto</div>
+                    <div class="font-bold text-base tabular-nums text-base-content">
+                      {{ formatCurrency(calculateNet(record)) }}
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Observaciones -->
@@ -206,9 +218,10 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                 <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[180px]">Conductor</th>
                 <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
                 <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
+                <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
                 <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
                 <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
+                <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-20">OBS.</th>
                 <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
               </tr>
             </thead>
@@ -249,13 +262,17 @@ import { MachineDailyRecordsSkeleton } from '../machine-daily-records-skeleton/m
                   <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
                     {{ formatCurrency(record.recaudado) }}
                   </td>
-                  
+
                   <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
                     {{ formatCurrency(record.diesel) }}
                   </td>
-                  
+
+                  <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                    {{ formatCurrency(record.pago_chofer) }}
+                  </td>
+
                   <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm">
-                    {{ formatCurrency(record.recaudado - record.diesel) }}
+                    {{ formatCurrency(calculateNet(record)) }}
                   </td>
                   
                   <td class="text-center py-4">
@@ -726,6 +743,13 @@ export class MachineDailyRecords {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value).replace('CLP', '$');
+  }
+
+  calculateNet(record: MachineDailyRecord): number {
+    if (typeof record.neto === 'number') {
+      return record.neto;
+    }
+    return (record.recaudado || 0) - (record.diesel || 0) - (record.pago_chofer || 0);
   }
 
   formatEstado(estado: string): string {

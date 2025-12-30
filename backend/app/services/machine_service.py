@@ -102,6 +102,63 @@ async def get_active_machines():
     return items
 
 
+async def list_active_machines_without_driver():
+    """
+    Retorna las máquinas operativas que no tienen una asignación de chofer activa.
+    Útil para el selector de máquina al crear un chofer.
+    """
+    # 1. Obtener máquinas operativas
+    res = (
+        supabase.table("maquinas")
+        .select("*")
+        .eq("estado_operativo", "operativa")
+        .order("numero_interno", desc=False)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error obteniendo máquinas: {res.error}")
+
+    # 2. Obtener asignaciones activas para excluirlas
+    asignaciones_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("maquina_id")
+        .is_("fecha_termino", None)
+        .execute()
+    )
+
+    if getattr(asignaciones_raw, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error obteniendo asignaciones: {asignaciones_raw.error}")
+
+    maquinas_ocupadas = {a["maquina_id"] for a in asignaciones_raw.data or []}
+
+    items = []
+
+    for m in res.data:
+        if m["id"] in maquinas_ocupadas:
+            continue
+
+        numero = str(m.get("numero_interno", "S/N"))
+        marca = m.get("marca", "") or "Sin Marca"
+        modelo = m.get("modelo") or ""
+        patente = m.get("patente") or "S/P"
+        anio = m.get("anio") or 0
+
+        display_name = f"{numero} - {marca} {modelo} ({patente})"
+
+        items.append({
+            "id": m["id"],
+            "numero_interno": numero,
+            "marca": marca,
+            "modelo": modelo,
+            "anio": anio,
+            "patente": patente,
+            "display_name": display_name
+        })
+
+    return items
+
+
 async def get_summary():
     """
     Devuelve:

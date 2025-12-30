@@ -34,6 +34,8 @@ interface DailyRecordView {
   status: 'complete' | 'pending' | 'incident' | 'no_worked'; // Mapeo de DailyRecordStatus
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
+  driverPayment: number; // pago_chofer
+  net: number; // recaudado - diesel - pago_chofer
   hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
 }
 
@@ -44,7 +46,7 @@ interface DailyRecordView {
   template: `
     <div class="space-y-6 relative">
         <!-- Hero Section Premium - Siempre visible primero -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -89,7 +91,7 @@ interface DailyRecordView {
                   <div class="skeleton-shimmer rounded leading-tight h-6 sm:h-7 md:h-8 lg:h-9 pl-[52px] w-32 sm:w-36 md:w-40 lg:w-44"></div>
                   
                   <!-- Footer: Badge - Mismas clases exactas del componente default -->
-                  <div class="flex items-center mt-2 min-h-[24px] pl-[52px]">
+                  <div class="flex items-center mt-2 min-h-6 pl-[52px]">
                     <!-- Badge: text-[10px] para default -->
                     <div class="skeleton-shimmer rounded-full h-2.5 w-24 sm:w-28"></div>
                   </div>
@@ -250,7 +252,7 @@ interface DailyRecordView {
                 <div class="sticky top-2 z-20">
                   <button
                     type="button"
-                    class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+                    class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
                     (click)="toggleFiltersMobile()"
                     [attr.aria-expanded]="showFiltersMobile()">
                     <div class="flex items-center gap-2">
@@ -304,10 +306,11 @@ interface DailyRecordView {
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[180px]">Conductor</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px]">Recaudado</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Pago Chofer</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[90px] hidden xl:table-cell">OBS.</th>
-                        <th class="py-4 pr-4 lg:pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[96px] lg:min-w-[120px] whitespace-normal leading-4">
+                        <th class="py-4 pr-4 lg:pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-24 lg:min-w-[120px] whitespace-normal leading-4">
                           Acciones
                         </th>
                       </tr>
@@ -352,8 +355,11 @@ interface DailyRecordView {
                           <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm hidden xl:table-cell">
                             {{ record.dieselExpense > 0 ? formatCurrency(record.dieselExpense) : '-' }}
                           </td>
+                          <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm hidden xl:table-cell">
+                            {{ record.driverPayment > 0 ? formatCurrency(record.driverPayment) : '-' }}
+                          </td>
                           <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm hidden xl:table-cell">
-                            {{ formatCurrency(record.income - record.dieselExpense) }}
+                            {{ formatCurrency(record.income - record.dieselExpense - record.driverPayment) }}
                           </td>
                           <td class="text-center py-4">
                             @if (record.status === 'complete') {
@@ -397,7 +403,7 @@ interface DailyRecordView {
                           <td class="pr-4 lg:pr-6 text-right py-4" (click)="$event.stopPropagation()">
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-[44px]">
+                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-11">
                               <ui-icon name="Eye" size="sm" />
                               <span class="hidden lg:inline">Ver</span>
                             </a>
@@ -442,6 +448,7 @@ interface DailyRecordView {
                         <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[200px]">Conductor</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
                       </tr>
@@ -482,6 +489,9 @@ interface DailyRecordView {
                           </td>
                           <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
                             {{ formatCurrency(record.income) }}
+                          </td>
+                          <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                            {{ record.driverPayment > 0 ? formatCurrency(record.driverPayment) : '-' }}
                           </td>
                           <td class="text-center py-4">
                             @if (record.status === 'complete') {
@@ -591,12 +601,12 @@ interface DailyRecordView {
                         </div>
                         <div class="flex items-center gap-2">
                           <div class="avatar placeholder shrink-0">
-                            <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                            <div class="bg-linear-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
                               <ui-icon name="IdCard" size="sm" />
                             </div>
                           </div>
                           <span 
-                            class="text-sm tooltip break-words" 
+                            class="text-sm tooltip wrap-break-word" 
                             [class.text-base-content/70]="record.driver !== 'Sin asignar'"
                             [class.text-base-content/40]="record.driver === 'Sin asignar'"
                             [class.italic]="record.driver === 'Sin asignar'"
@@ -661,7 +671,7 @@ interface DailyRecordView {
                   <div class="mt-2">
                     <a 
                       [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-sm h-11 min-h-[44px] w-full rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
+                      class="btn btn-sm h-11 min-h-11 w-full rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
                       [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -1223,6 +1233,8 @@ export class BitacoraOperaciones implements OnInit {
       status,
       income: record.recaudado,
       dieselExpense: record.costo_diesel,
+      driverPayment: record.pago_chofer ?? 0,
+      net: record.neto ?? (record.recaudado - record.costo_diesel - (record.pago_chofer ?? 0)),
       hasIncident: record.es_emergencia || record.estado === 'INCIDENTE_REPORTADO'
     };
   }

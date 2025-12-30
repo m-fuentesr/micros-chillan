@@ -1302,6 +1302,8 @@ export class MachineDetail implements OnInit {
           chofer_id: record.chofer_id,
           recaudado: record.recaudado || 0,
           diesel: record.costo_diesel || 0,
+          pago_chofer: record.pago_chofer || 0,
+          neto: record.neto,
           observaciones: record.observaciones || null,
           estado: record.estado
         }));

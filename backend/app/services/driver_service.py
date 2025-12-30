@@ -896,7 +896,7 @@ async def create_driver(data: DriverCreate):
     if existing.data:
         raise HTTPException(
             status_code=400,
-            detail="Ya existe un usuario registrado con ese correo.",
+            detail="Ya existe un usuario registrado con ese correo electrónico.",
         )
 
     # Verificar si el correo ya existe en Supabase Auth para retornar
@@ -906,7 +906,7 @@ async def create_driver(data: DriverCreate):
         if any(u.email and u.email.lower() == email for u in getattr(listado_auth, "users", [])):
             raise HTTPException(
                 status_code=400,
-                detail="Ya existe un usuario en Supabase Auth con este correo.",
+                detail="Ya existe un usuario en la base de datos con este correo.",
             )
     except HTTPException:
         # Reenviar directamente la excepción generada arriba
