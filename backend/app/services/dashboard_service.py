@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 from fastapi import HTTPException
 
 from app.db.supabase_client import supabase
+from app.utils.dates import get_today_in_chile
 from app.schemas.dashboard import (
     DashboardFleetKpi,
     DashboardKpis,
@@ -20,7 +21,7 @@ from app.schemas.dashboard import (
 async def get_today_overview() -> DashboardResponse:
     """Obtiene datos agregados del dashboard para la fecha actual."""
 
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_iso = hoy.isoformat()
 
     registros_res = (
@@ -157,7 +158,7 @@ async def get_today_overview() -> DashboardResponse:
 async def get_today_daily_records() -> DashboardDailyRecords:
     """Lista registros diarios (o faltantes) para todas las máquinas activas del día."""
 
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_iso = hoy.isoformat()
 
     # Máquinas activas
