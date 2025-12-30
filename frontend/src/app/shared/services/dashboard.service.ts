@@ -177,6 +177,13 @@ export class DashboardService {
       )
       .subscribe({
         next: (data) => {
+          // Debug: Verificar qué datos estamos recibiendo del backend
+          console.log('📊 Dashboard Data recibido:', {
+            kpis: data?.kpis,
+            ganancia_neta: data?.kpis?.ganancia_neta,
+            recaudacion_total: data?.kpis?.recaudacion_total,
+            tipo_ganancia_neta: typeof data?.kpis?.ganancia_neta
+          });
           this._dashboardData.set(data);
           this._connectionError.set(null);
         },
@@ -253,9 +260,12 @@ export class DashboardService {
       return;
     }
     
-    // Evitar suscripciones duplicadas
+    // Evitar suscripciones duplicadas, pero siempre recargar datos al entrar
     if (this.realtimeChannel) {
-      console.log('Suscripción Realtime ya está activa');
+      console.log('Suscripción Realtime ya está activa, recargando datos...');
+      // Aunque la suscripción ya esté activa, recargar los datos al volver a la página
+      this.fetchOverview();
+      this.fetchDailyRecords();
       return;
     }
 

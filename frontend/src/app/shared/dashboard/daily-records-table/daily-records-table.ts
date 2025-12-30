@@ -520,12 +520,33 @@ export class DailyRecordsTable {
 
   filteredRecords = computed(() => {
     const recs = this.records();
+    let filtered = recs;
+    
+    // Aplicar filtro de pendientes si está activo
     if (this.showOnlyPending()) {
-      return recs.filter(r => 
+      filtered = filtered.filter(r => 
         r.status === 'PENDIENTE_TRABAJADOR' || r.status === 'INCIDENTE_REPORTADO'
       );
     }
-    return recs;
+    
+    // Ordenar: primero las máquinas con conductor asignado, luego las sin conductor
+    return filtered.sort((a, b) => {
+      const aSinConductor = a.driver === 'Sin asignar';
+      const bSinConductor = b.driver === 'Sin asignar';
+      
+      // Si ambos tienen o no tienen conductor, mantener el orden original
+      if (aSinConductor === bSinConductor) {
+        return 0;
+      }
+      
+      // Si 'a' no tiene conductor y 'b' sí, 'a' va al final
+      if (aSinConductor && !bSinConductor) {
+        return 1;
+      }
+      
+      // Si 'a' tiene conductor y 'b' no, 'a' va primero
+      return -1;
+    });
   });
 
   onToggleFilter(): void {

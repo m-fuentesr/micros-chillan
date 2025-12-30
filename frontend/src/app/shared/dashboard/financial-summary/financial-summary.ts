@@ -139,6 +139,13 @@ export class FinancialSummary implements OnInit {
     const data = this.summaryData();
     const labels = data.map(item => item.machineId);
 
+    // Determinar colores dinámicamente según si la ganancia es positiva o negativa
+    const gananciaNetaColors = data.map(item => {
+      return item.net >= 0 
+        ? { bg: 'rgba(16, 185, 129, 0.9)', border: 'rgba(16, 185, 129, 1)' } // Verde para positivo
+        : { bg: 'rgba(239, 68, 68, 0.9)', border: 'rgba(239, 68, 68, 1)' }; // Rojo para negativo
+    });
+
     return {
       labels,
       datasets: [
@@ -162,8 +169,8 @@ export class FinancialSummary implements OnInit {
           type: 'bar' as const,
           label: 'Ganancia Neta',
           data: data.map(item => item.net),
-          backgroundColor: 'rgba(16, 185, 129, 0.9)',
-          borderColor: 'rgba(16, 185, 129, 1)',
+          backgroundColor: gananciaNetaColors.map(c => c.bg),
+          borderColor: gananciaNetaColors.map(c => c.border),
           borderWidth: 0,
           borderRadius: 10,
           borderSkipped: false,

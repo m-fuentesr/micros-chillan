@@ -62,6 +62,18 @@ export function getTodayInChile(): { year: number; month: number; day: number } 
 }
 
 /**
+ * Obtiene la fecha de hoy en formato YYYY-MM-DD en zona horaria de Chile
+ * Útil para inputs de tipo date que necesitan la fecha local sin conversión UTC
+ */
+export function getTodayStringInChile(): string {
+  const today = getTodayInChile();
+  const year = today.year;
+  const month = String(today.month).padStart(2, '0');
+  const day = String(today.day).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Obtiene la fecha de ayer en zona horaria de Chile (solo fecha, sin hora)
  */
 export function getYesterdayInChile(): { year: number; month: number; day: number } {

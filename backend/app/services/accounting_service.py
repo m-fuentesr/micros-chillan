@@ -332,16 +332,27 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
     # 4. Si es última semana, sumar historial previo
     acumulados_map = {}
     if es_ultima_semana:
+        # Consultar todos los pagos del mes (excepto la semana actual) que tengan total_pagado > 0
         res_previos = (
             supabase.table("pagos_semanales")
-            .select("chofer_id, total_pagado")
+            .select("chofer_id, total_pagado, semana")
             .eq("mes", mes)
             .eq("anio", anio)
-            .neq("semana", semana) 
+            .neq("semana", semana)
+            .gt("total_pagado", 0)  # Solo considerar pagos con monto > 0
             .execute()
         )
-        for p in res_previos.data:
-            acumulados_map[p["chofer_id"]] = acumulados_map.get(p["chofer_id"], 0) + p["total_pagado"]
+        # Debug: Log para verificar qué pagos se están encontrando
+        if res_previos.data:
+            print(f"🔍 Acumulados encontrados para mes {mes}/{anio} (excluyendo semana {semana}): {len(res_previos.data)} pagos")
+            for p in res_previos.data:
+                chofer_id = p["chofer_id"]
+                total_pagado = p.get("total_pagado", 0) or 0
+                semana_pago = p.get("semana", "?")
+                acumulados_map[chofer_id] = acumulados_map.get(chofer_id, 0) + total_pagado
+                print(f"  - Chofer {chofer_id}, Semana {semana_pago}: ${total_pagado:,} -> Acumulado: ${acumulados_map[chofer_id]:,}")
+        else:
+            print(f"⚠️ No se encontraron pagos previos para mes {mes}/{anio} (excluyendo semana {semana})")
 
     resultados = []
     
@@ -431,7 +442,31 @@ async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: in
     }
 
     # Guardamos el pago en la BD
-    res = supabase.table("pagos_semanales").upsert(nuevo_pago).execute()
+    # Verificar si ya existe un pago para este chofer, mes, año y semana
+    res_existente = (
+        supabase.table("pagos_semanales")
+        .select("id")
+        .eq("chofer_id", chofer_id)
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .eq("semana", semana)
+        .execute()
+    )
+
+    if res_existente.data:
+        # Actualizar registro existente
+        res = (
+            supabase.table("pagos_semanales")
+            .update(nuevo_pago)
+            .eq("chofer_id", chofer_id)
+            .eq("mes", mes)
+            .eq("anio", anio)
+            .eq("semana", semana)
+            .execute()
+        )
+    else:
+        # Insertar nuevo registro
+        res = supabase.table("pagos_semanales").insert(nuevo_pago).execute()
 
     if getattr(res, "error", None):
         raise HTTPException(status_code=400, detail=f"Error BD: {res.error.message}")
