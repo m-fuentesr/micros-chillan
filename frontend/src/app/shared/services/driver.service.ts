@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { Driver, DriverKPIs } from '../models/driver.models';
+import { Driver, DriverKPIs, DriverDeletedListItem, DriverReintegrateRequest } from '../models/driver.models';
 import { environment } from '../../../environments/environment.development';
 import { calculateLicenseStatus } from '../utils/license.utils';
 
@@ -407,6 +407,26 @@ export class DriverService {
       })),
       catchError((error) => {
         console.error('Error obteniendo liquidaciones:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // GET /api/drivers/deleted - Listar choferes eliminados
+  getDeletedDrivers(): Observable<DriverDeletedListItem[]> {
+    return this.http.get<DriverDeletedListItem[]>(`${this.apiUrl}/api/drivers/deleted`).pipe(
+      catchError((error) => {
+        console.error('Error obteniendo choferes eliminados:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  // POST /api/drivers/{driver_id}/reintegrate - Reintegrar chofer eliminado
+  reintegrateDriver(driverId: number, data: DriverReintegrateRequest): Observable<any> {
+    return this.http.post(`${this.apiUrl}/api/drivers/${driverId}/reintegrate`, data).pipe(
+      catchError((error) => {
+        console.error('Error reintegrando chofer:', error);
         return throwError(() => error);
       })
     );
