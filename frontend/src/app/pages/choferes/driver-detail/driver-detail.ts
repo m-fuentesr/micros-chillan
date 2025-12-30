@@ -664,6 +664,18 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                             {{ formatCurrency(record.diesel) }}
                           </div>
                         </div>
+                        <div>
+                          <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Pago Chofer</div>
+                          <div class="font-bold text-base tabular-nums text-error">
+                            {{ formatCurrency(record.pago_chofer) }}
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Neto</div>
+                          <div class="font-bold text-base tabular-nums text-base-content">
+                            {{ formatCurrency(getNeto(record)) }}
+                          </div>
+                        </div>
                       </div>
 
                           <!-- Observaciones -->
@@ -719,6 +731,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[150px]">Máquina</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-20">OBS.</th>
@@ -763,13 +776,17 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                             <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
                               {{ formatCurrency(record.recaudado) }}
                             </td>
-                            
+
                             <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
                               {{ formatCurrency(record.diesel) }}
                             </td>
-                            
+
+                            <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                              {{ formatCurrency(record.pago_chofer) }}
+                            </td>
+
                             <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm">
-                              {{ formatCurrency(record.recaudado - record.diesel) }}
+                              {{ formatCurrency(getNeto(record)) }}
                             </td>
                             
                         <td class="text-center py-4">
@@ -1548,14 +1565,14 @@ export class DriverDetail implements OnInit {
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
   private globalErrorService = inject(GlobalErrorService);
-  
+
   // Estado de carga con umbral de 200ms
   driverLoadingState = this.loadingStateService.createLoadingState();
 
   isEditingGeneral = signal(false);
   activeTab = signal<'general' | 'records' | 'liquidations'>('general');
   showFiltersMobile = signal(false);
-  
+
   // Valores editables temporales
   editNombre = signal<string>('');
   editSegundoNombre = signal<string>('');
@@ -1581,18 +1598,18 @@ export class DriverDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editMaquinaId, verificar maquinaSelectValue (puede haber sido cambiado por el usuario)
       const selectValue = this.maquinaSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor del chofer como fallback
       const maquinaId = this.driver()?.maquina_actual?.id;
       return maquinaId ? String(maquinaId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor del chofer
     const maquinaId = this.driver()?.maquina_actual?.id;
     return maquinaId ? String(maquinaId) : '';
@@ -1707,15 +1724,15 @@ export class DriverDetail implements OnInit {
   maquinasSelectOrdered = computed(() => {
     const maquinas = this.maquinas();
     const currentMaquinaId = this.driver()?.maquina_actual?.id;
-    
+
     if (!currentMaquinaId) {
       return maquinas;
     }
-    
+
     // Separar la máquina asignada del resto
     const assignedMaquina = maquinas.find((m: { id: number }) => m.id === currentMaquinaId);
     const otherMaquinas = maquinas.filter((m: { id: number }) => m.id !== currentMaquinaId);
-    
+
     // Retornar la asignada primero, luego las demás
     return assignedMaquina ? [assignedMaquina, ...otherMaquinas] : maquinas;
   });
@@ -1725,7 +1742,7 @@ export class DriverDetail implements OnInit {
   recordFilters = signal<{ desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({
     orden: 'mas_reciente'
   });
-  
+
   // Paginación y estado
   recordsTotal = signal<number>(0);
   recordsTotalGlobal = signal<number>(0);
@@ -1733,7 +1750,7 @@ export class DriverDetail implements OnInit {
   recordsTotalPages = signal<number>(0);
   recordsLoading = signal<boolean>(false);
   recordsPerPage = 10;
-  
+
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
     return [
@@ -1763,7 +1780,7 @@ export class DriverDetail implements OnInit {
       }
     ];
   });
-  
+
   onRecordFilterChange(newFilters: Record<string, any>): void {
     const filters: { desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
       desde: newFilters['desde'] || null,
@@ -1771,10 +1788,10 @@ export class DriverDetail implements OnInit {
       orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
     };
     this.recordFilters.set(filters);
-    
+
     // Resetear a página 1 cuando cambian los filtros
     this.recordsCurrentPage.set(1);
-    
+
     // Recargar datos del backend con los nuevos filtros
     this.loadDailyRecords();
   }
@@ -1783,7 +1800,7 @@ export class DriverDetail implements OnInit {
     this.recordsCurrentPage.set(page);
     this.loadDailyRecords();
   }
-  
+
   getEmptyRows(): number[] {
     const count = this.dailyRecords().length;
     if (count === 0) return [];
@@ -1802,20 +1819,20 @@ export class DriverDetail implements OnInit {
     const total = this.recordsTotalPages();
     const current = this.recordsCurrentPage();
     const pages: number[] = [];
-    
+
     // Mostrar máximo 5 páginas
     const maxPages = 5;
     let start = Math.max(1, current - Math.floor(maxPages / 2));
     let end = Math.min(total, start + maxPages - 1);
-    
+
     if (end - start < maxPages - 1) {
       start = Math.max(1, end - maxPages + 1);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   }
 
@@ -1831,10 +1848,10 @@ export class DriverDetail implements OnInit {
 
   // Liquidaciones
   liquidations = signal<DriverLiquidation[]>([]);
-  liquidationFilters = signal<{ 
-    fecha_desde?: string | null; 
-    fecha_hasta?: string | null; 
-    estado?: 'all' | 'pagado' | 'pendiente' 
+  liquidationFilters = signal<{
+    fecha_desde?: string | null;
+    fecha_hasta?: string | null;
+    estado?: 'all' | 'pagado' | 'pendiente'
   }>({});
   liquidationsTotal = signal<number>(0);
   liquidationsTotalGlobal = signal<number>(0);
@@ -1842,7 +1859,7 @@ export class DriverDetail implements OnInit {
   liquidationsTotalPages = signal<number>(0);
   liquidationsLoading = signal<boolean>(false);
   liquidationsPerPage = 10;
-  
+
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general']));
 
@@ -1860,33 +1877,33 @@ export class DriverDetail implements OnInit {
     // para que el skeleton pueda mostrarse antes de que el efecto detecte el driver
     this.driverLoadingState.setLoading(true);
   }
-    
-    // Efecto para cargar datos cuando el chofer cambia
-  private driverDataEffect = effect(() => {
-      const driver = this.driver();
-      const driverId = this.driverId();
-      
-      if (!driverId) {
-        this.router.navigate(['/choferes']);
-        return;
-      }
 
-      if (driver) {
-        // Cargar registros diarios del chofer
-        this.loadDailyRecords();
-        
-        // Cargar liquidaciones
-        this.loadLiquidations();
-      }
-    });
+  // Efecto para cargar datos cuando el chofer cambia
+  private driverDataEffect = effect(() => {
+    const driver = this.driver();
+    const driverId = this.driverId();
+
+    if (!driverId) {
+      this.router.navigate(['/choferes']);
+      return;
+    }
+
+    if (driver) {
+      // Cargar registros diarios del chofer
+      this.loadDailyRecords();
+
+      // Cargar liquidaciones
+      this.loadLiquidations();
+    }
+  });
 
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
-    
+
     if (isEditing) {
       // Cambiar a la tab 'general' antes de activar el modo edición
       this.activeTab.set('general');
-      
+
       // Inicializar valores editables con los valores actuales
       const d = this.driver();
       if (d) {
@@ -1916,7 +1933,7 @@ export class DriverDetail implements OnInit {
       this.maquinaSelectValue.set('');
       this.editMaquinaId.set(null);
     }
-    
+
     this.isEditingGeneral.set(isEditing);
   }
 
@@ -2007,15 +2024,15 @@ export class DriverDetail implements OnInit {
     if (this.isEditingGeneral()) {
       return;
     }
-    
+
     this.activeTab.set(tab);
-    
+
     // Cargar datos solo si el tab no ha sido cargado antes
     const loaded = this.loadedTabs();
     if (!loaded.has(tab)) {
       loaded.add(tab);
       this.loadedTabs.set(new Set(loaded));
-      
+
       // Cargar datos según el tab
       switch (tab) {
         case 'records':
@@ -2091,8 +2108,8 @@ export class DriverDetail implements OnInit {
     if (!date) return 'Sin fecha';
     const d = this.parseLocalDate(date);
     if (!d) return date;
-    return d.toLocaleDateString('es-CL', { 
-      day: '2-digit', 
+    return d.toLocaleDateString('es-CL', {
+      day: '2-digit',
       month: 'short',
       year: 'numeric'
     });
@@ -2102,9 +2119,9 @@ export class DriverDetail implements OnInit {
     if (!date) return '';
     const d = this.parseLocalDate(date);
     if (!d) return '';
-    return d.toLocaleDateString('es-CL', { 
+    return d.toLocaleDateString('es-CL', {
       weekday: 'short',
-      day: '2-digit', 
+      day: '2-digit',
       month: 'short'
     });
   }
@@ -2116,6 +2133,13 @@ export class DriverDetail implements OnInit {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value).replace('CLP', '$');
+  }
+
+  getNeto(record: DriverDailyRecord): number {
+    if (typeof record.neto === 'number') {
+      return record.neto;
+    }
+    return (record.recaudado || 0) - (record.diesel || 0) - (record.pago_chofer || 0);
   }
 
   formatEstado(estado: string): string {
@@ -2156,9 +2180,9 @@ export class DriverDetail implements OnInit {
 
     const filters = this.recordFilters();
     const currentPage = this.recordsCurrentPage();
-    
+
     this.recordsLoading.set(true);
-    
+
     this.dailyRecordService.getDailyRecords({
       chofer_id: driverId,
       desde: filters.desde || undefined,
@@ -2169,7 +2193,7 @@ export class DriverDetail implements OnInit {
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
-        
+
         // Mapear DailyRecord a DriverDailyRecord
         const driverRecords: DriverDailyRecord[] = records.map((record: DailyRecord) => {
           // Mapear estado
@@ -2198,6 +2222,8 @@ export class DriverDetail implements OnInit {
             estado,
             recaudado: record.recaudado || 0,
             diesel: record.costo_diesel || 0,
+            pago_chofer: record.pago_chofer || 0,
+            neto: record.neto,
             tiene_observaciones: record.tiene_observaciones || false,
             maquina_id: record.maquina_id,
             maquina_identificador: record.maquina_identificador || `Máquina ${record.maquina_id || 'N/A'}`
@@ -2296,18 +2322,18 @@ export class DriverDetail implements OnInit {
       this.loadLiquidations();
       return;
     }
-    
+
     // Procesar filtros: las fechas vienen como strings en formato YYYY-MM-DD
-    const processedFilters: { 
-      fecha_desde?: string | null; 
-      fecha_hasta?: string | null; 
-      estado?: 'all' | 'pagado' | 'pendiente' 
+    const processedFilters: {
+      fecha_desde?: string | null;
+      fecha_hasta?: string | null;
+      estado?: 'all' | 'pagado' | 'pendiente'
     } = {
       fecha_desde: filters['fecha_desde'] || null,
       fecha_hasta: filters['fecha_hasta'] || null,
       estado: filters['estado'] || 'all'
     };
-    
+
     this.liquidationFilters.set(processedFilters);
     this.liquidationsCurrentPage.set(1);
     this.loadLiquidations();

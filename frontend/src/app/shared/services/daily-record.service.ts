@@ -135,6 +135,8 @@ export class DailyRecordService {
         maquina: { id: number; numero_interno: number };
         monto_recaudado: number;
         diesel: number | null;
+        pago_chofer: number;
+        neto: number;
         estado: string;
         tiene_observaciones: boolean;
       }>;
@@ -171,6 +173,8 @@ export class DailyRecordService {
               chofer_nombre: item.chofer.nombre,
               recaudado: item.monto_recaudado,
               costo_diesel: item.diesel || 0,
+              pago_chofer: item.pago_chofer || 0,
+              neto: item.neto ?? (item.monto_recaudado - (item.diesel || 0) - (item.pago_chofer || 0)),
               litros_diesel: undefined,
               dia_no_trabajado,
               es_emergencia,

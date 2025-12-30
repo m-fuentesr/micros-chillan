@@ -8,6 +8,7 @@ import { Driver } from '../../../shared/models/driver.models';
 import { catchError, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
+import { AlertModalService } from '../../../shared/services/alert-modal.service';
 
 @Component({
   selector: 'app-driver-create',
@@ -15,7 +16,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
   template: `
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10 space-y-6 sm:space-y-8">
       <!-- ZONA 1: HERO SECTION (Above the Fold) - Punto Focal Principal -->
-      <section class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
+      <section class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/60 rounded-3xl border border-base-200 shadow-sm p-5 sm:p-7 lg:p-8">
         <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div class="flex-1 min-w-0 space-y-3">
             <div class="flex items-center gap-2 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.14em] text-primary/80">
@@ -27,7 +28,7 @@ import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.comp
             <div class="flex flex-wrap items-center gap-3 sm:gap-4">
               <a 
                 routerLink="/choferes"
-                class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 flex-shrink-0" 
+                class="btn btn-circle btn-ghost btn-sm text-base-content/70 hover:bg-base-200/80 shrink-0" 
                 aria-label="Volver">
                 <ui-icon name="ChevronLeft" size="md" />
               </a>
@@ -135,6 +136,7 @@ export class DriverCreate {
   private driverService = inject(DriverService);
   private machineService = inject(MachineService);
   private router = inject(Router);
+  private alertModalService = inject(AlertModalService);
 
   // Estado del formulario
   formData = signal<Partial<Driver>>({});
@@ -142,7 +144,7 @@ export class DriverCreate {
 
   // Máquinas para el select
   maquinasData = toSignal(
-    this.machineService.getActiveMachines().pipe(
+    this.machineService.getActiveMachinesWithoutDriver().pipe(
       catchError(() => of([]))
     ),
     { initialValue: [] }
@@ -247,7 +249,16 @@ export class DriverCreate {
       .pipe(
         catchError((error) => {
           console.error('Error al crear chofer:', error);
-          // Aquí podrías mostrar un toast o alert
+          
+          const backendDetail = error?.error?.detail ?? error?.message ?? 'Ocurrió un error al crear el chofer.';
+
+          this.alertModalService.show({
+            title: 'No se pudo crear el chofer',
+            message: backendDetail,
+            type: 'error',
+            buttonText: 'Entendido',
+          });
+          
           return of(null);
         })
       )

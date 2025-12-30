@@ -36,6 +36,18 @@ async def list_active_machines(current_user: UserInDB = Depends(get_current_user
     """
     return await machine_service.get_active_machines()
 
+# -----------------------------------------------------------
+# 1. LISTAR MÁQUINAS DISPONIBLES SIN CHOFER ASIGNADO (Admin)
+# -----------------------------------------------------------
+@router.get("/active/without-driver", response_model=List[MachineSelect])
+async def list_active_machines_without_driver(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Retorna máquinas operativas sin un chofer asignado.
+    Útil para el selector en la creación de choferes (solo mostrar disponibles).
+    """
+    require_admin(current_user)
+    return await machine_service.list_active_machines_without_driver()
+
 
 # ---------------------------------------------------------
 # 2. TARJETAS RESUMEN (Admin)

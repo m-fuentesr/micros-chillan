@@ -76,6 +76,8 @@ export interface DailyRecord {
   // Información financiera
   recaudado: number;
   costo_diesel: number;
+  pago_chofer?: number;
+  neto?: number;
   litros_diesel?: number;
   
   // Estado de operación
