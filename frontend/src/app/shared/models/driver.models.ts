@@ -77,6 +77,18 @@ export interface DriverLiquidation {
   estado_pago: 'pendiente' | 'pagado';
 }
 
+export interface DriverDeletedListItem {
+  id: number;
+  nombre_completo: string;
+  rut: string;
+  telefono: string;
+}
+
+export interface DriverReintegrateRequest {
+  correo_electronico: string;
+  maquina_asignada?: number | null;
+}
+
 export type DriverViewMode = 'cards' | 'table';
 export type DriverStatusFilter = 'all' | 'activo' | 'inactivo';
 export type LicenseFilter = 'all' | 'vencidas' | 'por_vencer' | 'al_dia';

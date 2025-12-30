@@ -4,6 +4,7 @@ from typing import Optional
 import logging
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
+from app.utils.dates import get_today_in_chile
 from app.schemas.daily_record import (
     DailyRecordCreate,
     DailyRecordCreateAdmin,
@@ -193,20 +194,120 @@ async def _create_daily_record_core(
     motivo_no_trabajado_otro_sanitizado = motivo_no_trabajado_otro
 
     # --------------------------------------------------
-    # 1. Validar duplicado por chofer + fecha
+    # 1. Validar duplicado por chofer + fecha (TC-182)
     # --------------------------------------------------
     existing = (
         supabase.table("registros_diarios")
-        .select("id")
+        .select("id, maquina_id")
         .eq("chofer_id", chofer_id)
         .eq("fecha", fecha.isoformat())
         .execute()
     )
 
     if existing.data:
+        # Obtener información de la máquina del registro existente
+        registro_existente = existing.data[0]
+        maquina_existente_id = registro_existente.get("maquina_id")
+        
+        maquina_res = (
+            supabase.table("maquinas")
+            .select("numero_interno, marca")
+            .eq("id", maquina_existente_id)
+            .single()
+            .execute()
+        )
+        
+        maquina_info = "otra máquina"
+        if maquina_res.data:
+            numero = maquina_res.data.get("numero_interno", "")
+            marca = maquina_res.data.get("marca", "")
+            if numero:
+                maquina_info = f"la máquina {numero}"
+            elif marca:
+                maquina_info = f"la máquina {marca}"
+        
+        # Obtener nombre del chofer para el mensaje
+        chofer_res = (
+            supabase.table("choferes")
+            .select("primer_nombre, apellido_paterno")
+            .eq("id", chofer_id)
+            .single()
+            .execute()
+        )
+        
+        chofer_nombre = "este chofer"
+        if chofer_res.data:
+            p_nombre = chofer_res.data.get("primer_nombre", "")
+            a_paterno = chofer_res.data.get("apellido_paterno", "")
+            chofer_nombre = f"{p_nombre} {a_paterno}".strip() or "este chofer"
+        
         raise HTTPException(
             status_code=400,
-            detail="Ya existe un registro diario para este chofer y fecha"
+            detail=f"{chofer_nombre} ya tiene un registro para {maquina_info} en esta fecha. Un chofer no puede manejar dos autos el mismo día."
+        )
+
+    # --------------------------------------------------
+    # 1b. Validar duplicado por máquina + fecha (TC-181)
+    # --------------------------------------------------
+    existing_maquina = (
+        supabase.table("registros_diarios")
+        .select("id, chofer_id")
+        .eq("maquina_id", maquina_id)
+        .eq("fecha", fecha.isoformat())
+        .execute()
+    )
+
+    if existing_maquina.data:
+        # Obtener información del chofer del registro existente para el mensaje
+        registro_existente = existing_maquina.data[0]
+        chofer_existente_id = registro_existente.get("chofer_id")
+        
+        chofer_existente_res = (
+            supabase.table("choferes")
+            .select("primer_nombre, apellido_paterno")
+            .eq("id", chofer_existente_id)
+            .single()
+            .execute()
+        )
+        
+        chofer_existente_nombre = "el chofer asignado"
+        if chofer_existente_res.data:
+            p_nombre = chofer_existente_res.data.get("primer_nombre", "")
+            a_paterno = chofer_existente_res.data.get("apellido_paterno", "")
+            chofer_existente_nombre = f"{p_nombre} {a_paterno}".strip() or "el chofer asignado"
+        
+        # Obtener información de la máquina para el mensaje
+        maquina_res = (
+            supabase.table("maquinas")
+            .select("numero_interno, marca")
+            .eq("id", maquina_id)
+            .single()
+            .execute()
+        )
+        
+        maquina_info = "esta máquina"
+        if maquina_res.data:
+            numero = maquina_res.data.get("numero_interno", "")
+            marca = maquina_res.data.get("marca", "")
+            if numero:
+                maquina_info = f"la máquina {numero}"
+            elif marca:
+                maquina_info = f"la máquina {marca}"
+        
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ya existe un registro para {maquina_info} en esta fecha (asignado a {chofer_existente_nombre}). No se puede facturar dos veces el mismo día/turno."
+        )
+
+    # --------------------------------------------------
+    # 1c. Advertencia para registros con fecha futura y recaudación (TC-183)
+    # --------------------------------------------------
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
+    if fecha > hoy and not es_dia_no_trabajado and monto_recaudado and monto_recaudado > 0:
+        # Solo log de advertencia, no bloquea la creación
+        logger.warning(
+            f"Registro con recaudación futura creado: chofer_id={chofer_id}, "
+            f"maquina_id={maquina_id}, fecha={fecha}, monto_recaudado={monto_recaudado}"
         )
 
     # --------------------------------------------------
@@ -438,7 +539,7 @@ async def get_driver_history(current_user: UserInDB, rango: str):
     if not chofer_id:
         raise HTTPException(status_code=400, detail="Usuario sin la asignacion de chofer")
     
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_inicio = None
     fecha_fin = hoy
 
@@ -486,7 +587,7 @@ async def get_today_record_status(current_user: UserInDB):
     if not chofer_id:
         raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
     
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_busqueda = hoy.isoformat()
     
     try:
@@ -523,9 +624,43 @@ async def get_today_record_status(current_user: UserInDB):
         }
 
 
+async def check_duplicate_record(maquina_id: int, fecha: date):
+    """
+    Verifica si ya existe un registro para una máquina en una fecha específica.
+    Útil para validación previa en el frontend (TC-181).
+    """
+    from app.db.supabase_client import supabase
+    
+    res = (
+        supabase.table("registros_diarios")
+        .select("id, chofer_id, choferes:choferes(primer_nombre, apellido_paterno)")
+        .eq("maquina_id", maquina_id)
+        .eq("fecha", fecha.isoformat())
+        .limit(1)
+        .execute()
+    )
+    
+    if res.data and len(res.data) > 0:
+        registro = res.data[0]
+        chofer = registro.get("choferes", {})
+        chofer_nombre = f"{chofer.get('primer_nombre', '')} {chofer.get('apellido_paterno', '')}".strip() or "otro chofer"
+        
+        return {
+            "exists": True,
+            "chofer_nombre": chofer_nombre,
+            "message": f"Ya existe un registro para esta máquina en esta fecha (asignado a {chofer_nombre})"
+        }
+    
+    return {
+        "exists": False,
+        "chofer_nombre": None,
+        "message": "No existe registro duplicado"
+    }
+
+
 async def get_daily_records_summary():
 
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_inicio = date(hoy.year, hoy.month, 1)
     fecha_inicio_iso = fecha_inicio.isoformat()
     fecha_fin_iso = hoy.isoformat()

@@ -374,8 +374,8 @@ interface DailyRecordView {
                                 Incidente
                               </div>
                             } @else if (record.status === 'no_worked') {
-                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <ui-icon name="Ban" size="xs" class="mr-1.5" />
+                              <div class="badge badge-sm inline-flex items-center justify-center gap-1 bg-base-300/40 text-base-content/70 border border-base-300/60 min-h-[1.5rem]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-base-content/70 opacity-0"></span>
                                 No Trabajado
                               </div>
                             } @else {
@@ -506,8 +506,8 @@ interface DailyRecordView {
                                 Incidente
                               </div>
                             } @else if (record.status === 'no_worked') {
-                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <ui-icon name="Ban" size="xs" class="mr-1.5" />
+                              <div class="badge badge-sm inline-flex items-center justify-center gap-1 bg-base-300/40 text-base-content/70 border border-base-300/60 min-h-[1.5rem]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-base-content/70 opacity-0"></span>
                                 No Trabajado
                               </div>
                             } @else {
@@ -627,9 +627,6 @@ interface DailyRecordView {
                             </div>
                           } @else if (record.status === 'no_worked') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                              </svg>
                               No Trabajado
                             </div>
                           } @else {
@@ -1392,7 +1389,16 @@ export class BitacoraOperaciones implements OnInit {
               const errorDetail = error?.error?.detail || error?.message || '';
               const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
               
-              if (errorDetail.includes('Ya existe un registro diario') || 
+              // Verificar si es error de máquina duplicada (TC-181)
+              if (typeof errorDetail === 'string' && 
+                  (errorDetail.includes('Ya existe un registro para') && 
+                   errorDetail.includes('máquina') && 
+                   errorDetail.includes('fecha'))) {
+                errorTitle = 'Registro Duplicado';
+                errorMessage = errorDetail; // Usar el mensaje completo del backend que incluye info de máquina y chofer
+              } 
+              // Verificar si es error de chofer duplicado
+              else if (errorDetail.includes('Ya existe un registro diario') || 
                   errorDetail.includes('registro diario para este chofer y fecha') ||
                   errorDetail.toLowerCase().includes('duplicado')) {
                 errorTitle = 'Registro Duplicado';

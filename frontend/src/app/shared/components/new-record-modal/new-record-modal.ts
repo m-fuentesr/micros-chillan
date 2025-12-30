@@ -1,15 +1,17 @@
-import { Component, ChangeDetectionStrategy, inject, ViewChild, ElementRef, AfterViewInit, OnDestroy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, ViewChild, ElementRef, AfterViewInit, OnDestroy, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NewRecordModalService, NewRecordFormData } from '../../services/new-record-modal.service';
 import { MachineService } from '../../services/machine.service';
 import { DriverService } from '../../services/driver.service';
 import { AuthService } from '../../services/auth.service';
+import { DailyRecordService } from '../../services/daily-record.service';
 import { MachineSelect } from '../../models/machine.models';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
 import { catchError, of, combineLatest, filter, switchMap, firstValueFrom } from 'rxjs';
 import { calculateLicenseStatus } from '../../utils/license.utils';
+import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-new-record-modal',
@@ -136,6 +138,22 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
                   (ngModelChange)="updateField('date', $event)"
                   name="date"
                   required />
+                @if (futureDateWarning()) {
+                  <div class="alert alert-warning shadow-sm mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-xs">{{ futureDateWarning() }}</span>
+                  </div>
+                }
+                @if (pastDateWarning()) {
+                  <div class="alert alert-info shadow-sm mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-xs">{{ pastDateWarning() }}</span>
+                  </div>
+                }
               </div>
               <div class="form-control">
                 <label class="label pb-2 pt-0">
@@ -157,6 +175,14 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
                     <option [value]="machine.id.toString()">{{ machine.display_name }}</option>
                   }
                 </select>
+                @if (machineDuplicateWarning()) {
+                  <div class="alert alert-warning shadow-sm mt-2 border border-warning/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-xs">{{ machineDuplicateWarning() }}</span>
+                  </div>
+                }
               </div>
               <div class="form-control md:col-span-2">
                 <label class="label pb-2 pt-0">
@@ -179,11 +205,11 @@ import { calculateLicenseStatus } from '../../utils/license.utils';
                   }
                 </select>
                 @if (driverLicenseWarning()) {
-                  <div class="flex items-start gap-2 mt-2 text-sm text-warning">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.5a.75.75 0 00-1.5 0v5a.75.75 0 001.5 0v-5zm0 7a.75.75 0 00-1.5 0v1a.75.75 0 001.5 0v-1z" clip-rule="evenodd" />
+                  <div class="alert alert-warning shadow-sm mt-2 border border-warning/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                     </svg>
-                    <span class="leading-snug">{{ driverLicenseWarning() }}</span>
+                    <span class="text-xs">{{ driverLicenseWarning() }}</span>
                   </div>
                 }
               </div>
@@ -537,6 +563,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   machineService = inject(MachineService);
   driverService = inject(DriverService);
   authService = inject(AuthService);
+  dailyRecordService = inject(DailyRecordService);
   destroyRef = inject(DestroyRef);
   
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
@@ -579,6 +606,129 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   );
 
   driverLicenseWarning = signal<string | null>(null);
+  machineDuplicateWarning = signal<string | null>(null);
+  futureDateWarning = signal<string | null>(null);
+  pastDateWarning = signal<string | null>(null);
+
+  // Effect para verificar fecha futura cuando hay recaudación (TC-183)
+  private futureDateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const date = formData.date;
+    const noWorkDay = formData.noWorkDay;
+    const income = formData.income;
+
+    // Solo verificar si hay fecha, NO es día no trabajado, y hay recaudación > 0
+    if (date && !noWorkDay && income && income > 0) {
+      // Usar utilidades de fecha de Chile para comparaciones correctas
+      const diffDays = getDaysDifferenceInChile(date);
+      
+      // diffDays < 0 significa que la fecha es futura (date es posterior a hoy)
+      if (diffDays < 0) {
+        this.futureDateWarning.set('⚠️ Está intentando registrar recaudación para una fecha futura. ¿Está seguro?');
+      } else {
+        this.futureDateWarning.set(null);
+      }
+    } else {
+      this.futureDateWarning.set(null);
+    }
+  });
+
+  // Effect para verificar fecha pasada (retroactivo) - TC-184
+  private pastDateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const date = formData.date;
+
+    if (date) {
+      // Usar utilidades de fecha de Chile para comparaciones correctas
+      const diffDays = getDaysDifferenceInChile(date);
+      
+      // Solo mostrar advertencia si la fecha es anterior a hoy (diffDays > 0 significa que date es anterior)
+      if (diffDays > 0) {
+        // Obtener partes de la fecha seleccionada y de hoy en zona horaria de Chile
+        const selectedDateParts = getDatePartsInChile(date);
+        const todayParts = getTodayInChile();
+        
+        // Verificar si la fecha es del mes anterior o más antigua
+        const selectedMonth = selectedDateParts.month;
+        const selectedYear = selectedDateParts.year;
+        const currentMonth = todayParts.month;
+        const currentYear = todayParts.year;
+
+        // Si es del mes anterior o más antigua
+        if (selectedYear < currentYear || (selectedYear === currentYear && selectedMonth < currentMonth)) {
+          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+          const monthName = monthNames[selectedMonth - 1]; // month es 1-12, array es 0-11
+          this.pastDateWarning.set(
+            `ℹ️ Registro retroactivo: Este registro impactará en los reportes de ${monthName} ${selectedYear}. Los reportes se recalculan automáticamente.`
+          );
+        } else {
+          // Fecha pasada pero del mes actual
+          this.pastDateWarning.set(
+            'ℹ️ Registro retroactivo: Este registro se incluirá en los reportes del mes actual.'
+          );
+        }
+      } else {
+        // Fecha es hoy (diffDays === 0) o futura (diffDays < 0), no mostrar advertencia
+        this.pastDateWarning.set(null);
+      }
+    } else {
+      this.pastDateWarning.set(null);
+    }
+  });
+
+  // Effect para verificar duplicado de máquina cuando cambian máquina o fecha
+  private machineDuplicateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const machineId = formData.machine;
+    const date = formData.date;
+
+    // Si no hay máquina o fecha, limpiar la advertencia
+    if (!machineId || !date) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    // Solo verificar si hay máquina y fecha seleccionadas
+    const machineIdNum = typeof machineId === 'number' ? machineId : Number(machineId);
+    if (isNaN(machineIdNum)) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    // Usar setTimeout para hacer la verificación de forma asíncrona
+    const timeoutId = setTimeout(() => {
+      this.checkMachineDuplicate(machineIdNum, date);
+    }, 500); // Debounce de 500ms
+    
+    // Cleanup del timeout si el effect se vuelve a ejecutar
+    return () => clearTimeout(timeoutId);
+  });
+
+  async checkMachineDuplicate(machineId: number, date: string): Promise<void> {
+    if (!machineId || !date) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    try {
+      const result = await firstValueFrom(
+        this.dailyRecordService.checkDuplicateRecord(machineId, date)
+      );
+
+      if (result.exists) {
+        this.machineDuplicateWarning.set(
+          `⚠️ Ya existe un registro para esta máquina en esta fecha (asignado a ${result.chofer_nombre || 'otro chofer'}). No se puede facturar dos veces el mismo día/turno.`
+        );
+      } else {
+        this.machineDuplicateWarning.set(null);
+      }
+    } catch (error) {
+      console.warn('Error verificando duplicado de máquina:', error);
+      // No mostrar error al usuario, solo log
+      this.machineDuplicateWarning.set(null);
+    }
+  }
 
   ngAfterViewInit(): void {
     // Convertir signal a Observable para suscribirse (sin paréntesis para pasar el signal, no su valor)
@@ -612,6 +762,14 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
 
   updateField(field: keyof NewRecordFormData, value: any): void {
     this.modalService.updateFormData({ [field]: value });
+    
+    // Si se cambia la máquina o la fecha, limpiar las advertencias
+    // (los effects se encargarán de verificar nuevamente)
+    if (field === 'machine' || field === 'date') {
+      this.machineDuplicateWarning.set(null);
+    }
+    // Si se cambia la fecha, los effects se encargarán de verificar nuevamente
+    // (fecha futura y fecha pasada)
   }
 
   async handleDriverChange(value: string): Promise<void> {

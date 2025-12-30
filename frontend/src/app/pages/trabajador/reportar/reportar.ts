@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed, ViewChild, ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -370,6 +370,25 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
         </div>
       </form>
       }
+      
+      <!-- Modal de Error para errores críticos (duplicados, etc.) -->
+      <dialog #errorModal class="modal" [class.modal-open]="showErrorModal()">
+        <form method="dialog" class="modal-box" (submit)="closeErrorModal()">
+          <h3 class="font-bold text-lg text-error mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Error al crear registro
+          </h3>
+          <p class="py-4 text-base-content whitespace-pre-line">{{ errorModalMessage() }}</p>
+          <div class="modal-action">
+            <button type="submit" class="btn btn-primary" (click)="closeErrorModal()">Entendido</button>
+          </div>
+        </form>
+        <form method="dialog" class="modal-backdrop" (click)="closeErrorModal()">
+          <button type="button">Cerrar</button>
+        </form>
+      </dialog>
     </div>
   `,
   styles: [
@@ -998,6 +1017,11 @@ export class Reportar implements OnInit {
   reportSuccess = signal(false);
   expanding = signal(false);
   hasError = signal(false);
+  
+  // Modal de error
+  @ViewChild('errorModal') errorModalRef!: ElementRef<HTMLDialogElement>;
+  showErrorModal = signal(false);
+  errorModalMessage = signal('');
   buttonX = 0;
   buttonY = 0;
 
@@ -1424,7 +1448,29 @@ export class Reportar implements OnInit {
             
             // Obtener mensaje de error específico
             const errorMessage = this.getErrorMessage(error);
-            this.showErrorToast(errorMessage);
+            
+            // Detectar si es un error crítico (duplicado de máquina) para mostrar en modal
+            const errorDetail = error?.error?.detail || error?.error?.message || '';
+            const isCriticalError = typeof errorDetail === 'string' && (
+              errorDetail.includes('Ya existe un registro para') ||
+              errorDetail.includes('máquina') && errorDetail.includes('fecha') ||
+              errorDetail.includes('No se puede facturar dos veces')
+            );
+            
+            if (isCriticalError) {
+              // Mostrar en modal para errores críticos
+              this.errorModalMessage.set(errorMessage);
+              this.showErrorModal.set(true);
+              // Abrir el modal usando la API nativa
+              setTimeout(() => {
+                if (this.errorModalRef?.nativeElement) {
+                  this.errorModalRef.nativeElement.showModal();
+                }
+              }, 100);
+            } else {
+              // Mostrar toast para errores no críticos
+              this.showErrorToast(errorMessage);
+            }
             
             // Resetear estado de error después de la animación
             setTimeout(() => {
@@ -1517,7 +1563,28 @@ export class Reportar implements OnInit {
       this.isSubmitting.set(false);
       this.hasError.set(true);
       this.uploadProgress.set(null);
-      this.showErrorToast(error.message || 'Error al subir las imágenes');
+      
+      // Verificar si es un error crítico (duplicado)
+      const errorMessage = error?.error?.detail || error?.message || 'Error al subir las imágenes';
+      const isCriticalError = typeof errorMessage === 'string' && (
+        errorMessage.includes('Ya existe un registro para') ||
+        errorMessage.includes('máquina') && errorMessage.includes('fecha') ||
+        errorMessage.includes('No se puede facturar dos veces')
+      );
+      
+      if (isCriticalError) {
+        // Mostrar en modal para errores críticos
+        this.errorModalMessage.set(errorMessage);
+        this.showErrorModal.set(true);
+        setTimeout(() => {
+          if (this.errorModalRef?.nativeElement) {
+            this.errorModalRef.nativeElement.showModal();
+          }
+        }, 100);
+      } else {
+        // Mostrar toast para errores no críticos
+        this.showErrorToast(errorMessage);
+      }
       return;
     }
 
@@ -1797,6 +1864,13 @@ export class Reportar implements OnInit {
     
     // Error genérico
     return 'Error al enviar el reporte. Por favor, intenta nuevamente.';
+  }
+
+  closeErrorModal(): void {
+    this.showErrorModal.set(false);
+    if (this.errorModalRef?.nativeElement) {
+      this.errorModalRef.nativeElement.close();
+    }
   }
 
   private showErrorToast(message: string): void {
