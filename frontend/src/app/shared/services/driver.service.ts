@@ -280,9 +280,18 @@ export class DriverService {
         const apellido = backendDriver.apellido_paterno || apellidoPaternoFallback;
         const segundoApellido = backendDriver.apellido_materno || apellidoMaternoFallback;
 
+        const nombreCompleto = [
+          nombre,
+          segundoNombre,
+          apellido,
+          segundoApellido
+        ]
+          .filter(Boolean)
+          .join(' ');
+
         return {
           id: backendDriver.id,
-          nombre_completo: backendDriver.nombre_completo,
+          nombre_completo: nombreCompleto,
           rut: backendDriver.rut,
           telefono: backendDriver.telefono,
           correo: backendDriver.correo_electronico, // Mapear correo_electronico a correo

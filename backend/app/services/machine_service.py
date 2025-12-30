@@ -1073,6 +1073,7 @@ async def update_machine(machine_id: int, data):
     # 5. RETORNO FINAL
     return {"message": "Máquina actualizada correctamente"}
 
+
 async def delete_machine(machine_id: int):
     hoy = date.today().isoformat()
 

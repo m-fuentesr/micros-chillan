@@ -39,7 +39,7 @@ import { AlertModalService } from '../../services/alert-modal.service';
               <h3 class="font-bold text-2xl text-base-content mb-2 leading-tight">
                 {{ modalService.config()!.title }}
               </h3>
-              <p class="text-sm text-base-content/70 leading-relaxed">
+              <p class="text-sm text-base-content/70 leading-relaxed whitespace-pre-line">
                 {{ modalService.config()!.message }}
               </p>
             }
