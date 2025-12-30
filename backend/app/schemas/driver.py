@@ -61,7 +61,10 @@ class DriverDeletedListItem(BaseModel):
 
 class DriverDetail(BaseModel):
     id: int
-    nombre_completo: str
+    primer_nombre: str
+    segundo_nombre: Optional[str] = None
+    apellido_paterno: str
+    apellido_materno: str
     rut: str
     estado: Literal["activo", "inactivo", "eliminado"]
     telefono: str

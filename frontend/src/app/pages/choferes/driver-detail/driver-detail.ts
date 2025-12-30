@@ -9,7 +9,7 @@ import { DailyRecordService } from '../../../shared/services/daily-record.servic
 import { AccountingService } from '../../../shared/services/accounting.service';
 import type { DailyRecord, DailyRecordStatus } from '../../../shared/models/daily-record.models';
 import { Driver, DriverDailyRecord, DriverLiquidation } from '../../../shared/models/driver.models';
-import type { Machine } from '../../../shared/models/machine.models';
+import type { MachineSelect } from '../../../shared/models/machine.models';
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
@@ -326,6 +326,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                             type="number"
                             class="input input-sm w-full"
                             [value]="editPorcentajePago()"
+                            [class.input-error]="!!porcentajePagoError()"
                             (input)="onPorcentajePagoChange($any($event.target).value)"
                             placeholder="0"
                             min="0"
@@ -333,6 +334,9 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                             step="0.5">
                           <span class="text-sm font-bold">%</span>
                         </div>
+                        @if (porcentajePagoError()) {
+                          <p class="text-xs text-error mt-1">{{ porcentajePagoError() }}</p>
+                        }
                       } @else {
                         <div class="font-bold text-lg text-primary">
                           {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
@@ -516,7 +520,7 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                   } @else {
                     <button
                       class="btn btn-primary w-full shadow-lg shadow-primary/20"
-                      [routerLink]="['/choferes', driver()?.id, 'editar']">
+                      (click)="startMachineAssignment()">
                       Asignar Máquina
                     </button>
                   }
@@ -1587,6 +1591,20 @@ export class DriverDetail implements OnInit {
   editFechaContrato = signal<string>('');
   editMaquinaId = signal<number | null>(null);
 
+  porcentajePagoError = computed(() => {
+    const value = this.editPorcentajePago();
+
+    if (Number.isNaN(value)) {
+      return 'Ingresa un porcentaje válido entre 0 y 100.';
+    }
+
+    if (value < 0 || value > 100) {
+      return 'El porcentaje de pago debe estar entre 0% y 100%.';
+    }
+
+    return '';
+  });
+
   // Signal para el valor del select de máquina (para evitar problemas con el binding)
   maquinaSelectValue = signal<string>('');
 
@@ -1703,10 +1721,9 @@ export class DriverDetail implements OnInit {
     return calculateLicenseStatus(d.fecha_venc_licencia);
   });
 
-  // Cargar máquinas para el select
+  // Cargar máquinas activas sin chofer para el select de edición
   maquinasData = toSignal(
-    this.machineService.getMachines().pipe(
-      map(response => response.datos),
+    this.machineService.getActiveMachinesWithoutDriver().pipe(
       catchError(() => of([]))
     ),
     { initialValue: [] }
@@ -1714,10 +1731,29 @@ export class DriverDetail implements OnInit {
 
   maquinas = computed(() => {
     const machines = this.maquinasData() ?? [];
-    return machines.map((m: Machine) => ({
+    const currentMaquina = this.driver()?.maquina_actual;
+
+    const mapped = machines.map((m: MachineSelect) => ({
       id: m.id,
-      identificador: `MÁQUINA ${m.numero || m.id}`
+      identificador: m.display_name ?? `MÁQUINA ${m.numero_interno || m.id}`
     }));
+
+    if (!currentMaquina?.id) {
+      return mapped;
+    }
+
+    const alreadyIncluded = mapped.some(m => m.id === currentMaquina.id);
+    if (alreadyIncluded) {
+      return mapped;
+    }
+
+    // Incluir la máquina actual para no perder la selección aunque no esté disponible en el endpoint
+    const currentMaquinaOption = {
+      id: currentMaquina.id,
+      identificador: currentMaquina.identificador ?? `MÁQUINA ${currentMaquina.id}`
+    };
+
+    return [currentMaquinaOption, ...mapped];
   });
 
   // Máquinas ordenadas: la asignada primero, luego las demás
@@ -1897,6 +1933,14 @@ export class DriverDetail implements OnInit {
     }
   });
 
+  startMachineAssignment(): void {
+    if (!this.isEditingGeneral()) {
+      this.toggleEditGeneral();
+    } else {
+      this.activeTab.set('general');
+    }
+  }
+
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
 
@@ -1947,6 +1991,16 @@ export class DriverDetail implements OnInit {
         title: 'Campos incompletos',
         message: 'Por favor, completa todos los campos requeridos antes de guardar.',
         type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    if (this.porcentajePagoError()) {
+      this.alertModalService.show({
+        title: 'Porcentaje inválido',
+        message: this.porcentajePagoError(),
+        type: 'error',
         buttonText: 'Entendido'
       });
       return;
@@ -2005,9 +2059,20 @@ export class DriverDetail implements OnInit {
           // Forzar recarga de datos incrementando el refreshTrigger
           this.refreshTrigger.set(this.refreshTrigger() + 1);
           this.isEditingGeneral.set(false);
+          const successMessages = ['La información del chofer ha sido actualizada correctamente.'];
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isInactive = (updatedDriver.estado || this.editEstado()) === 'inactivo';
+          const licenseIsNowValid = fechaVencLicencia >= today;
+
+          if (isInactive && licenseIsNowValid) {
+            successMessages.push('La licencia ya está vigente; considera cambiar el estado del chofer a "Activo" para habilitarlo nuevamente.');
+          }
+
           this.alertModalService.show({
             title: 'Cambios Guardados',
-            message: 'La información del chofer ha sido actualizada correctamente.',
+            message: successMessages.join('\n'),
             type: 'success',
             buttonText: 'Entendido'
           });
@@ -2389,8 +2454,10 @@ export class DriverDetail implements OnInit {
 
   // Métodos auxiliares para conversiones en plantillas
   onPorcentajePagoChange(value: string): void {
-    const numValue = value ? parseFloat(value) : 0;
-    this.editPorcentajePago.set(isNaN(numValue) ? 0 : numValue);
+    const trimmedValue = value?.toString().trim();
+    const numValue = trimmedValue === '' || trimmedValue === undefined ? Number.NaN : parseFloat(trimmedValue);
+
+    this.editPorcentajePago.set(numValue);
   }
 
   onMaquinaIdChange(value: string): void {

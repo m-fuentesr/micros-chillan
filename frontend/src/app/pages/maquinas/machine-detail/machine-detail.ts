@@ -985,11 +985,11 @@ export class MachineDetail implements OnInit {
   });
 
 
-  // Cargar choferes activos desde backend (para el select)
+  // Cargar choferes activos sin máquina desde backend (para el select)
   choferesSelectData = toSignal(
-    this.driverService.getActiveDrivers().pipe(
+    this.driverService.getActiveDriversWithoutMachine().pipe(
       catchError((error) => {
-        console.error('Error cargando choferes activos:', error);
+        console.error('Error cargando choferes activos sin máquina:', error);
         // Retornar array vacío si hay error
         return of([]);
       })
@@ -998,7 +998,14 @@ export class MachineDetail implements OnInit {
   );
 
   choferesSelect = computed(() => {
-    return this.choferesSelectData() ?? [];
+    const choferesDisponibles = this.choferesSelectData() ?? [];
+    const choferActual = this.machine()?.chofer_actual;
+
+    if (choferActual && !choferesDisponibles.some((c) => c.id === choferActual.id)) {
+      return [choferActual, ...choferesDisponibles];
+    }
+
+    return choferesDisponibles;
   });
 
   // Choferes ordenados: el asignado primero, luego los demás
@@ -1213,9 +1220,21 @@ export class MachineDetail implements OnInit {
   }
 
   async onDelete(): Promise<void> {
+    const machine = this.machine();
+
+    if (machine?.chofer_actual) {
+      this.alertModalService.show({
+        title: 'Eliminar Máquina',
+        message: 'La máquina tiene una asignación activa, no puede ser eliminada.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     const confirmed = await this.confirmModalService.open({
       title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción desactivará la máquina y liberará al chofer asignado.`,
+      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Esta acción desactivará la máquina.`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'
     });
