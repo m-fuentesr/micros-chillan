@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, output, computed, signal, OnDestroy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, OnDestroy, ChangeDetectorRef, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { DatePicker } from '../date-picker/date-picker';
@@ -59,11 +59,11 @@ export interface FilterField {
                 </label>
                 <select
                   class="select select-bordered w-full bg-base-100 border-base-200 focus:border-primary transition-colors"
-                  [value]="getFilterValue(field.key) || ''"
-                  (change)="onSelectChange($event, field.key)">
+                  [ngModel]="getSelectValue(field.key, field.options)"
+                  (ngModelChange)="onSelectChange($event, field.key)">
                   @if (field.options) {
                     @for (option of field.options; track option.value) {
-                      <option [value]="option.value ?? ''">
+                      <option [ngValue]="option.value">
                         {{ option.label }}
                       </option>
                     }
@@ -169,6 +169,15 @@ export class SearchFilters implements OnDestroy {
 
   filterChange = output<Record<string, any>>();
 
+  constructor() {
+    // Forzar detección de cambios cuando cambian los filtros
+    effect(() => {
+      // Leer el signal para que Angular detecte el cambio
+      this.filters();
+      // Esto asegura que el componente se actualice cuando cambian los filtros
+    });
+  }
+
   ngOnDestroy(): void {
     // Cleanup si es necesario
   }
@@ -187,7 +196,36 @@ export class SearchFilters implements OnDestroy {
   });
 
   getFilterValue(key: string): any {
-    return this.filters()[key] ?? null;
+    // Leer el signal para que Angular detecte el cambio
+    const filters = this.filters();
+    const value = filters[key];
+    // Retornar el valor tal cual (null, string, number, etc.)
+    // El template lo manejará con || para convertir null a ''
+    return value ?? null;
+  }
+
+  getSelectValue(key: string, options?: Array<{ value: string | number | null; label: string }>): any {
+    const value = this.getFilterValue(key);
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    
+    // Buscar la opción que coincida con el valor
+    if (options) {
+      const matchingOption = options.find(opt => {
+        // Comparar como strings para asegurar coincidencia
+        const optValue = opt.value === null || opt.value === undefined ? '' : String(opt.value);
+        const filterValue = String(value);
+        return optValue === filterValue;
+      });
+      
+      if (matchingOption) {
+        return matchingOption.value;
+      }
+    }
+    
+    // Si no se encuentra, retornar el valor original
+    return value;
   }
 
   getDateValue(key: string): string | null {
@@ -218,10 +256,10 @@ export class SearchFilters implements OnDestroy {
     this.onFilterChange(key, value);
   }
 
-  onSelectChange(event: Event, key: string): void {
-    const target = event.target as HTMLSelectElement;
-    const value = target.value === '' ? null : target.value;
-    this.onFilterChange(key, value);
+  onSelectChange(value: any, key: string): void {
+    // ngModel pasa el valor directamente, no necesitamos extraerlo del evento
+    const finalValue = value === null || value === undefined || value === '' ? null : value;
+    this.onFilterChange(key, finalValue);
   }
 
   onMonthYearChange(key: string, event: Event, type: 'month' | 'year'): void {

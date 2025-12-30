@@ -163,13 +163,15 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                           [class.btn-success]="alert.severity === 'success'">
                           {{ alert.actionLabel }}
                         </a>
-                        <button
-                          class="btn btn-xs btn-square btn-ghost text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
-                          type="button"
-                          (click)="onDeleteAlert(alert.id)"
-                          aria-label="Eliminar alerta">
-                          <ui-icon name="X" size="xs" />
-                        </button>
+                        @if (alert.severity !== 'critical') {
+                          <button
+                            class="btn btn-xs btn-square btn-ghost text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                            type="button"
+                            (click)="onDeleteAlert(alert.id)"
+                            aria-label="Eliminar alerta">
+                            <ui-icon name="X" size="xs" />
+                          </button>
+                        }
                       </div>
                     </div>
                   </div>
@@ -231,6 +233,7 @@ export class AlertList {
   });
 
   // Agrupar alertas por recencia (Hoy, Ayer, resto por fecha)
+  // Las alertas críticas siempre aparecen primero, independientemente de la fecha
   groupedAlerts = computed(() => {
     // Usar fechas en zona horaria de Chile
     const todayParts = getTodayInChile();
@@ -238,7 +241,25 @@ export class AlertList {
     const startOfToday = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day));
     const startOfYesterday = new Date(Date.UTC(yesterdayParts.year, yesterdayParts.month - 1, yesterdayParts.day));
 
+    // Prioridad de severidad: critical primero, luego warning, luego info, luego success
+    const severityPriority: Record<string, number> = {
+      'critical': 0,
+      'warning': 1,
+      'info': 2,
+      'success': 3
+    };
+
+    // Ordenar primero por severidad (críticas primero), luego por fecha (más recientes primero)
     const sortedAlerts = [...this.activeAlerts()].sort((a, b) => {
+      const aPriority = severityPriority[a.severity] ?? 99;
+      const bPriority = severityPriority[b.severity] ?? 99;
+      
+      // Si tienen diferente severidad, ordenar por prioridad
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Si tienen la misma severidad, ordenar por fecha (más recientes primero)
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
       return bTime - aTime;
@@ -277,23 +298,46 @@ export class AlertList {
       olderByDay.get(dateKey)!.alerts.push(alert);
     }
 
+    // Función para ordenar alertas dentro de un grupo por severidad y luego por fecha
+    const sortAlertsInGroup = (alerts: Alert[]): Alert[] => {
+      const severityPriority: Record<string, number> = {
+        'critical': 0,
+        'warning': 1,
+        'info': 2,
+        'success': 3
+      };
+      
+      return [...alerts].sort((a, b) => {
+        const aPriority = severityPriority[a.severity] ?? 99;
+        const bPriority = severityPriority[b.severity] ?? 99;
+        
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+        
+        const aTime = a.date ? new Date(a.date).getTime() : 0;
+        const bTime = b.date ? new Date(b.date).getTime() : 0;
+        return bTime - aTime;
+      });
+    };
+
     const groups: { key: string; label: string; alerts: Alert[]; index: number }[] = [];
     let index = 0;
 
     if (today.length) {
-      groups.push({ key: 'today', label: this.formatGroupLabel(startOfToday, 'Hoy'), alerts: today, index });
+      groups.push({ key: 'today', label: this.formatGroupLabel(startOfToday, 'Hoy'), alerts: sortAlertsInGroup(today), index });
       index += 1;
     }
 
     if (yesterday.length) {
-      groups.push({ key: 'yesterday', label: this.formatGroupLabel(startOfYesterday, 'Ayer'), alerts: yesterday, index });
+      groups.push({ key: 'yesterday', label: this.formatGroupLabel(startOfYesterday, 'Ayer'), alerts: sortAlertsInGroup(yesterday), index });
       index += 1;
     }
 
     const orderedOlder = Array.from(olderByDay.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
     for (const entry of orderedOlder) {
       const label = entry.date.getTime() === 0 ? 'Sin fecha' : this.formatGroupLabel(entry.date);
-      groups.push({ key: `day-${label}`, label, alerts: entry.alerts, index });
+      groups.push({ key: `day-${label}`, label, alerts: sortAlertsInGroup(entry.alerts), index });
       index += 1;
     }
 

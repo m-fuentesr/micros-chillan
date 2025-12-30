@@ -73,6 +73,9 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                     [class.bg-primary]="selectedWeek() === week"
                     [class.text-primary-content]="selectedWeek() === week"
                     [class.text-base-content/60]="selectedWeek() !== week"
+                    [class.opacity-50]="!isWeekEnabled()(week)"
+                    [class.cursor-not-allowed]="!isWeekEnabled()(week)"
+                    [disabled]="!isWeekEnabled()(week)"
                     (click)="onWeekChange(week)">
                     <span class="text-xs sm:text-sm">Semana {{ week }}</span>
                     @if (week === availableWeeks()[availableWeeks().length - 1]) {
@@ -173,14 +176,22 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                   <td class="text-left">
                     @if (liquidation().es_ultima_semana) {
                       <!-- Última semana: mostrar acumulado mensual -->
-                      <div class="flex flex-col gap-2">
-                        <div class="flex flex-col gap-1">
-                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
-                            Acumulado mes: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                          </span>
-                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
-                            Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                          </span>
+                      <div class="flex flex-col gap-2.5">
+                        <div class="flex flex-col gap-2 bg-base-200/50 rounded-lg p-2 border border-base-300/50">
+                          <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Acumulado mes:</span>
+                              <span class="badge badge-sm badge-primary/20 text-primary border border-primary/30 tabular-nums text-xs sm:text-sm font-bold font-mono px-2 py-0.5">
+                                {{ (chofer.acumulado_mensual !== undefined ? chofer.acumulado_mensual : chofer.total_ganado) | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                              </span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Mínimo:</span>
+                              <span class="badge badge-sm badge-ghost tabular-nums text-xs sm:text-sm font-mono text-base-content/70 px-2 py-0.5">
+                                {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <label class="flex items-center gap-2 cursor-pointer">
                           <input
@@ -189,7 +200,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                             [checked]="chofer.aplicar_garantizado"
                             [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
                             (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                          <span class="text-xs text-base-content/60">Aplicar</span>
+                          <span class="text-xs text-base-content/60 font-medium">Aplicar</span>
                         </label>
                       </div>
                     } @else {
@@ -259,11 +270,18 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                     } @else {
                       <button 
                         class="btn btn-sm btn-primary btn-outline hover:!text-white gap-2 font-bold transition-all shadow-sm hover:shadow-md"
+                        [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
+                        [disabled]="verifyingChoferId() === chofer.chofer_id"
                         (click)="onConfirmPayment(chofer)">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                        Confirmar
+                        @if (verifyingChoferId() === chofer.chofer_id) {
+                          <span class="loading loading-spinner loading-xs"></span>
+                          <span>Verificando...</span>
+                        } @else {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          <span>Confirmar</span>
+                        }
                       </button>
                     }
                   </td>
@@ -360,21 +378,29 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                   <div class="flex items-center gap-2">
                     @if (liquidation().es_ultima_semana) {
                       <!-- Última semana: mostrar acumulado mensual -->
-                      <div class="flex flex-col items-end gap-1">
-                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
-                          Acum: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                        </span>
-                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
-                          Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                        </span>
-                        <label class="flex items-center gap-1 cursor-pointer">
+                      <div class="flex flex-col items-end gap-2 bg-base-200/50 rounded-lg p-2 border border-base-300/50 min-w-[140px]">
+                        <div class="flex flex-col items-end gap-1.5 w-full">
+                          <div class="flex flex-col items-end gap-0.5 w-full">
+                            <span class="text-[9px] font-semibold uppercase tracking-wider text-base-content/60">Acumulado mes:</span>
+                            <span class="badge badge-sm badge-primary/20 text-primary border border-primary/30 tabular-nums text-xs font-bold font-mono px-2 py-0.5">
+                              {{ (chofer.acumulado_mensual !== undefined ? chofer.acumulado_mensual : chofer.total_ganado) | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                            </span>
+                          </div>
+                          <div class="flex flex-col items-end gap-0.5 w-full">
+                            <span class="text-[9px] font-semibold uppercase tracking-wider text-base-content/60">Mínimo:</span>
+                            <span class="badge badge-sm badge-ghost tabular-nums text-xs font-mono text-base-content/70 px-2 py-0.5">
+                              {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                            </span>
+                          </div>
+                        </div>
+                        <label class="flex items-center gap-1 cursor-pointer mt-1">
                           <input
                             type="checkbox"
                             class="toggle toggle-sm toggle-primary"
                             [checked]="chofer.aplicar_garantizado"
                             [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
                             (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                          <span class="text-xs text-base-content/60">Aplicar</span>
+                          <span class="text-xs text-base-content/60 font-medium">Aplicar</span>
                         </label>
                       </div>
                     } @else {
@@ -429,8 +455,15 @@ import { getDatePartsInChile } from '../../utils/date.utils';
               @if (chofer.estado_pago !== 'pagado') {
                 <button 
                   class="btn btn-primary btn-block shadow-lg shadow-primary/20"
+                  [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
+                  [disabled]="verifyingChoferId() === chofer.chofer_id"
                   (click)="onConfirmPayment(chofer)">
-                  Confirmar Pago
+                  @if (verifyingChoferId() === chofer.chofer_id) {
+                    <span class="loading loading-spinner loading-sm"></span>
+                    <span>Verificando...</span>
+                  } @else {
+                    <span>Confirmar Pago</span>
+                  }
                 </button>
               }
             </div>
@@ -484,6 +517,8 @@ export class LiquidationTable {
   selectedWeek = input<number>(1);
   payrollPeriod = input<'current' | 'previous'>('current');
   isLoading = input<boolean>(false); // Estado de carga para mostrar skeleton
+  isWeekEnabled = input<(week: number) => boolean>(() => true); // Función para determinar si una semana está habilitada
+  verifyingChoferId = input<number | null>(null); // ID del chofer que se está verificando
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
   missingAmountChange = output<{ choferId: number; monto: number }>();

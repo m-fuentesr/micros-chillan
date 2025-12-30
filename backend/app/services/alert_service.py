@@ -128,7 +128,7 @@ async def marcar_todas_admin_como_resueltas():
     Marca como 'resuelta' TODAS las alertas activas del Admin.
     🛡️ EXCEPCIONES DE SEGURIDAD: 
        - No borra alertas personales de choferes.
-       - No borra INCIDENTES CRÍTICOS (deben resolverse manualmente).
+       - No borra ALERTAS CRÍTICAS (severidad="critica") - deben resolverse manualmente (TC025).
     """
     try:
         from datetime import datetime, timezone
@@ -141,10 +141,12 @@ async def marcar_todas_admin_como_resueltas():
         # Ejecutamos el update masivo con FILTROS DE SEGURIDAD
         alertas_admin = await get_admin_alerts()
 
+        # Filtrar por severidad: solo eliminar alertas NO críticas (TC025)
+        # Las alertas críticas deben permanecer y resolverse manualmente
         ids_a_resolver = [
             alerta.get("id")
             for alerta in alertas_admin
-            if alerta.get("tipo") != "incidente_critico"
+            if (alerta.get("severidad") or "").lower() != "critica"
         ]
 
         if not ids_a_resolver:
@@ -159,7 +161,7 @@ async def marcar_todas_admin_como_resueltas():
         )
         
         if res.data:
-            print(f"Se resolvieron {len(res.data)} alertas de administrador (respetando incidentes críticos).")
+            print(f"Se resolvieron {len(res.data)} alertas de administrador (respetando alertas críticas).")
             return len(res.data) 
         
         return 0

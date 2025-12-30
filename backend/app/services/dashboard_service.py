@@ -43,6 +43,7 @@ async def get_today_overview() -> DashboardResponse:
 
     registros = registros_res.data or []
 
+    # Obtener máquinas operativas
     maquinas_res = (
         supabase.table("maquinas")
         .select("id", count="exact")
@@ -53,8 +54,30 @@ async def get_today_overview() -> DashboardResponse:
     if getattr(maquinas_res, "error", None):
         raise HTTPException(500, f"Error obteniendo máquinas activas: {maquinas_res.error}")
 
-    maquinas_activas_ids = {m.get("id") for m in (maquinas_res.data or []) if m.get("id")}
-    total_maquinas_activas = maquinas_res.count or len(maquinas_activas_ids)
+    maquinas_operativas_ids = {m.get("id") for m in (maquinas_res.data or []) if m.get("id")}
+
+    # Obtener asignaciones vigentes (choferes asignados hoy)
+    # Solo las máquinas operativas CON chofer asignado se consideran "En Ruta"
+    asignaciones_res = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("maquina_id")
+        .lte("fecha_inicio", fecha_iso)
+        .or_(f"fecha_termino.is.null,fecha_termino.gte.{fecha_iso}")
+        .execute()
+    )
+
+    if getattr(asignaciones_res, "error", None):
+        raise HTTPException(500, f"Error obteniendo asignaciones activas: {asignaciones_res.error}")
+
+    # Filtrar solo máquinas operativas que tienen chofer asignado
+    maquinas_con_chofer_ids = {
+        row.get("maquina_id") 
+        for row in (asignaciones_res.data or []) 
+        if row.get("maquina_id") and row.get("maquina_id") in maquinas_operativas_ids
+    }
+
+    # Solo contar máquinas operativas CON chofer asignado como "En Ruta"
+    total_maquinas_activas = len(maquinas_con_chofer_ids)
 
     total_recaudado = sum((row.get("monto_recaudado") or 0) for row in registros)
     gasto_diesel = sum((row.get("costo_total_diesel") or 0) for row in registros)
@@ -64,7 +87,7 @@ async def get_today_overview() -> DashboardResponse:
     maquinas_reportadas = {
         row.get("maquina_id")
         for row in registros
-        if row.get("maquina_id") and row.get("maquina_id") in maquinas_activas_ids
+        if row.get("maquina_id") and row.get("maquina_id") in maquinas_con_chofer_ids
     }
 
     reportes_recibidos = len(maquinas_reportadas)

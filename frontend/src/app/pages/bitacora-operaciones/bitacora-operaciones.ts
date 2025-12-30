@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, e
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, firstValueFrom } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
@@ -766,6 +766,7 @@ interface DailyRecordView {
 })
 export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
   private alertModalService = inject(AlertModalService);
@@ -856,6 +857,8 @@ export class BitacoraOperaciones implements OnInit {
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
   private isManualReload = false; // Flag para indicar que estamos recargando manualmente (evita que el effect interfiera)
   private isInitialLoad = true; // Flag para evitar que el effect se ejecute en la carga inicial
+  private lastPage = 1; // Rastrear la última página para actualizar query params solo cuando cambia
+  private isRestoringFromQueryParams = false; // Flag para evitar actualizar query params cuando se restauran desde la URL
   showFiltersMobile = signal(false);
   
   // Función helper para obtener fechas del mes actual
@@ -953,6 +956,10 @@ export class BitacoraOperaciones implements OnInit {
     }
     
     this.recordFilters.set(filters);
+    
+    // Actualizar query params para persistir los filtros
+    this.updateQueryParams(filters);
+    
     // NO cerrar automáticamente el panel móvil - dejar que el usuario lo cierre manualmente
     // Esto permite seleccionar múltiples filtros sin que el panel se cierre
     
@@ -1196,6 +1203,14 @@ export class BitacoraOperaciones implements OnInit {
       const page = this.currentPage();
       const filters = this.recordFilters(); // También reaccionar a cambios en recordFilters
       
+      // Actualizar query params cuando cambia la página (pero no cuando cambian los filtros, eso se hace en onRecordFilterChange)
+      if (page !== this.lastPage) {
+        this.lastPage = page;
+        untracked(() => {
+          this.updateQueryParams(filters);
+        });
+      }
+      
       // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
       untracked(() => {
         this.loadRecords();
@@ -1270,6 +1285,8 @@ export class BitacoraOperaciones implements OnInit {
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
+      // Actualizar query params
+      this.updateQueryParams(this.recordFilters());
       // Asegurar que se carguen los registros de la nueva página
       untracked(() => {
         this.loadRecords();
@@ -1280,6 +1297,8 @@ export class BitacoraOperaciones implements OnInit {
   goToNextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
+      // Actualizar query params
+      this.updateQueryParams(this.recordFilters());
       // Asegurar que se carguen los registros de la nueva página
       untracked(() => {
         this.loadRecords();
@@ -1292,6 +1311,8 @@ export class BitacoraOperaciones implements OnInit {
       return; // Ya estamos en esa página
     }
     this.currentPage.set(page);
+    // Actualizar query params
+    this.updateQueryParams(this.recordFilters());
     // Asegurar que se carguen los registros de la nueva página
     // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
     untracked(() => {
@@ -1422,18 +1443,175 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   ngOnInit(): void {
-    // Inicializar filtros con el mes actual por defecto
-    const { desde, hasta } = this.getCurrentMonthDates();
-    this.recordFilters.set({
-      desde,
-      hasta,
-      orden: 'mas_reciente'
-    });
+    // Cargar choferes primero y esperar a que se carguen antes de restaurar filtros
+    this.driverService.getActiveDrivers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (drivers) => {
+          this.drivers.set(drivers);
+          
+          // Una vez que los choferes están cargados, restaurar filtros desde query params
+          firstValueFrom(this.route.queryParams).then(params => {
+            this.isRestoringFromQueryParams = true;
+            const { desde, hasta } = this.getCurrentMonthDates();
+            
+            // Restaurar filtros desde query params o usar valores por defecto
+            const choferValue = params['chofer'];
+            const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
+              chofer: choferValue && choferValue !== '' ? choferValue : null,
+              desde: params['desde'] || desde,
+              hasta: params['hasta'] || hasta,
+              orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+            };
+            
+            // Establecer los filtros directamente (no verificar si cambiaron para asegurar que se muestren)
+            this.recordFilters.set(filters);
+            
+            // Restaurar página si existe en query params
+            if (params['pagina']) {
+              const pagina = parseInt(params['pagina'], 10);
+              if (!isNaN(pagina) && pagina > 0) {
+                this.currentPage.set(pagina);
+                this.lastPage = pagina;
+              }
+            }
+            
+            // Marcar que ya no estamos restaurando desde query params
+            setTimeout(() => {
+              this.isRestoringFromQueryParams = false;
+            }, 100);
+            
+            // Cargar datos después de restaurar los filtros
+            this.loadRecords();
+          }).catch(() => {
+            // Si hay error, usar valores por defecto
+            const { desde, hasta } = this.getCurrentMonthDates();
+            this.recordFilters.set({
+              desde,
+              hasta,
+              orden: 'mas_reciente'
+            });
+            this.loadRecords();
+          });
+        },
+        error: (error) => {
+          console.error('Error cargando choferes:', error);
+          // Mantener array vacío en caso de error
+          this.drivers.set([]);
+          
+          // Aún así, restaurar filtros con valores por defecto
+          firstValueFrom(this.route.queryParams).then(params => {
+            const { desde, hasta } = this.getCurrentMonthDates();
+            const choferValue = params['chofer'];
+            this.recordFilters.set({
+              chofer: choferValue && choferValue !== '' ? choferValue : null,
+              desde: params['desde'] || desde,
+              hasta: params['hasta'] || hasta,
+              orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+            });
+            this.loadRecords();
+          }).catch(() => {
+            const { desde, hasta } = this.getCurrentMonthDates();
+            this.recordFilters.set({
+              desde,
+              hasta,
+              orden: 'mas_reciente'
+            });
+            this.loadRecords();
+          });
+        }
+      });
     
-    // Cargar datos iniciales manualmente (el effect no se ejecuta en la carga inicial)
-    this.loadRecords();
-    // Cargar choferes activos para el filtro
-    this.loadDrivers();
+    // También suscribirse a cambios posteriores de query params (por si se navega de vuelta)
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        // Solo restaurar si no estamos actualizando nosotros mismos
+        if (this.isRestoringFromQueryParams) {
+          return;
+        }
+        
+        const { desde, hasta } = this.getCurrentMonthDates();
+        
+        // Restaurar filtros desde query params
+        const choferValue = params['chofer'];
+        const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
+          chofer: choferValue && choferValue !== '' ? choferValue : null,
+          desde: params['desde'] || desde,
+          hasta: params['hasta'] || hasta,
+          orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+        };
+        
+        // Solo actualizar si los filtros son diferentes
+        const currentFilters = this.recordFilters();
+        const filtersChanged = 
+          filters.chofer !== currentFilters.chofer ||
+          filters.desde !== currentFilters.desde ||
+          filters.hasta !== currentFilters.hasta ||
+          filters.orden !== currentFilters.orden;
+        
+        if (filtersChanged) {
+          this.isRestoringFromQueryParams = true;
+          this.recordFilters.set(filters);
+          
+          // Restaurar página si existe en query params
+          if (params['pagina']) {
+            const pagina = parseInt(params['pagina'], 10);
+            if (!isNaN(pagina) && pagina > 0 && pagina !== this.currentPage()) {
+              this.currentPage.set(pagina);
+              this.lastPage = pagina;
+            }
+          } else if (this.currentPage() !== 1) {
+            this.currentPage.set(1);
+            this.lastPage = 1;
+          }
+          
+          setTimeout(() => {
+            this.isRestoringFromQueryParams = false;
+          }, 100);
+        }
+      });
+  }
+  
+  /**
+   * Actualiza los query params de la URL para persistir los filtros
+   */
+  private updateQueryParams(filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }): void {
+    // No actualizar query params si estamos restaurando desde la URL
+    if (this.isRestoringFromQueryParams) {
+      return;
+    }
+    
+    const queryParams: Record<string, string | null> = {};
+    
+    if (filters.chofer) {
+      queryParams['chofer'] = filters.chofer;
+    }
+    if (filters.desde) {
+      queryParams['desde'] = filters.desde;
+    }
+    if (filters.hasta) {
+      queryParams['hasta'] = filters.hasta;
+    }
+    if (filters.orden) {
+      queryParams['orden'] = filters.orden;
+    }
+    
+    // Agregar página actual (solo si es mayor a 1 para mantener URL limpia)
+    if (this.currentPage() > 1) {
+      queryParams['pagina'] = this.currentPage().toString();
+    } else {
+      // Si volvemos a la página 1, eliminar el parámetro de página
+      queryParams['pagina'] = null;
+    }
+    
+    // Actualizar URL sin recargar la página
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true // Reemplazar en lugar de agregar al historial
+    });
   }
 
   private loadDrivers(): void {

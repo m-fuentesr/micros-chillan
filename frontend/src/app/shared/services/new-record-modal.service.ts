@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { getTodayStringInChile } from '../utils/date.utils';
 
 export interface NewRecordFormData {
   noWorkDay: boolean;
@@ -48,7 +49,8 @@ export class NewRecordModalService {
    */
   open(): Promise<NewRecordFormData | null> {
     return new Promise((resolve) => {
-      const today = new Date().toISOString().split('T')[0];
+      // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
+      const today = getTodayStringInChile();
       this._formData.set({
         noWorkDay: false,
         noWorkDayReason: '',

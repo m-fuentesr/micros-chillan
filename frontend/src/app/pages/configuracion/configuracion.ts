@@ -5,6 +5,7 @@ import { SettingsService } from '../../shared/services/settings.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
 import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
 import { GlobalErrorService } from '../../shared/services/global-error.service';
+import { AccountingService } from '../../shared/services/accounting.service';
 import { GeneralSettings, UpdateSettingsRequest } from '../../shared/models/settings.models';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
@@ -424,6 +425,7 @@ export class Configuracion implements OnInit {
   private readonly alertModalService = inject(AlertModalService);
   private readonly confirmModalService = inject(ConfirmModalService);
   private readonly globalErrorService = inject(GlobalErrorService);
+  private readonly accountingService = inject(AccountingService);
 
   // Exponer Math para usar en el template
   readonly Math = Math;
@@ -540,6 +542,12 @@ export class Configuracion implements OnInit {
       }
 
       const response = await this.settingsService.updateSettings(updates);
+
+      // Si se actualizó el sueldo mínimo, invalidar todo el caché de liquidaciones
+      // porque el sueldo mínimo afecta a todas las liquidaciones (especialmente la última semana)
+      if (updates.sueldo_minimo !== undefined) {
+        this.accountingService.clearAllLiquidationCache();
+      }
 
       // Actualizar estado local optimísticamente (sin recargar del servidor)
       const currentFormData = this.formData()!;

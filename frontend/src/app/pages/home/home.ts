@@ -57,7 +57,7 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 [numericValue]="gananciaNetaTotalNumeric()"
                 [valueFormat]="'currency'"
                 [animationDuration]="1500"
-                type="success"
+                [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
@@ -312,7 +312,7 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 [numericValue]="gananciaNetaTotalNumeric()"
                 [valueFormat]="'currency'"
                 [animationDuration]="1500"
-                type="success"
+                [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
@@ -844,12 +844,54 @@ export class Home implements OnInit, OnDestroy {
 
   // KPIs calculados - Usar datos del nuevo servicio cuando estén disponibles, sino usar fallback
   // Signals numéricos para animación
-  gananciaNetaTotalNumeric = computed(() => {
+  // Mantener el último valor conocido para evitar mostrar 0 mientras se recargan los datos
+  private lastGananciaNeta = signal<number | null>(null);
+
+  // Effect para guardar el último valor conocido cuando cambian los datos
+  private gananciaNetaEffect = effect(() => {
     const dashboardData = this.dashboardService.dashboardData();
     if (dashboardData?.kpis?.ganancia_neta !== undefined) {
-      return dashboardData.kpis.ganancia_neta;
+      this.lastGananciaNeta.set(dashboardData.kpis.ganancia_neta);
     }
+  });
+
+  gananciaNetaTotalNumeric = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    
+    // Debug: Verificar qué está pasando en el computed
+    console.log('🔍 gananciaNetaTotalNumeric computed:', {
+      dashboardData: dashboardData,
+      kpis: dashboardData?.kpis,
+      ganancia_neta: dashboardData?.kpis?.ganancia_neta,
+      tipo: typeof dashboardData?.kpis?.ganancia_neta,
+      lastValue: this.lastGananciaNeta()
+    });
+    
+    // Si hay datos del dashboard, usar el valor (puede ser negativo, positivo o cero)
+    // Verificar explícitamente que sea un número (incluyendo 0 y negativos)
+    if (dashboardData?.kpis && typeof dashboardData.kpis.ganancia_neta === 'number') {
+      const value = dashboardData.kpis.ganancia_neta;
+      console.log('✅ Retornando ganancia_neta del dashboard:', value);
+      return value;
+    }
+    
+    // Si no hay datos aún pero tenemos un último valor conocido, usarlo
+    // Esto evita mostrar $0 mientras se recargan los datos al volver a la página
+    const lastValue = this.lastGananciaNeta();
+    if (lastValue !== null) {
+      console.log('📌 Retornando último valor conocido:', lastValue);
+      return lastValue;
+    }
+    
+    // Solo retornar 0 si nunca hemos tenido datos
+    console.log('⚠️ No hay datos, retornando 0');
     return 0;
+  });
+
+  // Determinar el tipo del KPI según si la ganancia es positiva o negativa
+  gananciaNetaType = computed<'success' | 'danger'>(() => {
+    const value = this.gananciaNetaTotalNumeric();
+    return value >= 0 ? 'success' : 'danger';
   });
 
   ingresoTotalNumeric = computed(() => {
@@ -996,8 +1038,10 @@ export class Home implements OnInit, OnDestroy {
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
     
-    // 2. Optimistic update: Remover todas las alertas inmediatamente
-    this._alerts.set([]);
+    // 2. Optimistic update: Remover solo las alertas NO críticas
+    // Las alertas críticas deben permanecer (TC025)
+    const alertsToKeep = this._alerts().filter(alert => alert.severity === 'critical');
+    this._alerts.set(alertsToKeep);
     this.isDeletingAllAlerts.set(true);
     
     // 3. Llamar al servidor en segundo plano usando el nuevo endpoint

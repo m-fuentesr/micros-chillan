@@ -71,13 +71,16 @@ export class RouteTransitionService {
   isAdminRoute(url: string): boolean {
     if (!url) return false;
     
+    // Remover query params y fragmentos para la comparación
+    const urlWithoutParams = url.split('?')[0].split('#')[0];
+    
     // Verificar rutas exactas
-    if (ADMIN_ROUTES.some(route => url === route || url.startsWith(route + '/'))) {
+    if (ADMIN_ROUTES.some(route => urlWithoutParams === route || urlWithoutParams.startsWith(route + '/'))) {
       return true;
     }
     
     // Verificar subrutas de máquinas y choferes
-    if (url.startsWith('/maquinas/') || url.startsWith('/choferes/')) {
+    if (urlWithoutParams.startsWith('/maquinas/') || urlWithoutParams.startsWith('/choferes/')) {
       return true;
     }
     
