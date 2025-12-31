@@ -21,7 +21,7 @@ import { firstValueFrom } from 'rxjs';
   template: `
     <div class="space-y-6 lg:space-y-8">
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
         <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4">
           <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
             Configuración General
@@ -78,7 +78,7 @@ import { firstValueFrom } from 'rxjs';
                   <button 
                     class="btn btn-primary gap-2 flex-1 sm:flex-none shadow-lg shadow-primary/30"
                     (click)="onSave()"
-                    [disabled]="!hasChanges() || isSaving()">
+                    [disabled]="!hasChanges() || isSaving() || !isSueldoMinimoValid()">
                     @if (isSaving()) {
                       <span class="loading loading-spinner loading-sm"></span>
                     } @else {
@@ -100,7 +100,7 @@ import { firstValueFrom } from 'rxjs';
                 <!-- Header con ícono grande -->
                 <div class="flex items-start justify-between gap-4">
                   <div class="flex items-center gap-4">
-                    <div class="flex items-center justify-center rounded-2xl bg-gradient-to-br from-primary/8 to-primary/3 ring-1 ring-primary/15 h-14 w-14 shrink-0">
+                    <div class="flex items-center justify-center rounded-2xl bg-linear-to-br from-primary/8 to-primary/3 ring-1 ring-primary/15 h-14 w-14 shrink-0">
                       <ui-icon name="Percent" size="lg" class="text-primary/80" />
                     </div>
                     <div>
@@ -120,22 +120,22 @@ import { firstValueFrom } from 'rxjs';
                 <!-- Slider Premium -->
                 <div class="space-y-4">
                   <div class="relative w-full slider-container">
-                    <input 
-                      type="range" 
-                      min="0" 
-                      max="100" 
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
                       [ngModel]="Math.round(formData()!.porcentaje_display)"
                       (ngModelChange)="formData()!.porcentaje_display = Math.round($event)"
                       class="range range-primary range-lg w-full" 
-                      step="1" 
+                      step="1"
                     />
                     <!-- Marcas de escala alineadas con padding del range -->
                     <div class="flex justify-between w-full mt-2 px-1">
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">0%</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">25%</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">50%</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">75%</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">100%</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">0%</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">25%</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">50%</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">75%</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">100%</span>
                     </div>
                   </div>
                 </div>
@@ -152,7 +152,7 @@ import { firstValueFrom } from 'rxjs';
             </div>
 
             <!-- Card 2: Sueldo Mínimo (1/3 width) -->
-            <div class="lg:col-span-1 card-sueldo group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-green-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'300ms'">
+            <div class="lg:col-span-1 card-sueldo group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-linear-to-br from-green-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'300ms'">
               <div class="p-6 space-y-4 h-full flex flex-col">
                 <!-- Header -->
                 <div class="flex items-center gap-3">
@@ -172,11 +172,14 @@ import { firstValueFrom } from 'rxjs';
                   </div>
                   
                   <!-- Input -->
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     [(ngModel)]="formData()!.sueldo_minimo"
-                    class="input input-bordered w-full bg-white/80 border-green-200 focus:border-green-400 focus:ring-2 focus:ring-green-100"
+                    class="input input-bordered w-full bg-white/80 border-green-200 focus:border-green-400 focus:ring-2
+                    focus:ring-green-100 placeholder-gray-400"
                     min="0"
+                    [max]="MAX_SUELDO_MINIMO"
+                    (input)="handleSueldoMinimoInput($event)"
                     step="10000"
                     placeholder="750000"
                   />
@@ -192,7 +195,7 @@ import { firstValueFrom } from 'rxjs';
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 mt-8 lg:mt-10">
             
             <!-- Card 3: Alerta Licencias -->
-            <div class="card-alerta-licencias group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-amber-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'400ms'">
+            <div class="card-alerta-licencias group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-linear-to-br from-amber-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'400ms'">
               <div class="p-6 space-y-5">
                 <!-- Header -->
                 <div class="flex items-start justify-between gap-3">
@@ -226,10 +229,10 @@ import { firstValueFrom } from 'rxjs';
                     />
                     <!-- Marcas de escala alineadas con padding del range -->
                     <div class="flex justify-between w-full mt-2 px-1">
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">1 día</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">30 días</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">60 días</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">90 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">1 día</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">30 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">60 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">90 días</span>
                     </div>
                   </div>
                 </div>
@@ -244,7 +247,7 @@ import { firstValueFrom } from 'rxjs';
             </div>
 
             <!-- Card 4: Alerta Documentos -->
-            <div class="card-alerta-documentos group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-blue-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'500ms'">
+            <div class="card-alerta-documentos group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-linear-to-br from-blue-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300 animate-card-stagger" [style.animation-delay]="'500ms'">
               <div class="p-6 space-y-5">
                 <!-- Header -->
                 <div class="flex items-start justify-between gap-3">
@@ -278,10 +281,10 @@ import { firstValueFrom } from 'rxjs';
                     />
                     <!-- Marcas de escala alineadas con padding del range -->
                     <div class="flex justify-between w-full mt-2 px-1">
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">1 día</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">30 días</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">60 días</span>
-                      <span class="text-xs font-semibold text-base-content/40 flex-shrink-0">90 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">1 día</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">30 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">60 días</span>
+                      <span class="text-xs font-semibold text-base-content/40 shrink-0">90 días</span>
                     </div>
                   </div>
                 </div>
@@ -298,11 +301,11 @@ import { firstValueFrom } from 'rxjs';
 
           <!-- Row 3: Choferes Eliminados -->
           <div class="mt-8 lg:mt-10 animate-card-stagger" [style.animation-delay]="'600ms'">
-            <div class="card-choferes-eliminados group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-purple-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300">
+            <div class="card-choferes-eliminados group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-linear-to-br from-purple-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300">
               <div class="p-6 md:p-8 space-y-6">
                 <!-- Header -->
                 <div class="flex items-center gap-4">
-                  <div class="flex items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100/80 to-purple-50/50 ring-1 ring-purple-200/50 h-14 w-14 shrink-0">
+                  <div class="flex items-center justify-center rounded-2xl bg-linear-to-br from-purple-100/80 to-purple-50/50 ring-1 ring-purple-200/50 h-14 w-14 shrink-0">
                     <ui-icon name="Users" size="lg" class="text-purple-600/80" />
                   </div>
                   <div class="flex-1 min-w-0">
@@ -610,6 +613,8 @@ export class Configuracion implements OnInit {
   readonly loadingMachines = signal(false);
   readonly isReintegrating = signal(false);
   
+  readonly MAX_SUELDO_MINIMO = 9_999_999;
+
   readonly reintegrateForm = signal<DriverReintegrateRequest>({
     correo_electronico: '',
     maquina_asignada: null
@@ -648,6 +653,23 @@ export class Configuracion implements OnInit {
     }
   }
 
+  handleSueldoMinimoInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const digitsOnly = input.value.replace(/\D/g, '');
+    const limitedDigits = digitsOnly.slice(0, 7);
+    const parsedValue = limitedDigits ? parseInt(limitedDigits, 10) : 0;
+    const cappedValue = Math.min(parsedValue, this.MAX_SUELDO_MINIMO);
+
+    input.value = limitedDigits ? cappedValue.toString() : '';
+
+    if (this.formData()) {
+      this.formData.set({
+        ...this.formData()!,
+        sueldo_minimo: cappedValue
+      });
+    }
+  }
+
   hasChanges(): boolean {
     if (!this.formData() || !this.originalData) return false;
 
@@ -668,10 +690,13 @@ export class Configuracion implements OnInit {
     const form = this.formData()!;
 
     // Validaciones
-    if (form.sueldo_minimo < 0) {
+    if (!this.isSueldoMinimoValid()) {
+      const message = form.sueldo_minimo <= 0
+        ? 'El sueldo mínimo debe ser mayor a 0.'
+        : `El sueldo mínimo no puede superar ${this.formatCurrency(this.MAX_SUELDO_MINIMO)}.`;
       this.alertModalService.show({
         title: 'Sueldo mínimo inválido',
-        message: 'El sueldo mínimo debe ser mayor o igual a 0.',
+        message,
         type: 'error',
         buttonText: 'Entendido'
       });
@@ -803,6 +828,12 @@ export class Configuracion implements OnInit {
 
   formatDecimalDisplay(decimal: number): string {
     return decimal.toFixed(2);
+  }
+
+  isSueldoMinimoValid(): boolean {
+    const sueldo = this.formData()?.sueldo_minimo;
+    if (sueldo === undefined || sueldo === null) return false;
+    return sueldo > 0 && sueldo <= this.MAX_SUELDO_MINIMO;
   }
 
   // Métodos para choferes eliminados

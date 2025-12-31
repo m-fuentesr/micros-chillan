@@ -228,8 +228,9 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                             type="text"
                             class="input input-sm w-full mt-1 font-mono font-bold"
                             [value]="editPatente()"
-                            (input)="editPatente.set($any($event.target).value)"
+                            (input)="onPatenteInput($event)"
                             placeholder="Patente">
+                          <p class="text-[11px] text-base-content/60 mt-1">Formato: ABCD-12 (mayúsculas, 4 letras + guion + 2 números).</p>
                         } @else {
                           <div class="font-mono font-bold text-base-content">
                             {{ machine()?.patente || '--' }}
@@ -1111,6 +1112,18 @@ export class MachineDetail implements OnInit {
 
     if (!currentMachine) return;
 
+    const patenteRegex = /^[A-Z]{4}-\d{2}$/;
+
+    if (!this.editPatente() || !patenteRegex.test(this.editPatente())) {
+      this.alertModalService.show({
+        title: 'Patente inválida',
+        message: 'Usa el formato ABCD-12 (mayúsculas, 4 letras, guion y 2 números).',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     // Validar que las fechas de documentación estén presentes
     if (!this.editRevisionTecnica() || !this.editPermisoCirculacion() || !this.editSeguroObligatorio()) {
       this.alertModalService.show({
@@ -1181,6 +1194,18 @@ export class MachineDetail implements OnInit {
           }, 300);
         }
       });
+  }
+
+  onPatenteInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value || '';
+    const sanitized = raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7);
+
+    if (sanitized !== raw) {
+      input.value = sanitized;
+    }
+
+    this.editPatente.set(sanitized);
   }
 
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {

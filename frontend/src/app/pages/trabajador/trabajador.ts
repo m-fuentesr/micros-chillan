@@ -25,7 +25,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
         <app-loading-skeleton type="worker-header" />
       } @else {
       <header class="trabajador-header-enter relative pt-0 pb-20 px-6 rounded-b-[3rem] overflow-hidden z-0 shadow-2xl shadow-blue-900/20">
-        <div class="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 z-0 rounded-b-[3rem]"></div>
+        <div class="absolute inset-0 bg-linear-to-br from-blue-600 via-blue-700 to-indigo-800 z-0 rounded-b-[3rem]"></div>
         <div
           class="absolute inset-0 opacity-10 z-0 rounded-b-[3rem] overflow-hidden pointer-events-none"
           style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 20px 20px;"
@@ -52,7 +52,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
       <div class="px-5 mt-4 relative z-20 trabajador-content-enter">
         @if (profileLoadingState.isLoading() || statusLoadingState.isLoading()) {
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
+            <div class="bg-linear-to-r from-amber-50 to-orange-50 p-3"></div>
             <div class="p-6 space-y-4">
               <div class="h-6 w-3/4 skeleton-shimmer rounded"></div>
               <div class="h-4 w-full skeleton-shimmer rounded"></div>
@@ -62,7 +62,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
         } @else if (todayRecordStatus() === null) {
           <!-- Skeleton mientras carga el estado del reporte -->
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3"></div>
+            <div class="bg-linear-to-r from-amber-50 to-orange-50 p-3"></div>
             <div class="p-6 space-y-4">
               <div class="h-6 w-3/4 skeleton-shimmer rounded"></div>
               <div class="h-4 w-full skeleton-shimmer rounded"></div>
@@ -73,7 +73,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
         @if (hasReportToday()) {
           <!-- Estado: Ya reportó hoy -->
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-            <div class="bg-gradient-to-r from-emerald-50 to-green-50 p-3 text-left border-b border-green-100/50 pl-4">
+            <div class="bg-linear-to-r from-emerald-50 to-green-50 p-3 text-left border-b border-green-100/50 pl-4">
               <p class="text-[10px] font-black text-emerald-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
                 <span class="relative flex h-2 w-2">
                   <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
@@ -91,7 +91,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
         } @else {
           <!-- Estado: Acción requerida -->
           <div class="bg-white rounded-2xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.15)] ring-1 ring-black/5 overflow-hidden">
-            <div class="bg-gradient-to-r from-amber-50 to-orange-50 p-3 text-left border-b border-orange-100/50 pl-4 border-l-4 border-l-primary">
+            <div class="bg-linear-to-r from-amber-50 to-orange-50 p-3 text-left border-b border-orange-100/50 pl-4 border-l-4 border-l-primary">
               <p class="text-[10px] font-black text-amber-600 uppercase tracking-[0.3em] flex justify-center items-center gap-2">
                 <span class="relative flex h-2 w-2">
                   <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
@@ -109,7 +109,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
                 routerLink="/trabajador/reportar"
                 class="group relative w-full flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-600/30 transition-all duration-200 active:scale-[0.98]"
               >
-                <div class="absolute inset-x-0 top-0 h-[1px] bg-white/20"></div>
+                <div class="absolute inset-x-0 top-0 h-px bg-white/20"></div>
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5 transition-transform group-hover:-rotate-12">
                   <path fill-rule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H4.5a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clip-rule="evenodd" />
                 </svg>
@@ -134,7 +134,7 @@ import { formatRelativeDate } from '../../shared/utils/date.utils';
           }
         } @else {
         <div class="space-y-0 relative pl-2">
-          <div class="absolute left-[19px] top-2 bottom-4 w-[2px] bg-slate-100"></div>
+          <div class="absolute left-[19px] top-2 bottom-4 w-0.5 bg-slate-100"></div>
           @for (activity of recentActivity(); track activity.id; let i = $index) {
             <div 
               class="trabajador-activity-item relative pl-10 pb-8 group" 
