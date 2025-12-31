@@ -34,6 +34,8 @@ export interface DailyRecordHistoryItem {
   accion: string;
   timestamp: string; // ISO date string
   cambios?: string;
+  rol?: string; // Rol del usuario responsable
+  tipoActor?: string; // Tipo de actor: 'admin' | 'chofer'
   detalles?: Record<string, { anterior?: any; nuevo?: any }>;
 }
 

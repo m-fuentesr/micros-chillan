@@ -28,6 +28,7 @@ async def get_monthly_summary(mes: int, anio: int):
         .select("monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
         .gte("fecha", fecha_inicio)
         .lte("fecha", fecha_fin)
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados de reportes financieros
         .execute()
     )
     if getattr(res_registros, "error", None):
@@ -79,6 +80,7 @@ async def get_daily_profitability(mes: int, anio: int):
         .select("fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
         .gte("fecha", fecha_inicio)
         .lte("fecha", fecha_fin)
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados de reportes financieros
         .execute()
     )
     if getattr(res_registros, "error", None):
@@ -156,6 +158,7 @@ async def get_weekly_summary(mes: int, anio: int):
         .select("fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
         .gte("fecha", fecha_inicio_mes.isoformat())
         .lte("fecha", fecha_fin_mes.isoformat())
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados de reportes financieros
         .execute()
     ).data
 
@@ -217,6 +220,7 @@ async def get_week_detail_by_week_number(mes: int, anio: int, semana: int):
         .select("chofer_id, maquina_id, fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
         .gte("fecha", fecha_inicio)
         .lte("fecha", fecha_fin)
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados del conteo y cálculos
         .execute()
     )
     registros = res_regs.data

@@ -262,11 +262,18 @@ class DailyRecordAuditDetail(BaseModel):
     valor_nuevo: str
 
 
+class DailyRecordAuditActor(BaseModel):
+    nombre_completo: Optional[str] = None
+    rol: Optional[str] = None
+    tipo_actor: Optional[str] = None
+
+
 class DailyRecordAuditItem(BaseModel):
     id: int
     fecha_cambio: datetime
     usuario_responsable: str
     tipo_cambio: str
+    actor: Optional[DailyRecordAuditActor] = None
     detalles: List[DailyRecordAuditDetail]
 
     

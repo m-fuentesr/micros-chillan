@@ -128,6 +128,7 @@ async def get_monthly_stats(current_user: UserInDB, mes: int = None, anio: int =
         .eq("chofer_id", chofer_id)
         .gte("fecha", fecha_inicio) # Mayor o igual al día 1
         .lte("fecha", fecha_fin)    # Menor o igual al último día
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados del conteo y suma
         .execute()
     )
 

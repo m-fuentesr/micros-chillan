@@ -477,12 +477,25 @@ import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '
 
             <!-- Observaciones (solo si es día trabajado) -->
             @if (!modalService.formData().noWorkDay) {
-            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-3">
+            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-3"
+                 [class.border-error/30]="modalService.formData().hasIncident"
+                 [class.bg-error/5]="modalService.formData().hasIncident">
               <label class="label pb-0 pt-0">
-                <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Observaciones</span>
+                <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  Observaciones
+                  @if (modalService.formData().hasIncident) {
+                    <span class="text-error">*</span>
+                  }
+                </span>
               </label>
+              @if (modalService.formData().hasIncident) {
+                <p class="text-xs text-error font-semibold mt-1 ml-1">
+                  Las observaciones son obligatorias cuando hay un incidente crítico
+                </p>
+              }
               <textarea 
                 class="textarea textarea-bordered h-24 w-full rounded-lg text-sm leading-relaxed text-base-content placeholder:text-base-content/50 focus:textarea-primary focus:ring-2 focus:ring-primary/30 focus:border-primary/70" 
+                [class.textarea-error]="modalService.formData().hasIncident && (!modalService.formData().observations || !modalService.formData().observations.trim())"
                 [ngModel]="modalService.formData().observations"
                 (ngModelChange)="updateField('observations', $event)"
                 name="observations"
@@ -1023,6 +1036,12 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
       // Foto comprobante obligatoria solo en días trabajados
       if (!data.receiptPhoto) {
         return false;
+      }
+      // Si hay incidente crítico, las observaciones son obligatorias
+      if (data.hasIncident) {
+        if (!data.observations || !data.observations.trim()) {
+          return false;
+        }
       }
     }
     // Si es día no trabajado, validar motivo

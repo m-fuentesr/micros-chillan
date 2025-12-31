@@ -38,6 +38,7 @@ interface DailyRecordDetailResponse {
     litros_diesel: number | null;
     costo_total_diesel: number | null;
     pago_calculado_actual: number | null;
+    neto?: number | null;
   };
   estado_operativo: {
     es_dia_no_trabajado: boolean;
@@ -61,6 +62,11 @@ interface DailyRecordAuditItem {
   fecha_cambio: string;
   usuario_responsable: string | null;
   tipo_cambio: string | null;
+  actor?: {
+    nombre_completo?: string | null;
+    rol?: string | null;
+    tipo_actor?: string | null;
+  };
   detalles?: Array<{
     campo: string;
     valor_anterior: string | null;
@@ -236,6 +242,56 @@ export class DailyRecordService {
       'Updated At'
     ];
     
+    // Campos que son montos monetarios (necesitan formato de moneda)
+    const camposMonetarios = [
+      'Monto Recaudado',
+      'Costo de Diésel',
+      'Costo Total Diesel',
+      'monto_recaudado',
+      'costo_total_diesel',
+      'costo_diesel'
+    ];
+    
+    // Mapeo de nombres de campos a mensajes más descriptivos
+    const mensajesDescriptivos: Record<string, string> = {
+      'Monto Recaudado': 'Recaudación',
+      'Costo de Diésel': 'Costo de diésel',
+      'Costo Total Diesel': 'Costo de diésel',
+      'Litros de Diésel': 'Litros de diésel',
+      'Observaciones': 'Observaciones',
+      'Día No Trabajado': 'Día no trabajado',
+      'Motivo de Inactividad': 'Motivo de inactividad',
+      'Estado': 'Estado'
+    };
+    
+    // Función para formatear valores monetarios
+    const formatCurrency = (value: string | number): string => {
+      if (!value || value === '-' || value === 'None' || value === 'null') {
+        return '-';
+      }
+      
+      // Intentar parsear como número
+      const numValue = typeof value === 'number' ? value : parseFloat(String(value));
+      if (isNaN(numValue)) {
+        return String(value);
+      }
+      
+      // Formatear como moneda chilena
+      return new Intl.NumberFormat('es-CL', {
+        style: 'currency',
+        currency: 'CLP',
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(numValue).replace('CLP', '$');
+    };
+    
+    // Función para verificar si un valor es numérico
+    const isNumeric = (value: string | number): boolean => {
+      if (typeof value === 'number') return true;
+      if (!value || value === '-' || value === 'None' || value === 'null') return false;
+      return !isNaN(parseFloat(String(value))) && isFinite(parseFloat(String(value)));
+    };
+    
     // Filtrar detalles excluidos y mapear a mensajes amigables
     const cambios = item.detalles
       ?.filter((detalle) => {
@@ -249,20 +305,43 @@ export class DailyRecordService {
         
         // Mensajes más amigables para cambios de imágenes
         if (campo.includes('Comprobante') || campo.toLowerCase().includes('imagen')) {
-          if (anterior === '-' || anterior === 'Sin imagen' || anterior === 'None') {
+          if (anterior === '-' || anterior === 'Sin imagen' || anterior === 'None' || anterior === 'null') {
             return `${campo}: Agregada`;
-          } else if (nuevo === '-' || nuevo === 'Sin imagen' || nuevo === 'None') {
+          } else if (nuevo === '-' || nuevo === 'Sin imagen' || nuevo === 'None' || nuevo === 'null') {
             return `${campo}: Eliminada`;
           } else {
             return `${campo}: Actualizada`;
           }
         }
         
+        // Verificar si es un campo monetario
+        const esCampoMonetario = camposMonetarios.some(campoMon => 
+          campo.toLowerCase().includes(campoMon.toLowerCase())
+        );
+        
+        // Obtener nombre descriptivo del campo
+        const nombreDescriptivo = mensajesDescriptivos[campo] || campo;
+        
+        // Si es campo monetario y ambos valores son numéricos, formatear como moneda
+        if (esCampoMonetario && isNumeric(anterior) && isNumeric(nuevo)) {
+          const anteriorFormateado = formatCurrency(anterior);
+          const nuevoFormateado = formatCurrency(nuevo);
+          return `${nombreDescriptivo} cambió de ${anteriorFormateado} a ${nuevoFormateado}`;
+        }
+        
+        // Si es campo monetario pero solo uno es numérico
+        if (esCampoMonetario) {
+          const anteriorFormateado = isNumeric(anterior) ? formatCurrency(anterior) : (anterior === '-' || anterior === 'None' || anterior === 'null' ? 'sin valor' : anterior);
+          const nuevoFormateado = isNumeric(nuevo) ? formatCurrency(nuevo) : (nuevo === '-' || nuevo === 'None' || nuevo === 'null' ? 'sin valor' : nuevo);
+          return `${nombreDescriptivo} cambió de ${anteriorFormateado} a ${nuevoFormateado}`;
+        }
+        
         // Para otros campos, mostrar cambio normal pero limitar longitud
         const valorAnterior = anterior.length > 50 ? anterior.substring(0, 47) + '...' : anterior;
         const valorNuevo = nuevo.length > 50 ? nuevo.substring(0, 47) + '...' : nuevo;
         
-        return `${campo}: ${valorAnterior} → ${valorNuevo}`;
+        // Usar formato descriptivo si está disponible
+        return `${nombreDescriptivo}: ${valorAnterior} → ${valorNuevo}`;
       })
       .filter(cambio => cambio) // Filtrar cambios vacíos
       .join('; ') || '';
@@ -272,7 +351,9 @@ export class DailyRecordService {
       usuario: item.usuario_responsable || 'Sistema',
       accion: item.tipo_cambio || 'Edición',
       timestamp: item.fecha_cambio,
-      cambios
+      cambios,
+      rol: item.actor?.rol || undefined,
+      tipoActor: item.actor?.tipo_actor || undefined
     };
   }
 
@@ -316,6 +397,7 @@ export class DailyRecordService {
       recaudado: datosFinancieros.monto_recaudado || 0,
       costo_diesel: datosFinancieros.costo_total_diesel || 0,
       litros_diesel: datosFinancieros.litros_diesel || undefined,
+      neto: datosFinancieros.neto ?? ((datosFinancieros.monto_recaudado || 0) - (datosFinancieros.costo_total_diesel || 0) - (datosFinancieros.pago_calculado_actual || 0)),
       
       // Estado de operación
       dia_no_trabajado: estadoOperativo.es_dia_no_trabajado || false,
@@ -562,6 +644,20 @@ export class DailyRecordService {
         map((response) => this.mapDetailResponseToDailyRecord(response)),
         catchError((error) => {
           console.error('Error actualizando registro diario:', error);
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Eliminar un registro diario
+   * Endpoint: DELETE /api/daily-records/{id}
+   */
+  deleteDailyRecord(id: string): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/api/daily-records/${id}`)
+      .pipe(
+        catchError((error) => {
+          console.error('Error eliminando registro diario:', error);
           return throwError(() => error);
         })
       );
