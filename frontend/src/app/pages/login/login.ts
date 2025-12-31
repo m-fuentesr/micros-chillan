@@ -47,7 +47,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
 
       <!-- Panel de marca desktop -->
       <div
-        class="hidden lg:flex w-1/2 bg-primary text-primary-content relative flex-col justify-between p-16 overflow-hidden transition-transform duration-[600ms] ease-[cubic-bezier(0.65,0,0.35,1)] login-leaving"
+        class="hidden lg:flex w-1/2 bg-primary text-primary-content relative flex-col justify-between p-16 overflow-hidden transition-transform duration-600 ease-[cubic-bezier(0.65,0,0.35,1)] login-leaving"
         [class.login-leaving-active]="leaving()"
         [class.login-panel-hidden]="isLogoutTransition()"
         [class.login-panel-enter]="showLoginPanel()"
@@ -133,13 +133,25 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   type="text"
                   id="email"
                   class="premium-input w-full"
-                  placeholder="Correo electrónico ..." 
+                  placeholder="Correo electrónico ..."
                   formControlName="email"
                   autocomplete="email"
                 />
                 @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
                   <div class="absolute right-4 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
                     <ui-icon name="AlertCircle" size="md" />
+                  </div>
+                }
+                @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
+                  <div class="mt-2 pl-1 text-sm text-error flex items-center gap-2 animate-entrance-fade-up">
+                    <ui-icon name="Info" size="sm" />
+                    <span>
+                      @if (loginForm.get('email')?.errors?.['required']) {
+                        Ingresa tu correo electrónico para continuar.
+                      } @else if (loginForm.get('email')?.errors?.['email']) {
+                        Ingresa un correo electrónico válido.
+                      }
+                    </span>
                   </div>
                 }
               </div>
@@ -151,8 +163,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                 <span class="label-text font-semibold text-base-content text-sm tracking-wide">Contraseña</span>
               </label>
               <div class="relative premium-input-wrapper"
-                   [class.premium-input-error]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched)"
-                   [class.premium-input-error-shake]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched) && !passwordErrorShown()">
+                   [class.premium-input-error]="shouldShowPasswordError()"
+                   [class.premium-input-error-shake]="shouldShowPasswordError() && !passwordErrorShown()">
                 <div class="premium-input-icon">
                   <ui-icon name="LockKeyhole" size="md" />
                 </div>
@@ -179,6 +191,16 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   }
                 </button>
               </div>
+              @if (shouldShowPasswordError()) {
+                <div class="mt-2 pl-1 text-sm text-error flex items-center gap-2 animate-entrance-fade-up">
+                  <ui-icon name="Info" size="sm" />
+                  <span>
+                    @if (loginForm.get('password')?.errors?.['required']) {
+                      Ingresa tu contraseña para acceder.
+                    }
+                  </span>
+                </div>
+              }
               <div class="flex justify-end mt-3 px-1">
                 <a routerLink="/recuperar-clave" class="text-xs font-medium text-primary/80 hover:text-primary transition-colors">¿Olvidaste tu clave?</a>
               </div>
@@ -237,7 +259,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
             </div>
 
             <!-- Área reservada para mensajes de error - Evita saltos cuando aparecen -->
-            <div class="min-h-[4rem] mt-4 flex items-start justify-center">
+            <div class="min-h-16 mt-4 flex items-start justify-center">
               @if (error()) {
                 <p class="text-sm font-medium text-error text-center whitespace-pre-line animate-pulse">
                   {{ error() }}
@@ -1571,6 +1593,29 @@ export class Login {
   
   // Getter para mostrar el panel (para usar en el template)
   showLoginPanel = computed(() => this._showLoginPanel());
+
+  shouldShowPasswordError() {
+    const control = this.loginForm.get('password');
+    if (!control) {
+      return false;
+    }
+
+    if (!(this.submitted() || control.touched)) {
+      return false;
+    }
+
+    const errors = control.errors;
+    if (!errors) {
+      return false;
+    }
+
+    // Ocultar indicadores cuando solo hay error de longitud mínima
+    if (errors['minlength'] && Object.keys(errors).length === 1) {
+      return false;
+    }
+
+    return true;
+  }
 
   onPasswordBlur() {
     if (this.loginForm.get('password')?.invalid) {
