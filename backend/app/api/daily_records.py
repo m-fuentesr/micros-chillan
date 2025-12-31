@@ -1,5 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, status, Query
 from typing import List
+from datetime import date
 from app.utils.auth import get_current_user, require_admin
 from app.core.pagination import PaginatedResponse
 from app.schemas.user import UserInDB
@@ -98,6 +99,19 @@ async def create_daily_record_admin(
         payload=payload,
         current_user=current_user,
     )
+
+
+@router.get("/check-duplicate")
+async def check_duplicate_record(
+    maquina_id: int = Query(...),
+    fecha: date = Query(...),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Verifica si ya existe un registro para una máquina en una fecha específica.
+    Útil para validación previa en el frontend (TC-181).
+    """
+    return await daily_record_service.check_duplicate_record(maquina_id, fecha)
 
 
 # --------------------------------------------------

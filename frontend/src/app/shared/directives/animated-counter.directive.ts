@@ -33,14 +33,15 @@ export class AnimatedCounterDirective implements OnChanges, OnInit, OnDestroy {
       const newValue = changes['targetValue'].currentValue;
       const oldValue = changes['targetValue'].previousValue ?? 0;
       
-      // Validar que el nuevo valor sea un número válido (incluye 0)
-      if (typeof newValue === 'number' && !isNaN(newValue) && newValue >= 0) {
+      // Validar que el nuevo valor sea un número válido (incluye 0 y valores negativos)
+      if (typeof newValue === 'number' && !isNaN(newValue)) {
         if (changes['targetValue'].firstChange) {
-          // En la primera carga, si el valor es mayor que 0, animar desde 0
-          if (newValue > 0) {
+          // En la primera carga, animar desde 0 (o desde el valor si es negativo)
+          const startValue = newValue < 0 ? newValue : 0;
+          if (newValue !== 0) {
             // Pequeño delay para que la página termine de renderizar
             setTimeout(() => {
-              this.startAnimation(0, newValue);
+              this.startAnimation(startValue, newValue);
             }, 100);
           } else {
             // Si es 0, solo actualizar sin animar
@@ -49,7 +50,7 @@ export class AnimatedCounterDirective implements OnChanges, OnInit, OnDestroy {
           }
         } else {
           // En cambios posteriores, animar desde el valor anterior solo si cambió
-          if (newValue !== oldValue && oldValue >= 0) {
+          if (newValue !== oldValue) {
             this.startAnimation(oldValue, newValue);
           }
         }
@@ -102,13 +103,18 @@ export class AnimatedCounterDirective implements OnChanges, OnInit, OnDestroy {
     if (this.format === 'currency') {
       // Formato que coincide con Angular currency pipe 'symbol-narrow'
       const roundedValue = Math.round(this.currentValue);
+      // Intl.NumberFormat maneja automáticamente valores negativos
       const formatted = new Intl.NumberFormat('es-CL', {
         minimumFractionDigits: this.minFractionDigits,
         maximumFractionDigits: this.maxFractionDigits
       }).format(roundedValue);
       
       // Para symbol-narrow, Angular usa solo el símbolo $ sin espacio
-      displayValue = `$${formatted}`;
+      // Intl.NumberFormat ya incluye el signo negativo si es necesario
+      // Solo necesitamos agregar el $ al principio
+      displayValue = formatted.startsWith('-') 
+        ? `-$${formatted.substring(1).trim()}` 
+        : `$${formatted.trim()}`;
     } else {
       displayValue = Math.round(this.currentValue).toString();
     }

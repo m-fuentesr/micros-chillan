@@ -625,5 +625,36 @@ export class DailyRecordService {
       );
   }
 
+  /**
+   * Verifica si ya existe un registro para una máquina en una fecha específica
+   * Endpoint: GET /api/daily-records/check-duplicate
+   * Útil para validación previa en el frontend (TC-181)
+   */
+  checkDuplicateRecord(maquinaId: number, fecha: string): Observable<{
+    exists: boolean;
+    chofer_nombre: string | null;
+    message: string;
+  }> {
+    const params = new HttpParams()
+      .set('maquina_id', maquinaId.toString())
+      .set('fecha', fecha);
+
+    return this.http.get<{
+      exists: boolean;
+      chofer_nombre: string | null;
+      message: string;
+    }>(`${this.apiUrl}/api/daily-records/check-duplicate`, { params }).pipe(
+      catchError((error) => {
+        console.error('Error verificando duplicado de registro:', error);
+        // En caso de error, retornar que no existe duplicado para no bloquear al usuario
+        return of({
+          exists: false,
+          chofer_nombre: null,
+          message: 'No existe registro duplicado'
+        });
+      })
+    );
+  }
+
 }
 

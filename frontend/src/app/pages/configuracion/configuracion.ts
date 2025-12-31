@@ -5,8 +5,14 @@ import { SettingsService } from '../../shared/services/settings.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
 import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
 import { GlobalErrorService } from '../../shared/services/global-error.service';
+import { AccountingService } from '../../shared/services/accounting.service';
+import { DriverService } from '../../shared/services/driver.service';
+import { MachineService } from '../../shared/services/machine.service';
 import { GeneralSettings, UpdateSettingsRequest } from '../../shared/models/settings.models';
+import { DriverDeletedListItem, DriverReintegrateRequest } from '../../shared/models/driver.models';
+import { MachineSelect } from '../../shared/models/machine.models';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
   selector: 'app-configuracion',
@@ -290,6 +296,139 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
             </div>
           </div>
 
+          <!-- Row 3: Choferes Eliminados -->
+          <div class="mt-8 lg:mt-10 animate-card-stagger" [style.animation-delay]="'600ms'">
+            <div class="card-choferes-eliminados group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-gradient-to-br from-purple-50/50 to-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.12)] transition-all duration-300">
+              <div class="p-6 md:p-8 space-y-6">
+                <!-- Header -->
+                <div class="flex items-center gap-4">
+                  <div class="flex items-center justify-center rounded-2xl bg-gradient-to-br from-purple-100/80 to-purple-50/50 ring-1 ring-purple-200/50 h-14 w-14 shrink-0">
+                    <ui-icon name="Users" size="lg" class="text-purple-600/80" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h3 class="font-bold text-xl md:text-2xl text-base-content">Choferes Eliminados</h3>
+                    <p class="text-sm text-base-content/60 mt-1">Reintegrar choferes previamente eliminados</p>
+                  </div>
+                </div>
+
+                <!-- Loading State -->
+                @if (loadingDeletedDrivers()) {
+                  <div class="flex justify-center items-center py-8">
+                    <span class="loading loading-spinner loading-md text-primary"></span>
+                  </div>
+                } @else if (deletedDrivers().length === 0) {
+                  <!-- Empty State -->
+                  <div class="flex flex-col items-center justify-center py-8 text-center">
+                    <div class="w-16 h-16 rounded-full bg-base-200/50 flex items-center justify-center mb-4">
+                      <ui-icon name="CheckCircle2" size="lg" class="text-base-content/40" />
+                    </div>
+                    <p class="text-base-content/70 font-medium">No hay choferes eliminados</p>
+                    <p class="text-sm text-base-content/50 mt-1">Todos los choferes están activos o inactivos</p>
+                  </div>
+                } @else {
+                  <!-- Lista de Choferes Eliminados -->
+                  <div class="space-y-3">
+                    <label class="label pb-2">
+                      <span class="label-text font-semibold text-base-content">Seleccionar chofer a reintegrar</span>
+                    </label>
+                    <select 
+                      class="select select-bordered w-full bg-white"
+                      [value]="selectedDriverId()?.toString() || ''"
+                      (change)="onDriverSelect($event)">
+                      <option value="" disabled>Selecciona un chofer...</option>
+                      @for (driver of deletedDrivers(); track driver.id) {
+                        <option [value]="driver.id.toString()">
+                          {{ driver.nombre_completo }} - {{ driver.rut }}
+                        </option>
+                      }
+                    </select>
+
+                    <!-- Formulario de Reintegración -->
+                    @if (selectedDriverId()) {
+                      <div class="mt-6 p-5 bg-base-50/50 border border-base-200 rounded-2xl space-y-4 animate-fade-in">
+                        <div class="flex items-start gap-3 mb-4">
+                          <div class="w-10 h-10 rounded-xl bg-purple-100/80 flex items-center justify-center shrink-0">
+                            <ui-icon name="UserRound" size="sm" class="text-purple-600" />
+                          </div>
+                          <div class="flex-1">
+                            <h4 class="font-semibold text-base-content mb-1">Datos de Reintegración</h4>
+                            <p class="text-xs text-base-content/60">Ingresa el correo electrónico y opcionalmente asigna una máquina</p>
+                          </div>
+                        </div>
+
+                        <!-- Campo Email -->
+                        <div class="form-control">
+                          <label class="label pb-2">
+                            <span class="label-text font-medium">Correo Electrónico <span class="text-error">*</span></span>
+                          </label>
+                          <input 
+                            type="email" 
+                            class="input input-bordered w-full bg-white"
+                            placeholder="correo@ejemplo.com"
+                            [ngModel]="reintegrateForm().correo_electronico"
+                            (ngModelChange)="updateReintegrateForm({ correo_electronico: $event })"
+                            [class.input-error]="reintegrateFormError().correo_electronico"
+                          />
+                          @if (reintegrateFormError().correo_electronico) {
+                            <label class="label">
+                              <span class="label-text-alt text-error">{{ reintegrateFormError().correo_electronico }}</span>
+                            </label>
+                          }
+                        </div>
+
+                        <!-- Campo Máquina (Opcional) -->
+                        <div class="form-control">
+                          <label class="label pb-2">
+                            <span class="label-text font-medium">Máquina Asignada <span class="text-base-content/50 text-xs">(Opcional)</span></span>
+                          </label>
+                          @if (loadingMachines()) {
+                            <div class="flex items-center gap-2 text-sm text-base-content/60">
+                              <span class="loading loading-spinner loading-xs"></span>
+                              <span>Cargando máquinas...</span>
+                            </div>
+                          } @else {
+                            <select 
+                              class="select select-bordered w-full bg-white"
+                              [value]="reintegrateForm().maquina_asignada?.toString() || ''"
+                              (change)="onMachineSelect($event)">
+                              <option value="">Sin asignar</option>
+                              @for (machine of availableMachines(); track machine.id) {
+                                <option [value]="machine.id.toString()">
+                                  {{ machine.display_name }}
+                                </option>
+                              }
+                            </select>
+                          }
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div class="flex gap-3 pt-2">
+                          <button 
+                            class="btn btn-outline btn-ghost flex-1 border-base-300"
+                            (click)="cancelReintegrate()"
+                            [disabled]="isReintegrating()">
+                            Cancelar
+                          </button>
+                          <button 
+                            class="btn btn-primary flex-1 gap-2 border border-primary shadow-lg shadow-primary/30 disabled:border-base-300 disabled:opacity-50"
+                            (click)="onReintegrate()"
+                            [disabled]="isReintegrating() || !canReintegrate()">
+                            @if (isReintegrating()) {
+                              <span class="loading loading-spinner loading-sm"></span>
+                            } @else {
+                              <ui-icon name="RefreshCw" size="sm" />
+                            }
+                            Reintegrar Chofer
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            </div>
+          </div>
+
           <!-- Info Footer -->
           <div class="bg-primary/5 border border-primary/10 rounded-3xl p-6 mt-8 lg:mt-10 animate-card-stagger" [style.animation-delay]="'600ms'">
             <div class="flex gap-4">
@@ -388,8 +527,25 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
     .card-porcentaje:hover,
     .card-sueldo:hover,
     .card-alerta-licencias:hover,
-    .card-alerta-documentos:hover {
+    .card-alerta-documentos:hover,
+    .card-choferes-eliminados:hover {
       transform: translateY(-2px);
+    }
+
+    /* Animación fade-in para formulario */
+    @keyframes fade-in {
+      from {
+        opacity: 0;
+        transform: translateY(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .animate-fade-in {
+      animation: fade-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     }
 
     /* Asegurar que el thumb expandido no se corte */
@@ -424,6 +580,9 @@ export class Configuracion implements OnInit {
   private readonly alertModalService = inject(AlertModalService);
   private readonly confirmModalService = inject(ConfirmModalService);
   private readonly globalErrorService = inject(GlobalErrorService);
+  private readonly accountingService = inject(AccountingService);
+  private readonly driverService = inject(DriverService);
+  private readonly machineService = inject(MachineService);
 
   // Exponer Math para usar en el template
   readonly Math = Math;
@@ -443,8 +602,26 @@ export class Configuracion implements OnInit {
   // Valores originales para detectar cambios
   private originalData: GeneralSettings | null = null;
 
+  // Estado de choferes eliminados
+  readonly deletedDrivers = signal<DriverDeletedListItem[]>([]);
+  readonly loadingDeletedDrivers = signal(false);
+  readonly selectedDriverId = signal<number | null>(null);
+  readonly availableMachines = signal<MachineSelect[]>([]);
+  readonly loadingMachines = signal(false);
+  readonly isReintegrating = signal(false);
+  
+  readonly reintegrateForm = signal<DriverReintegrateRequest>({
+    correo_electronico: '',
+    maquina_asignada: null
+  });
+
+  readonly reintegrateFormError = signal<{
+    correo_electronico?: string;
+  }>({});
+
   async ngOnInit() {
     await this.loadSettings();
+    await this.loadDeletedDrivers();
   }
 
   async loadSettings() {
@@ -541,6 +718,12 @@ export class Configuracion implements OnInit {
 
       const response = await this.settingsService.updateSettings(updates);
 
+      // Si se actualizó el sueldo mínimo, invalidar todo el caché de liquidaciones
+      // porque el sueldo mínimo afecta a todas las liquidaciones (especialmente la última semana)
+      if (updates.sueldo_minimo !== undefined) {
+        this.accountingService.clearAllLiquidationCache();
+      }
+
       // Actualizar estado local optimísticamente (sin recargar del servidor)
       const currentFormData = this.formData()!;
       this.formData.set({
@@ -620,5 +803,159 @@ export class Configuracion implements OnInit {
 
   formatDecimalDisplay(decimal: number): string {
     return decimal.toFixed(2);
+  }
+
+  // Métodos para choferes eliminados
+  async loadDeletedDrivers() {
+    this.loadingDeletedDrivers.set(true);
+    try {
+      const drivers = await firstValueFrom(this.driverService.getDeletedDrivers());
+      this.deletedDrivers.set(drivers);
+    } catch (error) {
+      console.error('Error cargando choferes eliminados:', error);
+      this.alertModalService.show({
+        title: 'Error',
+        message: 'No se pudieron cargar los choferes eliminados.',
+        type: 'error',
+        buttonText: 'Entendido'
+      });
+    } finally {
+      this.loadingDeletedDrivers.set(false);
+    }
+  }
+
+  async loadAvailableMachines() {
+    this.loadingMachines.set(true);
+    try {
+      const machines = await firstValueFrom(
+        this.machineService.getActiveMachinesWithoutDriver(true)
+      );
+      this.availableMachines.set(machines);
+    } catch (error) {
+      console.error('Error cargando máquinas:', error);
+    } finally {
+      this.loadingMachines.set(false);
+    }
+  }
+
+  onDriverSelect(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const driverId = select.value ? parseInt(select.value, 10) : null;
+    
+    if (driverId) {
+      this.selectedDriverId.set(driverId);
+      this.reintegrateForm.set({
+        correo_electronico: '',
+        maquina_asignada: null
+      });
+      this.reintegrateFormError.set({});
+      this.loadAvailableMachines();
+    } else {
+      this.selectedDriverId.set(null);
+    }
+  }
+
+  onMachineSelect(event: Event) {
+    const select = event.target as HTMLSelectElement;
+    const machineId = select.value ? parseInt(select.value, 10) : null;
+    this.updateReintegrateForm({ maquina_asignada: machineId });
+  }
+
+  updateReintegrateForm(updates: Partial<DriverReintegrateRequest>) {
+    this.reintegrateForm.set({
+      ...this.reintegrateForm(),
+      ...updates
+    });
+    // Limpiar errores al actualizar
+    this.reintegrateFormError.set({});
+  }
+
+  canReintegrate(): boolean {
+    const form = this.reintegrateForm();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return !!form.correo_electronico && emailRegex.test(form.correo_electronico);
+  }
+
+  cancelReintegrate() {
+    this.selectedDriverId.set(null);
+    this.reintegrateForm.set({
+      correo_electronico: '',
+      maquina_asignada: null
+    });
+    this.reintegrateFormError.set({});
+  }
+
+  async onReintegrate() {
+    if (!this.selectedDriverId() || !this.canReintegrate()) return;
+
+    const form = this.reintegrateForm();
+    const errors: { correo_electronico?: string } = {};
+
+    // Validar email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!form.correo_electronico) {
+      errors.correo_electronico = 'El correo electrónico es obligatorio';
+    } else if (!emailRegex.test(form.correo_electronico)) {
+      errors.correo_electronico = 'El correo electrónico no es válido';
+    }
+
+    if (errors.correo_electronico) {
+      this.reintegrateFormError.set(errors);
+      return;
+    }
+
+    // Confirmar acción
+    const selectedDriver = this.deletedDrivers().find(d => d.id === this.selectedDriverId());
+    const confirmed = await this.confirmModalService.open({
+      title: '¿Reintegrar chofer?',
+      message: `Se creará un nuevo usuario para ${selectedDriver?.nombre_completo} con el correo ${form.correo_electronico}. Se enviará un magic link para establecer la contraseña.${form.maquina_asignada ? `\n\nSe asignará la máquina seleccionada.` : ''}`,
+      confirmText: 'Sí, reintegrar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-primary'
+    });
+
+    if (!confirmed) return;
+
+    this.isReintegrating.set(true);
+    try {
+      const request: DriverReintegrateRequest = {
+        correo_electronico: form.correo_electronico.trim().toLowerCase(),
+        maquina_asignada: form.maquina_asignada || null
+      };
+
+      await firstValueFrom(
+        this.driverService.reintegrateDriver(this.selectedDriverId()!, request)
+      );
+
+      // Éxito
+      this.alertModalService.show({
+        title: 'Chofer reintegrado',
+        message: `El chofer ${selectedDriver?.nombre_completo} ha sido reintegrado exitosamente. Se ha enviado un correo con el magic link para establecer la contraseña.`,
+        type: 'success',
+        buttonText: 'Aceptar'
+      });
+
+      // Limpiar formulario y recargar lista
+      this.cancelReintegrate();
+      await this.loadDeletedDrivers();
+      // Recargar máquinas disponibles por si se asignó una
+      if (request.maquina_asignada) {
+        await this.loadAvailableMachines();
+      }
+
+    } catch (error: any) {
+      console.error('Error reintegrando chofer:', error);
+      
+      const errorMessage = error?.error?.detail || error?.message || 'Error desconocido al reintegrar el chofer';
+      
+      this.alertModalService.show({
+        title: 'Error al reintegrar',
+        message: errorMessage,
+        type: 'error',
+        buttonText: 'Entendido'
+      });
+    } finally {
+      this.isReintegrating.set(false);
+    }
   }
 }

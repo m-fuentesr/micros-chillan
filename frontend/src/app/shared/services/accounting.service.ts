@@ -1,6 +1,6 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, of, throwError, forkJoin } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AccountingSummary, DailyProfitabilityData, WeeklySummary, WeeklyDriverBreakdown, LiquidationPeriod, LiquidationDriver, ClosedLiquidation, ClosedLiquidationWeek } from '../models/accounting.models';
 import { environment } from '../../../environments/environment.development';
@@ -447,6 +447,56 @@ export class AccountingService {
     return this.http.post<any>(`${this.apiUrl}/api/accounting/weekly-payments/${choferId}/confirm`, data, { params });
   }
 
+  /**
+   * Verifica si un chofer tiene semanas anteriores sin pagar en el mes actual
+   * @param choferId ID del chofer
+   * @param mes Mes actual
+   * @param anio Año actual
+   * @param semana Semana actual que se intenta pagar
+   * @returns Observable con array de números de semanas sin pagar, o array vacío si todas están pagadas
+   */
+  checkUnpaidPreviousWeeks(choferId: number, mes: number, anio: number, semana: number): Observable<number[]> {
+    // Solo validar para mes actual
+    const today = new Date();
+    const esMesActual = mes === today.getMonth() + 1 && anio === today.getFullYear();
+    
+    if (!esMesActual || semana <= 1) {
+      return of([]); // No validar para meses anteriores o primera semana
+    }
+
+    // Consultar todas las semanas anteriores para este chofer
+    const checks: Observable<{ semana: number; tienePago: boolean }>[] = [];
+
+    for (let semanaAnterior = 1; semanaAnterior < semana; semanaAnterior++) {
+      const check$ = this.getWeeklyLiquidation(semanaAnterior, mes, anio).pipe(
+        map((liquidation) => {
+          const chofer = liquidation.choferes.find(c => c.chofer_id === choferId);
+          // Considerar sin pagar si no existe el chofer en esa semana, o si el estado no es 'pagado'
+          const tienePago = chofer?.estado_pago === 'pagado';
+          return { semana: semanaAnterior, tienePago };
+        }),
+        catchError(() => {
+          // Si hay error, asumir que no está pagada
+          return of({ semana: semanaAnterior, tienePago: false });
+        })
+      );
+      checks.push(check$);
+    }
+
+    if (checks.length === 0) {
+      return of([]);
+    }
+
+    // Combinar todos los checks
+    return forkJoin(checks).pipe(
+      map((results) => {
+        return results
+          .filter(r => !r.tienePago)
+          .map(r => r.semana);
+      })
+    );
+  }
+
   // POST /api/accounting/liquidation/close - Cerrar período
   closePeriod(mes: number, anio: number): Observable<void> {
     // DEPRECATED: Este endpoint no existe en el backend actual
@@ -633,7 +683,7 @@ export class AccountingService {
   }
 
   // Método auxiliar para contar semanas en un mes (igual que el backend)
-  private countWeeksInMonth(mes: number, anio: number): number {
+  countWeeksInMonth(mes: number, anio: number): number {
     const fechaInicioMes = new Date(anio, mes - 1, 1);
     const ultimoDiaMes = new Date(anio, mes, 0).getDate();
     const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
@@ -674,6 +724,29 @@ export class AccountingService {
   invalidateLiquidationCache(semana: number, mes: number, anio: number, choferId?: number): void {
     const cacheKey = choferId ? `${semana}-${mes}-${anio}-${choferId}` : `${semana}-${mes}-${anio}`;
     this.liquidationCache.delete(cacheKey);
+  }
+
+  /**
+   * Invalidar caché de TODAS las semanas de un mes
+   * Necesario porque el acumulado de la última semana depende de todas las semanas anteriores
+   */
+  invalidateAllWeeksInMonth(mes: number, anio: number, choferId?: number): void {
+    // Calcular el número total de semanas del mes
+    const totalSemanas = this.countWeeksInMonth(mes, anio);
+    
+    // Invalidar el caché de todas las semanas del mes
+    for (let semana = 1; semana <= totalSemanas; semana++) {
+      const cacheKey = choferId ? `${semana}-${mes}-${anio}-${choferId}` : `${semana}-${mes}-${anio}`;
+      this.liquidationCache.delete(cacheKey);
+    }
+  }
+
+  /**
+   * Limpiar todo el caché de liquidaciones
+   * Útil cuando cambia la configuración (ej: sueldo mínimo) que afecta a todas las liquidaciones
+   */
+  clearAllLiquidationCache(): void {
+    this.liquidationCache.clear();
   }
 }
 

@@ -186,6 +186,8 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
                   [selectedWeek]="selectedWeek()"
                   [payrollPeriod]="payrollPeriod()"
                   [isLoading]="payrollLoadingState.isLoading()"
+                  [isWeekEnabled]="isWeekEnabled()"
+                  [verifyingChoferId]="verifyingChoferId()"
                   (weekChange)="onWeekChange($event)"
                   (payrollPeriodChange)="onPayrollPeriodChange($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
@@ -384,6 +386,9 @@ export class Contabilidad implements OnInit {
   
   // Signals para manejar errores de liquidación
   payrollError = signal<string | null>(null);
+  
+  // Signal para rastrear qué chofer se está verificando
+  verifyingChoferId = signal<number | null>(null);
 
   // Datos
   summaryData = signal<AccountingSummary | null>(null);
@@ -414,18 +419,9 @@ export class Contabilidad implements OnInit {
   availableWeeks = computed(() => {
     const { mes, anio } = this.payrollDate();
     
-    // Si es mes anterior, siempre mostrar 4 semanas
-    if (this.payrollPeriod() === 'previous') {
-      return [1, 2, 3, 4];
-    }
-    
-    // Para mes actual, calcular según el mes
-    const daysInMonth = new Date(anio, mes, 0).getDate();
-    const firstDay = new Date(anio, mes - 1, 1).getDay(); // 0 = domingo, 1 = lunes, etc.
-    
-    // Calcular cuántas semanas tiene el mes
-    const weeks = Math.ceil((daysInMonth + firstDay) / 7);
-    return Array.from({ length: weeks }, (_, i) => i + 1);
+    // Usar la misma función que el backend para calcular semanas correctamente
+    const totalSemanas = this.accountingService.countWeeksInMonth(mes, anio);
+    return Array.from({ length: totalSemanas }, (_, i) => i + 1);
   });
 
   payrollDate = computed(() => {
@@ -440,6 +436,63 @@ export class Contabilidad implements OnInit {
     const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
     const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
     return { mes: prevMonth, anio: prevYear };
+  });
+
+  // Función para calcular la semana actual del mes
+  private getCurrentWeekInMonth(mes: number, anio: number): number {
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Si no es el mes actual, retornar un número alto para que todas las semanas estén habilitadas
+    if (mes !== today.getMonth() + 1 || anio !== today.getFullYear()) {
+      return 999; // Número alto para que todas las semanas estén habilitadas
+    }
+    
+    // Calcular en qué semana estamos usando la misma lógica que el backend
+    const fechaInicioMes = new Date(anio, mes - 1, 1);
+    const ultimoDiaMes = new Date(anio, mes, 0).getDate();
+    const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
+    
+    let fechaActual = new Date(fechaInicioMes);
+    let semanaActual = 1;
+    
+    while (fechaActual <= fechaFinMes && fechaActual <= todayDate) {
+      const diaSemanaJS = fechaActual.getDay();
+      const diaSemanaPython = diaSemanaJS === 0 ? 6 : diaSemanaJS - 1;
+      const diasHastaDomingo = 6 - diaSemanaPython;
+      const proximoDomingo = new Date(fechaActual);
+      proximoDomingo.setDate(fechaActual.getDate() + diasHastaDomingo);
+      const finSemana = proximoDomingo > fechaFinMes ? fechaFinMes : proximoDomingo;
+      
+      // Si hoy está en esta semana, retornar el número de semana
+      if (todayDate >= fechaActual && todayDate <= finSemana) {
+        return semanaActual;
+      }
+      
+      // Avanzar a la siguiente semana
+      fechaActual = new Date(finSemana);
+      fechaActual.setDate(finSemana.getDate() + 1);
+      semanaActual++;
+    }
+    
+    // Si no encontramos la semana, retornar la última calculada
+    return semanaActual;
+  }
+
+  // Computed para determinar si una semana está habilitada
+  isWeekEnabled = computed(() => {
+    const { mes, anio } = this.payrollDate();
+    const currentWeek = this.getCurrentWeekInMonth(mes, anio);
+    
+    return (week: number) => {
+      // Si es mes anterior, todas las semanas están habilitadas
+      if (this.payrollPeriod() === 'previous') {
+        return true;
+      }
+      
+      // Si es mes actual, solo habilitar semanas hasta la semana actual
+      return week <= currentWeek;
+    };
   });
 
   // Computed signals para meses y años con validación de fechas futuras
@@ -871,12 +924,60 @@ export class Contabilidad implements OnInit {
     const { mes, anio } = this.payrollDate();
     const semana = this.selectedWeek();
 
+    // ✅ VALIDACIÓN: Verificar semanas anteriores sin pagar (solo para mes actual)
+    const today = new Date();
+    const esMesActual = mes === today.getMonth() + 1 && anio === today.getFullYear();
+    
+    if (esMesActual && semana > 1 && this.payrollPeriod() === 'current') {
+      // Establecer el signal de verificación
+      this.verifyingChoferId.set(event.choferId);
+      
+      // Verificar si hay semanas anteriores sin pagar
+      this.accountingService.checkUnpaidPreviousWeeks(event.choferId, mes, anio, semana).subscribe({
+        next: (semanasSinPagar) => {
+          // Limpiar el signal de verificación
+          this.verifyingChoferId.set(null);
+          
+          if (semanasSinPagar.length > 0) {
+            // Mostrar modal de advertencia
+            const semanasTexto = semanasSinPagar.length === 1 
+              ? `la Semana ${semanasSinPagar[0]}` 
+              : `las Semanas ${semanasSinPagar.join(', ')}`;
+            
+            this.alertModalService.show({
+              type: 'warning',
+              title: 'Semanas Anteriores Sin Pagar',
+              message: `No se puede pagar la Semana ${semana} de ${chofer.chofer_nombre} sin haber pagado primero ${semanasTexto}. Por favor, pague las semanas anteriores antes de continuar.`,
+              buttonText: 'Entendido'
+            });
+            return; // No abrir el modal de confirmación
+          }
+          
+          // Si todas las semanas anteriores están pagadas, proceder normalmente
+          this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+        },
+        error: (error) => {
+          // Limpiar el signal de verificación en caso de error
+          this.verifyingChoferId.set(null);
+          console.error('Error al verificar semanas anteriores:', error);
+          // En caso de error, permitir continuar (no bloquear)
+          this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+        }
+      });
+    } else {
+      // Para meses anteriores o primera semana, proceder normalmente
+      this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+    }
+  }
+
+  // Método privado para abrir el modal de confirmación y procesar el pago
+  private openPaymentModal(chofer: LiquidationDriver, mes: number, anio: number, semana: number, choferId: number): void {
     // Abrir el modal de confirmación
     this.paymentModalService.open(chofer, mes, anio, semana).then((formData: PaymentConfirmFormData | null) => {
       if (formData) {
         // Llamar al servicio para confirmar el pago
         this.accountingService.confirmWeeklyPayment(
-          event.choferId,
+          choferId,
           mes,
           anio,
           semana,
@@ -912,8 +1013,9 @@ export class Contabilidad implements OnInit {
             // Cerrar el modal de confirmación
             this.paymentModalService.finishSubmission();
             
-            // Invalidar el caché de la liquidación para forzar la recarga
-            this.accountingService.invalidateLiquidationCache(semana, mes, anio);
+            // Invalidar el caché de TODAS las semanas del mes
+            // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
+            this.accountingService.invalidateAllWeeksInMonth(mes, anio);
             
             // Mostrar modal de éxito
             this.alertModalService.show({
