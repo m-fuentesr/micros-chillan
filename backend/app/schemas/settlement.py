@@ -1,7 +1,8 @@
-﻿from pydantic import BaseModel, Field
+﻿from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date
 from app.core.pagination import PaginationParams
+import html
 
 # ==========================================
 # 1. GESTIÓN DE PAGOS SEMANALES (Confirmación y Listado)
@@ -23,6 +24,22 @@ class WeeklyPaymentConfirmRequest(BaseModel):
     monto_base_semana: int      # Lo que produjo esta semana
     monto_bono_final: int       # El bono de ajuste (0 si toggle apagado o semana normal)
     total_a_pagar: int          # El monto final que sale de caja
+
+    @field_validator('observaciones')
+    @classmethod
+    def sanitize_observaciones(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza las observaciones para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('codigo_transferencia')
+    @classmethod
+    def sanitize_codigo_transferencia(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza el código de transferencia para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
 
 # Output: Lo que recibe el Frontend para la tabla de pagos (GET)
 class WeeklyPaymentResponse(BaseModel):

@@ -10,9 +10,10 @@ from app.schemas.dashboard import (
 from app.schemas.user import UserInDB
 
 # Definimos los enums aquí para usarlos en código
-SEVERIDAD_CRITICA = "CRITICA"
-SEVERIDAD_ADVERTENCIA = "ADVERTENCIA"
-SEVERIDAD_INFO = "INFORMATIVA"
+# Nota: Los valores deben coincidir con el enum de la base de datos (en minúsculas)
+SEVERIDAD_CRITICA = "critica"
+SEVERIDAD_ADVERTENCIA = "advertencia"
+SEVERIDAD_INFO = "informativa"
 
 async def crear_alerta(
     mensaje: str, 

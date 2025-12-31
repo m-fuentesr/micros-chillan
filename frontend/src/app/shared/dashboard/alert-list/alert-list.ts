@@ -354,8 +354,28 @@ export class AlertList {
 
   formatRelativeTime(date: string): string {
     try {
-      const alertDate = getDateInChileTime(date);
-      const now = getDateInChileTime(new Date().toISOString());
+      if (!date) {
+        return '';
+      }
+      
+      // Parsear la fecha preservando la hora
+      let alertDate: Date;
+      let dateStr = date.trim();
+      // Si no tiene timezone, asumir UTC
+      if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+        dateStr = dateStr + 'Z';
+      }
+      alertDate = new Date(dateStr);
+      
+      if (isNaN(alertDate.getTime())) {
+        return '';
+      }
+      
+      // Obtener la fecha/hora actual
+      const now = new Date();
+      
+      // Calcular diferencia en milisegundos directamente
+      // (ambas fechas están en UTC internamente, la diferencia es correcta)
       const diffMs = now.getTime() - alertDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
@@ -376,6 +396,7 @@ export class AlertList {
       }
 
       return alertDate.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',

@@ -2,6 +2,7 @@
 from datetime import date
 from typing import List, Optional
 from app.core.pagination import PaginatedResponse
+import html
 
 
 class MaintenanceRecord(BaseModel):
@@ -33,6 +34,14 @@ class MaintenanceCreate(BaseModel):
     categoria: Optional[str] = None  # preventivo / correctivo / null
     fecha_compra: date
 
+    @field_validator('numero_documento')
+    @classmethod
+    def sanitize_numero_documento(cls, v: str) -> str:
+        """Sanitiza el número de documento para prevenir XSS"""
+        if not v:
+            return v
+        return html.escape(v, quote=True)
+
     @field_validator("categoria")
     def normalize_categoria(cls, v):
         if v is None:
@@ -60,5 +69,8 @@ class MaintenanceCreate(BaseModel):
         if rep_id is None and not v:
             raise ValueError("Debe seleccionar un ítem o escribir uno personalizado.")
         
-        return v
+        # Sanitizar el texto ingresado por el usuario para prevenir XSS
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
 

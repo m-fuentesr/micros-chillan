@@ -17,6 +17,7 @@ import { SearchFilters, FilterField } from '../../shared/components/search-filte
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
 import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
@@ -137,7 +138,6 @@ interface DailyRecordView {
               [value]="recordsWithIncidents().toString()"
               type="danger"
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
-              [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
               [responsive]="true"
               [animationDelay]="2">
               <ui-icon name="TriangleAlert" size="md" icon />
@@ -310,7 +310,7 @@ interface DailyRecordView {
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[90px] hidden xl:table-cell">OBS.</th>
-                        <th class="py-4 pr-4 lg:pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-24 lg:min-w-[120px] whitespace-normal leading-4">
+                        <th class="py-4 pr-4 lg:pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px] lg:min-w-[140px] whitespace-normal leading-4">
                           Acciones
                         </th>
                       </tr>
@@ -400,13 +400,22 @@ interface DailyRecordView {
                               }
                             </div>
                           </td>
-                          <td class="pr-4 lg:pr-6 text-right py-4" (click)="$event.stopPropagation()">
-                            <a 
-                              [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-11">
-                              <ui-icon name="Eye" size="sm" />
-                              <span class="hidden lg:inline">Ver</span>
-                            </a>
+                          <td class="pr-4 lg:pr-6 text-center py-4" (click)="$event.stopPropagation()">
+                            <div class="flex flex-col items-center gap-2 w-full" style="display: flex !important; flex-direction: column !important; align-items: center !important; gap: 0.5rem !important; width: 100%;">
+                              <a 
+                                [routerLink]="['/registro-diario', record.id]"
+                                class="btn btn-xs h-8 px-3 lg:px-4 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal justify-center whitespace-nowrap">
+                                <ui-icon name="Eye" size="sm" />
+                                <span class="hidden lg:inline">Ver</span>
+                              </a>
+                              <button
+                                (click)="onDeleteRecord(record)"
+                                class="btn btn-xs h-8 px-3 lg:px-4 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-normal justify-center whitespace-nowrap"
+                                [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                                <ui-icon name="Trash2" size="sm" />
+                                <span class="hidden lg:inline">Eliminar</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       } @empty {
@@ -517,13 +526,22 @@ interface DailyRecordView {
                               </div>
                             }
                           </td>
-                          <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
-                            <a 
-                              [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 font-normal">
-                              <ui-icon name="Eye" size="sm" />
-                              <span>Ver</span>
-                            </a>
+                          <td class="pr-6 text-center py-4" (click)="$event.stopPropagation()">
+                            <div class="flex flex-col items-center gap-2 w-full" style="display: flex !important; flex-direction: column !important; align-items: center !important; gap: 0.5rem !important; width: 100%;">
+                              <a 
+                                [routerLink]="['/registro-diario', record.id]"
+                                class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal whitespace-nowrap">
+                                <ui-icon name="Eye" size="sm" />
+                                <span>Ver</span>
+                              </a>
+                              <button
+                                (click)="onDeleteRecord(record)"
+                                class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-normal whitespace-nowrap"
+                                [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                                <ui-icon name="Trash2" size="sm" />
+                                <span>Eliminar</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       } @empty {
@@ -664,11 +682,11 @@ interface DailyRecordView {
                     </div>
                   </div>
                   
-                  <!-- Botón de Acción -->
-                  <div class="mt-2">
+                  <!-- Botones de Acción -->
+                  <div class="mt-2 flex gap-2">
                     <a 
                       [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-sm h-11 min-h-11 w-full rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
+                      class="btn btn-sm h-11 min-h-11 flex-1 rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
                       [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -676,6 +694,12 @@ interface DailyRecordView {
                       </svg>
                       Ver detalle
                     </a>
+                    <button
+                      (click)="onDeleteRecord(record)"
+                      class="btn btn-sm h-11 min-h-11 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-medium"
+                      [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                      <ui-icon name="Trash2" size="sm" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -758,6 +782,41 @@ interface DailyRecordView {
     .skeleton-entering {
       animation: skeletonFadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
     }
+    
+    /* Forzar layout vertical para botones de acciones */
+    table tbody td:last-child {
+      width: auto !important;
+      min-width: 100px !important;
+    }
+    
+    @media (min-width: 1024px) {
+      table tbody td:last-child {
+        min-width: 140px !important;
+      }
+    }
+    
+    table tbody td:last-child > div {
+      display: flex !important;
+      flex-direction: column !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* Forzar que los botones estén en columna, sobrescribiendo cualquier estilo inline */
+    table tbody td:last-child > div.flex {
+      flex-direction: column !important;
+      align-items: center !important;
+    }
+    
+    table tbody td:last-child > div > a,
+    table tbody td:last-child > div > button {
+      width: auto !important;
+      min-width: fit-content !important;
+      flex-shrink: 0 !important;
+    }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -767,6 +826,7 @@ export class BitacoraOperaciones implements OnInit {
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
   private alertModalService = inject(AlertModalService);
+  private confirmModalService = inject(ConfirmModalService);
   private driverService = inject(DriverService);
   private destroyRef = inject(DestroyRef);
   private loadingStateService = inject(LoadingStateService);
@@ -1728,6 +1788,46 @@ export class BitacoraOperaciones implements OnInit {
   
   onViewRecordDetail(record: DailyRecordView): void {
     this.router.navigate(['/registro-diario', record.id]);
+  }
+
+  async onDeleteRecord(record: DailyRecordView): Promise<void> {
+    const confirmed = await this.confirmModalService.open({
+      title: 'Eliminar Registro Diario',
+      message: `¿Estás seguro de que deseas eliminar el registro de ${record.driver} del ${record.date}? Esta acción no se puede deshacer y afectará los reportes mensuales.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.dailyRecordService.deleteDailyRecord(record.id));
+      
+      // Mostrar mensaje de éxito
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Eliminado',
+        message: `El registro de ${record.driver} del ${record.date} ha sido eliminado correctamente.`,
+        buttonText: 'Entendido'
+      });
+      
+      // Recargar la lista de registros
+      this.loadRecords();
+    } catch (error: any) {
+      console.error('Error eliminando registro:', error);
+      
+      const errorMessage = error?.error?.detail || error?.message || 'No se pudo eliminar el registro. Por favor, intenta nuevamente.';
+      
+      this.alertModalService.show({
+        type: 'error',
+        title: 'Error al Eliminar',
+        message: errorMessage,
+        buttonText: 'Entendido'
+      });
+    }
   }
 
   onViewMachineDetail(machineId: number, event: Event): void {

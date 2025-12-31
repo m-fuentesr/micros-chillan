@@ -23,6 +23,7 @@ async def _calculate_machines_financials(mes: int, anio: int):
         .select("maquina_id, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer")
         .gte("fecha", fecha_inicio)
         .lte("fecha", fecha_fin)
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados de reportes financieros
         .execute()
     )
     registros = res_regs.data
