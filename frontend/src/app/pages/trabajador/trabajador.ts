@@ -418,12 +418,12 @@ export class Trabajador implements OnInit, OnDestroy {
 
   private historyEffect = effect(() => {
     const history = this.recentHistory();
-    // Verificar que el historial realmente llegó (no es el array vacío inicial)
-    // Usamos una marca: si tiene elementos o si el observable ya emitió (verificamos por estructura)
-    if (history.length > 0 && this.historyLoadingState.isLoading()) {
+
+    if (this.historyLoadingState.isLoading()) {
       this.historyLoadingState.setDataLoaded();
     }
   });
+
 
   // Effect para cargar alertas cuando el chofer_id esté disponible
   private alertsLoadEffect = effect(() => {
@@ -467,13 +467,13 @@ export class Trabajador implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Cargar reportes ocultos desde localStorage
     this.loadHiddenReports();
-    
+
     // Iniciar carga de perfil (crítico)
     this.profileLoadingState.setLoading(true);
-    
+
     // Iniciar carga del estado del reporte (crítico también, pero después del perfil)
     this.statusLoadingState.setLoading(true);
-    
+
     // Iniciar carga de historial y alertas después de 400ms (stagger)
     setTimeout(() => {
       this.historyLoadingState.setLoading(true);
@@ -566,8 +566,8 @@ export class Trabajador implements OnInit, OnDestroy {
       const statusText = estadoLower.includes('completo')
         ? 'completado sin incidentes'
         : estadoLower.includes('incidente')
-        ? 'con incidente reportado'
-        : 'pendiente de validación';
+          ? 'con incidente reportado'
+          : 'pendiente de validación';
 
       activities.push({
         id: recordId,
@@ -582,7 +582,7 @@ export class Trabajador implements OnInit, OnDestroy {
     // Agregar alertas del trabajador
     alerts.forEach((alert: Alert) => {
       const timeLabel = formatRelativeDate(alert.date || new Date().toISOString());
-      
+
       // Determinar tipo según el tipo de alerta
       let type: 'assignment' | 'notification' = 'assignment';
       if (alert.type === 'operational' && alert.title.toLowerCase().includes('asign')) {
@@ -669,7 +669,7 @@ export class Trabajador implements OnInit, OnDestroy {
       const currentHidden = new Set(this.hiddenReportIds());
       currentHidden.add(activityId);
       this.hiddenReportIds.set(currentHidden);
-      
+
       // Guardar en localStorage
       this.saveHiddenReports(currentHidden);
     }, 250); // Duración de la animación
@@ -681,7 +681,7 @@ export class Trabajador implements OnInit, OnDestroy {
     if (!activityId.startsWith('alert-')) {
       return;
     }
-    
+
     const alertIdStr = activityId.replace('alert-', '');
     const alertId = parseInt(alertIdStr, 10);
     if (isNaN(alertId)) {
@@ -695,7 +695,7 @@ export class Trabajador implements OnInit, OnDestroy {
 
     // Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._workerAlerts()];
-    
+
     // 2. Esperar a que termine la animación (250ms) antes de remover de la UI
     setTimeout(() => {
       // Remover de la lista de eliminando
@@ -706,13 +706,13 @@ export class Trabajador implements OnInit, OnDestroy {
       // Optimistic update: Remover de la UI
       // Comparar usando el ID numérico convertido a string
       this._workerAlerts.set(previousAlerts.filter(a => a.id !== alertIdStr));
-      
+
       // Llamar al servidor en segundo plano
       this.alertService.resolveAlert(alertId).pipe(
         catchError((error) => {
           // Rollback en caso de error
           this._workerAlerts.set(previousAlerts);
-          
+
           // Notificar al usuario
           console.error('Error al marcar notificación como leída:', error);
           return EMPTY;
