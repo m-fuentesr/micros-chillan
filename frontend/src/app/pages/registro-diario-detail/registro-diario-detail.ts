@@ -355,11 +355,7 @@ interface DailyRecordDetailView extends DailyRecord {
                         <textarea 
                           formControlName="observations"
                           class="textarea textarea-bordered w-full h-32 leading-relaxed text-base focus:textarea-primary bg-base-200/30 focus:bg-white transition-all"
-                          [class.textarea-error]="
-                              recordForm.get('isEmergency')?.value &&
-                              (!recordForm.get('observations')?.value ||
-                              !((recordForm.get('observations')?.value ?? '').trim()))
-                          "
+                          [class.textarea-error]="recordForm.get('isEmergency')?.value && !recordForm.get('observations')?.value?.trim()"
                           placeholder="Escribe aquí cualquier detalle relevante de la jornada, incidentes menores, estado de la ruta..."></textarea>
                         @if (recordForm.get('isEmergency')?.value && recordForm.get('observations')?.invalid && recordForm.get('observations')?.touched) {
                           <p class="text-xs text-error mt-1">Este campo es obligatorio cuando hay un incidente crítico</p>
