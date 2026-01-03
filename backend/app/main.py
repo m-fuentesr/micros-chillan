@@ -36,7 +36,8 @@ app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 origins = [
     "http://localhost:4200",
     "https://micros-chillan.vercel.app",
-    "https://micros-chillan-mfuentesrs-projects.vercel.app"
+    "https://micros-chillan-mfuentesrs-projects.vercel.app",
+    "https://gestordeflotas.aiondevs.cl/"
 ]
 
 app.add_middleware(
