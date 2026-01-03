@@ -37,7 +37,7 @@ origins = [
     "http://localhost:4200",
     "https://micros-chillan.vercel.app",
     "https://micros-chillan-mfuentesrs-projects.vercel.app",
-    "https://gestordeflotas.aiondevs.cl/"
+    "https://gestordeflotas.aiondevs.cl"
 ]
 
 app.add_middleware(
