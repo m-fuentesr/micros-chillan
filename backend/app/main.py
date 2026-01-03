@@ -38,7 +38,8 @@ import os
 origins = [
     "http://localhost:4200",
     "https://micros-chillan.vercel.app",
-    "https://micros-chillan-mfuentesrs-projects.vercel.app"
+    "https://micros-chillan-mfuentesrs-projects.vercel.app",
+    "https://gestordeflotas.aiondevs.cl"
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")
