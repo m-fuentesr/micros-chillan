@@ -5,7 +5,7 @@ import { MachineService } from '../../../shared/services/machine.service';
 import { DriverForm } from '../../../shared/drivers/driver-form/driver-form';
 import { DriverCreateSummary } from '../../../shared/drivers/driver-create-summary/driver-create-summary';
 import { Driver } from '../../../shared/models/driver.models';
-import { catchError, of } from 'rxjs';
+import { catchError, finalize, of } from 'rxjs';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
@@ -72,10 +72,15 @@ import { AlertModalService } from '../../../shared/services/alert-modal.service'
                 </a>
                 <button
                   class="btn btn-primary w-full sm:w-auto order-1 sm:order-2 shadow-lg"
-                  [disabled]="!canSave()"
+                  [disabled]="!canSave() || saving()"
                   (click)="onSave()">
-                  <ui-icon name="Check" size="sm" class="mr-2" />
-                  Guardar Conductor
+                  @if (saving()) {
+                    <span class="loading loading-spinner loading-sm mr-2"></span>
+                    Guardando…
+                  } @else {
+                    <ui-icon name="Check" size="sm" class="mr-2" />
+                    Guardar Conductor
+                  }
                 </button>
               </div>
             </div>
@@ -141,6 +146,7 @@ export class DriverCreate {
   // Estado del formulario
   formData = signal<Partial<Driver>>({});
   formValid = signal(false);
+  saving = signal(false);
 
   // Máquinas para el select
   maquinasData = toSignal(
@@ -229,6 +235,8 @@ export class DriverCreate {
       return;
     }
 
+    this.saving.set(true);
+
     const data = this.formData();
 
     const payload = {
@@ -260,7 +268,8 @@ export class DriverCreate {
           });
           
           return of(null);
-        })
+        }),
+        finalize(() => this.saving.set(false))
       )
       .subscribe((driver) => {
         if (driver) {

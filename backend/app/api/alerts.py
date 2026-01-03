@@ -48,8 +48,10 @@ async def list_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
     # 1. Limpieza silenciosa (Lazy Cleanup) 🧹
     # Esto archiva las informativas de >24hrs antes de pedir la lista
     await alert_service.limpiar_alertas_antiguas()
-
-    # 2. Retornar la lista limpia
+    # 2. Limpieza Profunda (Hard Cleanup) 🗑️  <--- NUEVO
+    # Elimina físicamente de la BD las 'resueltas' de >3 meses
+    await alert_service.eliminar_alertas_muy_antiguas()
+    # 3. Retornar la lista limpia
     return await alert_service.get_admin_alerts()
 
 # Para el ADMIN: Ver resumen (KPIs) y detalle

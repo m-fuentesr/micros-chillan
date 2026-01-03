@@ -26,7 +26,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="text"
               formControlName="rut"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: 12.345.678-9"
               maxlength="12"
               (input)="onRutInput($event)"
@@ -52,7 +52,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="text"
               formControlName="primer_nombre"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: Juan"
               [class.input-error]="form.get('primer_nombre')?.invalid && form.get('primer_nombre')?.touched">
             <label class="label">
@@ -72,7 +72,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="text"
               formControlName="segundo_nombre"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: Carlos">
           </div>
 
@@ -85,7 +85,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="text"
               formControlName="apellido_paterno"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: Pérez"
               [class.input-error]="form.get('apellido_paterno')?.invalid && form.get('apellido_paterno')?.touched">
             <label class="label">
@@ -107,7 +107,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="text"
               formControlName="apellido_materno"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: González"
               [class.input-error]="form.get('apellido_materno')?.invalid && form.get('apellido_materno')?.touched">
             <label class="label">
@@ -129,7 +129,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="tel"
               formControlName="telefono"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: +56 9 1234 5678"
               [class.input-error]="form.get('telefono')?.invalid && form.get('telefono')?.touched">
             <label class="label">
@@ -151,7 +151,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
             <input
               type="email"
               formControlName="correo"
-              class="input input-bordered w-full"
+              class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: ejemplo@correo.cl"
               [class.input-error]="form.get('correo')?.invalid && form.get('correo')?.touched">
             <label class="label">
@@ -169,7 +169,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               <span class="label-text font-bold">Máquina Asignada</span>
             </label>
             <select formControlName="maquina_id" class="select select-bordered w-full" [class.placeholder-selected]="!form.get('maquina_id')?.value || form.get('maquina_id')?.value === '' || form.get('maquina_id')?.value === 'placeholder'">
-              <option value="placeholder" selected disabled>Seleccionar máquina</option>
+              <option value="placeholder" selected disabled>-- Seleccionar máquina --</option>
               <option value="">Sin asignar</option>
               @for (maquina of maquinas(); track maquina.id) {
                 <option [value]="maquina.id">{{ maquina.identificador }}</option>
@@ -235,49 +235,6 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
       </div>
     </form>
   `,
-  styles: [`
-    /* Estilos para placeholders grises claros en todos los inputs */
-    /* El placeholder es el texto de ejemplo que aparece dentro del campo antes de escribir */
-    input::placeholder,
-    textarea::placeholder {
-      color: hsl(var(--bc) / 0.6) !important;
-      opacity: 1;
-    }
-    
-    /* Placeholder gris claro cuando el input tiene focus */
-    input:focus::placeholder,
-    textarea:focus::placeholder {
-      color: hsl(var(--bc) / 0.5) !important;
-      opacity: 1;
-    }
-    
-    /* Asegurar que los placeholders sean grises claros en todos los estados */
-    input:not(:focus)::placeholder,
-    textarea:not(:focus)::placeholder {
-      color: hsl(var(--bc) / 0.6) !important;
-    }
-    
-    /* Placeholders grises claros para inputs deshabilitados */
-    input:disabled::placeholder,
-    textarea:disabled::placeholder {
-      color: hsl(var(--bc) / 0.4) !important;
-      opacity: 1;
-    }
-    
-    /* Estilos para el placeholder del select (opción seleccionada cuando el valor es null/vacío) */
-    select option:first-child {
-      color: hsl(var(--bc) / 0.6) !important;
-    }
-    
-    /* Cuando el select tiene el valor placeholder seleccionado, mostrar el texto en gris claro */
-    select.placeholder-selected {
-      color: hsl(var(--bc) / 0.6) !important;
-    }
-    
-    select:not(.placeholder-selected) {
-      color: hsl(var(--bc)) !important;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DriverForm implements OnDestroy {

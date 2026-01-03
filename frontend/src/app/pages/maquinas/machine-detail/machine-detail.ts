@@ -228,8 +228,9 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                             type="text"
                             class="input input-sm w-full mt-1 font-mono font-bold"
                             [value]="editPatente()"
-                            (input)="editPatente.set($any($event.target).value)"
+                            (input)="onPatenteInput($event)"
                             placeholder="Patente">
+                          <p class="text-[11px] text-base-content/60 mt-1">Formato: ABCD-12 (mayúsculas, 4 letras + guion + 2 números).</p>
                         } @else {
                           <div class="font-mono font-bold text-base-content">
                             {{ machine()?.patente || '--' }}
@@ -985,11 +986,11 @@ export class MachineDetail implements OnInit {
   });
 
 
-  // Cargar choferes activos desde backend (para el select)
+  // Cargar choferes activos sin máquina desde backend (para el select)
   choferesSelectData = toSignal(
-    this.driverService.getActiveDrivers().pipe(
+    this.driverService.getActiveDriversWithoutMachine().pipe(
       catchError((error) => {
-        console.error('Error cargando choferes activos:', error);
+        console.error('Error cargando choferes activos sin máquina:', error);
         // Retornar array vacío si hay error
         return of([]);
       })
@@ -998,7 +999,14 @@ export class MachineDetail implements OnInit {
   );
 
   choferesSelect = computed(() => {
-    return this.choferesSelectData() ?? [];
+    const choferesDisponibles = this.choferesSelectData() ?? [];
+    const choferActual = this.machine()?.chofer_actual;
+
+    if (choferActual && !choferesDisponibles.some((c) => c.id === choferActual.id)) {
+      return [choferActual, ...choferesDisponibles];
+    }
+
+    return choferesDisponibles;
   });
 
   // Choferes ordenados: el asignado primero, luego los demás
@@ -1104,6 +1112,18 @@ export class MachineDetail implements OnInit {
 
     if (!currentMachine) return;
 
+    const patenteRegex = /^[A-Z]{4}-\d{2}$/;
+
+    if (!this.editPatente() || !patenteRegex.test(this.editPatente())) {
+      this.alertModalService.show({
+        title: 'Patente inválida',
+        message: 'Usa el formato ABCD-12 (mayúsculas, 4 letras, guion y 2 números).',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     // Validar que las fechas de documentación estén presentes
     if (!this.editRevisionTecnica() || !this.editPermisoCirculacion() || !this.editSeguroObligatorio()) {
       this.alertModalService.show({
@@ -1176,6 +1196,18 @@ export class MachineDetail implements OnInit {
       });
   }
 
+  onPatenteInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value || '';
+    const sanitized = raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7);
+
+    if (sanitized !== raw) {
+      input.value = sanitized;
+    }
+
+    this.editPatente.set(sanitized);
+  }
+
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {
     // No permitir cambiar de tab si se está editando
     if (this.isEditingGeneral()) {
@@ -1213,9 +1245,21 @@ export class MachineDetail implements OnInit {
   }
 
   async onDelete(): Promise<void> {
+    const machine = this.machine();
+
+    if (machine?.chofer_actual) {
+      this.alertModalService.show({
+        title: 'Eliminar Máquina',
+        message: 'La máquina tiene una asignación activa, no puede ser eliminada.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     const confirmed = await this.confirmModalService.open({
       title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción desactivará la máquina y liberará al chofer asignado.`,
+      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Esta acción desactivará la máquina.`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'
     });

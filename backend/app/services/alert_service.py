@@ -284,6 +284,7 @@ async def get_admin_alerts_overview() -> DashboardAlerts:
     """
 
     await limpiar_alertas_antiguas()
+    await eliminar_alertas_muy_antiguas()
     alertas_raw = await get_admin_alerts()
     return _build_alerts_summary(alertas_raw)
 
@@ -408,3 +409,23 @@ async def limpiar_alertas_antiguas():
             
     except Exception as e:
         print(f"⚠️ Error intentando limpiar alertas antiguas: {e}")
+    
+async def eliminar_alertas_muy_antiguas():
+    """
+    Elimina físicamente alertas resueltas hace más de 3 meses.
+    """
+    try:
+        limite = (datetime.now() - timedelta(days=90)).isoformat()
+        
+        res = (
+            supabase.table("alertas")
+            .delete()
+            .eq("estado", "resuelta")
+            .lt("fecha_resuelta", limite) # Menor que hace 90 días
+            .execute()
+        )
+        if res.data:
+            print(f"🗑️ Se eliminaron {len(res.data)} alertas viejas permanentemente.")
+            
+    except Exception as e:
+        print(f"Error eliminando alertas viejas: {e}")

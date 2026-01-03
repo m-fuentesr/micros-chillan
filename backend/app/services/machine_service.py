@@ -1018,7 +1018,7 @@ async def update_machine(machine_id: int, data):
 
             # 4. Alerta Nueva Asignación
             await alert_service.crear_alerta(
-                mensaje=nombre_maquina,
+                mensaje=f"Se te asignó la {nombre_maquina}.",
                 severidad="informativa",
                 tipo="asignacion_maquina",
                 origen_tipo="chofer",
@@ -1072,6 +1072,7 @@ async def update_machine(machine_id: int, data):
 
     # 5. RETORNO FINAL
     return {"message": "Máquina actualizada correctamente"}
+
 
 async def delete_machine(machine_id: int):
     hoy = date.today().isoformat()
