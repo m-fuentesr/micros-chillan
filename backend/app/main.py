@@ -34,7 +34,7 @@ app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
 # CORS para permitir llamadas desde Angular (localhost:4200)
 origins = [
-    "http://localhost:4200",
+    "http://micros-chillan.vercel.app",
 ]
 
 app.add_middleware(
