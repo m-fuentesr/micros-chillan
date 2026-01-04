@@ -407,6 +407,9 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
             
             total_calc = base_semana + bono_sugerido
 
+            if total_calc <= 0:
+                continue
+
             resultados.append({
                 "chofer_id": cid,
                 "nombre_chofer": nombre,
@@ -428,6 +431,7 @@ async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: in
     Confirma el pago semanal y lo guarda en 'pagos_semanales'.
     Genera alerta asociada directamente al CHOFER (ID 12) para que la vea en su app.
     """
+    await validate_payment_rules(chofer_id, mes, anio, semana)
     # 1. Armamos el objeto para BD (Pagos)
     nuevo_pago = {
         "chofer_id": chofer_id,
@@ -870,3 +874,56 @@ async def process_month_closure(mes: int, anio: int):
         "estado": "Finalizado",
         "fecha_cierre": now_iso
     }
+
+async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: int):
+    """
+    Valida las 2 Reglas de Oro usando tus funciones auxiliares existentes:
+    1. ACTIVIDAD: Verifica en 'registros_diarios' usando las fechas de get_date_range_for_week.
+    2. SECUENCIA: Si es semana > 1, verifica que exista pago de la semana anterior.
+    """
+
+    # --- REGLA 1: VERIFICAR ACTIVIDAD (Registros Diarios) ---
+    
+    # Usamos TU función existente. Si la semana no existe, ella misma lanza el error 400.
+    start_date_iso, end_date_iso = get_date_range_for_week(mes, anio, semana)
+
+    # Consultamos si hay al menos 1 registro en ese rango de fechas
+    res_actividad = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+        .eq("chofer_id", chofer_id)
+        .gte("fecha", start_date_iso) # Supabase acepta formato ISO directo
+        .lte("fecha", end_date_iso)
+        .execute()
+    )
+    
+    # Obtenemos la cantidad encontrada
+    total_registros = res_actividad.count if res_actividad.count is not None else len(res_actividad.data)
+
+    if total_registros == 0:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"⛔ Sin actividad: El chofer no tiene registros diarios entre {start_date_iso} y {end_date_iso} (Semana {semana})."
+        )
+
+    # --- REGLA 2: VERIFICAR SECUENCIA (Semana Anterior) ---
+    # Solo aplica de la semana 2 en adelante
+    if semana > 1:
+        semana_anterior = semana - 1
+        
+        # Buscamos el pago de la semana anterior
+        res_previo = (
+            supabase.table("pagos_semanales")
+            .select("id")
+            .eq("chofer_id", chofer_id)
+            .eq("mes", mes)
+            .eq("anio", anio)
+            .eq("semana", semana_anterior)
+            .execute()
+        )
+
+        if not res_previo.data:
+            raise HTTPException(
+                status_code=400,
+                detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes la Semana {semana_anterior}."
+            )
