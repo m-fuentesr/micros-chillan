@@ -12,8 +12,9 @@ import { catchError, EMPTY, forkJoin, of, switchMap, Observable } from 'rxjs';
 import { map, startWith } from 'rxjs/operators';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
-import { getDateInChileTime, getDaysDifferenceInChile } from '../../shared/utils/date.utils';
+import { getDateInChileTime, getDaysDifferenceInChile, getDatePartsInChile } from '../../shared/utils/date.utils';
 import { DailyRecordDetailSkeleton } from '../../shared/daily-records/daily-record-detail-skeleton/daily-record-detail-skeleton';
+import { AccountingService } from '../../shared/services/accounting.service';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -27,6 +28,7 @@ interface DailyRecordDetailView extends DailyRecord {
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
   dieselLiters?: number; // litros_diesel (alias para compatibilidad con formulario)
+  neto?: number; // utilidad neta (recaudado - diesel - pago chofer)
   noWorkDay: boolean; // dia_no_trabajado
   noWorkDayReason?: string; // motivo_inactividad
   isEmergency?: boolean; // es_emergencia
@@ -86,6 +88,11 @@ interface DailyRecordDetailView extends DailyRecord {
                       <span class="inline-flex items-center gap-2 rounded-full bg-error/10 text-error px-3 py-1 text-xs sm:text-sm font-semibold border border-error/20 shadow-sm">
                         <ui-icon name="AlertCircle" size="sm" />
                         Incidente
+                      </span>
+                    } @else if (record()?.noWorkDay) {
+                      <span class="inline-flex items-center gap-2 rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-slate-200 shadow-sm">
+                        <ui-icon name="XCircle" size="sm" />
+                        Día No Trabajado
                       </span>
                     } @else if (isCompleto()) {
                       <span class="inline-flex items-center gap-2 rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-emerald-100 shadow-sm">✓ Completo</span>
@@ -193,7 +200,9 @@ interface DailyRecordDetailView extends DailyRecord {
                     @if (recordForm.get('noWorkDay')?.value) {
                       <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-base-200">
                         <label class="form-control w-full">
-                          <div class="label"><span class="label-text font-normal text-sm sm:text-base">Motivo de inactividad</span></div>
+                          <div class="label">
+                            <span class="label-text font-bold text-sm sm:text-base">Motivo de inactividad</span>
+                          </div>
                           @if (isEditMode()) {
                             <select 
                               class="select select-bordered w-full bg-base-200 text-sm" 
@@ -209,7 +218,7 @@ interface DailyRecordDetailView extends DailyRecord {
                               <option value="Sin Chofer Asignado">Sin Chofer Asignado</option>
                             </select>
                           } @else {
-                            <div class="input input-bordered w-full bg-base-200 text-sm text-base-content/80 font-medium select-none">
+                            <div class="input input-bordered w-full bg-base-200 text-sm text-base-content font-bold select-none border-2 border-info/30">
                               {{ record()?.noWorkDayReason || 'Sin motivo asignado' }}
                             </div>
                           }
@@ -327,14 +336,30 @@ interface DailyRecordDetailView extends DailyRecord {
                   </div>
 
                   <!-- Observaciones -->
-                  <div class="card bg-base-100 shadow-sm border border-base-200">
+                  <div class="card bg-base-100 shadow-sm border border-base-200"
+                       [class.border-error/30]="isEditMode() && recordForm.get('isEmergency')?.value"
+                       [class.bg-error/5]="isEditMode() && recordForm.get('isEmergency')?.value">
                     <div class="card-body p-4 sm:p-5 lg:p-6">
-                      <h2 class="card-title text-base sm:text-lg mb-2">Observaciones</h2>
+                      <h2 class="card-title text-base sm:text-lg mb-2">
+                        Observaciones
+                        @if (isEditMode() && recordForm.get('isEmergency')?.value) {
+                          <span class="text-error">*</span>
+                        }
+                      </h2>
+                      @if (isEditMode() && recordForm.get('isEmergency')?.value) {
+                        <p class="text-xs text-error font-semibold mb-2">
+                          Las observaciones son obligatorias cuando hay un incidente crítico
+                        </p>
+                      }
                       @if (isEditMode()) {
                         <textarea 
                           formControlName="observations"
-                          class="textarea textarea-bordered w-full h-32 leading-relaxed text-base focus:textarea-primary bg-base-200/30 focus:bg-white transition-all" 
+                          class="textarea textarea-bordered w-full h-32 leading-relaxed text-base focus:textarea-primary bg-base-200/30 focus:bg-white transition-all"
+                          [class.textarea-error]="recordForm.get('isEmergency')?.value && !recordForm.get('observations')?.value?.trim()"
                           placeholder="Escribe aquí cualquier detalle relevante de la jornada, incidentes menores, estado de la ruta..."></textarea>
+                        @if (recordForm.get('isEmergency')?.value && recordForm.get('observations')?.invalid && recordForm.get('observations')?.touched) {
+                          <p class="text-xs text-error mt-1">Este campo es obligatorio cuando hay un incidente crítico</p>
+                        }
                       } @else {
                         <p class="text-base-content/70 whitespace-pre-wrap min-h-[8rem]">{{ record()?.observations || 'Sin observaciones' }}</p>
                       }
@@ -560,9 +585,46 @@ interface DailyRecordDetailView extends DailyRecord {
                         class="bg-primary h-full shadow-[0_0_10px_rgba(var(--p),0.5)] transition-all duration-500"
                         [style.width.%]="currentPaymentBreakdown().percentage"></div>
                     </div>
-                    <div class="flex justify-between text-[9px] sm:text-[10px] text-base-content/40 font-mono uppercase tracking-wide">
+                    <div class="flex justify-between text-[9px] sm:text-[10px] text-base-content/40 font-mono uppercase tracking-wide mb-4 sm:mb-6">
                       <span>Cálculo</span>
                       <span class="text-right break-all">Base: {{ currentPaymentBreakdown().base | currency:'CLP':'symbol':'1.0-0' }}</span>
+                    </div>
+
+                    <!-- Cálculo de Utilidad Neta (TC-185) -->
+                    <div class="pt-4 sm:pt-6 border-t border-base-300">
+                      <h4 class="text-[10px] sm:text-xs font-black text-base-content/30 uppercase tracking-widest mb-3 sm:mb-4">Cálculo de Utilidad</h4>
+                      
+                      <div class="space-y-2 font-mono text-xs sm:text-sm">
+                        <div class="flex justify-between items-center">
+                          <span class="text-base-content/70">Recaudado:</span>
+                          <span class="font-bold tabular-nums text-base-content">
+                            {{ (isEditMode() ? incomeValue() : record()?.income) || 0 | currency:'CLP':'symbol':'1.0-0' }}
+                          </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-red-600">
+                          <span class="text-base-content/70">- Diésel:</span>
+                          <span class="font-bold tabular-nums">
+                            - {{ (isEditMode() ? dieselExpenseValue() : record()?.dieselExpense) || 0 | currency:'CLP':'symbol':'1.0-0' }}
+                          </span>
+                        </div>
+                        
+                        <div class="flex justify-between items-center text-primary">
+                          <span class="text-base-content/70">- Pago Chofer:</span>
+                          <span class="font-bold tabular-nums">
+                            - {{ currentPaymentBreakdown().amount | currency:'CLP':'symbol':'1.0-0' }}
+                          </span>
+                        </div>
+                        
+                        <div class="divider my-2 h-px bg-base-300"></div>
+                        
+                        <div class="flex justify-between items-center pt-2 border-t-2 border-base-300">
+                          <span class="font-bold text-base-content">Utilidad Neta:</span>
+                          <span class="text-lg sm:text-xl font-black tabular-nums" [class.text-emerald-600]="currentNeto() >= 0" [class.text-red-600]="currentNeto() < 0">
+                            {{ currentNeto() | currency:'CLP':'symbol':'1.0-0' }}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -576,14 +638,28 @@ interface DailyRecordDetailView extends DailyRecord {
                       Historial
                     </h3>
                     @if (historyItems().length > 0) {
-                      <ul class="timeline timeline-vertical timeline-compact -ml-2">
+                      <ul class="timeline timeline-vertical timeline-compact -ml-2 pl-2">
                         @for (item of historyItems(); track item.id; let last = $last) {
                           <li>
                             <div class="timeline-middle">
-                              <div class="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20" [class.bg-base-300]="!last"></div>
+                              <div class="w-2 h-2 rounded-full bg-primary ring-4 ring-primary/20 flex-shrink-0" [class.bg-base-300]="!last"></div>
                             </div>
                             <div class="timeline-end timeline-box bg-transparent border-none shadow-none p-0 pl-3 mb-4 min-w-0 flex-1">
-                              <div class="text-xs font-bold text-base-content break-words">{{ item.usuario }}</div>
+                              <div class="flex items-center gap-2 mb-1 flex-wrap">
+                                <div class="text-xs font-bold text-base-content break-words">{{ item.usuario }}</div>
+                                @if (item.tipoActor || item.rol) {
+                                  <div class="badge badge-xs badge-ghost text-[9px] font-medium">
+                                    @if (item.tipoActor === 'admin') {
+                                      <span>Admin</span>
+                                    } @else if (item.tipoActor === 'chofer') {
+                                      <span>Chofer</span>
+                                    }
+                                    @if (item.rol) {
+                                      <span class="ml-1 opacity-70">• {{ item.rol }}</span>
+                                    }
+                                  </div>
+                                }
+                              </div>
                               <div class="text-[10px] text-base-content/50 break-words">{{ item.accion }} • {{ formatTimeAgo(item.timestamp) }}</div>
                               @if (item.cambios) {
                                 <div class="text-[10px] text-base-content/40 mt-1 break-words overflow-wrap-anywhere">{{ item.cambios }}</div>
@@ -617,13 +693,26 @@ interface DailyRecordDetailView extends DailyRecord {
     /* Mejoras de responsividad para el timeline del historial */
     .timeline {
       max-width: 100%;
-      overflow-x: hidden;
+      overflow-x: visible;
+      overflow-y: visible;
     }
     
     .timeline li {
       max-width: 100%;
       word-wrap: break-word;
       overflow-wrap: break-word;
+      overflow: visible;
+    }
+    
+    .timeline-middle {
+      overflow: visible !important;
+      padding: 0.5rem 0;
+      min-width: 1rem;
+    }
+    
+    .timeline-middle > div {
+      position: relative;
+      z-index: 1;
     }
     
     .timeline-end {
@@ -658,6 +747,7 @@ export class RegistroDiarioDetail {
   private storageService = inject(StorageService);
   private imageModalService = inject(ImageModalService);
   private globalErrorService = inject(GlobalErrorService);
+  private accountingService = inject(AccountingService);
 
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
@@ -697,12 +787,13 @@ export class RegistroDiarioDetail {
   historyItems = computed(() => this.record()?.history ?? []);
 
   // Signal reactivo del valor de income del formulario
-  private incomeValue = toSignal(
+  incomeValue = toSignal(
     this.recordForm.get('income')?.valueChanges.pipe(
       startWith(this.recordForm.get('income')?.value || 0)
     ) || of(0),
     { initialValue: 0 }
   );
+
 
   // Desglose de pago calculado en tiempo real (se actualiza mientras se edita)
   currentPaymentBreakdown = computed(() => {
@@ -726,7 +817,7 @@ export class RegistroDiarioDetail {
       ? (this.incomeValue() || 0)
       : (this.record()?.paymentBreakdown?.base || this.record()?.income || 0);
     
-    // Calcular el monto a pagar
+    // Calcular el monto a pagar (usar Math.round para evitar errores de redondeo)
     const amount = Math.round(base * (percentage / 100));
     
     return {
@@ -735,6 +826,42 @@ export class RegistroDiarioDetail {
       amount
     };
   });
+
+  // Signal reactivo del valor de dieselExpense del formulario
+  dieselExpenseValue = toSignal(
+    this.recordForm.get('dieselExpense')?.valueChanges.pipe(
+      startWith(this.recordForm.get('dieselExpense')?.value || 0)
+    ) || of(0),
+    { initialValue: 0 }
+  );
+
+  // Neto calculado en tiempo real (recaudado - diésel - pago chofer) - Sin redondeo, cálculo exacto
+  currentNeto = computed(() => {
+    const isEditing = this.isEditMode();
+    const noWorkDay = this.recordForm.get('noWorkDay')?.value;
+    
+    // Si es día no trabajado, no hay neto
+    if (noWorkDay) {
+      return 0;
+    }
+
+    // Obtener valores actuales (del formulario si está editando, del record si no)
+    const income = isEditing 
+      ? (this.incomeValue() || 0)
+      : (this.record()?.income || 0);
+    
+    const diesel = isEditing
+      ? (this.dieselExpenseValue() || 0)
+      : (this.record()?.dieselExpense || 0);
+    
+    const pagoChofer = this.currentPaymentBreakdown().amount;
+    
+    // Cálculo exacto sin redondeo: todos los valores son enteros
+    const neto = income - diesel - pagoChofer;
+    
+    return neto;
+  });
+
 
   // Effect para actualizar validación cuando cambia "Día No Trabajado"
   private updateValidation = effect(() => {
@@ -781,6 +908,17 @@ export class RegistroDiarioDetail {
           ...currentRecord,
           isEmergency: value || false
         });
+        
+        // Actualizar validación de observaciones cuando cambia isEmergency
+        const observationsControl = this.recordForm.get('observations');
+        if (value) {
+          // Si hay incidente crítico, las observaciones son obligatorias
+          observationsControl?.setValidators([Validators.required]);
+        } else {
+          // Si no hay incidente crítico, las observaciones son opcionales
+          observationsControl?.clearValidators();
+        }
+        observationsControl?.updateValueAndValidity();
       }
     });
   }
@@ -806,6 +944,15 @@ export class RegistroDiarioDetail {
           dieselLiters: recordWithHistory.dieselLiters || 0,
           observations: recordWithHistory.observations || ''
         });
+        
+        // Configurar validación condicional de observaciones según isEmergency
+        const observationsControl = this.recordForm.get('observations');
+        if (recordWithHistory.isEmergency) {
+          observationsControl?.setValidators([Validators.required]);
+        } else {
+          observationsControl?.clearValidators();
+        }
+        observationsControl?.updateValueAndValidity();
         
         if (recordWithHistory.receipt?.imageUrl) {
           this.receiptPreview.set(recordWithHistory.receipt.imageUrl);
@@ -898,6 +1045,15 @@ export class RegistroDiarioDetail {
         dieselLiters: this.record()!.dieselLiters || 0,
         observations: this.record()!.observations
       });
+      
+      // Configurar validación condicional de observaciones según isEmergency
+      const observationsControl = this.recordForm.get('observations');
+      if (this.record()!.isEmergency) {
+        observationsControl?.setValidators([Validators.required]);
+      } else {
+        observationsControl?.clearValidators();
+      }
+      observationsControl?.updateValueAndValidity();
     }
     this.receiptFile.set(null);
     this.receiptPreview.set(this.record()?.receipt?.imageUrl || null);
@@ -1056,6 +1212,15 @@ export class RegistroDiarioDetail {
               dieselLiters: this.previousRecordState.dieselLiters || 0,
               observations: this.previousRecordState.observations
             });
+            
+            // Restaurar validación condicional de observaciones
+            const observationsControl = this.recordForm.get('observations');
+            if (this.previousRecordState.isEmergency) {
+              observationsControl?.setValidators([Validators.required]);
+            } else {
+              observationsControl?.clearValidators();
+            }
+            observationsControl?.updateValueAndValidity();
           }
           
           // 7. Notificar al usuario
@@ -1082,12 +1247,34 @@ export class RegistroDiarioDetail {
             observations: recordWithHistory.observations || ''
           });
           
+          // Configurar validación condicional de observaciones según isEmergency
+          const observationsControl = this.recordForm.get('observations');
+          if (recordWithHistory.isEmergency) {
+            observationsControl?.setValidators([Validators.required]);
+          } else {
+            observationsControl?.clearValidators();
+          }
+          observationsControl?.updateValueAndValidity();
+          
           // 10. Actualizar previews de imágenes con las URLs del servidor
           if (viewRecord.receipt?.imageUrl) {
             this.receiptPreview.set(viewRecord.receipt.imageUrl);
           }
           if (viewRecord.comprobanteRegistro?.imageUrl) {
             this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
+          }
+          
+          // 11. Invalidar caché de liquidación para todas las semanas del mes
+          // Esto es necesario porque los cambios en registros diarios afectan los cálculos de liquidación
+          if (updatedRecord?.fecha) {
+            try {
+              const dateParts = getDatePartsInChile(updatedRecord.fecha);
+              if (dateParts.year > 0 && dateParts.month > 0) {
+                this.accountingService.invalidateAllWeeksInMonth(dateParts.month, dateParts.year);
+              }
+            } catch (error) {
+              console.warn('Error al invalidar caché de liquidación:', error);
+            }
           }
           
           this.isEditMode.set(false);
@@ -1265,24 +1452,50 @@ export class RegistroDiarioDetail {
   }
 
   formatTimeAgo(timestamp: string): string {
-    // Convertir a zona horaria de Chile para cálculos correctos
-    const time = getDateInChileTime(timestamp);
-    const now = getDateInChileTime(new Date().toISOString());
-    const diffMs = now.getTime() - time.getTime();
+    if (!timestamp) {
+      return '';
+    }
+    
+    // Parsear la fecha preservando la hora
+    let dateStr = timestamp.trim();
+    // Si no tiene timezone, asumir UTC
+    if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+      dateStr = dateStr + 'Z';
+    }
+    const date = new Date(dateStr);
+    
+    if (isNaN(date.getTime())) {
+      return '';
+    }
+    
+    // Obtener la fecha/hora actual
+    const now = new Date();
+    
+    // Calcular diferencia en milisegundos directamente
+    // (ambas fechas están en UTC internamente, la diferencia es correcta)
+    const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     
     // Para días, usar función que compara solo fechas (sin horas)
     const diffDays = getDaysDifferenceInChile(timestamp);
 
-    if (diffMins < 60) {
+    if (diffMins < 1) {
+      return 'Hace menos de 1 min';
+    } else if (diffMins < 60) {
       return `Hace ${diffMins} min`;
     } else if (diffHours < 24 && diffDays === 0) {
       return `Hace ${diffHours} h`;
+    } else if (diffDays === 1) {
+      return 'Ayer';
     } else if (diffDays < 7) {
       return `Hace ${diffDays} días`;
     } else {
-      return time.toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+      return date.toLocaleDateString('es-CL', { 
+        timeZone: 'America/Santiago',
+        day: 'numeric', 
+        month: 'short' 
+      });
     }
   }
 

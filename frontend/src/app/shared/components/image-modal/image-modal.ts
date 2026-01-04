@@ -42,24 +42,73 @@ import { ImageModalService } from '../../services/image-modal.service';
             <!-- Contenido del modal -->
             <div class="modal-image-container">
               @if (modalService.config()!.url) {
-                <img 
-                  #imageRef
-                  [src]="modalService.config()!.url" 
-                  [alt]="modalService.config()!.title"
-                  class="modal-image"
-                  [class.zoomed]="zoomLevel() > 1"
-                  [style.transform]="getImageTransform()"
-                  [style.transform-origin]="transformOrigin()"
-                  (click)="onImageClick($event)"
-                  (wheel)="onWheel($event)"
-                  (mousedown)="onMouseDown($event)"
-                  (mousemove)="onMouseMove($event)"
-                  (mouseup)="onMouseUp($event)"
-                  (mouseleave)="onMouseUp($event)"
-                  (touchstart)="onTouchStart($event)"
-                  (touchmove)="onTouchMove($event)"
-                  (touchend)="onTouchEnd($event)"
-                  loading="eager" />
+                <!-- Estado de carga (solo si realmente está cargando) -->
+                @if (imageLoadingState() === 'loading') {
+                  <div class="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 absolute inset-0 bg-base-100 z-10">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                    <p class="text-sm text-base-content/60">Cargando imagen...</p>
+                  </div>
+                }
+                
+                <!-- Estado de error -->
+                @if (imageLoadingState() === 'error') {
+                  <div class="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 p-6">
+                    <div class="w-16 h-16 rounded-full bg-error/10 flex items-center justify-center">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div class="text-center max-w-md">
+                      <h3 class="font-bold text-lg text-base-content mb-2">Error al cargar la imagen</h3>
+                      <p class="text-sm text-base-content/70 mb-4">{{ imageError() || 'No se pudo cargar el comprobante. Verifica que la imagen exista y sea accesible.' }}</p>
+                      <button 
+                        class="btn btn-sm btn-primary"
+                        (click)="retryLoadImage()"
+                        type="button">
+                        Reintentar
+                      </button>
+                    </div>
+                  </div>
+                }
+                
+                <!-- Imagen (siempre intentar mostrar, los eventos manejarán el estado) -->
+                @if (imageLoadingState() !== 'error') {
+                  <img 
+                    #imageRef
+                    [src]="modalService.config()!.url" 
+                    [alt]="modalService.config()!.title"
+                    class="modal-image transition-opacity duration-200"
+                    [class.zoomed]="zoomLevel() > 1"
+                    [class.opacity-0]="imageLoadingState() === 'loading'"
+                    [class.opacity-100]="imageLoadingState() === 'loaded'"
+                    [style.transform]="getImageTransform()"
+                    [style.transform-origin]="transformOrigin()"
+                    (load)="onImageLoad()"
+                    (error)="onImageError($event)"
+                    (click)="onImageClick($event)"
+                    (wheel)="onWheel($event)"
+                    (mousedown)="onMouseDown($event)"
+                    (mousemove)="onMouseMove($event)"
+                    (mouseup)="onMouseUp($event)"
+                    (mouseleave)="onMouseUp($event)"
+                    (touchstart)="onTouchStart($event)"
+                    (touchmove)="onTouchMove($event)"
+                    (touchend)="onTouchEnd($event)"
+                    loading="eager" />
+                }
+              } @else {
+                <!-- Sin URL -->
+                <div class="flex flex-col items-center justify-center h-full min-h-[400px] gap-4 p-6">
+                  <div class="w-16 h-16 rounded-full bg-warning/10 flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-warning" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </div>
+                  <div class="text-center max-w-md">
+                    <h3 class="font-bold text-lg text-base-content mb-2">Imagen no disponible</h3>
+                    <p class="text-sm text-base-content/70">No se encontró una URL válida para esta imagen.</p>
+                  </div>
+                </div>
               }
             </div>
           </div>
@@ -401,6 +450,10 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
   @ViewChild('imageRef', { static: false }) imageRef!: ElementRef<HTMLImageElement>;
 
+  // Estado de carga de la imagen
+  imageLoadingState = signal<'loading' | 'loaded' | 'error'>('loading');
+  imageError = signal<string | null>(null);
+
   // Control de zoom
   zoomLevel = signal(1); // 1 = tamaño normal, 2 = zoom 2x
   transformOrigin = signal('center center');
@@ -464,6 +517,8 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
           dialog.showModal();
           // Resetear zoom cuando se abre el modal
           this.resetZoom();
+          // Resetear estado de carga cuando se abre el modal
+          this.resetImageLoadingState();
         } else if (dialog.open) {
           // Solo cerrar si el dialog está abierto
           // Agregar atributo closing para animación de salida
@@ -474,6 +529,63 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
               dialog.close();
             }
           }, 300); // Duración de la animación de salida (sincronizada con CSS)
+        }
+      }
+    });
+
+    // Efecto para manejar cambios en la URL de la imagen
+    effect(() => {
+      const config = this.modalService.config();
+      if (config && config.url) {
+        // Validar URL
+        if (!config.url || config.url.trim() === '') {
+          this.imageLoadingState.set('error');
+          this.imageError.set('URL de imagen no válida');
+          return;
+        }
+
+        try {
+          new URL(config.url);
+        } catch {
+          this.imageLoadingState.set('error');
+          this.imageError.set('URL de imagen no válida');
+          return;
+        }
+
+        // Verificar si la imagen está en caché del navegador
+        // Si la imagen ya se mostró en el detalle, debería estar en caché
+        const img = new Image();
+        
+        // Configurar handlers
+        img.onload = () => {
+          // Si onload se dispara, la imagen está lista (puede ser inmediato si está en caché)
+          this.imageLoadingState.set('loaded');
+          this.imageError.set(null);
+        };
+        
+        img.src = config.url;
+        
+        // Verificar si ya está completa (en caché) - esto puede ser inmediato
+        // Si está en caché, img.complete será true inmediatamente después de asignar src
+        // Usar un pequeño delay para permitir que el navegador actualice img.complete
+        if (img.complete && img.naturalHeight !== 0) {
+          // La imagen ya está en caché, mostrarla inmediatamente
+          this.imageLoadingState.set('loaded');
+          this.imageError.set(null);
+        } else {
+          // Si no está en caché, mostrar estado de carga
+          // El evento load se disparará cuando se cargue (o inmediatamente si está en caché)
+          this.imageLoadingState.set('loading');
+          this.imageError.set(null);
+          
+          // Verificar nuevamente después de un pequeño delay
+          // Esto captura casos donde img.complete se actualiza después de asignar src
+          setTimeout(() => {
+            if (img.complete && img.naturalHeight !== 0 && this.imageLoadingState() === 'loading') {
+              this.imageLoadingState.set('loaded');
+              this.imageError.set(null);
+            }
+          }, 0);
         }
       }
     });
@@ -819,6 +931,71 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     this.mouseDownX = 0;
     this.mouseDownY = 0;
     this.transformOrigin.set('center center');
+  }
+
+  // Resetear estado de carga de la imagen
+  resetImageLoadingState(): void {
+    this.imageLoadingState.set('loading');
+    this.imageError.set(null);
+  }
+
+  // Cargar imagen y manejar errores (para reintentar)
+  loadImage(url: string): void {
+    if (!url || url.trim() === '') {
+      this.imageLoadingState.set('error');
+      this.imageError.set('URL de imagen no válida');
+      return;
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      this.imageLoadingState.set('error');
+      this.imageError.set('URL de imagen no válida');
+      return;
+    }
+
+    // Resetear y verificar caché
+    this.resetImageLoadingState();
+    
+    const img = new Image();
+    img.src = url;
+    
+    if (img.complete && img.naturalHeight !== 0) {
+      this.imageLoadingState.set('loaded');
+      this.imageError.set(null);
+    }
+    // Si no está en caché, el estado de loading se mantiene y los eventos del <img> lo manejarán
+  }
+
+  // Reintentar cargar la imagen
+  retryLoadImage(): void {
+    const config = this.modalService.config();
+    if (config && config.url) {
+      this.loadImage(config.url);
+    }
+  }
+
+  // Handler para el evento load de la imagen (backup)
+  onImageLoad(): void {
+    // Si el evento load se dispara, la imagen está lista
+    // Esto puede ser inmediato si la imagen está en caché
+    this.imageLoadingState.set('loaded');
+    this.imageError.set(null);
+  }
+
+  // Handler para el evento error de la imagen (backup)
+  onImageError(event: Event): void {
+    this.imageLoadingState.set('error');
+    const img = event.target as HTMLImageElement;
+    const url = img?.src || this.modalService.config()?.url || '';
+    
+    if (url.includes('supabase') || url.includes('storage')) {
+      this.imageError.set('No se pudo acceder a la imagen. Puede que la imagen haya sido eliminada o no tengas permisos para verla.');
+    } else {
+      this.imageError.set('Error al cargar la imagen. Verifica que la URL sea correcta y accesible.');
+    }
+    console.error('Error cargando imagen en modal (event handler):', event, url);
   }
 }
 

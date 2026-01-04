@@ -19,7 +19,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="numero"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: 05"
             inputmode="numeric"
             autocomplete="off"
@@ -49,7 +49,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="marca"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: Mercedes-Benz"
             [disabled]="disabled()"
             [class.input-error]="form.get('marca')?.invalid && form.get('marca')?.touched">
@@ -74,7 +74,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="patente"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: ABCD-12"
             autocomplete="off"
             (input)="onPatenteInput($event)"
@@ -143,7 +143,7 @@ import { Machine } from '../../models/machine.models';
               [attr.size]="choferes().length > 10 ? 10 : null"
               style="max-height: 16rem; overflow-y: auto;"
             >
-              <option value="" selected disabled>Seleccionar chofer disponible</option>
+              <option value="" selected disabled>-- Seleccionar chofer disponible --</option>
               @for (chofer of choferes(); track chofer.id) {
                 <option [value]="chofer.id">{{ chofer.nombre_completo }}</option>
               }
@@ -170,35 +170,6 @@ import { Machine } from '../../models/machine.models';
       </div>
     </form>
   `,
-  styles: [`
-    /* Estilos para placeholders grises en todos los inputs */
-    /* El placeholder es el texto de ejemplo que aparece dentro del campo antes de escribir */
-    input::placeholder,
-    textarea::placeholder {
-      color: hsl(var(--bc) / 0.5) !important;
-      opacity: 1;
-    }
-    
-    /* Placeholder gris cuando el input tiene focus */
-    input:focus::placeholder,
-    textarea:focus::placeholder {
-      color: hsl(var(--bc) / 0.4) !important;
-      opacity: 1;
-    }
-    
-    /* Asegurar que los placeholders sean grises en todos los estados */
-    input:not(:focus)::placeholder,
-    textarea:not(:focus)::placeholder {
-      color: hsl(var(--bc) / 0.5) !important;
-    }
-    
-    /* Placeholders grises para inputs deshabilitados */
-    input:disabled::placeholder,
-    textarea:disabled::placeholder {
-      color: hsl(var(--bc) / 0.3) !important;
-      opacity: 1;
-    }
-  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MachineForm {

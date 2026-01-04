@@ -1250,14 +1250,6 @@ async def delete_driver(driver_id: int):
 async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
     """
     Reintegra un chofer previamente eliminado.
-
-    Flujo:
-    1) Validar que el chofer exista y esté marcado como eliminado.
-    2) Verificar que el correo nuevo no esté en uso (usuarios y Supabase Auth).
-    3) Crear usuario en Supabase Auth y enviar Magic Link.
-    4) Crear registro en tabla usuarios vinculado al chofer existente.
-    5) Cambiar estado del chofer a activo.
-    6) (Opcional) Asignar máquina, con las mismas validaciones de create_driver.
     """
 
     # 1) Obtener chofer y validar estado
@@ -1279,18 +1271,18 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
     if chofer_data.get("estado") != "eliminado":
         raise HTTPException(400, "Solo se pueden reintegrar choferes eliminados.")
 
-    # Normalizar y validar RUT almacenado
-    try:
-        normalized_rut = normalize_rut(chofer_data.get("rut", ""))
-    except ValueError:
-        raise HTTPException(400, "RUT inválido")
+    # Validar RUT almacenado
+    normalized_rut = chofer_data.get("rut")
 
-    if not validate_rut(normalized_rut):
-        raise HTTPException(400, "RUT inválido")
+    if not normalized_rut:
+        raise HTTPException(
+            400,
+            "El chofer no tiene un RUT válido almacenado."
+        )
 
     email = data.correo_electronico.strip().lower()
 
-    # 2) Verificar duplicados en usuarios y asociación previa
+    # 2) Verificar duplicado en usuarios
     existing = (
         supabase.table("usuarios")
         .select("id")
@@ -1303,11 +1295,9 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
         raise HTTPException(500, f"Error verificando correo: {existing.error}")
 
     if existing.data:
-        raise HTTPException(
-            status_code=400,
-            detail="Ya existe un usuario registrado con ese correo.",
-        )
+        raise HTTPException(400, "Ya existe un usuario registrado con ese correo.")
 
+    # Verificar que el chofer no tenga usuario asociado
     linked_user = (
         supabase.table("usuarios")
         .select("id")
@@ -1322,19 +1312,6 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
     if linked_user.data:
         raise HTTPException(400, "El chofer ya tiene un usuario asociado.")
 
-    # Verificar duplicado en Auth
-    try:
-        listado_auth = supabase.auth.admin.list_users()
-        if any(u.email and u.email.lower() == email for u in getattr(listado_auth, "users", [])):
-            raise HTTPException(
-                status_code=400,
-                detail="Ya existe un usuario en Supabase Auth con este correo.",
-            )
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.warning(f"No se pudo verificar duplicado en Auth antes de crear usuario: {e}")
-
     rut_password = normalized_rut.replace(".", "").replace("-", "")[:-1]
 
     supabase_uid = None
@@ -1342,12 +1319,12 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
     chofer_reactivado = False
 
     try:
+        # 3) Crear usuario en Supabase Auth
         try:
             auth_res = supabase.auth.admin.create_user(
                 {
                     "email": email,
                     "password": rut_password,
-                    "email_confirm": True,
                     "user_metadata": {
                         "rol": "chofer",
                         "rut": normalized_rut,
@@ -1360,21 +1337,18 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
             detalle = str(e)
             if "already been registered" in detalle.lower():
                 detalle = "Ya existe un usuario registrado en el sistema con este correo."
-            raise HTTPException(status_code=400, detail=f"{detalle}")
+            raise HTTPException(400, detalle)
 
         auth_user = getattr(auth_res, "user", None)
         if not auth_user or not getattr(auth_user, "id", None):
-            raise HTTPException(
-                status_code=500,
-                detail="Supabase no devolvió el UID del usuario Auth creado.",
-            )
+            raise HTTPException(500, "Supabase no devolvió el UID del usuario Auth creado.")
 
         supabase_uid = auth_user.id
 
-        # Enviar Magic Link para que establezca contraseña
+        # 4) Enviar Magic Link
         try:
             redirect_url = f"{settings.FRONTEND_URL}/restablecer-clave"
-            result = supabase.auth.sign_in_with_otp(
+            supabase.auth.sign_in_with_otp(
                 {
                     "email": email,
                     "options": {
@@ -1382,33 +1356,28 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
                     }
                 }
             )
-
-            if getattr(result, "error", None):
-                logger.warning(f"Supabase devolvió error al enviar Magic Link: {result.error}")
         except Exception as e:
-            logger.error(f"Error enviando correo de bienvenida (Magic Link): {e}")
+            logger.warning(f"Error enviando Magic Link: {e}")
 
-        usuario_payload = {
-            "correo": email,
-            "supabase_uid": supabase_uid,
-            "rol_id": 2,
-            "estado": "activo",
-            "chofer_id": driver_id,
-        }
-
+        # 5) Crear usuario en tabla usuarios
         usuario_res = (
             supabase.table("usuarios")
-            .insert(usuario_payload)
+            .insert({
+                "correo": email,
+                "supabase_uid": supabase_uid,
+                "rol_id": 2,
+                "estado": "activo",
+                "chofer_id": driver_id,
+            })
             .execute()
         )
 
         if getattr(usuario_res, "error", None):
-            raise HTTPException(
-                400, f"Error creando usuario asociado: {usuario_res.error}"
-            )
+            raise HTTPException(400, f"Error creando usuario asociado: {usuario_res.error}")
 
         usuario_id = usuario_res.data[0]["id"]
 
+        # 6) Asignación de máquina (opcional)
         maquina_id = data.maquina_asignada
 
         if maquina_id is not None:
@@ -1423,16 +1392,10 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
             )
 
             if getattr(maquina_res, "error", None) or not maquina_res.data:
-                raise HTTPException(
-                    400,
-                    "La máquina seleccionada no existe.",
-                )
+                raise HTTPException(400, "La máquina seleccionada no existe.")
 
             if maquina_res.data["estado_operativo"] != "operativa":
-                raise HTTPException(
-                    400,
-                    "La máquina seleccionada no está operativa.",
-                )
+                raise HTTPException(400, "La máquina seleccionada no está operativa.")
 
             asign_activa = (
                 supabase.table("asignaciones_chofer_maquina")
@@ -1444,36 +1407,16 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
             )
 
             if asign_activa.data:
-                raise HTTPException(
-                    400,
-                    "La máquina ya está asignada a otro chofer.",
-                )
-
-            chofer_asignacion = (
-                supabase.table("asignaciones_chofer_maquina")
-                .select("id")
-                .eq("chofer_id", driver_id)
-                .is_("fecha_termino", None)
-                .limit(1)
-                .execute()
-            )
-
-            if getattr(chofer_asignacion, "error", None):
-                raise HTTPException(400, f"Error verificando asignación del chofer: {chofer_asignacion.error}")
-
-            if chofer_asignacion.data:
-                raise HTTPException(400, "El chofer ya tiene una máquina asignada.")
+                raise HTTPException(400, "La máquina ya está asignada a otro chofer.")
 
             asign_res = (
                 supabase.table("asignaciones_chofer_maquina")
-                .insert(
-                    {
-                        "maquina_id": maquina_id,
-                        "chofer_id": driver_id,
-                        "fecha_inicio": date.today().isoformat(),
-                        "fecha_termino": None,
-                    }
-                )
+                .insert({
+                    "maquina_id": maquina_id,
+                    "chofer_id": driver_id,
+                    "fecha_inicio": date.today().isoformat(),
+                    "fecha_termino": None,
+                })
                 .execute()
             )
 
@@ -1482,7 +1425,8 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
                     400,
                     f"Chofer reintegrado, pero error asignando máquina: {asign_res.error}",
                 )
-            
+
+        # 7) Reactivar chofer
         upd_res = (
             supabase.table("choferes")
             .update({"estado": "activo"})
@@ -1491,10 +1435,7 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
         )
 
         if getattr(upd_res, "error", None):
-            raise HTTPException(
-                400,
-                f"Error reactivando chofer: {upd_res.error}",
-            )
+            raise HTTPException(400, f"Error reactivando chofer: {upd_res.error}")
 
         chofer_reactivado = True
 
