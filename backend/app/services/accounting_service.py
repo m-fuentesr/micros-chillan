@@ -531,9 +531,9 @@ async def confirm_weekly_payment(chofer_id: int, mes: int, anio: int, semana: in
 async def get_history_periods(filters=None):
     """
     Obtiene la lista de meses con paginación y filtros.
-    Lógica de Estado:
-    - "Finalizado": Si se detecta un pago en la ÚLTIMA semana de ese mes.
-    - "En Proceso": Si hay pagos, pero falta la última semana.
+    Lógica de Estado (ACTUALIZADA):
+    - "Finalizado": Si existe un registro en la tabla 'cierres_mensuales'.
+    - "En Proceso": Si NO existe registro de cierre (aunque haya pagos).
     """
     from app.core.pagination import PaginatedResponse
     
@@ -542,7 +542,7 @@ async def get_history_periods(filters=None):
         from app.schemas.settlement import HistoryPeriodFilters
         filters = HistoryPeriodFilters()
     
-    # 1. Obtener total global (sin filtros) para el badge - hacer esto primero
+    # 1. Obtener total global (sin filtros) para el badge
     res_global = (
         supabase.table("pagos_semanales")
         .select("mes, anio")
@@ -566,6 +566,11 @@ async def get_history_periods(filters=None):
         query = query.lte("mes", filters.mes_hasta)
     
     res = query.order("anio", desc=True).order("mes", desc=True).execute()
+
+    # --- NUEVO: Obtener lista de meses cerrados oficialmente ---
+    res_cierres = supabase.table("cierres_mensuales").select("mes, anio").execute()
+    meses_cerrados_set = {(c["mes"], c["anio"]) for c in res_cierres.data}
+    # -----------------------------------------------------------
     
     # 3. Agrupar en memoria
     grupos = {}
@@ -577,7 +582,7 @@ async def get_history_periods(filters=None):
             grupos[clave] = {
                 "total": 0, 
                 "fechas": [],
-                "semanas_pagadas": set() # Guardamos qué semanas tienen pagos
+                "semanas_pagadas": set() 
             }
         
         grupos[clave]["total"] += item["total_pagado"]
@@ -594,16 +599,13 @@ async def get_history_periods(filters=None):
         # Fecha cierre visual: La fecha más reciente de pago en ese mes
         fecha_cierre_visual = max(info["fechas"]) if info["fechas"] else date(anio, mes, 28)
         
-        # --- LÓGICA DE ESTADO ---
-        # Calculamos cuál es la última semana real de ese mes
-        total_semanas_del_mes = count_weeks_in_month(mes, anio)
-        
-        # Si en la lista de semanas pagadas está la última, cerramos el mes
-        # (Asumimos que si pagaste la última, cerraste el proceso)
-        if total_semanas_del_mes in info["semanas_pagadas"]:
+        # --- LÓGICA DE ESTADO (CORREGIDA) ---
+        # Verificamos si el par (mes, anio) está en el set de cierres
+        if (mes, anio) in meses_cerrados_set:
             estado_final = "Finalizado"
         else:
             estado_final = "En Proceso"
+        # ------------------------------------
 
         resultado.append({
             "periodo_texto": f"{nombre_mes} {anio}",
@@ -623,8 +625,6 @@ async def get_history_periods(filters=None):
     # 6. Calcular total de páginas
     total_paginas = (total_filtrado + filters.per_page - 1) // filters.per_page if total_filtrado > 0 else 0
     
-    # Retornar respuesta con total_global para el badge
-    # Usar dict directamente ya que PaginatedResponse no tiene total_global
     return {
         "total": total_filtrado,
         "total_global": total_global,
@@ -637,6 +637,7 @@ async def get_history_month_detail(mes: int, anio: int):
     """
     Genera el reporte tipo 'Comprobante de Nómina'.
     Estructura: Mes -> Semanas -> Lista de Choferes.
+    Estado: Se obtiene consultando la tabla 'cierres_mensuales'.
     """
     # 1. Traer pagos del mes con nombre del chofer
     res = (
@@ -656,7 +657,7 @@ async def get_history_month_detail(mes: int, anio: int):
         }
 
     # 2. Agrupar por Semana
-    semanas_map = {} # Key: numero_semana
+    semanas_map = {} 
     choferes_unicos = set()
     total_mes = 0
 
@@ -676,12 +677,11 @@ async def get_history_month_detail(mes: int, anio: int):
             "base": p["base_ganado"],
             "ajuste": p["ajuste_garantizado"],
             "total": p["total_pagado"],
-            "metodo": p["metodo_pago"].upper(), # "TRANSFERENCIA"
+            "metodo": p["metodo_pago"].upper(),
             "ref": p["codigo_transferencia"] or "-"
         }
 
         if sem not in semanas_map:
-            # Truco visual para el rango de fechas
             semanas_map[sem] = {
                 "numero_semana": sem,
                 "rango_fechas_texto": f"Semana {sem}",
@@ -699,14 +699,21 @@ async def get_history_month_detail(mes: int, anio: int):
     cant_choferes = len(choferes_unicos)
     promedio = int(total_mes / cant_choferes) if cant_choferes > 0 else 0
 
-    total_semanas_del_mes = count_weeks_in_month(mes, anio)
-    # Obtenemos las semanas que tienen pagos registrados en este desglose
-    semanas_con_pagos = set(semanas_map.keys())
-
-    if total_semanas_del_mes in semanas_con_pagos:
+    # --- NUEVO: CONSULTAR SI ESTÁ CERRADO EN DB ---
+    res_cierre = (
+        supabase.table("cierres_mensuales")
+        .select("id")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .maybe_single()
+        .execute()
+    )
+    
+    if res_cierre and res_cierre.data:
         estado_real = "Finalizado"
     else:
         estado_real = "En Proceso"
+    # ----------------------------------------------
     
     return {
         "total_liquidado": total_mes,
