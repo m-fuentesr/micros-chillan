@@ -12,6 +12,8 @@ import { SpinnerService } from './shared/services/spinner.service';
 import { ConfirmModalComponent } from './shared/components/confirm-modal/confirm-modal';
 import { MaintenanceFormModalComponent } from './shared/components/maintenance-form-modal/maintenance-form-modal';
 import { NewRecordModalComponent } from './shared/components/new-record-modal/new-record-modal';
+import { LedgerMovementModalComponent } from './shared/accounting/ledger-movement-modal/ledger-movement-modal';
+import { DriverLedgerHistoryComponent } from './shared/accounting/driver-ledger-history/driver-ledger-history';
 import { AlertModalComponent } from './shared/components/alert-modal/alert-modal';
 import { PaymentConfirmModalComponent } from './shared/components/payment-confirm-modal/payment-confirm-modal';
 import { ImageModalComponent } from './shared/components/image-modal/image-modal';
@@ -22,7 +24,7 @@ import { filter, map, startWith } from 'rxjs';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent, GlobalErrorDisplayComponent],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent, GlobalErrorDisplayComponent, LedgerMovementModalComponent, DriverLedgerHistoryComponent],
   template: `
     <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
     <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
@@ -104,6 +106,12 @@ import { filter, map, startWith } from 'rxjs';
 
     <!-- Modal de imagen global -->
     <app-image-modal></app-image-modal>
+
+    <!-- Modal de movimiento de cuenta corriente (global) -->
+    <app-ledger-movement-modal></app-ledger-movement-modal>
+
+    <!-- Modal de historial de cuenta corriente (global) -->
+    <app-driver-ledger-history></app-driver-ledger-history>
   `,
   styles: [
     `

@@ -94,5 +94,36 @@ export interface ClosedLiquidation {
   choferes?: LiquidationDriver[]; // DEPRECATED: mantener para compatibilidad, usar semanas[].choferes
 }
 
-export type AccountingTab = 'summary' | 'weekly' | 'payroll' | 'history';
+export type AccountingTab = 'summary' | 'weekly' | 'payroll' | 'history' | 'ledger';
+
+// Modelos para Cuentas Corrientes Choferes (Ledger)
+export interface LedgerSummary {
+  chofer_id: number;
+  nombre_completo: string;
+  saldo_actual: number;
+  estado_cuenta: 'DEUDOR' | 'AL_DIA' | 'A_FAVOR';
+  ultimo_movimiento: string | null;
+}
+
+export interface MovementCreate {
+  chofer_id: number;
+  tipo: 'CARGO' | 'ABONO';
+  monto: number;
+  descripcion: string;
+  fecha_movimiento?: string; // YYYY-MM-DD, opcional (default: hoy)
+}
+
+export interface MovementResponse {
+  id: number;
+  tipo: string;
+  monto: number;
+  descripcion: string;
+  fecha_movimiento: string;
+  created_at: string;
+}
+
+export interface DriverLedgerHistory {
+  saldo_actual: number;
+  movimientos: MovementResponse[];
+}
 
