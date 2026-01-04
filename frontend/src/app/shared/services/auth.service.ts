@@ -347,11 +347,18 @@ export class AuthService {
       try {
         await this.syncDomainUser();
       } catch (syncError: any) {
-        // Si es un error 401 durante login manual, dar tiempo adicional para retry
-        // El retry se ejecuta dentro de syncDomainUser, pero puede tardar
-        if (syncError?.status === 401 && this.isManualLogin) {
-          // Esperar tiempo suficiente para que el retry se complete (300ms + tiempo de petición)
-          await new Promise(resolve => setTimeout(resolve, 600));
+        // Si es un error durante login manual, dar tiempo adicional para retry
+        // syncDomainUser tiene retry automático para errores 401, pero puede tardar
+        // También puede haber errores temporales de red que se resuelven
+        if (this.isManualLogin) {
+          // Esperar tiempo suficiente para que los retries internos se completen
+          // syncDomainUser puede hacer múltiples retries:
+          // - Primer retry después de 400ms (si es 401)
+          // - Segundo retry después de 500ms adicionales (si el primero falla)
+          // - Más el tiempo de las peticiones HTTP
+          // Total puede ser más de 1500ms, así que esperamos 2000ms para estar seguros
+          const waitTime = syncError?.status === 401 ? 2000 : 1500;
+          await new Promise(resolve => setTimeout(resolve, waitTime));
           // Verificar nuevamente si ahora hay usuario (el retry pudo haber funcionado)
           const userAfterRetry = this.currentUser();
           if (userAfterRetry) {
@@ -359,16 +366,25 @@ export class AuthService {
             return;
           }
         }
-        // Si no es un 401 o el retry no funcionó, lanzar el error
+        // Si no es login manual o el retry no funcionó, lanzar el error
         throw syncError;
       }
 
-      // Dar un pequeño tiempo adicional para asegurar que el usuario se haya persistido
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const user = this.currentUser();
+      // Dar tiempo adicional para asegurar que el usuario se haya persistido
+      // Hacer un retry con espera progresiva antes de lanzar error
+      let user = this.currentUser();
       if (!user) {
-        // Si no hay usuario después de sincronizar, algo salió mal
+        // Primer intento: esperar 200ms
+        await new Promise(resolve => setTimeout(resolve, 200));
+        user = this.currentUser();
+      }
+      if (!user) {
+        // Segundo intento: esperar 300ms más
+        await new Promise(resolve => setTimeout(resolve, 300));
+        user = this.currentUser();
+      }
+      if (!user) {
+        // Si después de los retries aún no hay usuario, lanzar error
         throw new Error('No se pudo obtener la información del usuario');
       }
       // NO navegar automáticamente aquí - el componente Login manejará la navegación

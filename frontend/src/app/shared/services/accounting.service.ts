@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError, forkJoin } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { AccountingSummary, DailyProfitabilityData, WeeklySummary, WeeklyDriverBreakdown, LiquidationPeriod, LiquidationDriver, ClosedLiquidation, ClosedLiquidationWeek } from '../models/accounting.models';
+import { AccountingSummary, DailyProfitabilityData, WeeklySummary, WeeklyDriverBreakdown, LiquidationPeriod, LiquidationDriver, ClosedLiquidation, ClosedLiquidationWeek, LedgerSummary, MovementCreate, DriverLedgerHistory } from '../models/accounting.models';
 import { environment } from '../../../environments/environment.development';
 
 @Injectable({
@@ -747,6 +747,75 @@ export class AccountingService {
    */
   clearAllLiquidationCache(): void {
     this.liquidationCache.clear();
+  }
+
+  // =================================================================
+  // CUENTAS CORRIENTES CHOFERES (LEDGER)
+  // =================================================================
+
+  /**
+   * GET /api/accounting/ledger - Obtiene el resumen de cuentas corrientes de todos los choferes
+   */
+  getLedgerSummary(): Observable<LedgerSummary[]> {
+    return this.http.get<LedgerSummary[]>(`${this.apiUrl}/api/accounting/ledger`).pipe(
+      map(data => {
+        console.log('✅ Resumen de cuentas corrientes recibido:', data?.length, 'choferes');
+        return data || [];
+      }),
+      catchError((error) => {
+        console.error('❌ Error al obtener resumen de cuentas corrientes:', {
+          url: `${this.apiUrl}/api/accounting/ledger`,
+          error: error,
+          status: error?.status,
+          message: error?.message
+        });
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * POST /api/accounting/ledger/movement - Registra un movimiento (CARGO o ABONO) en la cuenta de un chofer
+   */
+  createLedgerMovement(movement: MovementCreate): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}/api/accounting/ledger/movement`, movement).pipe(
+      map(response => {
+        console.log('✅ Movimiento registrado correctamente:', response);
+        return response;
+      }),
+      catchError((error) => {
+        console.error('❌ Error al registrar movimiento:', {
+          url: `${this.apiUrl}/api/accounting/ledger/movement`,
+          movement,
+          error: error,
+          status: error?.status,
+          message: error?.message
+        });
+        throw error;
+      })
+    );
+  }
+
+  /**
+   * GET /api/accounting/ledger/{chofer_id} - Obtiene el historial detallado de movimientos de un chofer
+   */
+  getDriverLedgerHistory(choferId: number): Observable<DriverLedgerHistory> {
+    return this.http.get<DriverLedgerHistory>(`${this.apiUrl}/api/accounting/ledger/${choferId}`).pipe(
+      map(data => {
+        console.log('✅ Historial de chofer recibido:', data);
+        return data;
+      }),
+      catchError((error) => {
+        console.error('❌ Error al obtener historial del chofer:', {
+          url: `${this.apiUrl}/api/accounting/ledger/${choferId}`,
+          choferId,
+          error: error,
+          status: error?.status,
+          message: error?.message
+        });
+        throw error;
+      })
+    );
   }
 }
 

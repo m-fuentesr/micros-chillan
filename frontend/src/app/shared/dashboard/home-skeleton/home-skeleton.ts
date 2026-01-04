@@ -36,10 +36,11 @@ import { CommonModule } from '@angular/common';
           <!-- KPI Card 1: Ganancia Neta - Replica exacta del KpiCard default -->
           <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-skeleton-fade-in gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]"
                [style.animation-delay.ms]="0">
+            
             <!-- Header: Icon + Title - Mismas clases exactas del componente default -->
             <div class="relative flex items-center gap-3">
-              <!-- Icono: h-10 w-10 - El skeleton-shimmer ES el icono -->
-              <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-base-200 h-10 w-10"></div>
+              <!-- Icono: h-10 w-10 con fondo y ring como el componente real -->
+              <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-primary/15 bg-primary/10 h-10 w-10"></div>
               <div class="flex-1 min-w-0">
                 <!-- Título: text-xs (12px) font-bold uppercase tracking-wider -->
                 <div class="skeleton-shimmer h-3 w-32 rounded"></div>
@@ -56,7 +57,7 @@ import { CommonModule } from '@angular/common';
               <!-- Footer: Badge - Mismas clases exactas del componente default -->
               <div class="flex items-center mt-2 min-h-[24px] pl-[52px]">
                 <!-- Badge: px-1.5 py-0.5 text-[10px] rounded ring-1 ring-inset -->
-                <div class="skeleton-shimmer rounded px-1.5 py-0.5 h-5 w-28 sm:w-32 ring-1 ring-base-200"></div>
+                <div class="skeleton-shimmer rounded px-1.5 py-0.5 h-5 w-28 sm:w-32 ring-1 ring-primary/15 bg-primary/10"></div>
               </div>
             </div>
           </div>
@@ -64,10 +65,11 @@ import { CommonModule } from '@angular/common';
           <!-- KPI Card 2: Recaudación Total - Replica exacta del KpiCard default -->
           <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-skeleton-fade-in gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]"
                [style.animation-delay.ms]="100">
+            
             <!-- Header: Icon + Title - Mismas clases exactas del componente default -->
             <div class="relative flex items-center gap-3">
-              <!-- Icono: h-10 w-10 - El skeleton-shimmer ES el icono -->
-              <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-base-200 h-10 w-10"></div>
+              <!-- Icono: h-10 w-10 con fondo y ring como el componente real -->
+              <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-primary/15 bg-primary/10 h-10 w-10"></div>
               <div class="flex-1 min-w-0">
                 <!-- Título: text-xs (12px) font-bold uppercase -->
                 <div class="skeleton-shimmer h-3 w-36 rounded"></div>
@@ -84,7 +86,7 @@ import { CommonModule } from '@angular/common';
               <!-- Footer: Badge - Mismas clases exactas del componente default -->
               <div class="flex items-center mt-2 min-h-[24px] pl-[52px]">
                 <!-- Badge: px-1.5 py-0.5 text-[10px] rounded ring-1 -->
-                <div class="skeleton-shimmer rounded px-1.5 py-0.5 h-5 w-20 sm:w-24 ring-1 ring-base-200"></div>
+                <div class="skeleton-shimmer rounded px-1.5 py-0.5 h-5 w-20 sm:w-24 ring-1 ring-primary/15 bg-primary/10"></div>
               </div>
             </div>
           </div>
@@ -94,14 +96,14 @@ import { CommonModule } from '@angular/common';
                [style.animation-delay.ms]="200">
             <div class="flex justify-between items-start">
               <div class="flex items-center gap-3">
-                <!-- Icono: h-10 w-10 - El skeleton-shimmer ES el icono -->
-                <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-base-200 h-10 w-10"></div>
+                <!-- Icono: h-10 w-10 con fondo violeta como el componente real -->
+                <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-violet-100 bg-violet-50 h-10 w-10"></div>
                 <div>
                   <!-- Título: text-xs (12px) font-bold -->
                   <div class="skeleton-shimmer h-3 w-28 rounded"></div>
                   <div class="flex items-center gap-1.5 mt-0.5">
-                    <!-- Indicador: w-2 h-2 rounded-full -->
-                    <div class="skeleton-shimmer w-2 h-2 rounded-full"></div>
+                    <!-- Indicador: w-2 h-2 rounded-full con color verde -->
+                    <div class="w-2 h-2 rounded-full bg-green-400/75"></div>
                     <!-- Texto: text-sm (14px) -->
                     <div class="skeleton-shimmer h-3.5 w-20 rounded"></div>
                   </div>
@@ -115,9 +117,9 @@ import { CommonModule } from '@angular/common';
                 <!-- Valor: text-base sm:text-lg (16px/18px) -->
                 <div class="skeleton-shimmer h-4 sm:h-5 w-20 rounded"></div>
               </div>
-              <!-- Barra de progreso: h-2.5 con contenedor -->
-              <div class="w-full bg-base-200 h-2.5 rounded-full overflow-hidden">
-                <div class="skeleton-shimmer h-full w-3/4 rounded-full"></div>
+              <!-- Barra de progreso: h-2.5 con contenedor y barra violeta -->
+              <div class="w-full bg-zinc-100 h-2.5 rounded-full overflow-hidden">
+                <div class="skeleton-shimmer h-full w-3/4 rounded-full bg-violet-500/60"></div>
               </div>
               <!-- Texto inferior: text-[10px] -->
               <div class="skeleton-shimmer h-2.5 w-48 rounded ml-auto"></div>
@@ -135,10 +137,10 @@ import { CommonModule } from '@angular/common';
             <!-- Body: flex flex-col flex-1 gap-1 px-2 pb-2 -->
             <div class="flex flex-col flex-1 gap-1 px-2 pb-2">
               <!-- Sección Críticas: flex-1 flex items-center justify-between rounded-3xl bg-red-50/60 border border-red-100/50 px-4 -->
-              <div class="flex-1 flex items-center justify-between rounded-3xl p-4">
+              <div class="flex-1 flex items-center justify-between rounded-3xl bg-red-50/60 border border-red-100/50 px-4">
                 <div class="flex items-center gap-2">
-                  <!-- Indicador: h-2 w-2 para default -->
-                  <div class="skeleton-shimmer w-2 h-2 rounded-full"></div>
+                  <!-- Indicador: h-2 w-2 para default con color rojo -->
+                  <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
                   <!-- Label: text-xs (12px) para default -->
                   <div class="skeleton-shimmer h-3 w-20 rounded"></div>
                 </div>
@@ -148,14 +150,14 @@ import { CommonModule } from '@angular/common';
               <!-- Sección Advertencias e Info: flex gap-1 h-16 -->
               <div class="flex gap-1 h-16">
                 <!-- Advertencias: flex-1 flex flex-col items-center justify-center rounded-3xl bg-amber-50/60 border border-amber-100/50 -->
-                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl bg-amber-50/60 border border-amber-100/50">
                   <!-- Valor: text-lg (18px) para default -->
                   <div class="skeleton-shimmer h-5 w-8 rounded mb-1"></div>
                   <!-- Label: text-[10px] para default -->
                   <div class="skeleton-shimmer h-2.5 w-28 rounded"></div>
                 </div>
                 <!-- Info: flex-1 flex flex-col items-center justify-center rounded-3xl bg-blue-50/60 border border-blue-100/50 -->
-                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl">
+                <div class="flex-1 flex flex-col items-center justify-center rounded-3xl bg-blue-50/60 border border-blue-100/50">
                   <!-- Valor: text-lg (18px) para default -->
                   <div class="skeleton-shimmer h-5 w-8 rounded mb-1"></div>
                   <!-- Label: text-[10px] para default -->
@@ -417,32 +419,21 @@ import { CommonModule } from '@angular/common';
      */
     .skeleton-shimmer {
       position: relative;
+      /* Colores más visibles con gradiente de 5 puntos para mejor contraste */
       background: linear-gradient(
         90deg,
-        hsl(var(--b2) / 0.5) 0%,
-        hsl(var(--b2) / 0.8) 50%,
-        hsl(var(--b2) / 0.5) 100%
+        #e8e8e8 0%,
+        #f0f0f0 25%,
+        #f8f8f8 50%,
+        #f0f0f0 75%,
+        #e8e8e8 100%
       );
       background-size: 200% 100%;
       overflow: hidden;
       will-change: transform;
     }
 
-    .skeleton-shimmer::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        hsl(var(--b1) / 0.6) 50%,
-        transparent 100%
-      );
-      animation: skeleton-shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
-    }
+    /* Efecto shimmer deshabilitado - sin brillo animado */
 
     @keyframes skeleton-shimmer {
       0% {
@@ -477,10 +468,6 @@ import { CommonModule } from '@angular/common';
      * Usuarios con sensibilidad al movimiento ven skeleton estático
      */
     @media (prefers-reduced-motion: reduce) {
-      .skeleton-shimmer::after {
-        animation: none;
-      }
-      
       .animate-skeleton-fade-in {
         animation: none;
         opacity: 1;
@@ -494,22 +481,18 @@ import { CommonModule } from '@angular/common';
      */
     @media (prefers-color-scheme: dark) {
       .skeleton-shimmer {
+        /* En modo oscuro, usar colores más claros y visibles */
         background: linear-gradient(
           90deg,
-          hsl(var(--b2) / 0.3) 0%,
-          hsl(var(--b2) / 0.5) 50%,
-          hsl(var(--b2) / 0.3) 100%
+          #4a4a4a 0%,
+          #5a5a5a 25%,
+          #6a6a6a 50%,
+          #5a5a5a 75%,
+          #4a4a4a 100%
         );
       }
 
-      .skeleton-shimmer::after {
-        background: linear-gradient(
-          90deg,
-          transparent 0%,
-          hsl(var(--b1) / 0.3) 50%,
-          transparent 100%
-        );
-      }
+      /* Efecto shimmer deshabilitado en modo oscuro */
     }
 
     /* 
@@ -517,74 +500,45 @@ import { CommonModule } from '@angular/common';
      * Solo colores grises para mantener consistencia con el resto del skeleton
      */
     .skeleton-bar-outer {
+      /* Colores más visibles para las barras del gráfico */
+      background: linear-gradient(180deg, #e0e0e0 0%, #e8e8e8 50%, #e0e0e0 100%);
       background: linear-gradient(
         180deg,
-        hsl(var(--b2) / 0.6) 0%,
-        hsl(var(--b2) / 0.8) 50%,
-        hsl(var(--b2) / 0.6) 100%
+        hsl(var(--b2) / 0.75) 0%,
+        hsl(var(--b2) / 0.9) 50%,
+        hsl(var(--b2) / 0.75) 100%
       );
-      border: 2px solid hsl(var(--b3) / 0.7);
+      border: 2px solid hsl(var(--b3) / 0.8);
       border-radius: 12px 12px 0 0;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 1px 3px hsl(var(--b3) / 0.2);
+      box-shadow: 0 1px 3px hsl(var(--b3) / 0.3);
       min-width: 20px;
       min-height: 40px;
     }
 
-    .skeleton-bar-outer::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        hsl(var(--b1) / 0.4) 50%,
-        transparent 100%
-      );
-      animation: skeleton-shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
-    }
+    /* Efecto shimmer de barras deshabilitado - sin brillo animado */
 
     .skeleton-bar-inner {
+      /* Colores más visibles para las barras internas del gráfico */
+      background: linear-gradient(180deg, #d0d0d0 0%, #d8d8d8 50%, #d0d0d0 100%);
       background: linear-gradient(
         180deg,
-        hsl(var(--b2) / 0.7) 0%,
-        hsl(var(--b2) / 0.9) 50%,
-        hsl(var(--b2) / 0.7) 100%
+        hsl(var(--b2) / 0.8) 0%,
+        hsl(var(--b2) / 0.95) 50%,
+        hsl(var(--b2) / 0.8) 100%
       );
       border-radius: 10px 10px 0 0;
       position: relative;
       overflow: hidden;
-      box-shadow: 0 1px 2px hsl(var(--b3) / 0.3);
+      box-shadow: 0 1px 2px hsl(var(--b3) / 0.4);
       min-width: 12px;
       min-height: 30px;
     }
 
-    .skeleton-bar-inner::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(
-        90deg,
-        transparent 0%,
-        hsl(var(--b1) / 0.5) 50%,
-        transparent 100%
-      );
-      animation: skeleton-shimmer 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
-    }
+    /* Efecto shimmer de barras internas deshabilitado - sin brillo animado */
 
-    @media (prefers-reduced-motion: reduce) {
-      .skeleton-bar-outer::after,
-      .skeleton-bar-inner::after {
-        animation: none;
-      }
-    }
+    /* Efectos shimmer deshabilitados */
 
     /* Accesibilidad: ocultar para lectores de pantalla */
     [aria-busy="true"] {
