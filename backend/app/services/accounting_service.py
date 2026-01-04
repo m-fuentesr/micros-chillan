@@ -699,11 +699,20 @@ async def get_history_month_detail(mes: int, anio: int):
     cant_choferes = len(choferes_unicos)
     promedio = int(total_mes / cant_choferes) if cant_choferes > 0 else 0
 
+    total_semanas_del_mes = count_weeks_in_month(mes, anio)
+    # Obtenemos las semanas que tienen pagos registrados en este desglose
+    semanas_con_pagos = set(semanas_map.keys())
+
+    if total_semanas_del_mes in semanas_con_pagos:
+        estado_real = "Finalizado"
+    else:
+        estado_real = "En Proceso"
+    
     return {
         "total_liquidado": total_mes,
         "cantidad_choferes": cant_choferes,
         "promedio": promedio,
-        "estado": "Finalizado",
+        "estado": estado_real,
         "desglose_semanas": lista_semanas
     }
 
