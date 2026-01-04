@@ -1,6 +1,7 @@
 ﻿from fastapi import HTTPException
 from app.db.supabase_client import supabase
 from app.schemas.settlement import WeeklyPaymentConfirmRequest
+from app.schemas.accounting import MovementCreate
 from app.services import alert_service
 from datetime import date, timedelta, timezone, datetime
 import calendar
@@ -943,3 +944,105 @@ async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: in
                 status_code=400,
                 detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes la Semana {semana_anterior}."
             )
+def get_ledger_summary():
+    """
+    Obtiene lista de choferes con su saldo actual y estado.
+    """
+    # A. Traer choferes activos
+    res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
+    
+    # B. Traer cuentas
+    res_cuentas = supabase.table("cuentas_corrientes").select("*").execute()
+    cuentas_dict = {c["chofer_id"]: c for c in res_cuentas.data}
+    
+    summary_list = []
+    
+    for chofer in res_choferes.data:
+        cuenta = cuentas_dict.get(chofer["id"])
+        saldo = cuenta["saldo_actual"] if cuenta else 0
+        updated_at = cuenta["updated_at"] if cuenta else None
+        
+        # Lógica visual simple
+        if saldo < 0:
+            estado = "DEUDOR"    # Rojo
+        elif saldo > 0:
+            estado = "A_FAVOR"   # Azul/Verde oscuro
+        else:
+            estado = "AL_DIA"    # Verde/Gris
+            
+        summary_list.append({
+            "chofer_id": chofer["id"],
+            "nombre_completo": f"{chofer['primer_nombre']} {chofer['apellido_paterno']}",
+            "saldo_actual": saldo,
+            "estado_cuenta": estado,
+            "ultimo_movimiento": updated_at
+        })
+        
+    return summary_list
+
+# 2. CREAR MOVIMIENTO (Corregido)
+def create_ledger_movement(data: MovementCreate):
+    """
+    Crea un registro en la bitácora. 
+    NOTA: No calculamos saldo aquí, el Trigger de SQL lo hace solo.
+    """
+    # Paso A: Asegurar que exista la "Billetera" (cuenta_corriente)
+    # CAMBIO: Quitamos .maybe_single() y usamos execute() directo para recibir siempre una lista
+    res_cuenta = supabase.table("cuentas_corrientes").select("id").eq("chofer_id", data.chofer_id).execute()
+    
+    cuenta_id = None
+    
+    # Verificamos si la lista .data está vacía (significa que no tiene cuenta)
+    if not res_cuenta.data:
+        # Si es la primera vez, creamos la cuenta en 0
+        new_acc = supabase.table("cuentas_corrientes").insert({"chofer_id": data.chofer_id}).execute()
+        # new_acc.data es una lista, tomamos el primer elemento [0]
+        cuenta_id = new_acc.data[0]["id"]
+    else:
+        # Si ya existe, tomamos el primer elemento de la lista
+        cuenta_id = res_cuenta.data[0]["id"]
+        
+    # Paso B: Insertar el movimiento
+    new_movement = {
+        "cuenta_id": cuenta_id,
+        "tipo": data.tipo, # 'CARGO' o 'ABONO'
+        "monto": data.monto,
+        "descripcion": data.descripcion,
+        # Si no manda fecha, SQL pondrá la de hoy, pero si la manda, la usamos:
+        "fecha_movimiento": data.fecha_movimiento.isoformat() if data.fecha_movimiento else None
+    }
+    
+    # Al insertar esto, el Trigger SQL actualiza el saldo automáticamente
+    supabase.table("historial_movimientos").insert(new_movement).execute()
+    
+    return {"message": "Movimiento registrado correctamente"}
+
+# 3. VER HISTORIAL (Corregido también por si acaso)
+def get_driver_ledger_history(chofer_id: int):
+    """
+    Devuelve el saldo actual y la lista de movimientos de un chofer.
+    """
+    # CAMBIO: Quitamos .maybe_single()
+    res_cuenta = supabase.table("cuentas_corrientes").select("id, saldo_actual").eq("chofer_id", chofer_id).execute()
+    
+    # Si la lista está vacía, devolvemos 0
+    if not res_cuenta.data:
+        return {"saldo_actual": 0, "movimientos": []}
+        
+    # Tomamos el primer elemento
+    cuenta_data = res_cuenta.data[0]
+    
+    # Obtener movimientos ordenados por fecha descendente
+    res_movs = (
+        supabase.table("historial_movimientos")
+        .select("*")
+        .eq("cuenta_id", cuenta_data["id"])
+        .order("fecha_movimiento", desc=True) # Lo más nuevo primero
+        .limit(50)
+        .execute()
+    )
+    
+    return {
+        "saldo_actual": cuenta_data["saldo_actual"],
+        "movimientos": res_movs.data
+    }

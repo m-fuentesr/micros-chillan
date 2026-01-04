@@ -6,7 +6,10 @@ from app.schemas.accounting import (
     AccountingSummaryResponse, 
     WeekSummary, 
     DriverWeekDetail,
-    DailyProfitabilityData
+    DailyProfitabilityData,
+    MovementCreate,
+    MovementResponse,
+    LedgerSummary
 )
 from app.schemas.settlement import (
     WeeklyPaymentResponse, 
@@ -161,3 +164,41 @@ async def close_month_endpoint(
     """
     require_admin(current_user)
     return await accounting_service.process_month_closure(mes, anio)
+
+# =================================================================
+# 4. BITÁCORA Y CUENTAS CORRIENTES (NUEVO MÓDULO)
+# =================================================================
+
+@router.get("/ledger", response_model=List[LedgerSummary])
+async def read_ledger_summary(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene el tablero resumen de deudas/saldos de todos los choferes.
+    """
+    require_admin(current_user)
+    # Nota: Si el servicio es síncrono (def), no uses 'await'. 
+    # Si lo cambiaste a async, usa 'await'. Asumo síncrono por tu código anterior:
+    return accounting_service.get_ledger_summary()
+
+@router.post("/ledger/movement")
+async def add_ledger_movement(
+    movement: MovementCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Registra un movimiento manual (Préstamo o Abono) en la cuenta del chofer.
+    """
+    require_admin(current_user)
+    return accounting_service.create_ledger_movement(movement)
+
+@router.get("/ledger/{chofer_id}")
+async def read_driver_ledger(
+    chofer_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Obtiene el historial detallado de movimientos de un chofer específico.
+    """
+    require_admin(current_user)
+    return accounting_service.get_driver_ledger_history(chofer_id)
