@@ -978,6 +978,8 @@ def get_ledger_summary():
             "ultimo_movimiento": updated_at
         })
         
+    summary_list.sort(key=lambda x: x["saldo_actual"]) 
+    
     return summary_list
 
 # 2. CREAR MOVIMIENTO (Corregido)
