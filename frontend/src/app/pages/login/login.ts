@@ -1728,65 +1728,16 @@ export class Login {
       // - Primer retry después de 400ms (si es login manual)
       // - Segundo retry después de 500ms adicionales (si el primero falla)
       // - Más el tiempo de las peticiones HTTP
-      // Total puede ser más de 1500ms, así que esperamos 1800ms para estar seguros
-      const waitTime = isSyncError ? 1800 : 1200;
+      // Total puede ser más de 1500ms, así que esperamos 2000ms para estar seguros
+      const waitTime = isSyncError ? 2000 : 1200;
       await new Promise(resolve => setTimeout(resolve, waitTime));
       
-      // Verificar nuevamente si el usuario está autenticado después de los retries
+      // IMPORTANTE: Verificar PRIMERO si el usuario está autenticado después de los retries
+      // ANTES de mostrar cualquier error. Si el usuario existe, el login fue exitoso.
       const user = this.auth.currentUser();
-      if (!user) {
-        // Analizar el tipo de error para mostrar mensajes específicos
-        const errorMessage = err?.message || '';
-        let userFriendlyMessage = '';
-        
-        switch (errorMessage) {
-          case 'EMAIL_NOT_FOUND':
-            userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
-            // Resaltar el campo de email
-            this.loginForm.get('email')?.setErrors({ notFound: true });
-            break;
-            
-          case 'INVALID_PASSWORD':
-            userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
-            // Resaltar el campo de contraseña
-            this.loginForm.get('password')?.setErrors({ incorrect: true });
-            this.passwordErrorShown.set(true);
-            break;
-            
-          case 'EMAIL_NOT_CONFIRMED':
-            userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
-            break;
-            
-          case 'TOO_MANY_ATTEMPTS':
-            userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
-            break;
-            
-          case 'USER_DISABLED':
-            userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
-            break;
-            
-          case 'NETWORK_ERROR':
-            userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
-            break;
-            
-          case 'INVALID_CREDENTIALS':
-          default:
-            // Mensaje más amigable y accionable sin comprometer seguridad
-            userFriendlyMessage = 'No pudimos iniciar sesión con estos datos.\nVerifica tu correo y contraseña. Si olvidaste tu contraseña, usa "¿Olvidaste tu clave?".';
-            // Resaltar ambos campos para que el usuario revise ambos
-            this.loginForm.get('email')?.markAsTouched();
-            this.loginForm.get('password')?.markAsTouched();
-            this.passwordErrorShown.set(true);
-            break;
-        }
-        
-        this.error.set(userFriendlyMessage);
-        // Activar animación de shake
-        this.shakeError.set(true);
-        setTimeout(() => this.shakeError.set(false), 500);
-      } else {
+      if (user) {
         // Si hay usuario después del retry, el login fue exitoso
-        // Mostrar estado de éxito igual que en el caso exitoso normal
+        // NO mostrar error, continuar con el flujo de éxito
         this.error.set(null);
         this.loginSuccess.set(true);
         
@@ -1853,7 +1804,59 @@ export class Login {
             this.expanding.set(false);
           }, 100);
         }
+        return; // Salir temprano si el login fue exitoso después del retry
       }
+      
+      // Solo si NO hay usuario después del retry, mostrar el error
+      // Analizar el tipo de error para mostrar mensajes específicos
+      const errorMessage = err?.message || '';
+      let userFriendlyMessage = '';
+      
+      switch (errorMessage) {
+        case 'EMAIL_NOT_FOUND':
+          userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
+          // Resaltar el campo de email
+          this.loginForm.get('email')?.setErrors({ notFound: true });
+          break;
+          
+        case 'INVALID_PASSWORD':
+          userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
+          // Resaltar el campo de contraseña
+          this.loginForm.get('password')?.setErrors({ incorrect: true });
+          this.passwordErrorShown.set(true);
+          break;
+          
+        case 'EMAIL_NOT_CONFIRMED':
+          userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
+          break;
+          
+        case 'TOO_MANY_ATTEMPTS':
+          userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
+          break;
+          
+        case 'USER_DISABLED':
+          userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
+          break;
+          
+        case 'NETWORK_ERROR':
+          userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
+          break;
+          
+        case 'INVALID_CREDENTIALS':
+        default:
+          // Mensaje más amigable y accionable sin comprometer seguridad
+          userFriendlyMessage = 'No pudimos iniciar sesión con estos datos.\nVerifica tu correo y contraseña. Si olvidaste tu contraseña, usa "¿Olvidaste tu clave?".';
+          // Resaltar ambos campos para que el usuario revise ambos
+          this.loginForm.get('email')?.markAsTouched();
+          this.loginForm.get('password')?.markAsTouched();
+          this.passwordErrorShown.set(true);
+          break;
+      }
+      
+      this.error.set(userFriendlyMessage);
+      // Activar animación de shake
+      this.shakeError.set(true);
+      setTimeout(() => this.shakeError.set(false), 500);
     } finally {
       this.loading.set(false);
     }
