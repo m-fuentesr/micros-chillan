@@ -148,3 +148,16 @@ async def undo_payment_endpoint(
     Vuelve el estado de la semana a 'pendiente'.
     """
     return await accounting_service.undo_weekly_payment(chofer_id, mes, anio, semana)
+@router.post("/close-month")
+async def close_month_endpoint(
+    mes: int = Query(..., description="Número del mes a cerrar (1-12)"),
+    anio: int = Query(..., description="Año del mes a cerrar"),
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Cierra el mes contable.
+    - Valida que todos los choferes activos tengan su pago de la última semana.
+    - Guarda el registro en la tabla 'cierres_mensuales'.
+    """
+    require_admin(current_user)
+    return await accounting_service.process_month_closure(mes, anio)

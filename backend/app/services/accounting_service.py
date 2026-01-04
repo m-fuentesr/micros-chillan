@@ -2,7 +2,7 @@
 from app.db.supabase_client import supabase
 from app.schemas.settlement import WeeklyPaymentConfirmRequest
 from app.services import alert_service
-from datetime import date, timedelta, timezone
+from datetime import date, timedelta, timezone, datetime
 import calendar
 
 # --------------------------------------------------------------------------
@@ -772,4 +772,97 @@ async def undo_weekly_payment(chofer_id: int, mes: int, anio: int, semana: int):
     return {
         "message": "Pago deshecho correctamente. El estado ha vuelto a 'pendiente'.",
         "deleted_id": res.data[0]["id"]
+    }
+
+async def process_month_closure(mes: int, anio: int):
+    """
+    Cierra administrativamente el mes:
+    1. Verifica que NO existan pagos pendientes en la última semana para choferes activos.
+    2. Calcula el total pagado en todo el mes.
+    3. Inserta el registro en la tabla 'cierres_mensuales'.
+    """
+    # 1. SEGURIDAD: Verificar si el mes ya está cerrado
+    check_existente = (
+        supabase.table("cierres_mensuales")
+        .select("id")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    if check_existente.data:
+        raise HTTPException(status_code=400, detail="Este mes ya se encuentra cerrado.")
+
+    # 2. VALIDACIÓN DE PAGOS PENDIENTES
+    # Calculamos cuál es la última semana de ese mes
+    total_semanas = count_weeks_in_month(mes, anio)
+    
+    # Obtenemos choferes activos
+    res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
+    choferes_activos = res_choferes.data or []
+    ids_activos = [c["id"] for c in choferes_activos]
+
+    if ids_activos:
+        # Buscamos quiénes tienen pago registrado en esa ÚLTIMA semana
+        res_pagos_check = (
+            supabase.table("pagos_semanales")
+            .select("chofer_id")
+            .eq("mes", mes)
+            .eq("anio", anio)
+            .eq("semana", total_semanas)
+            .in_("chofer_id", ids_activos)
+            .execute()
+        )
+        pagados_ids = [p["chofer_id"] for p in res_pagos_check.data]
+        
+        # Identificamos a los morosos
+        pendientes = [c for c in choferes_activos if c["id"] not in pagados_ids]
+        
+
+        if pendientes:
+            nombres = ", ".join([f"{p['primer_nombre']} {p['apellido_paterno']}" for p in pendientes])
+            raise HTTPException(
+                status_code=400,
+                detail=f"⚠️ No se puede cerrar el mes. Falta registrar el pago de la Semana {total_semanas} a: {nombres}"
+            )
+ 
+
+    # 3. CÁLCULO DEL TOTAL (Para el historial)
+    res_total = (
+        supabase.table("pagos_semanales")
+        .select("total_pagado")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    suma_total = sum((item.get('total_pagado') or 0) for item in res_total.data)
+
+    # 4. GUARDAR EL CIERRE
+    try:
+        now_iso = datetime.now(timezone.utc).isoformat()
+        
+        datos_cierre = {
+            "mes": mes,
+            "anio": anio,
+            "total_pagado": suma_total,
+            "fecha_cierre": now_iso,
+            'cerrado_por' : 1
+        }
+
+        res_insert = supabase.table("cierres_mensuales").insert(datos_cierre).execute()
+        
+        if getattr(res_insert, "error", None):
+             raise Exception(res_insert.error.message)
+
+    except Exception as e:
+        # Manejo de error de duplicado por si ocurrencia simultánea
+        if "23505" in str(e): 
+             raise HTTPException(status_code=400, detail="El mes ya estaba cerrado.")
+        raise HTTPException(status_code=500, detail=f"Error al guardar cierre: {e}")
+
+    # Retornamos el estado 'Finalizado' para que el frontend actualice la UI inmediatamente
+    return {
+        "status": "success", 
+        "message": f"Mes cerrado correctamente. Total auditado: ${suma_total:,.0f}",
+        "estado": "Finalizado",
+        "fecha_cierre": now_iso
     }
