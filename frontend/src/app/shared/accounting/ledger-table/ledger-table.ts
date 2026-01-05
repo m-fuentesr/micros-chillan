@@ -38,11 +38,11 @@ import { formatDateShort } from '../../utils/date.utils';
       </div>
 
       <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-        @if (isLoading()) {
-          <!-- Skeleton se mostrará desde el componente padre -->
-        } @else if (summaries().length > 0) {
+        @if (summaries().length > 0) {
           <!-- Vista Desktop: Tabla (solo desde lg: 1024px) -->
-          <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
+          <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200"
+               [class.opacity-50]="isLoading()"
+               [class.pointer-events-none]="isLoading()">
             <table class="table w-full">
               <thead class="bg-base-50 border-b border-base-200">
                 <tr>
@@ -148,7 +148,9 @@ import { formatDateShort } from '../../utils/date.utils';
           </div>
 
           <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
-          <div class="lg:hidden space-y-4">
+          <div class="lg:hidden space-y-4"
+               [class.opacity-50]="isLoading()"
+               [class.pointer-events-none]="isLoading()">
             @for (summary of summaries(); track summary.chofer_id) {
               <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
                    [class.ring-2]="summary.estado_cuenta === 'DEUDOR'"
@@ -236,6 +238,8 @@ import { formatDateShort } from '../../utils/date.utils';
               </div>
             }
           </div>
+        } @else if (isLoading()) {
+          <!-- Skeleton se mostrará desde el componente padre -->
         } @else {
           <!-- Mensaje cuando no hay datos -->
           <div class="flex flex-col items-center justify-center py-12">

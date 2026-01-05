@@ -6,7 +6,7 @@ import { AccountingService } from '../../services/accounting.service';
 import { DriverLedgerHistoryModalService } from '../../services/driver-ledger-history-modal.service';
 import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, switchMap } from 'rxjs';
-import { formatDateWithTime } from '../../utils/date.utils';
+import { formatDateShort } from '../../utils/date.utils';
 
 // Log global para verificar si el módulo se carga
 console.log('🔴 DriverLedgerHistoryComponent - Módulo cargado');
@@ -401,6 +401,6 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
   }
 
   formatDate(dateString: string): string {
-    return formatDateWithTime(dateString);
+    return formatDateShort(dateString);
   }
 }
