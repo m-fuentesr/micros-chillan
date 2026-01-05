@@ -6,7 +6,9 @@ import { WeeklySummaryTable } from '../../shared/accounting/weekly-summary-table
 import { LiquidationTable } from '../../shared/accounting/liquidation-table/liquidation-table';
 import { LiquidationTableSkeleton } from '../../shared/accounting/liquidation-table-skeleton/liquidation-table-skeleton';
 import { LiquidationHistory } from '../../shared/accounting/liquidation-history/liquidation-history';
-import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation, LiquidationDriver } from '../../shared/models/accounting.models';
+import { LedgerTable } from '../../shared/accounting/ledger-table/ledger-table';
+import { LedgerTableSkeleton } from '../../shared/accounting/ledger-table-skeleton/ledger-table-skeleton';
+import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation, LiquidationDriver, LedgerSummary } from '../../shared/models/accounting.models';
 import { PaymentConfirmFormData } from '../../shared/services/payment-confirm-modal.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
@@ -20,7 +22,7 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton, UiIconComponent],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LedgerTable, LedgerTableSkeleton, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -82,6 +84,17 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
               (click)="setActiveTab('history')">
               <ui-icon name="Clock" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Historial Liquidaciones</span>
+            </button>
+
+            <button
+              type="button"
+              class="tab h-11 px-4 sm:px-5 font-semibold transition-all rounded-lg flex items-center gap-2 whitespace-nowrap"
+              [class.tab-active]="activeTab() === 'ledger'"
+              [class.bg-primary]="activeTab() === 'ledger'"
+              [class.text-primary-content]="activeTab() === 'ledger'"
+              (click)="setActiveTab('ledger')">
+              <ui-icon name="Wallet" size="xs" class="shrink-0" />
+              <span class="text-xs sm:text-sm">Cuentas Corrientes</span>
             </button>
           </div>
         </div>
@@ -263,9 +276,28 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
               }
             </div>
           }
+
+          <!-- Tab: Cuentas Corrientes Choferes -->
+          @if (activeTab() === 'ledger') {
+            <div class="animate-tab-panel">
+              @if (ledgerLoadingState.isLoading() && ledgerSummaries().length === 0) {
+                <!-- Mostrar skeleton si está cargando Y no hay datos -->
+                <app-ledger-table-skeleton 
+                  [isExiting]="ledgerLoadingState.isSkeletonExiting()" />
+              } @else {
+                <app-ledger-table
+                  [summaries]="ledgerSummaries()"
+                  [isLoading]="ledgerLoadingState.isLoading()"
+                  (refreshRequested)="loadLedgerSummary()"
+ />
+              }
+            </div>
+          }
         </div>
       </div>
     </div>
+
+    <!-- Modal de Movimiento del Ledger -->
   `,
   styles: [`
     /* Ocultar scrollbar pero mantener funcionalidad de scroll */
@@ -383,6 +415,7 @@ export class Contabilidad implements OnInit {
   weeklyLoadingState = this.loadingStateService.createLoadingState();
   payrollLoadingState = this.loadingStateService.createLoadingState();
   historyLoadingState = this.loadingStateService.createLoadingState();
+  ledgerLoadingState = this.loadingStateService.createLoadingState();
   
   // Signals para manejar errores de liquidación
   payrollError = signal<string | null>(null);
@@ -396,6 +429,9 @@ export class Contabilidad implements OnInit {
   weeklySummaries = signal<WeeklySummary[]>([]);
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
+  ledgerSummaries = signal<LedgerSummary[]>([]);
+  
+  // Signals para el drawer de historial del chofer
   
   // Signals para historial con paginación y filtros
   historyFilters = signal<{ 
@@ -572,6 +608,11 @@ export class Contabilidad implements OnInit {
   liquidationHistory = computed(() => this.liquidationHistoryData());
 
   ngOnInit(): void {
+    // Inicializar estado de carga del ledger si no hay datos
+    if (this.ledgerSummaries().length === 0) {
+      this.ledgerLoadingState.setLoading(true);
+    }
+    
     this.loadSummary();
     this.loadDailyData();
     this.loadWeeklySummaries();
@@ -580,7 +621,26 @@ export class Contabilidad implements OnInit {
   }
 
   setActiveTab(tab: AccountingTab): void {
+    // Establecer estado de carga ANTES de cambiar el tab para evitar flash de contenido
+    if (tab === 'ledger') {
+      // Si no hay datos cargados, establecer loading inmediatamente
+      if (this.ledgerSummaries().length === 0) {
+        this.ledgerLoadingState.setLoading(true);
+        // Usar setTimeout para asegurar que el estado se establece antes del cambio de tab
+        setTimeout(() => {
+          this.activeTab.set(tab);
+          this.loadLedgerSummary();
+        }, 0);
+        return;
+      }
+    }
+    
     this.activeTab.set(tab);
+    
+    // Cargar datos del ledger cuando se activa el tab
+    if (tab === 'ledger') {
+      this.loadLedgerSummary();
+    }
   }
 
   // Métodos para manejar cambios con validación
@@ -1073,4 +1133,30 @@ export class Contabilidad implements OnInit {
                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return meses[mes - 1] || '';
   }
+
+  // =================================================================
+  // MÉTODOS PARA CUENTAS CORRIENTES (LEDGER)
+  // =================================================================
+
+  loadLedgerSummary(): void {
+    this.ledgerLoadingState.setLoading(true);
+    
+    this.accountingService.getLedgerSummary().subscribe({
+      next: (data) => {
+        this.ledgerSummaries.set(data);
+        this.ledgerLoadingState.setDataLoaded();
+      },
+      error: (error) => {
+        console.error('Error al cargar resumen de cuentas corrientes:', error);
+        this.ledgerLoadingState.setDataLoaded();
+        this.alertModalService.show({
+          type: 'error',
+          title: 'Error al cargar cuentas corrientes',
+          message: error?.error?.detail || error?.message || 'No se pudieron cargar las cuentas corrientes. Intenta nuevamente.',
+          buttonText: 'Entendido'
+        });
+      }
+    });
+  }
+
 }
