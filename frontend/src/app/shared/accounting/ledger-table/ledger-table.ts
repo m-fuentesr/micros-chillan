@@ -7,6 +7,7 @@ import { LedgerMovementModalService } from '../../services/ledger-movement-modal
 import { DriverLedgerHistoryModalService } from '../../services/driver-ledger-history-modal.service';
 import { AccountingService } from '../../services/accounting.service';
 import { AlertModalService } from '../../services/alert-modal.service';
+import { formatDateShort } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-ledger-table',
@@ -299,15 +300,6 @@ export class LedgerTable {
   }
 
   formatDate(dateString: string): string {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-CL', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit' 
-      });
-    } catch {
-      return dateString;
-    }
+    return formatDateShort(dateString);
   }
 }

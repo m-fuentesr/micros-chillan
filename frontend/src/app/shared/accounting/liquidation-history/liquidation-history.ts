@@ -215,12 +215,21 @@ import { getDatePartsInChile } from '../../utils/date.utils';
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Estado</div>
-            <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-              Finalizado
-            </div>
+            @if (liquidation.estado === 'Finalizado') {
+              <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Finalizado
+              </div>
+            } @else {
+              <div class="badge badge-xs badge-warning gap-1 pl-1.5 pr-3 text-white font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
+                </svg>
+                En Proceso
+              </div>
+            }
           </div>
         </div>
 

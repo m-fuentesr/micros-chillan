@@ -144,12 +144,14 @@ async def undo_payment_endpoint(
     chofer_id: int = Query(..., description="ID del chofer"),
     mes: int = Query(..., description="Mes del pago"),
     anio: int = Query(..., description="Año del pago"),
-    semana: int = Query(..., description="Número de semana")
+    semana: int = Query(..., description="Número de semana"),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Deshace (elimina) un pago realizado. 
     Vuelve el estado de la semana a 'pendiente'.
     """
+    require_admin(current_user)
     return await accounting_service.undo_weekly_payment(chofer_id, mes, anio, semana)
 @router.post("/close-month")
 async def close_month_endpoint(
@@ -195,10 +197,12 @@ async def add_ledger_movement(
 @router.get("/ledger/{chofer_id}")
 async def read_driver_ledger(
     chofer_id: int,
+    page: int = Query(1, ge=1, description="Número de página"),
+    per_page: int = Query(5, ge=1, le=50, description="Cantidad de registros por página"),
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Obtiene el historial detallado de movimientos de un chofer específico.
+    Obtiene el historial detallado de movimientos de un chofer específico con paginación.
     """
     require_admin(current_user)
-    return accounting_service.get_driver_ledger_history(chofer_id)
+    return accounting_service.get_driver_ledger_history(chofer_id, page, per_page)
