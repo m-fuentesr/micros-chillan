@@ -1,12 +1,16 @@
 @import "tailwindcss";
 @plugin "daisyui";
 
+/* Override default dark variant to be class-based (effectively disabled since we don't use .dark class) */
+@variant dark (&:where(.dark, .dark *));
+
 /* Configuración del tema: Solo modo claro con tema corporate */
 html {
   color-scheme: light;
   overflow-x: hidden;
   width: 100%;
   max-width: 100vw;
+  background-color: #ffffff; /* Forzar fondo blanco */
 }
 
 body {
@@ -14,6 +18,7 @@ body {
   width: 100%;
   max-width: 100vw;
   position: relative;
+  background-color: #ffffff; /* Forzar fondo blanco */
 }
 
 /* Deshabilitar modo oscuro - forzar tema corporate */
