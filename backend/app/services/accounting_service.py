@@ -395,8 +395,14 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 .lte("fecha", f_fin)    # <--- Aquí se usan
                 .execute()
             )
+            if not res_regs.data:
+                continue
+            
             base_semana = sum((r.get("monto_porcentaje_chofer") or 0) for r in res_regs.data)
             
+            if base_semana == 0:
+                continue
+
             bono_sugerido = 0
             acumulado = 0
             
