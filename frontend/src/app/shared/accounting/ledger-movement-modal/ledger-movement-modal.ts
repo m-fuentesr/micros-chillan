@@ -82,27 +82,7 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
             <!-- Bento Grid: Formulario -->
             <form id="movement-form" (ngSubmit)="onSubmit($event)" #form="ngForm" class="grid grid-cols-1 gap-4">
-              <!-- Chofer (Read-only) -->
-              <div class="rounded-3xl border border-base-200 bg-base-50 shadow-sm p-4 sm:p-5">
-                <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
-                      Chofer
-                    </span>
-                  </label>
-                  <input
-                    type="text"
-                    class="input input-bordered w-full h-11 rounded-lg text-sm bg-base-100"
-                    [value]="modalService.chofer()!.nombre_completo"
-                    disabled
-                    readonly>
-                  <label class="label pt-1 pb-0">
-                    <span class="label-text-alt text-[11px] text-base-content/50">
-                      Este campo no se puede modificar
-                    </span>
-                  </label>
-                </div>
-              </div>
+
 
               <!-- Tipo de Movimiento (Radio/Toggle) -->
               <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5">
@@ -289,7 +269,7 @@ export class LedgerMovementModalComponent implements AfterViewInit {
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
+
       if (dialog) {
         if (isVisible) {
           dialog.showModal();
