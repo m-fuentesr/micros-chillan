@@ -37,8 +37,6 @@ import os
 # CORS para permitir llamadas desde Angular (localhost:4200)
 origins = [
     "http://localhost:4200",
-    "https://micros-chillan.vercel.app",
-    "https://micros-chillan-mfuentesrs-projects.vercel.app",
     "https://gestordeflotas.autoescuelachillan.cl"
 ]
 
