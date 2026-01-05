@@ -6,6 +6,7 @@ import { AccountingService } from '../../services/accounting.service';
 import { DriverLedgerHistoryModalService } from '../../services/driver-ledger-history-modal.service';
 import { toObservable, takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, switchMap } from 'rxjs';
+import { formatDateShort } from '../../utils/date.utils';
 
 // Log global para verificar si el módulo se carga
 console.log('🔴 DriverLedgerHistoryComponent - Módulo cargado');
@@ -79,8 +80,15 @@ console.log('🔴 DriverLedgerHistoryComponent - Módulo cargado');
 
               <!-- Lista de Movimientos -->
               <div class="space-y-3">
-                <div class="text-xs uppercase tracking-wider text-base-content/50 font-bold mb-3">
-                  Movimientos ({{ modalService.history()!.movimientos.length }})
+                <div class="flex items-center justify-between mb-3">
+                  <div class="text-xs uppercase tracking-wider text-base-content/50 font-bold">
+                    Movimientos ({{ modalService.history()!.total }})
+                  </div>
+                  @if (modalService.history()!.total_pages > 1) {
+                    <div class="text-xs text-base-content/60">
+                      Página {{ modalService.history()!.page }} de {{ modalService.history()!.total_pages }}
+                    </div>
+                  }
                 </div>
                 
                 @if (modalService.history()!.movimientos.length === 0) {
@@ -128,6 +136,41 @@ console.log('🔴 DriverLedgerHistoryComponent - Módulo cargado');
                           </div>
                         </div>
                       </div>
+                    </div>
+                  }
+                  
+                  <!-- Controles de Paginación -->
+                  @if (modalService.history()!.total_pages > 1) {
+                    <div class="flex items-center justify-center gap-2 pt-4 border-t border-base-200">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        [disabled]="modalService.history()!.page === 1 || modalService.isLoading()"
+                        (click)="goToPage(modalService.history()!.page - 1)"
+                        title="Página anterior">
+                        <ui-icon name="ChevronLeft" size="xs" />
+                      </button>
+                      
+                      @for (pageNum of getPageNumbers(); track pageNum) {
+                        <button
+                          type="button"
+                          class="btn btn-sm"
+                          [class.btn-primary]="pageNum === modalService.history()!.page"
+                          [class.btn-ghost]="pageNum !== modalService.history()!.page"
+                          [disabled]="modalService.isLoading()"
+                          (click)="goToPage(pageNum)">
+                          {{ pageNum }}
+                        </button>
+                      }
+                      
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        [disabled]="modalService.history()!.page === modalService.history()!.total_pages || modalService.isLoading()"
+                        (click)="goToPage(modalService.history()!.page + 1)"
+                        title="Página siguiente">
+                        <ui-icon name="ChevronRight" size="xs" />
+                      </button>
                     </div>
                   }
                 }
@@ -283,8 +326,8 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
     this.cdr.markForCheck();
   }
 
-  loadHistory(): void {
-    console.log('🔵 loadHistory() llamado');
+  loadHistory(page: number = 1): void {
+    console.log('🔵 loadHistory() llamado con página:', page);
     const choferId = this.modalService.choferId();
     console.log('🔵 choferId obtenido:', choferId);
     
@@ -293,11 +336,11 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    console.log('✅ Iniciando carga de historial para choferId:', choferId);
+    console.log('✅ Iniciando carga de historial para choferId:', choferId, 'página:', page);
     this.modalService.setIsLoading(true);
     
     console.log('🔵 Llamando a accountingService.getDriverLedgerHistory()');
-    this.accountingService.getDriverLedgerHistory(choferId).subscribe({
+    this.accountingService.getDriverLedgerHistory(choferId, page, 5).subscribe({
       next: (data) => {
         console.log('✅ Historial cargado exitosamente:', data);
         this.modalService.setHistory(data);
@@ -311,6 +354,43 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
     });
   }
 
+  goToPage(page: number): void {
+    if (page < 1 || (this.modalService.history() && page > this.modalService.history()!.total_pages)) {
+      return;
+    }
+    this.loadHistory(page);
+  }
+
+  getPageNumbers(): number[] {
+    const history = this.modalService.history();
+    if (!history || history.total_pages <= 1) {
+      return [];
+    }
+
+    const currentPage = history.page;
+    const totalPages = history.total_pages;
+    const pages: number[] = [];
+
+    // Mostrar máximo 5 páginas alrededor de la actual
+    let startPage = Math.max(1, currentPage - 2);
+    let endPage = Math.min(totalPages, currentPage + 2);
+
+    // Ajustar si estamos cerca del inicio o del final
+    if (endPage - startPage < 4) {
+      if (startPage === 1) {
+        endPage = Math.min(totalPages, startPage + 4);
+      } else if (endPage === totalPages) {
+        startPage = Math.max(1, endPage - 4);
+      }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  }
+
   formatCurrency(value: number): string {
     return new Intl.NumberFormat('es-CL', {
       style: 'currency',
@@ -321,17 +401,6 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
   }
 
   formatDate(dateString: string): string {
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('es-CL', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return dateString;
-    }
+    return formatDateShort(dateString);
   }
 }

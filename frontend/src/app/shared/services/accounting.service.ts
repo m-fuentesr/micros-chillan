@@ -263,6 +263,7 @@ export class AccountingService {
       anio: number;
       semana: number;
       es_ultima_semana: boolean;
+      mes_cerrado_administrativamente: boolean;
       base_ganado: number;
       acumulado_mes_anterior: number;
       sueldo_minimo_mensual: number;
@@ -277,15 +278,35 @@ export class AccountingService {
     
     return this.http.get<BackendWeeklyPaymentResponse[]>(`${this.apiUrl}/api/accounting/weekly-payments`, { params }).pipe(
       map((backendData: BackendWeeklyPaymentResponse[]) => {
-        if (!backendData || backendData.length === 0) {
-          throw new Error('No hay datos de pagos para esta semana');
-        }
-        
         // Calcular fechas de la semana
         const { fechaInicio, fechaFin } = this.calculateWeekDates(mes, anio, semana);
         
-        // Obtener es_ultima_semana del primer elemento (todos tienen el mismo valor)
+        // Si no hay datos, retornar un período vacío en lugar de lanzar error
+        if (!backendData || backendData.length === 0) {
+          // Calcular si es última semana
+          const totalSemanas = this.countWeeksInMonth(mes, anio);
+          const esUltimaSemana = (semana === totalSemanas);
+          
+          // Retornar período vacío (sin choferes)
+          const liquidation: LiquidationPeriod = {
+            semana,
+            mes,
+            anio,
+            fecha_inicio: fechaInicio,
+            fecha_fin: fechaFin,
+            es_ultima_semana: esUltimaSemana,
+            estado: 'abierto',
+            mes_cerrado_administrativamente: false,
+            choferes: []
+          };
+          
+          this.liquidationCache.set(cacheKey, { data: liquidation, timestamp: Date.now() });
+          return liquidation;
+        }
+        
+        // Obtener es_ultima_semana y mes_cerrado_administrativamente del primer elemento (todos tienen el mismo valor)
         const esUltimaSemana = backendData[0]?.es_ultima_semana || false;
+        const mesCerradoAdministrativamente = backendData[0]?.mes_cerrado_administrativamente || false;
         
         // Mapear choferes
         const choferes: LiquidationDriver[] = backendData.map(payment => {
@@ -299,7 +320,9 @@ export class AccountingService {
             chofer_id: payment.chofer_id,
             chofer_nombre: payment.nombre_chofer,
             total_ganado: payment.base_ganado,
-            acumulado_mensual: esUltimaSemana ? (payment.acumulado_mes_anterior + payment.base_ganado) : undefined,
+            // El acumulado_mensual debe ser solo el acumulado de semanas anteriores (sin incluir la semana actual)
+            // Se mostrará en la UI como "Acumulado mes" pero representa solo las semanas anteriores
+            acumulado_mensual: esUltimaSemana ? payment.acumulado_mes_anterior : undefined,
             minimo_garantizado: payment.sueldo_minimo_mensual,
             monto_a_completar: payment.ajuste_garantizado_calculado,
             pago_final: payment.total_a_pagar,
@@ -323,6 +346,7 @@ export class AccountingService {
           fecha_fin: fechaFin,
           es_ultima_semana: esUltimaSemana,
           estado: todosPagados ? 'cerrado' : 'abierto',
+          mes_cerrado_administrativamente: mesCerradoAdministrativamente,
           choferes
         };
         
@@ -447,13 +471,30 @@ export class AccountingService {
     return this.http.post<any>(`${this.apiUrl}/api/accounting/weekly-payments/${choferId}/confirm`, data, { params });
   }
 
+  // DELETE /api/accounting/undo - Deshacer pago semanal
+  undoPayment(
+    choferId: number,
+    mes: number,
+    anio: number,
+    semana: number
+  ): Observable<any> {
+    const params = new HttpParams()
+      .set('chofer_id', choferId.toString())
+      .set('mes', mes.toString())
+      .set('anio', anio.toString())
+      .set('semana', semana.toString());
+
+    return this.http.delete<any>(`${this.apiUrl}/api/accounting/undo`, { params });
+  }
+
   /**
    * Verifica si un chofer tiene semanas anteriores sin pagar en el mes actual
+   * Solo considera semanas que tienen registros diarios (si no hay registros, no hay nada que pagar)
    * @param choferId ID del chofer
    * @param mes Mes actual
    * @param anio Año actual
    * @param semana Semana actual que se intenta pagar
-   * @returns Observable con array de números de semanas sin pagar, o array vacío si todas están pagadas
+   * @returns Observable con array de números de semanas sin pagar, o array vacío si todas están pagadas o no tienen registros
    */
   checkUnpaidPreviousWeeks(choferId: number, mes: number, anio: number, semana: number): Observable<number[]> {
     // Solo validar para mes actual
@@ -465,19 +506,26 @@ export class AccountingService {
     }
 
     // Consultar todas las semanas anteriores para este chofer
-    const checks: Observable<{ semana: number; tienePago: boolean }>[] = [];
+    const checks: Observable<{ semana: number; tienePago: boolean; tieneRegistros: boolean }>[] = [];
 
     for (let semanaAnterior = 1; semanaAnterior < semana; semanaAnterior++) {
       const check$ = this.getWeeklyLiquidation(semanaAnterior, mes, anio).pipe(
         map((liquidation) => {
           const chofer = liquidation.choferes.find(c => c.chofer_id === choferId);
-          // Considerar sin pagar si no existe el chofer en esa semana, o si el estado no es 'pagado'
+          // Si el chofer no aparece en la liquidación, puede ser porque:
+          // 1. No tiene registros diarios (no hay nada que pagar) -> tieneRegistros = false
+          // 2. Tiene registros pero no está en la lista (error) -> tieneRegistros = true, tienePago = false
+          
+          // Si el chofer aparece en la liquidación, tiene registros diarios
+          const tieneRegistros = chofer !== undefined;
+          // Solo considerar "sin pagar" si tiene registros Y no está pagado
           const tienePago = chofer?.estado_pago === 'pagado';
-          return { semana: semanaAnterior, tienePago };
+          
+          return { semana: semanaAnterior, tienePago, tieneRegistros };
         }),
         catchError(() => {
-          // Si hay error, asumir que no está pagada
-          return of({ semana: semanaAnterior, tienePago: false });
+          // Si hay error, asumir que no tiene registros (no hay nada que pagar)
+          return of({ semana: semanaAnterior, tienePago: false, tieneRegistros: false });
         })
       );
       checks.push(check$);
@@ -490,18 +538,21 @@ export class AccountingService {
     // Combinar todos los checks
     return forkJoin(checks).pipe(
       map((results) => {
+        // Solo considerar "sin pagar" si tiene registros diarios Y no está pagado
         return results
-          .filter(r => !r.tienePago)
+          .filter(r => r.tieneRegistros && !r.tienePago)
           .map(r => r.semana);
       })
     );
   }
 
-  // POST /api/accounting/liquidation/close - Cerrar período
-  closePeriod(mes: number, anio: number): Observable<void> {
-    // DEPRECATED: Este endpoint no existe en el backend actual
-    // return this.http.post<void>(`${this.apiUrl}/api/accounting/liquidation/close`, { mes, anio });
-    throw new Error('El endpoint de cierre de período no está disponible en el backend actual');
+  // POST /api/accounting/close-month - Cerrar mes contable
+  closePeriod(mes: number, anio: number): Observable<any> {
+    const params = new HttpParams()
+      .set('mes', mes.toString())
+      .set('anio', anio.toString());
+
+    return this.http.post<any>(`${this.apiUrl}/api/accounting/close-month`, null, { params });
   }
 
   // GET /api/accounting/history/periods - Lista de períodos cerrados con paginación y filtros
@@ -622,7 +673,7 @@ export class AccountingService {
       .set('anio', anio.toString());
 
     return this.http.get<BackendHistoryMonthDetailResponse>(`${this.apiUrl}/api/accounting/history/month-detail`, { params }).pipe(
-      map((data: BackendHistoryMonthDetailResponse) => {
+      map<BackendHistoryMonthDetailResponse, ClosedLiquidation>((data: BackendHistoryMonthDetailResponse) => {
         // Calcular total de semanas del mes para determinar cuál es la última
         const totalSemanas = this.countWeeksInMonth(mes, anio);
         
@@ -663,7 +714,9 @@ export class AccountingService {
                       'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         const nombreMes = meses[mes - 1] || `Mes ${mes}`;
 
-        return {
+        const estadoMapeado: 'Finalizado' | 'En Proceso' = data.estado === 'Finalizado' ? 'Finalizado' : 'En Proceso';
+        
+        const result: ClosedLiquidation = {
           id: mes * 100 + anio, // ID único basado en mes y año
           periodo: `${nombreMes} ${anio}`,
           mes: mes,
@@ -671,9 +724,12 @@ export class AccountingService {
           fecha_cierre: new Date().toISOString().split('T')[0], // Fecha actual como fallback
           total_pagado: data.total_liquidado,
           cerrado_por: 'admin@demo.com', // TODO: Obtener del backend cuando esté disponible
+          estado: estadoMapeado,
           semanas: semanas,
           choferes: [] // DEPRECATED, usar semanas[].choferes
         };
+        
+        return result;
       }),
       catchError((error) => {
         console.error('Error obteniendo detalle del mes:', error);
@@ -799,8 +855,12 @@ export class AccountingService {
   /**
    * GET /api/accounting/ledger/{chofer_id} - Obtiene el historial detallado de movimientos de un chofer
    */
-  getDriverLedgerHistory(choferId: number): Observable<DriverLedgerHistory> {
-    return this.http.get<DriverLedgerHistory>(`${this.apiUrl}/api/accounting/ledger/${choferId}`).pipe(
+  getDriverLedgerHistory(choferId: number, page: number = 1, perPage: number = 5): Observable<DriverLedgerHistory> {
+    const params = new HttpParams()
+      .set('page', page.toString())
+      .set('per_page', perPage.toString());
+
+    return this.http.get<DriverLedgerHistory>(`${this.apiUrl}/api/accounting/ledger/${choferId}`, { params }).pipe(
       map(data => {
         console.log('✅ Historial de chofer recibido:', data);
         return data;
@@ -809,6 +869,8 @@ export class AccountingService {
         console.error('❌ Error al obtener historial del chofer:', {
           url: `${this.apiUrl}/api/accounting/ledger/${choferId}`,
           choferId,
+          page,
+          perPage,
           error: error,
           status: error?.status,
           message: error?.message

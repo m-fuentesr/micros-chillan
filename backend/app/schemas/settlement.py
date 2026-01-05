@@ -51,6 +51,7 @@ class WeeklyPaymentResponse(BaseModel):
     anio: int
     semana: int
     es_ultima_semana: bool
+    mes_cerrado_administrativamente: bool = False  # Indica si el mes está cerrado en cierres_mensuales
     
     # Finanzas
     base_ganado: int            # Producción de ESTA semana

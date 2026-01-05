@@ -299,12 +299,23 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
     Lista los pagos.
     1. Calcula fechas automáticamente.
     2. Detecta si es última semana automáticamente.
+    3. Verifica si el mes está cerrado administrativamente.
     """
     # 1. CALCULAR FECHAS Y ESTADO DE CIERRE AUTOMÁTICAMENTE
     f_inicio, f_fin = get_date_range_for_week(mes, anio, semana)
     
     total_semanas = count_weeks_in_month(mes, anio)
     es_ultima_semana = (semana == total_semanas)
+    
+    # 1.1. VERIFICAR SI EL MES ESTÁ CERRADO ADMINISTRATIVAMENTE
+    res_cierre = (
+        supabase.table("cierres_mensuales")
+        .select("id")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    mes_cerrado_administrativamente = len(res_cierre.data) > 0
 
     cfg_res = (
         supabase.table("configuracion_general")
@@ -372,6 +383,7 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "chofer_id": cid,
                 "nombre_chofer": nombre,
                 "mes": mes, "anio": anio, "semana": semana, "es_ultima_semana": es_ultima_semana,
+                "mes_cerrado_administrativamente": mes_cerrado_administrativamente,
                 "base_ganado": p["base_ganado"],
                 "acumulado_mes_anterior": acumulados_map.get(cid, 0),
                 "sueldo_minimo_mensual": sueldo_minimo_vigente,
@@ -421,6 +433,7 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "chofer_id": cid,
                 "nombre_chofer": nombre,
                 "mes": mes, "anio": anio, "semana": semana, "es_ultima_semana": es_ultima_semana,
+                "mes_cerrado_administrativamente": mes_cerrado_administrativamente,
                 "base_ganado": int(base_semana),
                 "acumulado_mes_anterior": int(acumulado),
                 "sueldo_minimo_mensual": sueldo_minimo_vigente,
@@ -833,28 +846,45 @@ async def process_month_closure(mes: int, anio: int):
     ids_activos = [c["id"] for c in choferes_activos]
 
     if ids_activos:
-        # Buscamos quiénes tienen pago registrado en esa ÚLTIMA semana
-        res_pagos_check = (
-            supabase.table("pagos_semanales")
+        # Obtener fechas de la última semana
+        f_inicio_ultima, f_fin_ultima = get_date_range_for_week(mes, anio, total_semanas)
+        
+        # Verificar qué choferes tienen registros diarios en la última semana
+        res_registros_ultima = (
+            supabase.table("registros_diarios")
             .select("chofer_id")
-            .eq("mes", mes)
-            .eq("anio", anio)
-            .eq("semana", total_semanas)
+            .gte("fecha", f_inicio_ultima)
+            .lte("fecha", f_fin_ultima)
             .in_("chofer_id", ids_activos)
             .execute()
         )
-        pagados_ids = [p["chofer_id"] for p in res_pagos_check.data]
+        choferes_con_registros = set(p["chofer_id"] for p in res_registros_ultima.data)
         
-        # Identificamos a los morosos
-        pendientes = [c for c in choferes_activos if c["id"] not in pagados_ids]
-        
-
-        if pendientes:
-            nombres = ", ".join([f"{p['primer_nombre']} {p['apellido_paterno']}" for p in pendientes])
-            raise HTTPException(
-                status_code=400,
-                detail=f"⚠️ No se puede cerrar el mes. Falta registrar el pago de la Semana {total_semanas} a: {nombres}"
+        # Solo validar pago para choferes que tienen registros diarios
+        if choferes_con_registros:
+            # Buscamos quiénes tienen pago registrado en esa ÚLTIMA semana
+            res_pagos_check = (
+                supabase.table("pagos_semanales")
+                .select("chofer_id")
+                .eq("mes", mes)
+                .eq("anio", anio)
+                .eq("semana", total_semanas)
+                .in_("chofer_id", list(choferes_con_registros))
+                .execute()
             )
+            pagados_ids = set(p["chofer_id"] for p in res_pagos_check.data)
+            
+            # Identificamos a los que tienen registros pero no tienen pago
+            pendientes_ids = choferes_con_registros - pagados_ids
+            
+            if pendientes_ids:
+                # Obtener nombres de los choferes pendientes
+                pendientes = [c for c in choferes_activos if c["id"] in pendientes_ids]
+                nombres = ", ".join([f"{p['primer_nombre']} {p['apellido_paterno']}" for p in pendientes])
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"⚠️ No se puede cerrar el mes. Falta registrar el pago de la Semana {total_semanas} a: {nombres}"
+                )
  
 
     # 3. CÁLCULO DEL TOTAL (Para el historial)
@@ -902,6 +932,8 @@ async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: in
     """
     Valida las 2 Reglas de Oro usando tus funciones auxiliares existentes:
     1. ACTIVIDAD: Verifica en 'registros_diarios' usando las fechas de get_date_range_for_week.
+       EXCEPCIÓN: En la última semana, si no hay registros diarios pero hay acumulado mensual
+       menor al mínimo garantizado, se permite el pago (bono para completar el mínimo).
     2. SECUENCIA: Si es semana > 1, verifica que exista pago de la semana anterior.
     """
 
@@ -923,33 +955,96 @@ async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: in
     # Obtenemos la cantidad encontrada
     total_registros = res_actividad.count if res_actividad.count is not None else len(res_actividad.data)
 
+    # Si no hay registros diarios en esta semana, verificar si es un caso especial válido
     if total_registros == 0:
-        raise HTTPException(
-            status_code=400, 
-            detail=f"⛔ Sin actividad: El chofer no tiene registros diarios entre {start_date_iso} y {end_date_iso} (Semana {semana})."
-        )
+        # Verificar si es la última semana del mes
+        total_semanas = count_weeks_in_month(mes, anio)
+        es_ultima_semana = (semana == total_semanas)
+        
+        if es_ultima_semana:
+            # Obtener sueldo mínimo vigente
+            cfg_res = (
+                supabase.table("configuracion_general")
+                .select("sueldo_minimo")
+                .single()
+                .execute()
+            )
+            if getattr(cfg_res, "error", None):
+                raise HTTPException(status_code=400, detail=f"Error obteniendo configuración: {cfg_res.error}")
+            
+            sueldo_minimo_vigente = cfg_res.data.get("sueldo_minimo") if cfg_res.data else None
+            if sueldo_minimo_vigente is None:
+                raise HTTPException(status_code=400, detail="Configuración general no tiene sueldo_minimo definido.")
+            
+            # Calcular acumulado de semanas anteriores
+            res_previos = (
+                supabase.table("pagos_semanales")
+                .select("total_pagado")
+                .eq("chofer_id", chofer_id)
+                .eq("mes", mes)
+                .eq("anio", anio)
+                .neq("semana", semana)
+                .gt("total_pagado", 0)
+                .execute()
+            )
+            
+            acumulado = sum((p.get("total_pagado") or 0) for p in res_previos.data)
+            
+            # Si el acumulado es menor al mínimo garantizado, permitir el pago (es un bono)
+            if acumulado < sueldo_minimo_vigente:
+                # Este es un caso válido: última semana sin registros pero con bono para completar mínimo
+                # No lanzamos error, continuamos con la validación de secuencia
+                pass
+            else:
+                # Si el acumulado ya alcanza el mínimo, no debería haber pago sin registros
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"⛔ Sin actividad: El chofer no tiene registros diarios entre {start_date_iso} y {end_date_iso} (Semana {semana})."
+                )
+        else:
+            # No es última semana: siempre se requiere actividad
+            raise HTTPException(
+                status_code=400, 
+                detail=f"⛔ Sin actividad: El chofer no tiene registros diarios entre {start_date_iso} y {end_date_iso} (Semana {semana})."
+            )
 
     # --- REGLA 2: VERIFICAR SECUENCIA (Semana Anterior) ---
     # Solo aplica de la semana 2 en adelante
     if semana > 1:
         semana_anterior = semana - 1
         
-        # Buscamos el pago de la semana anterior
-        res_previo = (
-            supabase.table("pagos_semanales")
-            .select("id")
+        # Primero verificar si hay registros diarios en la semana anterior
+        start_date_anterior, end_date_anterior = get_date_range_for_week(mes, anio, semana_anterior)
+        
+        res_actividad_anterior = (
+            supabase.table("registros_diarios")
+            .select("id", count="exact")
             .eq("chofer_id", chofer_id)
-            .eq("mes", mes)
-            .eq("anio", anio)
-            .eq("semana", semana_anterior)
+            .gte("fecha", start_date_anterior)
+            .lte("fecha", end_date_anterior)
             .execute()
         )
-
-        if not res_previo.data:
-            raise HTTPException(
-                status_code=400,
-                detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes la Semana {semana_anterior}."
+        
+        total_registros_anterior = res_actividad_anterior.count if res_actividad_anterior.count is not None else len(res_actividad_anterior.data)
+        
+        # Solo verificar pago si hubo registros diarios en la semana anterior
+        if total_registros_anterior > 0:
+            # Buscamos el pago de la semana anterior
+            res_previo = (
+                supabase.table("pagos_semanales")
+                .select("id")
+                .eq("chofer_id", chofer_id)
+                .eq("mes", mes)
+                .eq("anio", anio)
+                .eq("semana", semana_anterior)
+                .execute()
             )
+
+            if not res_previo.data:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes la Semana {semana_anterior} (que tiene registros diarios)."
+                )
 def get_ledger_summary():
     """
     Obtiene lista de choferes con su saldo actual y estado.
@@ -1026,31 +1121,57 @@ def create_ledger_movement(data: MovementCreate):
     return {"message": "Movimiento registrado correctamente"}
 
 # 3. VER HISTORIAL (Corregido también por si acaso)
-def get_driver_ledger_history(chofer_id: int):
+def get_driver_ledger_history(chofer_id: int, page: int = 1, per_page: int = 5):
     """
-    Devuelve el saldo actual y la lista de movimientos de un chofer.
+    Devuelve el saldo actual y la lista de movimientos de un chofer con paginación.
     """
     # CAMBIO: Quitamos .maybe_single()
     res_cuenta = supabase.table("cuentas_corrientes").select("id, saldo_actual").eq("chofer_id", chofer_id).execute()
     
     # Si la lista está vacía, devolvemos 0
     if not res_cuenta.data:
-        return {"saldo_actual": 0, "movimientos": []}
+        return {
+            "saldo_actual": 0,
+            "movimientos": [],
+            "total": 0,
+            "page": page,
+            "per_page": per_page,
+            "total_pages": 0
+        }
         
     # Tomamos el primer elemento
     cuenta_data = res_cuenta.data[0]
     
-    # Obtener movimientos ordenados por fecha descendente
+    # Obtener total de movimientos (para paginación)
+    res_count = (
+        supabase.table("historial_movimientos")
+        .select("id", count="exact")
+        .eq("cuenta_id", cuenta_data["id"])
+        .execute()
+    )
+    total_movimientos = res_count.count if res_count.count is not None else len(res_count.data)
+    
+    # Calcular offset y límite
+    offset = (page - 1) * per_page
+    
+    # Obtener movimientos ordenados por fecha descendente con paginación
     res_movs = (
         supabase.table("historial_movimientos")
         .select("*")
         .eq("cuenta_id", cuenta_data["id"])
         .order("fecha_movimiento", desc=True) # Lo más nuevo primero
-        .limit(50)
+        .range(offset, offset + per_page - 1)
         .execute()
     )
     
+    # Calcular total de páginas
+    total_pages = (total_movimientos + per_page - 1) // per_page if total_movimientos > 0 else 0
+    
     return {
         "saldo_actual": cuenta_data["saldo_actual"],
-        "movimientos": res_movs.data
+        "movimientos": res_movs.data,
+        "total": total_movimientos,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": total_pages
     }

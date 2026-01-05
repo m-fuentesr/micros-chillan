@@ -1,11 +1,11 @@
-/**
+﻿/**
  * Utilidades para manejo de fechas con zona horaria de Chile
  */
 
 const CHILE_TIMEZONE = 'America/Santiago';
 
 /**
- * Obtiene solo la parte de la fecha (año, mes, día) en zona horaria de Chile
+ * Obtiene solo la parte de la fecha (aÃ±o, mes, dÃ­a) en zona horaria de Chile
  * Retorna un objeto con { year, month, day } para comparaciones precisas
  */
 export function getDatePartsInChile(dateInput: string | Date): { year: number; month: number; day: number } {
@@ -63,7 +63,7 @@ export function getTodayInChile(): { year: number; month: number; day: number } 
 
 /**
  * Obtiene la fecha de hoy en formato YYYY-MM-DD en zona horaria de Chile
- * Útil para inputs de tipo date que necesitan la fecha local sin conversión UTC
+ * Ãštil para inputs de tipo date que necesitan la fecha local sin conversiÃ³n UTC
  */
 export function getTodayStringInChile(): string {
   const today = getTodayInChile();
@@ -88,7 +88,7 @@ export function getYesterdayInChile(): { year: number; month: number; day: numbe
 }
 
 /**
- * Calcula la diferencia en días entre dos fechas en zona horaria de Chile
+ * Calcula la diferencia en dÃ­as entre dos fechas en zona horaria de Chile
  * Compara solo las fechas (sin horas)
  */
 export function getDaysDifferenceInChile(dateString1: string | Date, dateString2: string | Date = new Date()): number {
@@ -116,7 +116,7 @@ export function getDateInChileTime(dateString: string | Date): Date {
 }
 
 /**
- * Formatea una fecha relativa (Hoy, Ayer, Hace X días) considerando zona horaria de Chile
+ * Formatea una fecha relativa (Hoy, Ayer, Hace X dÃ­as) considerando zona horaria de Chile
  */
 export function formatRelativeDate(dateString: string | Date): string {
   if (!dateString) {
@@ -130,9 +130,9 @@ export function formatRelativeDate(dateString: string | Date): string {
   } else if (diffDays === 1) {
     return 'Ayer';
   } else if (diffDays > 1 && diffDays < 7) {
-    return `Hace ${diffDays} días`;
+    return `Hace ${diffDays} dÃ­as`;
   } else {
-    // Para fechas más antiguas, mostrar la fecha formateada
+    // Para fechas mÃ¡s antiguas, mostrar la fecha formateada
     let date: Date;
     if (dateString instanceof Date) {
       date = dateString;
@@ -157,3 +157,58 @@ export function formatRelativeDate(dateString: string | Date): string {
   }
 }
 
+
+/**
+ * Formatea una fecha en formato corto DD-MM-YYYY considerando zona horaria de Chile
+ * Ãštil para mostrar fechas en tablas y listas
+ */
+export function formatDateShort(dateString: string | Date): string {
+  if (!dateString) {
+    return '';
+  }
+  
+  const parts = getDatePartsInChile(dateString);
+  
+  if (parts.year === 0 && parts.month === 0 && parts.day === 0) {
+    return '';
+  }
+  
+  const day = String(parts.day).padStart(2, '0');
+  const month = String(parts.month).padStart(2, '0');
+  const year = parts.year;
+  return `${day}-${month}-${year}`;
+}
+
+/**
+ * Formatea una fecha con hora en formato completo considerando zona horaria de Chile
+ * Ãštil para mostrar fechas con hora en modales y detalles
+ */
+export function formatDateWithTime(dateString: string | Date): string {
+  if (!dateString) {
+    return '';
+  }
+  
+  let date: Date;
+  if (dateString instanceof Date) {
+    date = dateString;
+  } else {
+    let dateStr = dateString.trim();
+    if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+      dateStr = dateStr + 'Z';
+    }
+    date = new Date(dateStr);
+  }
+  
+  if (isNaN(date.getTime())) {
+    return '';
+  }
+  
+  return date.toLocaleString('es-CL', {
+    timeZone: CHILE_TIMEZONE,
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}

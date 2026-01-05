@@ -17,6 +17,7 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { PaymentConfirmModalService } from '../../shared/services/payment-confirm-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
 import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
@@ -206,6 +207,7 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
+                  (undoPayment)="onUndoPayment($event)"
                   (closePeriod)="onClosePeriod()" />
               </div>
             } @else {
@@ -393,6 +395,7 @@ export class Contabilidad implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private paymentModalService = inject(PaymentConfirmModalService);
   private alertModalService = inject(AlertModalService);
+  private confirmModalService = inject(ConfirmModalService);
   private globalErrorService = inject(GlobalErrorService);
 
 
@@ -963,10 +966,16 @@ export class Contabilidad implements OnInit {
 
   private recalculatePagoFinal(chofer: LiquidationDriver, esUltimaSemana: boolean): void {
     if (esUltimaSemana && chofer.aplicar_garantizado) {
-      const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
-      if (acumulado < chofer.minimo_garantizado) {
+      // El acumulado_mensual contiene solo las semanas anteriores (sin la semana actual)
+      // Para calcular el total proyectado, sumamos: acumulado_mensual + total_ganado
+      const acumuladoAnterior = chofer.acumulado_mensual ?? 0;
+      const totalProyectado = acumuladoAnterior + chofer.total_ganado;
+      
+      if (totalProyectado < chofer.minimo_garantizado) {
+        // El pago final es: base de la semana + bono manual
         chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
       } else {
+        // Si ya alcanza el mínimo, solo se paga lo ganado
         chofer.pago_final = chofer.total_ganado;
       }
     } else {
@@ -1093,8 +1102,95 @@ export class Contabilidad implements OnInit {
     });
   }
 
-  onClosePeriod(): void {
+  async onUndoPayment(event: { choferId: number }): Promise<void> {
+    const liquidation = this.liquidation();
+    if (!liquidation) return;
+
+    // Verificar si el mes está cerrado administrativamente
+    if (liquidation.mes_cerrado_administrativamente) {
+      this.alertModalService.show({
+        type: 'error',
+        title: 'Período Cerrado',
+        message: 'No se puede deshacer un pago de un período que ha sido cerrado administrativamente.',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
+    if (!chofer) return;
+
     const { mes, anio } = this.payrollDate();
+    const semana = this.selectedWeek();
+
+    // Mostrar modal de confirmación
+    const confirmed = await this.confirmModalService.open({
+      title: 'Deshacer Pago',
+      message: `¿Está seguro de que desea deshacer el pago de ${chofer.chofer_nombre} para la Semana ${semana}? Esta acción volverá el estado a 'pendiente'.`,
+      confirmText: 'Deshacer',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Llamar al servicio para deshacer el pago
+    this.accountingService.undoPayment(event.choferId, mes, anio, semana)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al deshacer pago:', error);
+          
+          // Mostrar modal de error
+          const errorMessage = error?.error?.detail || error?.message || 'No se pudo deshacer el pago. Por favor, intenta nuevamente.';
+          this.alertModalService.show({
+            type: 'error',
+            title: 'Error al Deshacer Pago',
+            message: errorMessage,
+            buttonText: 'Entendido'
+          });
+          
+          return of(null);
+        })
+      )
+      .subscribe((response: any) => {
+        if (response) {
+          // Invalidar el caché de TODAS las semanas del mes
+          // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
+          this.accountingService.invalidateAllWeeksInMonth(mes, anio);
+          
+          // Mostrar modal de éxito
+          this.alertModalService.show({
+            type: 'success',
+            title: 'Pago Deshecho',
+            message: `El pago de ${chofer.chofer_nombre} ha sido deshecho correctamente. El estado ha vuelto a 'pendiente'.`,
+            buttonText: 'Entendido'
+          });
+          
+          // Recargar la liquidación para actualizar el estado
+          this.loadLiquidation();
+        }
+      });
+  }
+
+  async onClosePeriod(): Promise<void> {
+    const { mes, anio } = this.payrollDate();
+    
+    // Mostrar modal de confirmación
+    const confirmed = await this.confirmModalService.open({
+      title: 'Finalizar Mes',
+      message: `¿Está seguro de que desea finalizar y cerrar el mes de ${this.getMonthName(mes)} ${anio}? Esta acción es irreversible y registrará el cierre administrativo del período.`,
+      confirmText: 'Finalizar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-primary'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Llamar al servicio para cerrar el período
     this.accountingService.closePeriod(mes, anio)
       .pipe(
         catchError((error) => {
@@ -1112,17 +1208,20 @@ export class Contabilidad implements OnInit {
           return of(null);
         })
       )
-      .subscribe((response: void | null) => {
-        if (response !== null) {
-          // Mostrar modal de éxito
+      .subscribe((response: any) => {
+        if (response) {
+          // Invalidar caché de todas las semanas del mes para reflejar el cierre
+          this.accountingService.invalidateAllWeeksInMonth(mes, anio);
+          
+          // Mostrar modal de éxito con el mensaje del backend
           this.alertModalService.show({
             type: 'success',
             title: 'Período Cerrado',
-            message: `El período de ${this.getMonthName(mes)} ${anio} ha sido cerrado y finalizado exitosamente.`,
+            message: response.message || `El período de ${this.getMonthName(mes)} ${anio} ha sido cerrado y finalizado exitosamente.`,
             buttonText: 'Entendido'
           });
           
-          // Recargar liquidación
+          // Recargar liquidación para actualizar el estado (mostrará el mensaje de período cerrado)
           this.loadLiquidation();
         }
       });
