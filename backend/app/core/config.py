@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     SUPABASE_SERVICE_KEY: str
     SUPABASE_JWT_SECRET: str
     POSTGRES_URL: str
-    FRONTEND_URL: str = "http://localhost:4200"
+    FRONTEND_URL: str = "https://gestordeflotas.autoescuelachillan.cl"
     
     class Config:
         env_file = ".env"
