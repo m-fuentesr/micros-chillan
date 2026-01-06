@@ -32,13 +32,19 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
-# CORS para permitir llamadas desde Angular (localhost:4200)
+import os
+
+# CORS para permitir llamadas desde Angular
 origins = [
     "http://localhost:4200",
-    "https://micros-chillan.vercel.app",
-    "https://micros-chillan-mfuentesrs-projects.vercel.app",
-    "https://gestordeflotas.autoescuelachillan.cl"
+    "https://gestordeflotas.autoescuelachillan.cl",
+    "capacitor://localhost",
+    "http://localhost",
 ]
+
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    origins.append(frontend_url)
 
 app.add_middleware(
     CORSMiddleware,
