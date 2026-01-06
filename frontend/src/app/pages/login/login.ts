@@ -2,6 +2,7 @@ import { Component, inject, ChangeDetectionStrategy, ViewEncapsulation, effect, 
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { AuthService } from '../../shared/services/auth.service';
 import { TransitionService } from '../../shared/services/transition.service';
 import { TransitionOrchestratorService } from '../../shared/services/transition-orchestrator.service';
@@ -9,7 +10,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
 
 @Component({
   selector: 'app-login',
-  imports: [ReactiveFormsModule, CommonModule, RouterLink],
+  imports: [ReactiveFormsModule, CommonModule, RouterLink, UiIconComponent],
   template: `
     <div
       class="min-h-screen flex flex-col lg:flex-row w-full bg-base-200 lg:bg-base-100 relative"
@@ -46,7 +47,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
 
       <!-- Panel de marca desktop -->
       <div
-        class="hidden lg:flex w-1/2 bg-primary text-primary-content relative flex-col justify-between p-16 overflow-hidden transition-transform duration-[600ms] ease-[cubic-bezier(0.65,0,0.35,1)] login-leaving"
+        class="hidden lg:flex w-1/2 bg-primary text-primary-content relative flex-col justify-between p-16 overflow-hidden transition-transform duration-600 ease-[cubic-bezier(0.65,0,0.35,1)] login-leaving"
         [class.login-leaving-active]="leaving()"
         [class.login-panel-hidden]="isLogoutTransition()"
         [class.login-panel-enter]="showLoginPanel()"
@@ -109,7 +110,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
           <div class="text-left mb-8 space-y-2 border-l-4 border-l-primary pl-4 animate-entrance-fade-up delay-mobile-500 delay-200">
             <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-bold">Acceso corporativo</p>
             <h1 class="text-2xl lg:text-4xl font-bold text-base-content">Iniciar sesión</h1>
-            <p class="text-base-content/60 text-sm italic">Ingresa tu RUT o correo corporativo.</p>
+            <p class="text-base-content/60 text-sm italic">Ingresa tu correo corporativo.</p>
           </div>
 
           <form
@@ -126,23 +127,31 @@ import { SpinnerService } from '../../shared/services/spinner.service';
               <div class="relative premium-input-wrapper" 
                    [class.premium-input-error]="loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())">
                 <div class="premium-input-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
-                    <path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM12.735 14c.618 0 1.093-.561.872-1.139a6.002 6.002 0 0 0-11.215 0c-.22.578.254 1.139.872 1.139h9.47Z" />
-                  </svg>
+                  <ui-icon name="User" size="md" />
                 </div>
                 <input
                   type="text"
                   id="email"
                   class="premium-input w-full"
-                  placeholder="Correo electrónico ..." 
+                  placeholder="Correo electrónico ..."
                   formControlName="email"
                   autocomplete="email"
                 />
                 @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
                   <div class="absolute right-4 top-1/2 -translate-y-1/2 text-error animate-scale-up z-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                      <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="AlertCircle" size="md" />
+                  </div>
+                }
+                @if (loginForm.get('email')?.invalid && (loginForm.get('email')?.touched || submitted())) {
+                  <div class="mt-2 pl-1 text-sm text-error flex items-center gap-2 animate-entrance-fade-up">
+                    <ui-icon name="Info" size="sm" />
+                    <span>
+                      @if (loginForm.get('email')?.errors?.['required']) {
+                        Ingresa tu correo electrónico para continuar.
+                      } @else if (loginForm.get('email')?.errors?.['email']) {
+                        Ingresa un correo electrónico válido.
+                      }
+                    </span>
                   </div>
                 }
               </div>
@@ -154,12 +163,10 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                 <span class="label-text font-semibold text-base-content text-sm tracking-wide">Contraseña</span>
               </label>
               <div class="relative premium-input-wrapper"
-                   [class.premium-input-error]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched)"
-                   [class.premium-input-error-shake]="loginForm.get('password')?.invalid && (submitted() || loginForm.get('password')?.touched) && !passwordErrorShown()">
+                   [class.premium-input-error]="shouldShowPasswordError()"
+                   [class.premium-input-error-shake]="shouldShowPasswordError() && !passwordErrorShown()">
                 <div class="premium-input-icon">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M14 6a4 4 0 0 1-4.899 3.899l-1.955 1.955a.5.5 0 0 1-.353.146H5v1.5a.5.5 0 0 1-.5.5h-2a.5.5 0 0 1-.5-.5v-2.293a.5.5 0 0 1 .146-.353l3.955-3.955A4 4 0 1 1 14 6Zm-4-2a.75.75 0 0 0 0 1.5.5.5 0 0 1 .5.5.75.75 0 0 0 1.5 0 2 2 0 0 0-2-2Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="LockKeyhole" size="md" />
                 </div>
                 <input
                   [type]="showPassword() ? 'text' : 'password'"
@@ -178,17 +185,22 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   [attr.aria-label]="showPassword() ? 'Ocultar contraseña' : 'Mostrar contraseña'"
                 >
                   @if (!showPassword()) {
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <ui-icon name="Eye" size="md" />
                   } @else {
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
+                    <ui-icon name="EyeOff" size="md" />
                   }
                 </button>
               </div>
+              @if (shouldShowPasswordError()) {
+                <div class="mt-2 pl-1 text-sm text-error flex items-center gap-2 animate-entrance-fade-up">
+                  <ui-icon name="Info" size="sm" />
+                  <span>
+                    @if (loginForm.get('password')?.errors?.['required']) {
+                      Ingresa tu contraseña para acceder.
+                    }
+                  </span>
+                </div>
+              }
               <div class="flex justify-end mt-3 px-1">
                 <a routerLink="/recuperar-clave" class="text-xs font-medium text-primary/80 hover:text-primary transition-colors">¿Olvidaste tu clave?</a>
               </div>
@@ -237,8 +249,8 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                   @if (loginSuccess()) {
                     <div class="checkmark-premium-wrapper">
                       <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                        <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
-                  </svg>
+                        <path class="checkmark-path" d="M5 13l4 4L19 7"/>
+                      </svg>
                       <div class="checkmark-ripple"></div>
                     </div>
                   }
@@ -247,7 +259,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
             </div>
 
             <!-- Área reservada para mensajes de error - Evita saltos cuando aparecen -->
-            <div class="min-h-[4rem] mt-4 flex items-start justify-center">
+            <div class="min-h-16 mt-4 flex items-start justify-center">
               @if (error()) {
                 <p class="text-sm font-medium text-error text-center whitespace-pre-line animate-pulse">
                   {{ error() }}
@@ -261,18 +273,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
             <div
               class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-base-200/50 text-xs text-base-content/60"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                class="w-3 h-3"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z"
-                  clip-rule="evenodd"
-                />
-              </svg>
+              <ui-icon name="Info" size="xs" />
               ¿Problemas de acceso? Contacta a RRHH
             </div>
           </div>
@@ -1593,6 +1594,29 @@ export class Login {
   // Getter para mostrar el panel (para usar en el template)
   showLoginPanel = computed(() => this._showLoginPanel());
 
+  shouldShowPasswordError() {
+    const control = this.loginForm.get('password');
+    if (!control) {
+      return false;
+    }
+
+    if (!(this.submitted() || control.touched)) {
+      return false;
+    }
+
+    const errors = control.errors;
+    if (!errors) {
+      return false;
+    }
+
+    // Ocultar indicadores cuando solo hay error de longitud mínima
+    if (errors['minlength'] && Object.keys(errors).length === 1) {
+      return false;
+    }
+
+    return true;
+  }
+
   onPasswordBlur() {
     if (this.loginForm.get('password')?.invalid) {
       this.passwordErrorShown.set(true);
@@ -1704,60 +1728,16 @@ export class Login {
       // - Primer retry después de 400ms (si es login manual)
       // - Segundo retry después de 500ms adicionales (si el primero falla)
       // - Más el tiempo de las peticiones HTTP
-      // Total puede ser más de 1500ms, así que esperamos 1800ms para estar seguros
-      const waitTime = isSyncError ? 1800 : 1200;
+      // Total puede ser más de 1500ms, así que esperamos 2000ms para estar seguros
+      const waitTime = isSyncError ? 2000 : 1200;
       await new Promise(resolve => setTimeout(resolve, waitTime));
       
-      // Verificar nuevamente si el usuario está autenticado después de los retries
+      // IMPORTANTE: Verificar PRIMERO si el usuario está autenticado después de los retries
+      // ANTES de mostrar cualquier error. Si el usuario existe, el login fue exitoso.
       const user = this.auth.currentUser();
-      if (!user) {
-        // Analizar el tipo de error para mostrar mensajes específicos
-        const errorMessage = err?.message || '';
-        let userFriendlyMessage = '';
-        
-        switch (errorMessage) {
-          case 'EMAIL_NOT_FOUND':
-            userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
-            // Resaltar el campo de email
-            this.loginForm.get('email')?.setErrors({ notFound: true });
-            break;
-            
-          case 'INVALID_PASSWORD':
-            userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
-            // Resaltar el campo de contraseña
-            this.loginForm.get('password')?.setErrors({ incorrect: true });
-            this.passwordErrorShown.set(true);
-            break;
-            
-          case 'EMAIL_NOT_CONFIRMED':
-            userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
-            break;
-            
-          case 'TOO_MANY_ATTEMPTS':
-            userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
-            break;
-            
-          case 'USER_DISABLED':
-            userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
-            break;
-            
-          case 'NETWORK_ERROR':
-            userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
-            break;
-            
-          case 'INVALID_CREDENTIALS':
-          default:
-            userFriendlyMessage = 'Credenciales inválidas.\nVerifica tu correo y contraseña e inténtalo nuevamente.';
-            break;
-        }
-        
-        this.error.set(userFriendlyMessage);
-        // Activar animación de shake
-        this.shakeError.set(true);
-        setTimeout(() => this.shakeError.set(false), 500);
-      } else {
+      if (user) {
         // Si hay usuario después del retry, el login fue exitoso
-        // Mostrar estado de éxito igual que en el caso exitoso normal
+        // NO mostrar error, continuar con el flujo de éxito
         this.error.set(null);
         this.loginSuccess.set(true);
         
@@ -1824,7 +1804,59 @@ export class Login {
             this.expanding.set(false);
           }, 100);
         }
+        return; // Salir temprano si el login fue exitoso después del retry
       }
+      
+      // Solo si NO hay usuario después del retry, mostrar el error
+      // Analizar el tipo de error para mostrar mensajes específicos
+      const errorMessage = err?.message || '';
+      let userFriendlyMessage = '';
+      
+      switch (errorMessage) {
+        case 'EMAIL_NOT_FOUND':
+          userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
+          // Resaltar el campo de email
+          this.loginForm.get('email')?.setErrors({ notFound: true });
+          break;
+          
+        case 'INVALID_PASSWORD':
+          userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
+          // Resaltar el campo de contraseña
+          this.loginForm.get('password')?.setErrors({ incorrect: true });
+          this.passwordErrorShown.set(true);
+          break;
+          
+        case 'EMAIL_NOT_CONFIRMED':
+          userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
+          break;
+          
+        case 'TOO_MANY_ATTEMPTS':
+          userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
+          break;
+          
+        case 'USER_DISABLED':
+          userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
+          break;
+          
+        case 'NETWORK_ERROR':
+          userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
+          break;
+          
+        case 'INVALID_CREDENTIALS':
+        default:
+          // Mensaje más amigable y accionable sin comprometer seguridad
+          userFriendlyMessage = 'No pudimos iniciar sesión con estos datos.\nVerifica tu correo y contraseña. Si olvidaste tu contraseña, usa "¿Olvidaste tu clave?".';
+          // Resaltar ambos campos para que el usuario revise ambos
+          this.loginForm.get('email')?.markAsTouched();
+          this.loginForm.get('password')?.markAsTouched();
+          this.passwordErrorShown.set(true);
+          break;
+      }
+      
+      this.error.set(userFriendlyMessage);
+      // Activar animación de shake
+      this.shakeError.set(true);
+      setTimeout(() => this.shakeError.set(false), 500);
     } finally {
       this.loading.set(false);
     }

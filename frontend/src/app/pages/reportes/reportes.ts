@@ -2,19 +2,25 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, e
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
-import { switchMap, tap } from 'rxjs/operators';
+import { switchMap, tap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { ReportsService, MachineProfitabilityResponse, MachineGrossRankingResponse, DriverProfitabilityResponse } from '../../shared/services/reports.service';
 import { LazyChartDirective } from '../../shared/directives/lazy-chart.directive';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 interface MachineProfit {
   rank: number;
   machine: string;
+  machineLabel: string; // Para tabla: "Máquina (numero_interno)"
+  machineId: number; // ID numérico de la máquina para navegación
+  patente: string | null; // Para mostrar debajo en gris
   income: number;
   dieselCost: number;
   driverPayment: number;
@@ -25,6 +31,7 @@ interface MachineProfit {
 interface DriverProfit {
   rank: number;
   driver: string;
+  driverId: number; // ID numérico del chofer para navegación
   income: number;
   dieselCost: number;
   payment: number;
@@ -33,7 +40,7 @@ interface DriverProfit {
 
 @Component({
   selector: 'app-reportes',
-  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, BusIcon, KpiCard],
+  imports: [BaseChartDirective, CommonModule, LazyChartDirective, LoadingSkeleton, LoadingSpinner, UiIconComponent, KpiCard],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -102,11 +109,36 @@ interface DriverProfit {
             <!-- Tab: Rentabilidad por Máquina -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (profitLoadingState.isLoading() && !profitSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
+                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                    <!-- Background blur effect skeleton -->
+                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                    
+                    <!-- Header: Icon + Title (gap-2 para compact) -->
+                    <div class="relative flex items-center gap-2">
+                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                      <div class="flex-1 min-w-0">
+                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL" -->
+                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Rentabilidad neta" -->
+                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Body: Value -->
+                    <div class="relative flex flex-col">
+                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                      
+                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Resultado final" -->
+                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
                 } @else {
                   <app-kpi-card
@@ -174,35 +206,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #profitChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && !hasProfitData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado -->
+                @if (profitLoadingState.isLoading() && profitLoadingState.showSkeleton() && (!hasProfitData() || !profitDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de rentabilidad">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) - más sutiles y precisas -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[25, 45, 35, 65, 50, 70, 40, 80][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono máquina -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto máquina -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente realista -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[28, 52, 38, 72, 58, 78, 45, 88][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(37, 99, 235, 0.25) 0%, rgba(37, 99, 235, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(37, 99, 235, 0.4) 0%, rgba(37, 99, 235, 0.5) 50%, rgba(37, 99, 235, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(37, 99, 235, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-blue-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton (si aplica) -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -246,18 +312,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="profitLoadingState.isSkeletonExiting()" />
-                  } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -350,9 +404,18 @@ interface DriverProfit {
                             <td>
                               <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                  <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
-                                <strong class="leading-tight">{{ item.machine }}</strong>
+                                <div class="flex flex-col">
+                                  <strong 
+                                    class="leading-tight cursor-pointer hover:text-primary transition-colors" 
+                                    (click)="onViewMachineDetail(item.machineId, $event)">
+                                    {{ item.machineLabel }}
+                                  </strong>
+                                  @if (item.patente) {
+                                    <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                                  }
+                                </div>
                               </div>
                             </td>
                             <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -392,18 +455,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="profitLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (profitSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -427,9 +478,19 @@ interface DriverProfit {
                           <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2 min-w-0">
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
-                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                              <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
+                            <div class="flex flex-col min-w-0">
+                              <h3 
+                                class="font-bold text-base sm:text-lg leading-snug truncate cursor-pointer hover:text-primary transition-colors" 
+                                [title]="item.machineLabel"
+                                (click)="onViewMachineDetail(item.machineId, $event)">
+                                {{ item.machineLabel }}
+                              </h3>
+                              @if (item.patente) {
+                                <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                              }
+                            </div>
                           </div>
                         </div>
                         <div class="text-right min-w-[120px] sm:min-w-[140px]">
@@ -496,11 +557,36 @@ interface DriverProfit {
             <!-- Tab: Ranking de Ingresos (Bruto) -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (revenueLoadingState.isLoading() && !revenueSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
+                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                    <!-- Background blur effect skeleton -->
+                    <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                    
+                    <!-- Header: Icon + Title (gap-2 para compact) -->
+                    <div class="relative flex items-center gap-2">
+                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                      <div class="flex-1 min-w-0">
+                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "INGRESO TOTAL BRUTO" -->
+                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Producción bruta" -->
+                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Body: Value -->
+                    <div class="relative flex flex-col">
+                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                      
+                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Volumen total" -->
+                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                      </div>
+                    </div>
                   </div>
                 } @else {
                   <app-kpi-card
@@ -569,35 +655,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full mb-6" appLazyChart #revenueChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && !hasRevenueData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado (Ranking de Ingresos) -->
+                @if (revenueLoadingState.isLoading() && revenueLoadingState.showSkeleton() && (!hasRevenueData() || !revenueDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de ingresos">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de máquina -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente verde -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[30, 50, 40, 70, 55, 75, 45, 85][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de máquina con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono máquina -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto máquina -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente verde (success) -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[32, 58, 42, 75, 60, 82, 48, 90][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js con color success) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.5) 50%, rgba(16, 185, 129, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(16, 185, 129, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-emerald-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -641,18 +761,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="revenueLoadingState.isSkeletonExiting()" />
-                  } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -713,9 +821,18 @@ interface DriverProfit {
                             <td>
                               <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 rounded-lg bg-base-200 border border-base-300 flex items-center justify-center">
-                                  <app-bus-icon class="w-7 h-7 text-primary" ariaLabel="Bus" />
+                                  <ui-icon name="BusFront" size="lg" class="text-primary" />
                                 </div>
-                                <strong class="leading-tight">{{ item.machine }}</strong>
+                                <div class="flex flex-col">
+                                  <strong 
+                                    class="leading-tight cursor-pointer hover:text-primary transition-colors" 
+                                    (click)="onViewMachineDetail(item.machineId, $event)">
+                                    {{ item.machineLabel }}
+                                  </strong>
+                                  @if (item.patente) {
+                                    <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                                  }
+                                </div>
                               </div>
                             </td>
                             <td class="text-right tabular-nums font-bold text-primary">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -743,18 +860,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (revenueSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -778,9 +883,19 @@ interface DriverProfit {
                           <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
                           <div class="flex items-center gap-2 min-w-0">
                             <div class="hidden sm:flex w-10 h-10 rounded-lg bg-base-200 border border-base-300 items-center justify-center shrink-0">
-                              <app-bus-icon class="w-8 h-8 text-primary" ariaLabel="Bus" />
+                              <ui-icon name="BusFront" size="lg" class="text-primary" />
                             </div>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate" [title]="item.machine">{{ item.machine }}</h3>
+                            <div class="flex flex-col min-w-0">
+                              <h3 
+                                class="font-bold text-base sm:text-lg leading-snug truncate cursor-pointer hover:text-primary transition-colors" 
+                                [title]="item.machineLabel"
+                                (click)="onViewMachineDetail(item.machineId, $event)">
+                                {{ item.machineLabel }}
+                              </h3>
+                              @if (item.patente) {
+                                <span class="text-xs text-base-content/50 leading-tight">{{ item.patente }}</span>
+                              }
+                            </div>
                           </div>
                         </div>
                         <div class="text-right min-w-[120px] sm:min-w-[140px]">
@@ -825,32 +940,107 @@ interface DriverProfit {
             <!-- Tab: Rentabilidad por Chofer -->
             <div class="space-y-6 animate-tab-panel">
               <!-- Header con KPI y controles -->
-              <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
-                @if (driverLoadingState.isLoading() && !driverSequentialState.canShowKPIs()) {
-                  <div class="space-y-2">
-                    <div class="h-4 w-32 skeleton-shimmer rounded"></div>
-                    <div class="h-10 w-48 skeleton-shimmer rounded"></div>
-                  </div>
-                } @else {
-                  <app-kpi-card
-                    title="Ganancia Neta Total Choferes"
-                    [subtitle]="'Retribución neta'"
-                    [value]="(totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
-                    type="info"
-                    size="compact"
-                    badgeText="Compensación final"
-                    [animationDelay]="0"
-                    [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
-                    [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
-                    [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-                    [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                      <circle cx="9" cy="7" r="4"/>
-                      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-                    </svg>
-                  </app-kpi-card>
-                }
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div class="flex flex-wrap items-center gap-3">
+                  @if (driverLoadingState.isLoading() && !driverSequentialState.canShowKPIs()) {
+                    <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
+                    <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                      <!-- Background blur effect skeleton -->
+                      <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                      
+                      <!-- Header: Icon + Title (gap-2 para compact) -->
+                      <div class="relative flex items-center gap-2">
+                        <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                        <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                        <div class="flex-1 min-w-0">
+                          <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL CHOFERES" -->
+                          <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                          <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Retribución neta" -->
+                          <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- Body: Value -->
+                      <div class="relative flex flex-col">
+                        <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                        <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                        
+                        <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                        <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                          <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Compensación final" -->
+                          <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <!-- 🎭 GhostWire Skeleton: Segunda KpiCard -->
+                    <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
+                      <!-- Background blur effect skeleton -->
+                      <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
+                      
+                      <!-- Header: Icon + Title (gap-2 para compact) -->
+                      <div class="relative flex items-center gap-2">
+                        <!-- Icono (h-5 w-5 para compact con ring-1) -->
+                        <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                        <div class="flex-1 min-w-0">
+                          <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "TOTAL PAGO CHOFERES" -->
+                          <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
+                          <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Pago total" -->
+                          <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- Body: Value -->
+                      <div class="relative flex flex-col">
+                        <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
+                        <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
+                        
+                        <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
+                        <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
+                          <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Total pagado" -->
+                          <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  } @else {
+                    <app-kpi-card
+                      title="Ganancia Neta Total Choferes"
+                      [subtitle]="'Retribución neta'"
+                      [value]="(totalDriverProfit() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                      type="info"
+                      size="compact"
+                      badgeText="Compensación final"
+                      [animationDelay]="0"
+                      [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
+                      [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
+                      [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                    </app-kpi-card>
+                    <app-kpi-card
+                      title="Total Pago Choferes"
+                      [subtitle]="'Pago total'"
+                      [value]="(totalDriverPayment() | currency:'CLP':'symbol-narrow':'1.0-0') || ''"
+                      type="financial"
+                      size="compact"
+                      badgeText="Total pagado"
+                      [animationDelay]="100"
+                      [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
+                      [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
+                      [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
+                      [style.transition-delay]="driverSequentialState.canShowKPIs() ? '100ms' : '0ms'"
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
+                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="6" width="20" height="12" rx="2"/>
+                        <circle cx="12" cy="12" r="2"/>
+                        <path d="M6 12h.01M18 12h.01"/>
+                      </svg>
+                    </app-kpi-card>
+                  }
+                </div>
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
                   <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
                     <div class="relative w-full">
@@ -898,35 +1088,69 @@ interface DriverProfit {
 
               <!-- Gráfico -->
               <div class="relative h-64 lg:h-80 w-full" appLazyChart #driverChart="lazyChart">
-                <!-- Skeleton del gráfico (barras horizontales mejoradas) -->
-                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && !hasDriverData()) {
-                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden">
+                <!-- 🎭 GhostWire Skeleton: Gráfico horizontal mejorado (Rentabilidad por Chofer) -->
+                @if (driverLoadingState.isLoading() && driverLoadingState.showSkeleton() && (!hasDriverData() || !driverDataReceived())) {
+                  <div class="w-full h-full rounded-3xl bg-base-100 border border-base-200 p-4 sm:p-6 relative overflow-hidden" aria-busy="true" aria-label="Cargando gráfico de rentabilidad por chofer">
                     <!-- Gradiente de fondo -->
                     <div class="absolute inset-0 bg-gradient-to-b from-base-50/60 to-white pointer-events-none"></div>
-                    <!-- Grid de líneas verticales para gráfico horizontal -->
-                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6">
+                    
+                    <!-- Grid de líneas verticales (eje X) -->
+                    <div class="absolute inset-0 flex items-center justify-between py-6 px-6 pointer-events-none">
                       @for (i of [1,2,3,4,5]; track i) {
-                        <div class="h-full w-px bg-base-200/50"></div>
+                        <div class="h-full w-px bg-base-200/30"></div>
                       }
                     </div>
-                    <!-- Contenedor del gráfico -->
-                    <div class="relative h-full w-full flex flex-col gap-2.5">
+                    
+                    <!-- Eje X labels (valores monetarios) - parte superior -->
+                    <div class="absolute top-2 left-6 right-6 flex justify-between items-start pointer-events-none">
+                      @for (i of [1,2,3,4,5]; track i) {
+                        <div class="skeleton-shimmer h-2.5 w-12 sm:w-16 rounded text-right" 
+                             [style.animation-delay.ms]="i * 30"></div>
+                      }
+                    </div>
+                    
+                    <!-- Contenedor principal del gráfico -->
+                    <div class="relative h-full w-full flex flex-col gap-3 mt-6 mb-4">
                       @for (i of [1,2,3,4,5,6,7,8]; track i) {
-                        <div class="flex items-center gap-3 flex-1 min-h-[32px]">
-                          <!-- Etiqueta Y (izquierda) - nombre de chofer -->
-                          <div class="w-24 sm:w-32 h-4 skeleton-shimmer rounded flex-shrink-0"></div>
-                          <!-- Barra horizontal con gradiente púrpura -->
-                          <div class="flex-1 h-6 sm:h-7 rounded-lg relative overflow-hidden" [style.width.%]="[28, 48, 38, 68, 53, 73, 43, 83][i-1]">
+                        <div class="flex items-center gap-3 flex-1 min-h-[36px] animate-skeleton-fade-in"
+                             [style.animation-delay.ms]="100 + (i * 40)">
+                          <!-- Etiqueta Y (izquierda) - nombre de chofer con icono -->
+                          <div class="flex items-center gap-2 w-28 sm:w-36 flex-shrink-0">
+                            <!-- Icono chofer -->
+                            <div class="skeleton-shimmer w-6 h-6 rounded-lg shrink-0"></div>
+                            <!-- Texto chofer -->
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-20 sm:w-24 rounded"></div>
+                          </div>
+                          
+                          <!-- Barra horizontal mejorada con gradiente púrpura (secondary) -->
+                          <div class="flex-1 relative h-7 sm:h-8 rounded-lg overflow-hidden"
+                               [style.max-width.%]="[30, 52, 40, 70, 56, 76, 46, 86][i-1]">
+                            <!-- Gradiente base de la barra (simula Chart.js con color secondary) -->
                             <div 
                               class="absolute inset-0 rounded-lg"
-                              [style.background]="'linear-gradient(90deg, rgba(139, 92, 246, 0.25) 0%, rgba(139, 92, 246, 0.35) 100%)'">
+                              [style.background]="'linear-gradient(90deg, rgba(139, 92, 246, 0.4) 0%, rgba(139, 92, 246, 0.5) 50%, rgba(139, 92, 246, 0.45) 100%)'"
+                              [style.box-shadow]="'inset 0 1px 2px rgba(139, 92, 246, 0.2)'">
                             </div>
-                            <div class="absolute inset-0 skeleton-shimmer opacity-40"></div>
+                            <!-- Borde sutil -->
+                            <div class="absolute inset-0 rounded-lg border border-violet-400/30 pointer-events-none"></div>
+                            <!-- Shimmer overlay optimizado -->
+                            <div class="absolute inset-0 skeleton-shimmer-bar opacity-50"></div>
                           </div>
-                          <!-- Valor X (derecha) - monto -->
-                          <div class="w-16 sm:w-20 h-3 skeleton-shimmer rounded flex-shrink-0"></div>
+                          
+                          <!-- Valor X (derecha) - monto con formato -->
+                          <div class="w-18 sm:w-24 flex-shrink-0">
+                            <div class="skeleton-shimmer h-3.5 sm:h-4 w-full rounded text-right"></div>
+                          </div>
                         </div>
                       }
+                    </div>
+                    
+                    <!-- Leyenda skeleton -->
+                    <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-4 pointer-events-none">
+                      <div class="flex items-center gap-2">
+                        <div class="skeleton-shimmer w-3 h-3 rounded-full"></div>
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded"></div>
+                      </div>
                     </div>
                   </div>
                 }
@@ -970,18 +1194,6 @@ interface DriverProfit {
                       type="table" 
                       [count]="5"
                       [isExiting]="driverLoadingState.isSkeletonExiting()" />
-                  } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     <app-loading-skeleton 
                       type="table" 
@@ -1063,7 +1275,13 @@ interface DriverProfit {
                         @for (item of driverVisible(); track item.rank) {
                           <tr class="hover">
                             <td class="font-mono text-xs text-base-content/60">{{ item.rank }}</td>
-                            <td><strong>{{ item.driver }}</strong></td>
+                            <td>
+                              <strong 
+                                class="cursor-pointer hover:text-primary transition-colors" 
+                                (click)="onViewDriverDetail(item.driverId, $event)">
+                                {{ item.driver }}
+                              </strong>
+                            </td>
                             <td class="text-right tabular-nums">{{ item.income | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                             <td class="text-right tabular-nums text-base-content/70">{{ item.dieselCost | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                             <td class="text-right tabular-nums text-base-content/70">{{ item.payment | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
@@ -1092,18 +1310,6 @@ interface DriverProfit {
                         type="card" 
                         [isExiting]="driverLoadingState.isSkeletonExiting()" />
                     }
-                  } @else if (driverSequentialState.contentError()) {
-                    <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                      <div class="flex flex-col items-center gap-4 text-center">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <div>
-                          <h3 class="text-lg font-semibold text-error mb-2">Error al cargar datos</h3>
-                          <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                        </div>
-                      </div>
-                    </div>
                   } @else {
                     @for (i of [1,2,3,4,5]; track i) {
                       <app-loading-skeleton 
@@ -1125,7 +1331,12 @@ interface DriverProfit {
                         <div class="flex justify-between items-start mb-3 gap-3">
                           <div class="flex flex-col items-start gap-1 sm:flex-row sm:items-center sm:gap-2 min-w-0">
                             <span class="badge badge-sm badge-ghost font-mono shrink-0">#{{ item.rank }}</span>
-                            <h3 class="font-bold text-base sm:text-lg leading-snug truncate mt-2.5 sm:mt-2" [title]="item.driver">{{ item.driver }}</h3>
+                            <h3 
+                              class="font-bold text-base sm:text-lg leading-snug truncate mt-2.5 sm:mt-2 cursor-pointer hover:text-primary transition-colors" 
+                              [title]="item.driver"
+                              (click)="onViewDriverDetail(item.driverId, $event)">
+                              {{ item.driver }}
+                            </h3>
                           </div>
                           <div class="text-right min-w-[120px] sm:min-w-[140px]">
                             <div class="text-xs text-base-content/60 uppercase">Ganancia Neta</div>
@@ -1264,9 +1475,117 @@ interface DriverProfit {
     }
     
     .skeleton-shimmer {
+      position: relative;
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
-      animation: shimmer 2s infinite;
+      overflow: hidden;
+      will-change: transform;
+    }
+
+    .skeleton-shimmer::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        transparent 100%
+      );
+      animation: shimmer-transform 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    @keyframes shimmer-transform {
+      0% {
+        transform: translateX(-100%);
+      }
+      100% {
+        transform: translateX(100%);
+      }
+    }
+
+    /* Skeleton específico para barras del gráfico */
+    .skeleton-shimmer-bar {
+      position: relative;
+      background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.4) 30%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0.4) 70%,
+        transparent 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer-bar 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+
+    @keyframes shimmer-bar {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    /* Animación de fade-in escalonado */
+    @keyframes skeleton-fade-in {
+      from {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    .animate-skeleton-fade-in {
+      animation: skeleton-fade-in 400ms cubic-bezier(0.22, 0.8, 0.35, 1) both;
+    }
+
+    /* Respeto por prefers-reduced-motion (a11y) */
+    @media (prefers-reduced-motion: reduce) {
+      .skeleton-shimmer::after,
+      .skeleton-shimmer-bar {
+        animation: none;
+      }
+      
+      .animate-skeleton-fade-in {
+        animation: none;
+        opacity: 1;
+        transform: none;
+      }
+    }
+
+    /* Dark mode: Contraste adaptativo */
+    @media (prefers-color-scheme: dark) {
+      .skeleton-shimmer {
+        background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.15) 50%, rgba(255, 255, 255, 0.1) 100%);
+      }
+
+      .skeleton-shimmer::after {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.2) 50%,
+          transparent 100%
+        );
+      }
+
+      .skeleton-shimmer-bar {
+        background: linear-gradient(
+          90deg,
+          transparent 0%,
+          rgba(255, 255, 255, 0.15) 30%,
+          rgba(255, 255, 255, 0.25) 50%,
+          rgba(255, 255, 255, 0.15) 70%,
+          transparent 100%
+        );
+      }
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1274,39 +1593,41 @@ interface DriverProfit {
 export class Reportes implements OnInit {
   private reportsService = inject(ReportsService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private cdr = inject(ChangeDetectorRef);
-  
+  private router = inject(Router);
+
   // Inicializar con valores del mes y año actual calculados una sola vez
   private static getInitialMonth(): number {
     return new Date().getMonth() + 1;
   }
-  
+
   private static getInitialYear(): number {
     return new Date().getFullYear();
   }
-  
+
   selectedMonth = signal<number>(Reportes.getInitialMonth());
   selectedYear = signal<number>(Reportes.getInitialYear());
   activeTab = signal<string>('profit');
-  
+
   // Estados de carga con umbral de 200ms
   profitLoadingState = this.loadingStateService.createLoadingState();
   revenueLoadingState = this.loadingStateService.createLoadingState();
   driverLoadingState = this.loadingStateService.createLoadingState();
-  
+
   // Estados de carga secuencial coordinado para cada tab (para animaciones suaves)
   profitSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   revenueSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   driverSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
@@ -1335,7 +1656,7 @@ export class Reportes implements OnInit {
     const currentMonth = now.getMonth() + 1; // 1-12
     const currentYear = now.getFullYear();
     const selectedYearValue = this.selectedYear();
-    
+
     const monthNames = [
       { value: 1, label: 'Enero' },
       { value: 2, label: 'Febrero' },
@@ -1350,7 +1671,7 @@ export class Reportes implements OnInit {
       { value: 11, label: 'Noviembre' },
       { value: 12, label: 'Diciembre' }
     ];
-    
+
     // Si el año seleccionado es el actual, solo mostrar meses hasta el mes actual
     if (selectedYearValue === currentYear) {
       return monthNames.map(month => ({
@@ -1358,7 +1679,7 @@ export class Reportes implements OnInit {
         disabled: month.value > currentMonth
       }));
     }
-    
+
     // Si el año seleccionado es futuro, deshabilitar todos los meses
     if (selectedYearValue > currentYear) {
       return monthNames.map(month => ({
@@ -1366,7 +1687,7 @@ export class Reportes implements OnInit {
         disabled: true
       }));
     }
-    
+
     // Si el año es pasado, todos los meses están disponibles
     return monthNames.map(month => ({
       ...month,
@@ -1391,9 +1712,9 @@ export class Reportes implements OnInit {
 
   // Convertir período seleccionado a mes/año
   private getPeriodFilters = computed(() => {
-    return { 
-      mes: this.selectedMonth(), 
-      anio: this.selectedYear() 
+    return {
+      mes: this.selectedMonth(),
+      anio: this.selectedYear()
     };
   });
 
@@ -1401,12 +1722,12 @@ export class Reportes implements OnInit {
   onMonthChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newMonth = Number(target.value);
-    
+
     // Validar que no sea un mes futuro
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+
     if (this.selectedYear() === currentYear && newMonth > currentMonth) {
       // Si intenta seleccionar un mes futuro, mantener el mes actual
       this.selectedMonth.set(currentMonth);
@@ -1416,7 +1737,7 @@ export class Reportes implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedMonth.set(newMonth);
     // Activar estados de carga inmediatamente
     this.profitLoadingState.setLoading(true);
@@ -1427,10 +1748,10 @@ export class Reportes implements OnInit {
   onYearChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newYear = Number(target.value);
-    
+
     // Validar que no sea un año futuro
     const currentYear = new Date().getFullYear();
-    
+
     if (newYear > currentYear) {
       // Si intenta seleccionar un año futuro, mantener el año actual
       this.selectedYear.set(currentYear);
@@ -1440,9 +1761,9 @@ export class Reportes implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedYear.set(newYear);
-    
+
     // Si el año cambió y ahora es el año actual, ajustar el mes si es necesario
     if (newYear === currentYear) {
       const currentMonth = new Date().getMonth() + 1;
@@ -1450,7 +1771,7 @@ export class Reportes implements OnInit {
         this.selectedMonth.set(currentMonth);
       }
     }
-    
+
     // Activar estados de carga inmediatamente
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
@@ -1459,18 +1780,33 @@ export class Reportes implements OnInit {
 
   // Cargar datos del servicio usando los endpoints del backend (reactivo al cambio de período)
   private periodFilters$ = toObservable(this.getPeriodFilters);
-  
+
   // Flags para rastrear si ya recibimos una respuesta del servidor (no el valor inicial)
-  private profitDataReceived = signal(false);
-  private revenueDataReceived = signal(false);
-  private driverDataReceived = signal(false);
-  
+  private profitDataReceivedSignal = signal(false);
+  private revenueDataReceivedSignal = signal(false);
+  private driverDataReceivedSignal = signal(false);
+
+  // Computed públicos para acceso desde el template
+  profitDataReceived = computed(() => this.profitDataReceivedSignal());
+  revenueDataReceived = computed(() => this.revenueDataReceivedSignal());
+  driverDataReceived = computed(() => this.driverDataReceivedSignal());
+
   private machineProfitabilityResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.profitDataReceived.set(false);
+        this.profitDataReceivedSignal.set(false);
         return this.reportsService.getMachineProfitability(filters).pipe(
-          tap(() => this.profitDataReceived.set(true))
+          tap(() => this.profitDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando rentabilidad por máquina:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de rentabilidad desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.profitDataReceivedSignal.set(true);
+            return of([] as MachineProfitabilityResponse[]);
+          })
         );
       })
     ),
@@ -1480,9 +1816,19 @@ export class Reportes implements OnInit {
   private grossIncomeRankingResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.revenueDataReceived.set(false);
+        this.revenueDataReceivedSignal.set(false);
         return this.reportsService.getGrossIncomeRanking(filters).pipe(
-          tap(() => this.revenueDataReceived.set(true))
+          tap(() => this.revenueDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando ranking de ingresos:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de ranking desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.revenueDataReceivedSignal.set(true);
+            return of([] as MachineGrossRankingResponse[]);
+          })
         );
       })
     ),
@@ -1492,9 +1838,19 @@ export class Reportes implements OnInit {
   private driverProfitabilityResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
-        this.driverDataReceived.set(false);
+        this.driverDataReceivedSignal.set(false);
         return this.reportsService.getDriverProfitability(filters).pipe(
-          tap(() => this.driverDataReceived.set(true))
+          tap(() => this.driverDataReceivedSignal.set(true)),
+          catchError((error) => {
+            console.error('Error cargando rentabilidad por chofer:', error);
+            // Mostrar error global en lugar de error local
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos de rentabilidad por chofer desde el servidor.',
+              'Error al cargar reportes'
+            );
+            this.driverDataReceivedSignal.set(true);
+            return of([] as DriverProfitabilityResponse[]);
+          })
         );
       })
     ),
@@ -1522,18 +1878,18 @@ export class Reportes implements OnInit {
     // Observar cambios en mes y año
     const month = this.selectedMonth();
     const year = this.selectedYear();
-    
+
     // Evitar reset en la primera carga (solo cuando realmente cambia el período)
     if (this.isFirstPeriodChange) {
       this.isFirstPeriodChange = false;
       return;
     }
-    
+
     // Resetear flags de datos recibidos cuando cambia el período
-    this.profitDataReceived.set(false);
-    this.revenueDataReceived.set(false);
-    this.driverDataReceived.set(false);
-    
+    this.profitDataReceivedSignal.set(false);
+    this.revenueDataReceivedSignal.set(false);
+    this.driverDataReceivedSignal.set(false);
+
     // Cuando cambia el período, reiniciar estados de carga
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
@@ -1549,8 +1905,8 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.machineProfitabilityResponse();
     const isLoading = this.profitLoadingState.isLoading();
-    const dataReceived = this.profitDataReceived();
-    
+    const dataReceived = this.profitDataReceivedSignal();
+
     // Solo procesar si está cargando y ya recibimos datos del servidor (no el valor inicial)
     if (isLoading && dataReceived && Array.isArray(response)) {
       // Pequeño delay para asegurar que la UI se actualice
@@ -1567,8 +1923,8 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.grossIncomeRankingResponse();
     const isLoading = this.revenueLoadingState.isLoading();
-    const dataReceived = this.revenueDataReceived();
-    
+    const dataReceived = this.revenueDataReceivedSignal();
+
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {
       setTimeout(() => {
@@ -1584,8 +1940,8 @@ export class Reportes implements OnInit {
     // Observar cambios en los datos del backend
     const response = this.driverProfitabilityResponse();
     const isLoading = this.driverLoadingState.isLoading();
-    const dataReceived = this.driverDataReceived();
-    
+    const dataReceived = this.driverDataReceivedSignal();
+
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {
       setTimeout(() => {
@@ -1602,7 +1958,7 @@ export class Reportes implements OnInit {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+
     // Establecer valores si no coinciden con los actuales
     if (this.selectedMonth() !== currentMonth) {
       this.selectedMonth.set(currentMonth);
@@ -1610,15 +1966,15 @@ export class Reportes implements OnInit {
     if (this.selectedYear() !== currentYear) {
       this.selectedYear.set(currentYear);
     }
-    
+
     // Forzar detección de cambios para asegurar que los selectores se actualicen
     this.cdr.detectChanges();
-    
+
     // Iniciar estados de carga
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
     this.driverLoadingState.setLoading(true);
-    
+
     // Timeout de seguridad: si después de 5 segundos no hay respuesta, marcar como cargado
     setTimeout(() => {
       if (this.profitLoadingState.isLoading()) {
@@ -1637,7 +1993,7 @@ export class Reportes implements OnInit {
         this.driverSequentialState.setContentReady(false);
       }
     }, 5000);
-    
+
     // Los datos se cargan automáticamente con toSignal y switchMap
     // Se recargan automáticamente cuando cambia el mes o año
     // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
@@ -1664,16 +2020,38 @@ export class Reportes implements OnInit {
   // Mapear datos de máquinas desde el servicio del backend
   private rawMachinesData = computed((): MachineProfit[] => {
     const machines = this.machineProfitabilityResponse();
-    return machines.map((item: MachineProfitabilityResponse, index: number) => ({
-      rank: index + 1,
-      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
-      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
-      income: item.ingresos_totales,
-      dieselCost: item.costos_diesel,
-      driverPayment: item.pago_choferes,
-      maintenance: item.gastos_mantenimiento > 0 ? item.gastos_mantenimiento : null,
-      netProfit: item.ganancia_neta
-    }));
+    if (!machines || machines.length === 0) {
+      return [];
+    }
+    return machines.map((item: MachineProfitabilityResponse, index: number) => {
+      // Formato para gráfico: "Máquina (numero_interno)"
+      // Manejar null, undefined, string vacío y números
+      let numeroInterno: string = '';
+      if (item.numero_interno !== null && item.numero_interno !== undefined) {
+        // Convertir a string si es número, o usar directamente si es string
+        numeroInterno = String(item.numero_interno).trim();
+      }
+
+      // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
+      const machineLabel = numeroInterno
+        ? `Máquina ${numeroInterno}`
+        : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
+
+      return {
+        rank: index + 1,
+        // Para gráfico: usar solo "Máquina (numero_interno)" o identificador completo
+        machine: machineLabel,
+        // Para tabla: mismo formato
+        machineLabel: machineLabel,
+        machineId: item.maquina_id,
+        patente: item.patente?.trim() || null,
+        income: item.ingresos_totales,
+        dieselCost: item.costos_diesel,
+        driverPayment: item.pago_choferes,
+        maintenance: item.gastos_mantenimiento > 0 ? item.gastos_mantenimiento : null,
+        netProfit: item.ganancia_neta
+      };
+    });
   });
 
   // Datos hardcodeados de respaldo (temporal)
@@ -1699,7 +2077,8 @@ export class Reportes implements OnInit {
     const term = this.profitSearch().trim().toLowerCase();
     if (!term) return this.machinesData();
     return this.machinesData().filter(item =>
-      item.machine.toLowerCase().includes(term)
+      item.machineLabel.toLowerCase().includes(term) ||
+      (item.patente && item.patente.toLowerCase().includes(term))
     );
   });
 
@@ -1738,21 +2117,44 @@ export class Reportes implements OnInit {
   // Datos para Ranking de Ingresos (Bruto) desde el backend
   revenueRankingData = computed(() => {
     const ranking = this.grossIncomeRankingResponse();
-    return ranking.map((item: MachineGrossRankingResponse) => ({
-      // Mostrar identificador interno con prefijo "Máquina" y padding de 2 dígitos
-      machine: `Máquina ${String(item.maquina_id).padStart(2, '0')}`,
-      income: item.ingresos_totales,
-      rank: item.ranking,
-      reports: 0, // No disponible en el backend actual
-      average: 0 // No disponible en el backend actual
-    }));
+    if (!ranking || ranking.length === 0) {
+      return [];
+    }
+    return ranking.map((item: MachineGrossRankingResponse) => {
+      // Formato para gráfico: "Máquina (numero_interno)"
+      // Manejar null, undefined, string vacío y números
+      let numeroInterno: string = '';
+      if (item.numero_interno !== null && item.numero_interno !== undefined) {
+        // Convertir a string si es número, o usar directamente si es string
+        numeroInterno = String(item.numero_interno).trim();
+      }
+
+      // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
+      const machineLabel = numeroInterno
+        ? `Máquina ${numeroInterno}`
+        : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
+
+      return {
+        machine: machineLabel,
+        machineLabel: machineLabel,
+        machineId: item.maquina_id,
+        patente: item.patente?.trim() || null,
+        income: item.ingresos_totales,
+        rank: item.ranking,
+        reports: 0, // No disponible en el backend actual
+        average: 0 // No disponible en el backend actual
+      };
+    });
   });
 
   filteredRevenue = computed(() => {
     const term = this.revenueSearch().trim().toLowerCase();
     const data = [...this.revenueRankingData()];
     if (!term) return data;
-    return data.filter(item => item.machine.toLowerCase().includes(term));
+    return data.filter(item =>
+      item.machineLabel.toLowerCase().includes(term) ||
+      (item.patente && item.patente.toLowerCase().includes(term))
+    );
   });
 
   sortedRevenue = computed(() => {
@@ -1788,12 +2190,16 @@ export class Reportes implements OnInit {
   revenueChartData = computed<ChartData<'bar'>>(() => {
     const data = this.revenueRankingData();
     return {
-      labels: data.map((m: { machine: string; income: number }) => m.machine),
+      labels: data.map((m: { machineLabel: string; income: number }) => m.machineLabel),
       datasets: [
         {
           label: 'Ingreso Bruto',
           data: data.map((m: { machine: string; income: number }) => m.income),
-          backgroundColor: '#10b981',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#10b981'; // Rojo si es negativo, verde si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -1846,9 +2252,12 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -1878,6 +2287,7 @@ export class Reportes implements OnInit {
     return drivers.map((item: DriverProfitabilityResponse) => ({
       rank: item.ranking,
       driver: item.nombre_chofer,
+      driverId: item.chofer_id,
       income: item.ingresos_totales,
       dieselCost: item.costos_diesel,
       payment: item.pago_chofer,
@@ -1934,6 +2344,11 @@ export class Reportes implements OnInit {
     return data.reduce((sum: number, d: DriverProfit) => sum + d.netProfit, 0);
   });
 
+  totalDriverPayment = computed(() => {
+    const data = this.rawDriversData();
+    return data.reduce((sum: number, d: DriverProfit) => sum + d.payment, 0);
+  });
+
   driverChartData = computed<ChartData<'bar'>>(() => {
     const data = this.driversData();
     return {
@@ -1942,7 +2357,11 @@ export class Reportes implements OnInit {
         {
           label: 'Ganancia Neta',
           data: data.map(d => d.netProfit),
-          backgroundColor: '#8b5cf6',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#8b5cf6'; // Rojo si es negativo, púrpura si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -1995,9 +2414,12 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -2060,12 +2482,16 @@ export class Reportes implements OnInit {
   profitChartData = computed<ChartData<'bar'>>(() => {
     const data = this.machinesData();
     return {
-      labels: data.map(m => m.machine),
+      labels: data.map(m => m.machineLabel),
       datasets: [
         {
           label: 'Ganancia Neta',
           data: data.map(m => m.netProfit),
-          backgroundColor: '#2563eb',
+          backgroundColor: (ctx: any) => {
+            // Para gráficos horizontales (indexAxis: 'y'), el valor está en parsed.x
+            const value = ctx.parsed.x;
+            return value < 0 ? '#ef4444' : '#2563eb'; // Rojo si es negativo, azul si es positivo
+          },
           borderRadius: 4,
           barPercentage: 0.7
         }
@@ -2119,9 +2545,12 @@ export class Reportes implements OnInit {
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
           maxTicksLimit: 6,
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -2207,7 +2636,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return '$' + (value as number).toLocaleString('es-CL');
           },
           font: {
@@ -2302,7 +2731,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return value + ' Lts';
           },
           font: {
@@ -2442,7 +2871,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return '$' + (value as number).toLocaleString('es-CL');
           },
           font: {
@@ -2466,4 +2895,14 @@ export class Reportes implements OnInit {
       }
     }
   };
+
+  onViewMachineDetail(machineId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
+  }
 }

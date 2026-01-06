@@ -102,6 +102,63 @@ async def get_active_machines():
     return items
 
 
+async def list_active_machines_without_driver():
+    """
+    Retorna las máquinas operativas que no tienen una asignación de chofer activa.
+    Útil para el selector de máquina al crear un chofer.
+    """
+    # 1. Obtener máquinas operativas
+    res = (
+        supabase.table("maquinas")
+        .select("*")
+        .eq("estado_operativo", "operativa")
+        .order("numero_interno", desc=False)
+        .execute()
+    )
+
+    if getattr(res, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error obteniendo máquinas: {res.error}")
+
+    # 2. Obtener asignaciones activas para excluirlas
+    asignaciones_raw = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("maquina_id")
+        .is_("fecha_termino", None)
+        .execute()
+    )
+
+    if getattr(asignaciones_raw, "error", None):
+        raise HTTPException(status_code=400, detail=f"Error obteniendo asignaciones: {asignaciones_raw.error}")
+
+    maquinas_ocupadas = {a["maquina_id"] for a in asignaciones_raw.data or []}
+
+    items = []
+
+    for m in res.data:
+        if m["id"] in maquinas_ocupadas:
+            continue
+
+        numero = str(m.get("numero_interno", "S/N"))
+        marca = m.get("marca", "") or "Sin Marca"
+        modelo = m.get("modelo") or ""
+        patente = m.get("patente") or "S/P"
+        anio = m.get("anio") or 0
+
+        display_name = f"{numero} - {marca} {modelo} ({patente})"
+
+        items.append({
+            "id": m["id"],
+            "numero_interno": numero,
+            "marca": marca,
+            "modelo": modelo,
+            "anio": anio,
+            "patente": patente,
+            "display_name": display_name
+        })
+
+    return items
+
+
 async def get_summary():
     """
     Devuelve:
@@ -145,7 +202,18 @@ async def get_summary():
     # 2) Contar máquinas con documentos en alerta
     # ---------------------------------------------------------
     hoy = date.today()
-    limite_warning = hoy + timedelta(days=30)
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    dias_alerta_docs = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if dias_alerta_docs is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=dias_alerta_docs)
 
     docs_raw = (
         supabase.table("documentos_maquina")
@@ -191,23 +259,170 @@ async def get_summary():
     }
 
 
-async def list_machines():
+async def get_document_alerts(estado: Optional[str] = None):
+    """
+    Obtiene conteos de máquinas por estado de documentos.
+    Opcionalmente filtra por estado operativo.
+    """
     hoy = date.today()
-    alerta_dias = 30
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if alerta_dias is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
     limite_warning = hoy + timedelta(days=alerta_dias)
 
-    # 1) Obtener máquinas
-    maquinas_raw = (
-        supabase.table("maquinas")
-        .select("*")
-        .order("numero_interno")
+    # 1) Obtener máquinas (con filtro de estado si aplica)
+    base_query = supabase.table("maquinas").select("id")
+    
+    if estado:
+        base_query = base_query.eq("estado_operativo", estado)
+    
+    maquinas_raw = base_query.execute()
+    if getattr(maquinas_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo máquinas: {maquinas_raw.error}")
+    
+    maquina_ids = {m["id"] for m in maquinas_raw.data}
+
+    # 2) Obtener documentos
+    docs_raw = (
+        supabase.table("documentos_maquina")
+        .select("maquina_id, tipo_documento, fecha_vencimiento")
         .execute()
     )
 
-    if getattr(maquinas_raw, "error", None):
-        raise HTTPException(400, f"Error obteniendo máquinas: {maquinas_raw.error}")
+    if getattr(docs_raw, "error", None):
+        raise HTTPException(400, f"Error obteniendo documentos: {docs_raw.error}")
 
-    maquinas = maquinas_raw.data
+    # 3) Calcular estados de documentos por máquina
+    maquinas_docs = {}  # {maquina_id: [estados de documentos]}
+    
+    for d in docs_raw.data:
+        mid = d["maquina_id"]
+        if mid not in maquina_ids:
+            continue
+            
+        fecha_str = d["fecha_vencimiento"]
+        if not fecha_str:
+            continue
+
+        fecha = date.fromisoformat(fecha_str)
+        
+        if mid not in maquinas_docs:
+            maquinas_docs[mid] = []
+        
+        if fecha < hoy:
+            maquinas_docs[mid].append("vencido")
+        elif fecha <= limite_warning:
+            maquinas_docs[mid].append("por_vencer")
+        else:
+            maquinas_docs[mid].append("ok")
+
+    # 4) Contar máquinas por estado documental
+    vencidos = 0
+    por_vencer = 0
+    al_dia = 0
+    
+    for mid in maquina_ids:
+        docs_estados = maquinas_docs.get(mid, [])
+        
+        # Si no tiene documentos, no cuenta en ninguna categoría
+        if not docs_estados:
+            continue
+        
+        # Si tiene al menos un documento vencido, cuenta como vencida
+        if "vencido" in docs_estados:
+            vencidos += 1
+        # Si tiene al menos un documento por vencer (y ninguno vencido), cuenta como por vencer
+        elif "por_vencer" in docs_estados:
+            por_vencer += 1
+        # Si todos los documentos están ok, cuenta como al día
+        elif all(estado == "ok" for estado in docs_estados):
+            al_dia += 1
+
+    return {
+        "vencidos": vencidos,
+        "por_vencer": por_vencer,
+        "al_dia": al_dia
+    }
+
+
+async def list_machines(filters):
+    hoy = date.today()
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, f"Error obteniendo configuración: {cfg_res.error}")
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer") if cfg_res.data else None
+    if alerta_dias is None:
+        raise HTTPException(400, "Configuración general no tiene dias_alerta_documento_por_vencer definido.")
+    limite_warning = hoy + timedelta(days=alerta_dias)
+
+    # 1) Construir query base con filtros
+    base_query = (
+        supabase.table("maquinas")
+        .select("*", count="exact")
+    )
+    
+    # Aplicar filtros
+    if filters.estado:
+        base_query = base_query.eq("estado_operativo", filters.estado)
+    
+    if filters.search:
+        # Búsqueda por número interno, patente o marca
+        # Nota: Supabase requiere formato específico para OR
+        search_term = f"%{filters.search}%"
+        base_query = base_query.or_(f"numero_interno.ilike.{search_term},patente.ilike.{search_term},marca.ilike.{search_term}")
+    
+    # Si hay filtro de documentos, necesitamos obtener TODAS las máquinas primero
+    # para poder filtrar por estado de documentos antes de paginar
+    if filters.documento_estado:
+        # Obtener todas las máquinas sin paginar
+        maquinas_raw = (
+            base_query
+            .order("numero_interno")
+            .execute()
+        )
+        
+        if getattr(maquinas_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo máquinas: {maquinas_raw.error}")
+        
+        maquinas = maquinas_raw.data
+    else:
+        # Sin filtro de documentos, podemos paginar directamente
+        # Obtener total primero
+        count_res = base_query.execute()
+        if getattr(count_res, "error", None):
+            raise HTTPException(400, f"Error obteniendo máquinas: {count_res.error}")
+        
+        total = count_res.count or 0
+        
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page - 1
+        
+        # Obtener máquinas paginadas
+        maquinas_raw = (
+            base_query
+            .order("numero_interno")
+            .range(start, end)
+            .execute()
+        )
+
+        if getattr(maquinas_raw, "error", None):
+            raise HTTPException(400, f"Error obteniendo máquinas: {maquinas_raw.error}")
+
+        maquinas = maquinas_raw.data
 
     # 2) Obtener las asignaciones actuales
     asign_raw = (
@@ -326,6 +541,29 @@ async def list_machines():
                     "estado": estado
                 }
 
+        # Verificar si pasa el filtro de documentos
+        if filters.documento_estado:
+            # Obtener estados de documentos
+            doc_estados = [doc.get("estado") for doc in documentos.values() if doc.get("estado")]
+            
+            if not doc_estados:
+                # Si no tiene documentos, no pasa ningún filtro de documentos
+                continue
+            
+            # Aplicar filtro según documento_estado
+            if filters.documento_estado == "vencidos":
+                # Al menos un documento vencido
+                if "vencido" not in doc_estados:
+                    continue
+            elif filters.documento_estado == "por_vencer":
+                # Al menos un documento por vencer (y ninguno vencido)
+                if "por_vencer" not in doc_estados or "vencido" in doc_estados:
+                    continue
+            elif filters.documento_estado == "al_dia":
+                # Todos los documentos al día
+                if not all(estado == "ok" for estado in doc_estados):
+                    continue
+        
         items.append({
             "id": mid,
             "numero_interno": num_interno,
@@ -336,13 +574,30 @@ async def list_machines():
             "documentos": documentos
         })
 
-    return items
+    # Si hay filtro de documentos, calcular total después del filtro y aplicar paginación
+    if filters.documento_estado:
+        total = len(items)
+        # Aplicar paginación
+        start = (filters.page - 1) * filters.per_page
+        end = start + filters.per_page
+        items = items[start:end]
+    else:
+        # Sin filtro de documentos, el total ya se calculó antes
+        pass
+
+    from app.core.pagination import PaginatedResponse
+    return PaginatedResponse(
+        total=total,
+        page=filters.page,
+        per_page=filters.per_page,
+        items=items
+    )
 
 
 async def create_machine(data):
-    # ----------------------------------------
-    # 0. Verificar que no exista el número interno
-    # ----------------------------------------
+    # ----------------------------------------------------------
+    # 0. Verificar que no exista el número interno ni la patente
+    # ----------------------------------------------------------
     existe = (
         supabase.table("maquinas")
         .select("id")
@@ -351,7 +606,29 @@ async def create_machine(data):
     )
 
     if existe.data:
-        raise HTTPException(400, "El número de máquina ya está registrado.")
+        raise HTTPException(
+            400, 
+            f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+        )
+    
+    # ----------------------------------------
+    # Normalizar patente (mayúsculas)
+    # ----------------------------------------
+    patente_normalizada = data.patente.strip().upper() if data.patente else None
+    
+    if patente_normalizada:
+        patente_duplicada = (
+            supabase.table("maquinas")
+            .select("id")
+            .ilike("patente", patente_normalizada)
+            .execute()
+        )
+
+        if patente_duplicada.data:
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada} ya está registrada en otra máquina.",
+            )
 
     # ----------------------------------------
     # 1. Insertar máquina
@@ -360,14 +637,27 @@ async def create_machine(data):
         "numero_interno": data.numero_interno,
         "marca": data.marca,
         "anio_fabricacion": data.anio_fabricacion,
-        "patente": data.patente,
+        "patente": patente_normalizada,
         "estado_operativo": data.estado_operativo,
         "descripcion": None,
     }
 
-    res = supabase.table("maquinas").insert(maquina_payload).execute()
+    try:
+        res = supabase.table("maquinas").insert(maquina_payload).execute()
+    except Exception as exc:
+        raise HTTPException(
+            500, f"Error inesperado al crear la máquina: {exc}"
+        ) from exc
 
     if getattr(res, "error", None):
+        error_msg = str(res.error)
+
+        if "patente" in error_msg.lower():
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada or data.patente} ya está registrada en otra máquina.",
+            )
+        
         raise HTTPException(400, f"Error creando máquina: {res.error}")
 
     maquina_id = res.data[0]["id"]
@@ -481,7 +771,31 @@ async def get_machine_detail(machine_id: int):
         chofer_actual_id = asign_raw.data[0]["chofer_id"]
 
     # ----------------------------------------
-    # 3. Obtener documentos
+    # 3. Configuración de documentos y alertas
+    # ----------------------------------------
+    hoy = date.today()
+
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("dias_alerta_documento_por_vencer")
+        .single()
+        .execute()
+    )
+
+    if getattr(cfg_res, "error", None):
+        raise HTTPException(400, "Error obteniendo configuración general")
+
+    alerta_dias = cfg_res.data.get("dias_alerta_documento_por_vencer")
+    if alerta_dias is None:
+        raise HTTPException(
+            400,
+            "Configuración general no tiene dias_alerta_documento_por_vencer definido"
+        )
+
+    limite_warning = hoy + timedelta(days=alerta_dias)
+
+    # ----------------------------------------
+    # 4. Obtener documentos de la máquina
     # ----------------------------------------
     docs_raw = (
         supabase.table("documentos_maquina")
@@ -491,19 +805,33 @@ async def get_machine_detail(machine_id: int):
     )
 
     if getattr(docs_raw, "error", None):
-        raise HTTPException(400, f"Error obteniendo documentos: {docs_raw.error}")
+        raise HTTPException(400, "Error obteniendo documentos de la máquina")
 
-    # Convertir a mapa
-    docs_map = {d["tipo_documento"]: d["fecha_vencimiento"] for d in docs_raw.data}
+    documentos = {}
 
-    documentos = {
-        "fecha_venc_revision_tecnica": docs_map.get("revision_tecnica"),
-        "fecha_venc_permiso_circulacion": docs_map.get("permiso_circulacion"),
-        "fecha_venc_seguro_obligatorio": docs_map.get("seguro_obligatorio"),
-    }
+    for d in docs_raw.data:
+        tipo = d["tipo_documento"]
+        fecha_str = d["fecha_vencimiento"]
+
+        if not fecha_str:
+            continue
+
+        fv = date.fromisoformat(fecha_str)
+
+        if fv < hoy:
+            estado = "vencido"
+        elif fv <= limite_warning:
+            estado = "por_vencer"
+        else:
+            estado = "ok"
+
+        documentos[tipo] = {
+            "fecha_vencimiento": fv,
+            "estado": estado
+        }
 
     # ----------------------------------------
-    # 4. Respuesta final
+    # 5. Respuesta final
     # ----------------------------------------
     return {
         "id": m["id"],
@@ -529,24 +857,77 @@ async def update_machine(machine_id: int, data):
 
     if getattr(m_raw, "error", None):
         raise HTTPException(404, "Máquina no encontrada")
+    
+    # Validar número interno duplicado
+    numero_duplicado = (
+        supabase.table("maquinas")
+        .select("id")
+        .eq("numero_interno", data.numero_interno)
+        .neq("id", machine_id)
+        .execute()
+    )
+
+    if numero_duplicado.data:
+        raise HTTPException(
+            400, 
+            f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+        )
+    
+    # ----------------------------------------
+    # Normalizar patente (mayúsculas)
+    # ----------------------------------------
+    patente_normalizada = data.patente.strip().upper() if data.patente else None
+
+    # Validar patente duplicada
+    if patente_normalizada:
+        patente_duplicada = (
+            supabase.table("maquinas")
+            .select("id")
+            .ilike("patente", patente_normalizada)
+            .neq("id", machine_id)
+            .execute()
+        )
+
+        if patente_duplicada.data:
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada} ya está registrada en otra máquina.",
+            )
 
     # 1. Actualizar datos máquina (Sin cambios)
     update_payload = {
         "numero_interno": data.numero_interno,
-        "patente": data.patente,
+        "patente": patente_normalizada,
         "marca": data.marca,
         "anio_fabricacion": data.anio_fabricacion,
         "estado_operativo": data.estado_operativo,
     }
 
-    upd_res = (
-        supabase.table("maquinas")
-        .update(update_payload)
-        .eq("id", machine_id)
-        .execute()
-    )
-
+    try:
+        upd_res = (
+            supabase.table("maquinas")
+            .update(update_payload)
+            .eq("id", machine_id)
+            .execute()
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Error inesperado al actualizar la máquina: {exc}") from exc
+    
     if getattr(upd_res, "error", None):
+        error_msg = str(upd_res.error)
+
+        if "patente" in error_msg.lower():
+            raise HTTPException(
+                400,
+                f"La patente {patente_normalizada or data.patente} ya está registrada en otra máquina.",
+            )
+
+        if "numero_interno" in error_msg.lower():
+            raise HTTPException(
+                400, 
+                f"El número de máquina {data.numero_interno} ya está registrado en otra máquina."
+            )
+        
         raise HTTPException(400, f"Error actualizando máquina: {upd_res.error}")
 
     # 2. Actualizar documentos
@@ -637,7 +1018,7 @@ async def update_machine(machine_id: int, data):
 
             # 4. Alerta Nueva Asignación
             await alert_service.crear_alerta(
-                mensaje=nombre_maquina,
+                mensaje=f"Se te asignó la {nombre_maquina}.",
                 severidad="informativa",
                 tipo="asignacion_maquina",
                 origen_tipo="chofer",
@@ -691,6 +1072,7 @@ async def update_machine(machine_id: int, data):
 
     # 5. RETORNO FINAL
     return {"message": "Máquina actualizada correctamente"}
+
 
 async def delete_machine(machine_id: int):
     hoy = date.today().isoformat()
@@ -755,15 +1137,18 @@ async def delete_machine(machine_id: int):
     }
 
 
-async def get_machine_assignments(machine_id: int, filtro: Optional[str]):
+async def get_machine_assignments(machine_id: int, filters):
     """
-    Retorna el historial de asignaciones de una máquina.
+    Retorna el historial de asignaciones de una máquina con paginación.
     Filtros:
       - todas (default)
       - actual
       - cerradas
     """
-    # 1. Obtener asignaciones
+    from app.schemas.machine import MachineAssignmentFilters
+    from app.core.pagination import PaginatedResponse
+    
+    # 1. Obtener todas las asignaciones
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
         .select("id, chofer_id, fecha_inicio, fecha_termino")
@@ -778,7 +1163,12 @@ async def get_machine_assignments(machine_id: int, filtro: Optional[str]):
     asignaciones = asign_raw.data
 
     if not asignaciones:
-        return []
+        return PaginatedResponse(
+            total=0,
+            page=filters.page,
+            per_page=filters.per_page,
+            items=[]
+        )
 
     # 2. Obtener todos los choferes involucrados
     chofer_ids = [a["chofer_id"] for a in asignaciones]
@@ -818,14 +1208,25 @@ async def get_machine_assignments(machine_id: int, filtro: Optional[str]):
 
         resultado.append(item)
 
-    # 3. Filtros por estado
+    # 3. Aplicar filtros por estado
+    filtro = filters.filtro or "todas"
     if filtro == "actual":
         resultado = [r for r in resultado if r["estado"] == "Activa"]
-
     elif filtro == "cerradas":
         resultado = [r for r in resultado if r["estado"] == "Cerrada"]
 
-    return resultado
+    # 4. Aplicar paginación
+    total = len(resultado)
+    start = filters.offset
+    end = start + filters.per_page
+    items_paginados = resultado[start:end]
+
+    return PaginatedResponse(
+        total=total,
+        page=filters.page,
+        per_page=filters.per_page,
+        items=items_paginados
+    )
 
 
 async def get_machine_maintenances(
@@ -834,12 +1235,17 @@ async def get_machine_maintenances(
     item: Optional[str] = None,
     desde: Optional[date] = None,
     hasta: Optional[date] = None,
+    page: int = 1,
+    per_page: int = 12,
 ):
     """
     Devuelve:
     - total_registros: cantidad de resultados filtrados
     - gasto_mes_actual: suma de costos del mes en curso
-    - items: lista de mantenimientos
+    - items: lista de mantenimientos paginados
+    - pagina: página actual
+    - por_pagina: registros por página
+    - total_paginas: total de páginas
     """
 
     # ---------------------------------------------------------
@@ -864,11 +1270,11 @@ async def get_machine_maintenances(
     gasto_mes_actual = sum(r["costo"] for r in gasto_raw.data) if gasto_raw.data else 0
 
     # ---------------------------------------------------------
-    # 2) Construir el query principal
+    # 2) Construir el query principal con count
     # ---------------------------------------------------------
     query = (
         supabase.table("v_compras_repuestos")
-        .select("*")
+        .select("*", count="exact")
         .eq("maquina_id", machine_id)
     )
 
@@ -905,8 +1311,18 @@ async def get_machine_maintenances(
     if hasta:
         query = query.lte("fecha_compra", hasta.isoformat())
 
-    # Ejecutar query
-    res = query.order("fecha_compra", desc=True).execute()
+    # Aplicar paginación
+    start = (page - 1) * per_page
+    end = start + per_page - 1
+    
+    # Ejecutar query con paginación
+    res = query.order("fecha_compra", desc=True).range(start, end).execute()
+    
+    if getattr(res, "error", None):
+        raise HTTPException(400, f"Error obteniendo historial: {res.error}")
+    
+    # Obtener el total del conteo
+    total_registros = res.count if hasattr(res, 'count') and res.count is not None else (len(res.data) if res.data else 0)
 
     if getattr(res, "error", None):
         raise HTTPException(400, f"Error obteniendo historial: {res.error}")
@@ -926,15 +1342,29 @@ async def get_machine_maintenances(
             "numero_documento": r.get("numero_documento")
         })
 
-    total_registros = len(items)
+    # Calcular total de páginas
+    total_paginas = (total_registros + per_page - 1) // per_page if total_registros > 0 else 0
+
+    # Obtener total global de registros (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("v_compras_repuestos")
+        .select("id", count="exact")
+        .eq("maquina_id", machine_id)
+    )
+    total_global_res = total_global_query.execute()
+    total_registros_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
 
     # ---------------------------------------------------------
     # 4) Respuesta final
     # ---------------------------------------------------------
     return {
-        "total_registros": total_registros,
+        "total_registros": total_registros,  # Total filtrado (para paginación)
+        "total_registros_global": total_registros_global,  # Total sin filtros (para badge)
         "gasto_mes_actual": gasto_mes_actual,
-        "items": items
+        "items": items,
+        "pagina": page,
+        "por_pagina": per_page,
+        "total_paginas": total_paginas
     }
 
 

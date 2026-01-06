@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status, Depends
+from app.schemas.dashboard import DashboardAlerts
 from app.services import alert_service
 from app.utils.auth import get_current_user, require_admin
 from app.schemas.user import UserInDB
@@ -20,7 +21,7 @@ async def resolve_single_alert(
     Endpoint para el botón 'X' o 'Entendido'.
     Marca una alerta específica como 'resuelta'.
     """
-    exito = await alert_service.marcar_como_leida(alert_id)
+    exito = await alert_service.marcar_como_leida(alert_id, current_user)
     
     if not exito:
         raise HTTPException(
@@ -40,9 +41,29 @@ async def resolve_single_alert(
 async def list_admin_alerts(current_user: UserInDB = Depends(get_current_user)):
     """
     Trae las alertas globales para el panel de administración.
+    Realiza una limpieza automática de notificaciones viejas antes de responder.
     """
-    require_admin(current_user) # Bloquea a usuarios no administradores
+    require_admin(current_user) 
+    
+    # 1. Limpieza silenciosa (Lazy Cleanup) 🧹
+    # Esto archiva las informativas de >24hrs antes de pedir la lista
+    await alert_service.limpiar_alertas_antiguas()
+    # 2. Limpieza Profunda (Hard Cleanup) 🗑️  <--- NUEVO
+    # Elimina físicamente de la BD las 'resueltas' de >3 meses
+    await alert_service.eliminar_alertas_muy_antiguas()
+    # 3. Retornar la lista limpia
     return await alert_service.get_admin_alerts()
+
+# Para el ADMIN: Ver resumen (KPIs) y detalle
+@router.get("/summary", response_model=DashboardAlerts)
+async def get_admin_alerts_summary(current_user: UserInDB = Depends(get_current_user)):
+    """
+    Devuelve el resumen (KPIs) y detalle de alertas para el dashboard.
+    Ejecuta la limpieza de alertas informativas antiguas antes de construir la respuesta
+    """
+
+    require_admin(current_user)
+    return await alert_service.get_admin_alerts_overview()
 
 # Para el TRABAJADOR: Ver las suyas
 @router.get("/my-alerts/{worker_id}")

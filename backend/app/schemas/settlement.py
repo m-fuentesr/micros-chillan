@@ -1,6 +1,8 @@
-﻿from pydantic import BaseModel
+﻿from pydantic import BaseModel, Field, field_validator
 from typing import Optional, List
 from datetime import date
+from app.core.pagination import PaginationParams
+import html
 
 # ==========================================
 # 1. GESTIÓN DE PAGOS SEMANALES (Confirmación y Listado)
@@ -23,6 +25,22 @@ class WeeklyPaymentConfirmRequest(BaseModel):
     monto_bono_final: int       # El bono de ajuste (0 si toggle apagado o semana normal)
     total_a_pagar: int          # El monto final que sale de caja
 
+    @field_validator('observaciones')
+    @classmethod
+    def sanitize_observaciones(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza las observaciones para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('codigo_transferencia')
+    @classmethod
+    def sanitize_codigo_transferencia(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza el código de transferencia para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
 # Output: Lo que recibe el Frontend para la tabla de pagos (GET)
 class WeeklyPaymentResponse(BaseModel):
     chofer_id: int
@@ -33,6 +51,7 @@ class WeeklyPaymentResponse(BaseModel):
     anio: int
     semana: int
     es_ultima_semana: bool
+    mes_cerrado_administrativamente: bool = False  # Indica si el mes está cerrado en cierres_mensuales
     
     # Finanzas
     base_ganado: int            # Producción de ESTA semana
@@ -62,6 +81,11 @@ class PaymentConfirmResponse(BaseModel):
 # ==========================================
 # 2. HISTORIAL DE CIERRES (Jerárquico: Mes -> Semanas)
 # ==========================================
+
+# Filtros para historial de períodos
+class HistoryPeriodFilters(PaginationParams):
+    mes_desde: Optional[int] = Field(None, ge=1, le=12, description="Mes inicial del filtro")
+    mes_hasta: Optional[int] = Field(None, ge=1, le=12, description="Mes final del filtro")
 
 # A. Resumen del Mes (La fila principal del historial)
 class HistoryPeriodSummary(BaseModel):

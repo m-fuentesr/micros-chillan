@@ -1,13 +1,17 @@
-import { Component, ChangeDetectionStrategy, inject, ViewChild, ElementRef, AfterViewInit, OnDestroy, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, ViewChild, ElementRef, AfterViewInit, OnDestroy, signal, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NewRecordModalService, NewRecordFormData } from '../../services/new-record-modal.service';
 import { MachineService } from '../../services/machine.service';
 import { DriverService } from '../../services/driver.service';
+import { AuthService } from '../../services/auth.service';
+import { DailyRecordService } from '../../services/daily-record.service';
 import { MachineSelect } from '../../models/machine.models';
 import { takeUntilDestroyed, toObservable, toSignal } from '@angular/core/rxjs-interop';
 import { DestroyRef } from '@angular/core';
-import { catchError, of } from 'rxjs';
+import { catchError, of, combineLatest, filter, switchMap, firstValueFrom } from 'rxjs';
+import { calculateLicenseStatus } from '../../utils/license.utils';
+import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-new-record-modal',
@@ -20,7 +24,7 @@ import { catchError, of } from 'rxjs';
       id="new-record-modal">
       <div class="modal-box max-w-2xl w-full max-h-[88vh] sm:max-h-[90vh] overflow-hidden flex flex-col bg-base-100 text-base-content rounded-3xl border border-base-200 shadow-2xl px-4 py-5 sm:px-6 sm:py-8 gap-5 sm:gap-6">
         <!-- Header -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 flex-shrink-0 animate-fade-in-down">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-5 sm:p-6 border border-base-200/70 shadow-sm flex items-start gap-4 shrink-0 animate-fade-in-down">
           <div class="p-3 sm:p-3.5 bg-primary/10 rounded-xl text-primary shrink-0 border border-primary/20 shadow-sm">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6">
               <path fill-rule="evenodd" d="M5.625 3A2.625 2.625 0 003 5.625v12.75A2.625 2.625 0 005.625 21h12.75A2.625 2.625 0 0021 18.375V9.75a.75.75 0 00-1.5 0v8.625c0 .621-.504 1.125-1.125 1.125H5.625c-.621 0-1.125-.504-1.125-1.125V5.625c0-.621.504-1.125 1.125-1.125h8.625a.75.75 0 000-1.5H5.625z" clip-rule="evenodd" />
@@ -38,7 +42,7 @@ import { catchError, of } from 'rxjs';
           </div>
           <button 
             type="button"
-            class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:bg-base-200 hover:text-base-content flex-shrink-0"
+            class="btn btn-sm btn-circle btn-ghost text-base-content/60 hover:bg-base-200 hover:text-base-content shrink-0"
             (click)="modalService.cancel()">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -59,7 +63,7 @@ import { catchError, of } from 'rxjs';
                   <span class="text-xs uppercase tracking-wide text-base-content/60">Estado de Operación</span>
                   <span class="text-sm font-semibold text-base-content">¿La máquina trabajó hoy?</span>
                 </div>
-                <label class="cursor-pointer inline-flex items-center gap-3 flex-shrink-0">
+                <label class="cursor-pointer inline-flex items-center gap-3 shrink-0">
                   <span class="text-xs font-semibold uppercase tracking-[0.08em] transition-colors whitespace-nowrap" 
                     [class.text-base-content/50]="!modalService.formData().noWorkDay" 
                     [class.text-primary]="modalService.formData().noWorkDay">
@@ -119,6 +123,107 @@ import { catchError, of } from 'rxjs';
               }
             </div>
 
+            <!-- Bento: Contexto -->
+            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
+              <div class="form-control">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
+                    Fecha <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
+                  </span>
+                </label>
+                <input 
+                  type="date" 
+                  class="input input-bordered w-full h-11 rounded-lg text-sm text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
+                  [ngModel]="modalService.formData().date"
+                  (ngModelChange)="updateField('date', $event)"
+                  name="date"
+                  required />
+                @if (futureDateWarning()) {
+                  <div class="alert alert-warning shadow-sm mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-xs">{{ futureDateWarning() }}</span>
+                  </div>
+                }
+                @if (pastDateWarning()) {
+                  <div class="alert alert-info shadow-sm mt-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span class="text-xs">{{ pastDateWarning() }}</span>
+                  </div>
+                }
+              </div>
+              <div class="form-control">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
+                    Máquina <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
+                  </span>
+                </label>
+                <select 
+                  class="select select-bordered w-full h-11 rounded-lg text-sm text-base-content focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  [ngModel]="modalService.formData().machine"
+                  (ngModelChange)="updateField('machine', $event)"
+                  name="machine"
+                  required>
+                  <option value="">Seleccionar máquina</option>
+                  @if (machines().length === 0) {
+                    <option disabled>Cargando máquinas...</option>
+                  }
+                  @for (machine of machines(); track machine.id) {
+                    <option [value]="machine.id.toString()">{{ machine.display_name }}</option>
+                  }
+                </select>
+                @if (machineDuplicateWarning()) {
+                  <div class="alert alert-warning shadow-sm mt-2 border border-warning/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-xs">{{ machineDuplicateWarning() }}</span>
+                  </div>
+                }
+              </div>
+              <div class="form-control md:col-span-2">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
+                    Chofer Asignado <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
+                  </span>
+                </label>
+                <select 
+                  class="select select-bordered w-full h-11 rounded-lg text-sm text-base-content focus:border-primary focus:ring-2 focus:ring-primary/30"
+                  [ngModel]="modalService.formData().driver"
+                  (ngModelChange)="handleDriverChange($event)"
+                  name="driver"
+                  required>
+                  <option value="">Seleccionar chofer</option>
+                  @if (drivers().length === 0) {
+                    <option disabled>Cargando choferes...</option>
+                  }
+                  @for (driver of drivers(); track driver.id) {
+                    <option [value]="driver.id.toString()">{{ driver.nombre_completo }}</option>
+                  }
+                </select>
+                @if (driverLicenseWarning()) {
+                  <div class="alert alert-warning shadow-sm mt-2 border border-warning/30">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-5 w-5" fill="none" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <span class="text-xs">{{ driverLicenseWarning() }}</span>
+                  </div>
+                }
+              </div>
+            </div>
+
             @if (!modalService.formData().noWorkDay) {
               <!-- Bento: Ingresos / Consumos -->
               <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
@@ -126,9 +231,13 @@ import { catchError, of } from 'rxjs';
                   <span class="text-xs uppercase tracking-wide text-base-content/60">Ingresos</span>
                 </div>
                 <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                    <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                       Ingreso del Día <span class="text-error">*</span>
+                    </span>
+
+                    <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                      Obligatorio
                     </span>
                   </label>
                   <div class="relative group">
@@ -140,6 +249,7 @@ import { catchError, of } from 'rxjs';
                       (ngModelChange)="updateNumberField('income', $event)"
                       (keydown)="preventInvalidNumberInput($event, 6)"
                       (input)="limitFieldDigits($event, 'income', 6)"
+                      (focus)="onNumberFieldFocus($event, 'income')"
                       name="income"
                       placeholder="0"
                       min="0"
@@ -161,6 +271,7 @@ import { catchError, of } from 'rxjs';
                       (ngModelChange)="updateNumberField('dieselExpense', $event)"
                       (keydown)="preventInvalidNumberInput($event, 6)"
                       (input)="limitFieldDigits($event, 'dieselExpense', 6)"
+                      (focus)="onNumberFieldFocus($event, 'dieselExpense')"
                       name="dieselExpense"
                       placeholder="0"
                       min="0"
@@ -180,6 +291,7 @@ import { catchError, of } from 'rxjs';
                       (ngModelChange)="updateNumberField('dieselLiters', $event)"
                       (keydown)="preventInvalidNumberInput($event, 3, true)"
                       (input)="limitFieldDigits($event, 'dieselLiters', 3, true)"
+                      (focus)="onNumberFieldFocus($event, 'dieselLiters')"
                       name="dieselLiters"
                       step="0.1"
                       placeholder="0.0"
@@ -191,66 +303,6 @@ import { catchError, of } from 'rxjs';
               </div>
             }
 
-            <!-- Bento: Contexto -->
-            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
-              <div class="form-control">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
-                    Fecha <span class="text-error">*</span>
-                  </span>
-                </label>
-                <input 
-                  type="date" 
-                  class="input input-bordered w-full h-11 rounded-lg text-sm text-base-content placeholder:text-base-content/50 focus:ring-2 focus:ring-primary/30 focus:border-primary/70"
-                  [ngModel]="modalService.formData().date"
-                  (ngModelChange)="updateField('date', $event)"
-                  name="date"
-                  required />
-              </div>
-              <div class="form-control">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
-                    Máquina <span class="text-error">*</span>
-                  </span>
-                </label>
-                <select 
-                  class="select select-bordered w-full h-11 rounded-lg text-sm text-base-content focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  [ngModel]="modalService.formData().machine"
-                  (ngModelChange)="updateField('machine', $event)"
-                  name="machine"
-                  required>
-                  <option value="">Seleccionar máquina</option>
-                  @if (machines().length === 0) {
-                    <option disabled>Cargando máquinas...</option>
-                  }
-                  @for (machine of machines(); track machine.id) {
-                    <option [value]="machine.id.toString()">{{ machine.display_name }}</option>
-                  }
-                </select>
-              </div>
-              <div class="form-control md:col-span-2">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
-                    Chofer Asignado <span class="text-error">*</span>
-                  </span>
-                </label>
-                <select 
-                  class="select select-bordered w-full h-11 rounded-lg text-sm text-base-content focus:border-primary focus:ring-2 focus:ring-primary/30"
-                  [ngModel]="modalService.formData().driver"
-                  (ngModelChange)="updateField('driver', $event)"
-                  name="driver"
-                  required>
-                  <option value="">Seleccionar chofer</option>
-                  @if (drivers().length === 0) {
-                    <option disabled>Cargando choferes...</option>
-                  }
-                  @for (driver of drivers(); track driver.id) {
-                    <option [value]="driver.id.toString()">{{ driver.nombre_completo }}</option>
-                  }
-                </select>
-              </div>
-            </div>
-
             <!-- Bento: Uploads (solo si es día trabajado) -->
             @if (!modalService.formData().noWorkDay) {
             <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-5 sm:p-6 grid gap-5 sm:gap-6 md:grid-cols-[1.618fr_1fr]">
@@ -260,10 +312,10 @@ import { catchError, of } from 'rxjs';
                   <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Foto Comprobante <span class="text-error">*</span>
                   </span>
-                  <span class="label-text-alt text-[10px] font-medium text-base-content/50 bg-error/10 text-error px-2 py-0.5 rounded-md">Obligatorio</span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">Obligatorio</span>
                 </label>
                 <label 
-                  class="group relative block w-full min-h-[140px] sm:min-h-[160px] rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden
+                  class="group relative block w-full min-h-[140px] sm:min-h-40 rounded-lg border-2 border-dashed transition-all duration-200 cursor-pointer overflow-hidden
                     [&:has(input:focus)]:border-primary [&:has(input:focus)]:ring-2 [&:has(input:focus)]:ring-primary/20 [&:has(input:focus)]:bg-primary/5
                     hover:border-primary/50 hover:bg-base-50/50
                     [&.has-file]:border-primary/30 [&.has-file]:bg-primary/5
@@ -303,7 +355,7 @@ import { catchError, of } from 'rxjs';
                       </div>
                     </div>
                   }
-                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-[160px] p-5 sm:p-6 gap-3.5">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-40 p-5 sm:p-6 gap-3.5">
                     <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center border-2 border-primary/20 group-hover:bg-primary/15 group-hover:border-primary/30 transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
                         <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
@@ -317,7 +369,7 @@ import { catchError, of } from 'rxjs';
                         {{ modalService.formData().receiptPhoto ? fileLabel(modalService.formData().receiptPhoto, '') : 'Subir foto (máx. 5MB)' }}
                       </p>
                       <p class="text-[10px] sm:text-xs text-base-content/50 mt-2 flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 shrink-0">
                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                         </svg>
                         <span>JPG, PNG, WebP</span>
@@ -327,7 +379,7 @@ import { catchError, of } from 'rxjs';
                 </label>
                 @if (fileError('receiptPhoto')) {
                   <p class="text-xs text-error mt-2.5 flex items-center gap-1.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 flex-shrink-0">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 shrink-0">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
                     </svg>
                     <span>La foto comprobante es obligatoria.</span>
@@ -344,7 +396,7 @@ import { catchError, of } from 'rxjs';
                   <span class="label-text-alt text-[10px] font-medium text-base-content/50 bg-base-200 px-2 py-0.5 rounded-md">Opcional</span>
                 </label>
                 <label 
-                  class="group relative block w-full min-h-[140px] sm:min-h-[160px] rounded-lg border-2 border-dashed border-base-300 transition-all duration-200 cursor-pointer overflow-hidden
+                  class="group relative block w-full min-h-[140px] sm:min-h-40 rounded-lg border-2 border-dashed border-base-300 transition-all duration-200 cursor-pointer overflow-hidden
                     [&:has(input:focus)]:border-primary [&:has(input:focus)]:ring-2 [&:has(input:focus)]:ring-primary/20 [&:has(input:focus)]:bg-primary/5
                     hover:border-primary/40 hover:bg-base-50/50
                     [&.has-file]:border-primary/30 [&.has-file]:bg-primary/5
@@ -382,7 +434,7 @@ import { catchError, of } from 'rxjs';
                       </div>
                     </div>
                   }
-                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-[160px] p-5 sm:p-6 gap-3.5">
+                  <div class="flex flex-col items-center justify-center h-full min-h-[140px] sm:min-h-40 p-5 sm:p-6 gap-3.5">
                     <div class="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-base-200 text-base-content/70 flex items-center justify-center border-2 border-base-300 group-hover:bg-base-300 group-hover:text-base-content group-hover:border-base-400 transition-all shadow-sm">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
                         <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 013.25 3h13.5A2.25 2.25 0 0119 5.25v9.5A2.25 2.25 0 0116.75 17H3.25A2.25 2.25 0 011 14.75v-9.5zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 00.75-.75v-2.69l-2.22-2.219a.75.75 0 00-1.06 0l-1.91 1.909.47.47a.75.75 0 11-1.06 1.06L6.53 8.091a.75.75 0 00-1.06 0l-2.97 2.97zM12 7a1 1 0 11-2 0 1 1 0 012 0z" clip-rule="evenodd" />
@@ -396,7 +448,7 @@ import { catchError, of } from 'rxjs';
                         {{ modalService.formData().fuelReceiptPhoto ? fileLabel(modalService.formData().fuelReceiptPhoto, '') : 'Subir comprobante' }}
                       </p>
                       <p class="text-[10px] sm:text-xs text-base-content/50 mt-2 flex items-center justify-center gap-1.5">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 flex-shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 shrink-0">
                           <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
                         </svg>
                         <span>JPG, PNG, WebP</span>
@@ -413,7 +465,7 @@ import { catchError, of } from 'rxjs';
             <div class="rounded-2xl border border-error/30 bg-error/10 shadow-sm p-4 sm:p-5 md:p-6">
               <div class="flex items-center justify-between gap-4">
                 <div class="flex items-center gap-3 min-w-0 flex-1">
-                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-error shadow-sm border border-error/10 flex-shrink-0">
+                    <div class="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-error shadow-sm border border-error/10 shrink-0">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
                       <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
                     </svg>
@@ -423,14 +475,14 @@ import { catchError, of } from 'rxjs';
                     <p class="text-xs text-error/80 italic">Choque, falla mecánica, etc.</p>
                   </div>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <label class="relative inline-flex items-center cursor-pointer shrink-0">
                   <input 
                     type="checkbox" 
                     class="sr-only peer" 
                     [ngModel]="modalService.formData().hasIncident"
                     (ngModelChange)="updateField('hasIncident', $event)"
                     name="hasIncident" />
-                  <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                  <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
                 </label>
               </div>
             </div>
@@ -438,12 +490,25 @@ import { catchError, of } from 'rxjs';
 
             <!-- Observaciones (solo si es día trabajado) -->
             @if (!modalService.formData().noWorkDay) {
-            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-3">
+            <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-3"
+                 [class.border-error/30]="modalService.formData().hasIncident"
+                 [class.bg-error/5]="modalService.formData().hasIncident">
               <label class="label pb-0 pt-0">
-                <span class="label-text text-xs uppercase tracking-wide text-base-content/60">Observaciones</span>
+                <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  Observaciones
+                  @if (modalService.formData().hasIncident) {
+                    <span class="text-error">*</span>
+                  }
+                </span>
               </label>
+              @if (modalService.formData().hasIncident) {
+                <p class="text-xs text-error font-semibold mt-1 ml-1">
+                  Las observaciones son obligatorias cuando hay un incidente crítico
+                </p>
+              }
               <textarea 
                 class="textarea textarea-bordered h-24 w-full rounded-lg text-sm leading-relaxed text-base-content placeholder:text-base-content/50 focus:textarea-primary focus:ring-2 focus:ring-primary/30 focus:border-primary/70" 
+                [class.textarea-error]="modalService.formData().hasIncident && (!modalService.formData().observations || !modalService.formData().observations.trim())"
                 [ngModel]="modalService.formData().observations"
                 (ngModelChange)="updateField('observations', $event)"
                 name="observations"
@@ -454,7 +519,7 @@ import { catchError, of } from 'rxjs';
         </div>
 
         <!-- Footer -->
-        <div class="modal-action sticky bottom-0 left-0 right-0 bg-base-100 mt-2 pt-3 pb-3 border-t border-base-200 flex-shrink-0 justify-end gap-2 sm:gap-3 px-0 sm:px-2">
+        <div class="modal-action sticky bottom-0 left-0 right-0 bg-base-100 mt-2 pt-3 pb-3 border-t border-base-200 shrink-0 justify-end gap-2 sm:gap-3 px-0 sm:px-2">
           <button 
             type="button" 
             class="btn btn-ghost gap-2 font-normal text-base-content hover:bg-base-200 hover:text-base-content"
@@ -523,30 +588,173 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   modalService = inject(NewRecordModalService);
   machineService = inject(MachineService);
   driverService = inject(DriverService);
+  authService = inject(AuthService);
+  dailyRecordService = inject(DailyRecordService);
   destroyRef = inject(DestroyRef);
   
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
-  // Usar toSignal para cargar datos automáticamente, igual que los otros componentes que funcionan
+  // Cargar datos solo cuando el modal esté visible Y el usuario esté autenticado
   machines = toSignal(
-    this.machineService.getActiveMachines().pipe(
-      catchError((error) => {
-        console.error('Error obteniendo máquinas activas:', error);
-        return of([]);
+    combineLatest([
+      toObservable(this.modalService.isVisible),
+      toObservable(this.authService.currentUser)
+    ]).pipe(
+      filter(([isVisible, user]) => isVisible && !!user),
+      switchMap(() => {
+        return this.machineService.getActiveMachines().pipe(
+          catchError((error) => {
+            console.error('Error obteniendo máquinas activas:', error);
+            return of([]);
+          })
+        );
       })
     ),
     { initialValue: [] }
   );
 
   drivers = toSignal(
-    this.driverService.getActiveDrivers().pipe(
-      catchError((error) => {
-        console.error('Error obteniendo choferes activos:', error);
-        return of([]);
+    combineLatest([
+      toObservable(this.modalService.isVisible),
+      toObservable(this.authService.currentUser)
+    ]).pipe(
+      filter(([isVisible, user]) => isVisible && !!user),
+      switchMap(() => {
+        return this.driverService.getActiveDrivers().pipe(
+          catchError((error) => {
+            console.error('Error obteniendo choferes activos:', error);
+            return of([]);
+          })
+        );
       })
     ),
     { initialValue: [] }
   );
+
+  driverLicenseWarning = signal<string | null>(null);
+  machineDuplicateWarning = signal<string | null>(null);
+  futureDateWarning = signal<string | null>(null);
+  pastDateWarning = signal<string | null>(null);
+
+  // Effect para verificar fecha futura cuando hay recaudación (TC-183)
+  private futureDateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const date = formData.date;
+    const noWorkDay = formData.noWorkDay;
+    const income = formData.income;
+
+    // Solo verificar si hay fecha, NO es día no trabajado, y hay recaudación > 0
+    if (date && !noWorkDay && income && income > 0) {
+      // Usar utilidades de fecha de Chile para comparaciones correctas
+      const diffDays = getDaysDifferenceInChile(date);
+      
+      // diffDays < 0 significa que la fecha es futura (date es posterior a hoy)
+      if (diffDays < 0) {
+        this.futureDateWarning.set('⚠️ Está intentando registrar recaudación para una fecha futura. ¿Está seguro?');
+      } else {
+        this.futureDateWarning.set(null);
+      }
+    } else {
+      this.futureDateWarning.set(null);
+    }
+  });
+
+  // Effect para verificar fecha pasada (retroactivo) - TC-184
+  private pastDateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const date = formData.date;
+
+    if (date) {
+      // Usar utilidades de fecha de Chile para comparaciones correctas
+      const diffDays = getDaysDifferenceInChile(date);
+      
+      // Solo mostrar advertencia si la fecha es anterior a hoy (diffDays > 0 significa que date es anterior)
+      if (diffDays > 0) {
+        // Obtener partes de la fecha seleccionada y de hoy en zona horaria de Chile
+        const selectedDateParts = getDatePartsInChile(date);
+        const todayParts = getTodayInChile();
+        
+        // Verificar si la fecha es del mes anterior o más antigua
+        const selectedMonth = selectedDateParts.month;
+        const selectedYear = selectedDateParts.year;
+        const currentMonth = todayParts.month;
+        const currentYear = todayParts.year;
+
+        // Si es del mes anterior o más antigua
+        if (selectedYear < currentYear || (selectedYear === currentYear && selectedMonth < currentMonth)) {
+          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
+                             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+          const monthName = monthNames[selectedMonth - 1]; // month es 1-12, array es 0-11
+          this.pastDateWarning.set(
+            `ℹ️ Registro retroactivo: Este registro impactará en los reportes de ${monthName} ${selectedYear}. Los reportes se recalculan automáticamente.`
+          );
+        } else {
+          // Fecha pasada pero del mes actual
+          this.pastDateWarning.set(
+            'ℹ️ Registro retroactivo: Este registro se incluirá en los reportes del mes actual.'
+          );
+        }
+      } else {
+        // Fecha es hoy (diffDays === 0) o futura (diffDays < 0), no mostrar advertencia
+        this.pastDateWarning.set(null);
+      }
+    } else {
+      this.pastDateWarning.set(null);
+    }
+  });
+
+  // Effect para verificar duplicado de máquina cuando cambian máquina o fecha
+  private machineDuplicateCheckEffect = effect(() => {
+    const formData = this.modalService.formData();
+    const machineId = formData.machine;
+    const date = formData.date;
+
+    // Si no hay máquina o fecha, limpiar la advertencia
+    if (!machineId || !date) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    // Solo verificar si hay máquina y fecha seleccionadas
+    const machineIdNum = typeof machineId === 'number' ? machineId : Number(machineId);
+    if (isNaN(machineIdNum)) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    // Usar setTimeout para hacer la verificación de forma asíncrona
+    const timeoutId = setTimeout(() => {
+      this.checkMachineDuplicate(machineIdNum, date);
+    }, 500); // Debounce de 500ms
+    
+    // Cleanup del timeout si el effect se vuelve a ejecutar
+    return () => clearTimeout(timeoutId);
+  });
+
+  async checkMachineDuplicate(machineId: number, date: string): Promise<void> {
+    if (!machineId || !date) {
+      this.machineDuplicateWarning.set(null);
+      return;
+    }
+
+    try {
+      const result = await firstValueFrom(
+        this.dailyRecordService.checkDuplicateRecord(machineId, date)
+      );
+
+      if (result.exists) {
+        this.machineDuplicateWarning.set(
+          `⚠️ Ya existe un registro para esta máquina en esta fecha (asignado a ${result.chofer_nombre || 'otro chofer'}). No se puede facturar dos veces el mismo día/turno.`
+        );
+      } else {
+        this.machineDuplicateWarning.set(null);
+      }
+    } catch (error) {
+      console.warn('Error verificando duplicado de máquina:', error);
+      // No mostrar error al usuario, solo log
+      this.machineDuplicateWarning.set(null);
+    }
+  }
 
   ngAfterViewInit(): void {
     // Convertir signal a Observable para suscribirse (sin paréntesis para pasar el signal, no su valor)
@@ -580,8 +788,53 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
 
   updateField(field: keyof NewRecordFormData, value: any): void {
     this.modalService.updateFormData({ [field]: value });
+    
+    // Si se cambia la máquina o la fecha, limpiar las advertencias
+    // (los effects se encargarán de verificar nuevamente)
+    if (field === 'machine' || field === 'date') {
+      this.machineDuplicateWarning.set(null);
+    }
+    // Si se cambia la fecha, los effects se encargarán de verificar nuevamente
+    // (fecha futura y fecha pasada)
   }
 
+  async handleDriverChange(value: string): Promise<void> {
+    this.updateField('driver', value);
+    this.driverLicenseWarning.set(null);
+
+    const driverId = Number(value);
+    if (!value || Number.isNaN(driverId)) {
+      return;
+    }
+
+    try {
+      const driver = await firstValueFrom(this.driverService.getDriverById(driverId));
+      const licenseStatus = driver.licencia_estado || calculateLicenseStatus(driver.fecha_venc_licencia);
+
+      const status = licenseStatus?.estado;
+      const days = licenseStatus?.dias_restantes;
+      const isExpired = status === 'danger' || status === 'error' || (typeof days === 'number' && days <= 0);
+
+      if (!licenseStatus || !isExpired) {
+        return;
+      }
+
+      const absDays = typeof days === 'number' ? Math.abs(days) : undefined;
+      const dayLabel = absDays === 1 ? 'día' : 'días';
+      const timing = absDays ? `venció hace ${absDays} ${dayLabel}` : 'tiene la licencia vencida';
+      const expirationDate = 'fecha_vencimiento' in licenseStatus
+        ? licenseStatus.fecha_vencimiento
+        : licenseStatus.fecha || driver.fecha_venc_licencia;
+
+      const message = `La licencia de ${driver.nombre_completo} ${timing}${expirationDate ? ` (el ${expirationDate})` : ''}. Contacta al chofer para gestionar la renovación.`;
+
+      this.driverLicenseWarning.set(message);
+    } catch (error) {
+      console.warn('No se pudo verificar la licencia del chofer', error);
+      this.driverLicenseWarning.set(null);
+    }
+  }
+  
   updateNumberField(field: 'income' | 'dieselExpense' | 'dieselLiters', value: string | number | null): void {
     const numValue = value === '' || value === null ? 0 : Number(value);
     this.modalService.updateFormData({ [field]: numValue });
@@ -662,6 +915,20 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     // Actualizar el formulario
     const numValue = value === '' ? 0 : (allowDecimals ? parseFloat(value) : parseInt(value, 10));
     this.updateNumberField(fieldName, isNaN(numValue) ? 0 : numValue);
+  }
+
+  onNumberFieldFocus(event: FocusEvent, fieldName: 'income' | 'dieselExpense' | 'dieselLiters'): void {
+    const input = event.target as HTMLInputElement;
+    const currentValue = input.value;
+    
+    // Si el valor es "0" o está vacío, seleccionar todo el texto
+    // Esto permite que al escribir se reemplace automáticamente
+    if (currentValue === '0' || currentValue === '' || currentValue === '0.0' || currentValue === '0.') {
+      // Usar setTimeout para asegurar que la selección ocurra después del focus
+      setTimeout(() => {
+        input.select();
+      }, 0);
+    }
   }
 
   onFileChange(field: 'receiptPhoto' | 'fuelReceiptPhoto', event: Event): void {
@@ -782,6 +1049,12 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
       // Foto comprobante obligatoria solo en días trabajados
       if (!data.receiptPhoto) {
         return false;
+      }
+      // Si hay incidente crítico, las observaciones son obligatorias
+      if (data.hasIncident) {
+        if (!data.observations || !data.observations.trim()) {
+          return false;
+        }
       }
     }
     // Si es día no trabajado, validar motivo

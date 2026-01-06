@@ -2,7 +2,7 @@ import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, e
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router, RouterLink, ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, firstValueFrom } from 'rxjs';
 import { DailyRecordService } from '../../shared/services/daily-record.service';
@@ -14,10 +14,11 @@ import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-
 import { LoadingOverlay } from '../../shared/components/loading-overlay/loading-overlay';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { SearchFilters, FilterField } from '../../shared/components/search-filters/search-filters';
-import { DriverIcon } from '../../shared/components/driver-icon/driver-icon';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { NewRecordModalService } from '../../shared/services/new-record-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 
 /**
@@ -28,21 +29,25 @@ interface DailyRecordView {
   id: string;
   date: string; // Formateado para display
   machine: string; // maquina_identificador o derivado
+  machineId: number; // maquina_id para navegación
   driver: string; // chofer_nombre
+  driverId: number; // chofer_id para navegación
   status: 'complete' | 'pending' | 'incident' | 'no_worked'; // Mapeo de DailyRecordStatus
   income: number; // recaudado
   dieselExpense: number; // costo_diesel
+  driverPayment: number; // pago_chofer
+  net: number; // recaudado - diesel - pago_chofer
   hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
 }
 
 @Component({
   selector: 'app-bitacora-operaciones',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, DriverIcon, BusIcon, KpiCard],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterLink, LoadingSkeleton, LoadingSpinner, SearchFilters, UiIconComponent, KpiCard],
   template: `
     <div class="space-y-6 relative">
         <!-- Hero Section Premium - Siempre visible primero -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
           <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div class="page-entry-header border-l-4 border-l-primary pl-3 md:pl-4 flex-1 min-w-0">
               <h1 class="text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold text-base-content tracking-tight mb-2">
@@ -55,9 +60,7 @@ interface DailyRecordView {
             <button 
               (click)="openNewRecordModal()"
               class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z"/>
-              </svg>
+              <ui-icon name="CirclePlus" size="md" />
               Nuevo Registro
             </button>
           </div>
@@ -67,28 +70,35 @@ interface DailyRecordView {
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
           @if (kpisLoading() && !sequentialState.kpisError()) {
             @for (i of [1,2,3]; track i) {
-              <app-loading-skeleton type="kpi" />
-            }
-          } @else if (sequentialState.kpisError()) {
-            <div class="col-span-full card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-              <div class="flex items-center gap-3">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                  <p class="text-xs text-error/70">No se pudieron cargar los indicadores</p>
+              <!-- 🎭 GhostWire Skeleton: KpiCard default - Replica exacta del componente real -->
+              <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] skeleton-entering gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]"
+                   [style.animation-delay.ms]="i * 50">
+                
+                <!-- Header: Icon + Title - Mismas clases exactas del componente default -->
+                <div class="relative flex items-center gap-3">
+                  <!-- Icono: h-10 w-10 para default -->
+                  <div class="skeleton-shimmer rounded-xl shrink-0 ring-1 ring-base-200 h-10 w-10"></div>
+                  <div class="flex-1 min-w-0">
+                    <!-- Título: text-xs (12px) para default -->
+                    <div class="skeleton-shimmer h-3 w-40 rounded"></div>
+                    <!-- Subtítulo: text-[10px] para default -->
+                    <div class="skeleton-shimmer h-2.5 w-32 rounded mt-0.5"></div>
+                  </div>
+                </div>
+                
+                <!-- Body: Value - Mismas clases exactas del componente default -->
+                <div class="relative flex flex-col">
+                  <!-- Valor: text-base sm:text-lg md:text-xl lg:text-2xl pl-[52px] para default -->
+                  <div class="skeleton-shimmer rounded leading-tight h-6 sm:h-7 md:h-8 lg:h-9 pl-[52px] w-32 sm:w-36 md:w-40 lg:w-44"></div>
+                  
+                  <!-- Footer: Badge - Mismas clases exactas del componente default -->
+                  <div class="flex items-center mt-2 min-h-6 pl-[52px]">
+                    <!-- Badge: text-[10px] para default -->
+                    <div class="skeleton-shimmer rounded-full h-2.5 w-24 sm:w-28"></div>
+                  </div>
                 </div>
               </div>
-            </div>
-            <div 
-              class="col-span-full"
-              [class.opacity-0]="!sequentialState.canShowKPIs()" 
-              [class.animate-fade-in]="sequentialState.canShowKPIs()" 
-              [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-              [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-              <!-- KPIs con error pero mostrando datos -->
-            </div>
+            }
           } @else {
             <div 
               class="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4 col-span-full"
@@ -103,10 +113,9 @@ interface DailyRecordView {
               [value]="formatCurrency(totalRevenue())"
               type="financial"
               [badgeText]="currentMonthName()"
+              [responsive]="true"
               [animationDelay]="0">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 6v12m-3-2.818l.818.182a2.25 2.25 0 002.364 0l.818-.182m-3-2.818h6m-6-2.25h6m-9 2.25v6.75a2.25 2.25 0 002.25 2.25h9a2.25 2.25 0 002.25-2.25V9.75a2.25 2.25 0 00-2.25-2.25h-9a2.25 2.25 0 00-2.25 2.25z" />
-              </svg>
+              <ui-icon name="Wallet" size="md" icon />
             </app-kpi-card>
 
             <!-- Card 2: Registros Faltantes -->
@@ -117,10 +126,9 @@ interface DailyRecordView {
               type="warning"
               [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
               [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
+              [responsive]="true"
               [animationDelay]="1">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="AlertCircle" size="md" icon />
             </app-kpi-card>
 
             <!-- Card 3: Con Incidentes -->
@@ -130,11 +138,9 @@ interface DailyRecordView {
               [value]="recordsWithIncidents().toString()"
               type="danger"
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
-              [actionText]="recordsWithIncidents() === 0 ? '' : 'Requieren gestión'"
+              [responsive]="true"
               [animationDelay]="2">
-              <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-              </svg>
+              <ui-icon name="TriangleAlert" size="md" icon />
             </app-kpi-card>
             </div>
           }
@@ -209,21 +215,6 @@ interface DailyRecordView {
               <app-loading-skeleton type="table" [count]="10" />
             </div>
           </div>
-        } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-            <div class="flex flex-col items-center gap-4 text-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                  Reintentar
-                </button>
-              </div>
-            </div>
-          </div>
         } @else {
           <!-- Solo renderizar el contenido cuando canShowContent es true -->
           @if (sequentialState.canShowContent()) {
@@ -261,25 +252,32 @@ interface DailyRecordView {
                 <div class="sticky top-2 z-20">
                   <button
                     type="button"
-                    class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-[44px]"
+                    class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
                     (click)="toggleFiltersMobile()"
                     [attr.aria-expanded]="showFiltersMobile()">
                     <div class="flex items-center gap-2">
                       <span class="w-1 h-4 rounded-full bg-primary"></span>
                       <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
                     </div>
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 transition-transform duration-200" [class.rotate-180]="showFiltersMobile()" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd" d="M5.22 7.22a.75.75 0 011.06 0L10 10.94l3.72-3.72a.75.75 0 111.06 1.06l-4.25 4.25a.75.75 0 01-1.06 0L5.22 8.28a.75.75 0 010-1.06z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
                   </button>
                 </div>
                 @if (showFiltersMobile()) {
-                  <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm">
+                  <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
                     <app-search-filters
                       [fields]="filterFields()"
                       [filters]="recordFilters()"
                       [columns]="1"
                       (filterChange)="onRecordFilterChange($event)" />
+                    <!-- Botón para cerrar el panel manualmente -->
+                    <div class="p-4 pt-0 border-t border-base-200/50">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-primary w-full"
+                        (click)="toggleFiltersMobile()">
+                        Aplicar Filtros
+                      </button>
+                    </div>
                   </div>
                 }
               </div>
@@ -300,21 +298,6 @@ interface DailyRecordView {
                   </div>
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
-                } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                    <div class="flex flex-col items-center gap-4 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                        <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                        <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                          Reintentar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 } @else {
                   <table class="table w-full table-min-height min-w-[960px]">
                     <thead class="bg-base-50 border-b border-base-200">
@@ -323,10 +306,11 @@ interface DailyRecordView {
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[180px]">Conductor</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px]">Recaudado</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Pago Chofer</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[110px] hidden xl:table-cell">Neto</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[90px] hidden xl:table-cell">OBS.</th>
-                        <th class="py-4 pr-4 lg:pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[96px] lg:min-w-[120px] whitespace-normal leading-4">
+                        <th class="py-4 pr-4 lg:pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px] lg:min-w-[140px] whitespace-normal leading-4">
                           Acciones
                         </th>
                       </tr>
@@ -334,16 +318,13 @@ interface DailyRecordView {
                     <tbody>
                       @for (record of paginatedRecords(); track record.id; let i = $index) {
                         <tr 
-                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
+                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                           [style.animation-delay.ms]="i * 30"
-                          [style.animation-fill-mode]="'both'"
-                          (click)="onViewRecordDetail(record)">
+                          [style.animation-fill-mode]="'both'">
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="sm" />
                               </div>
                               <div>
                                 <div class="font-bold text-base-content">{{ record.date }}</div>
@@ -353,11 +334,17 @@ interface DailyRecordView {
                           </td>
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
-                              <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
-                              <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
+                              <ui-icon name="IdCard" size="md" class="text-primary" />
+                              <div 
+                                class="font-bold text-base-content truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.driver"
+                                (click)="onViewDriverDetail(record.driverId, $event)">
                                 {{ record.driver }}
                               </div>
-                              <div class="text-xs text-base-content/50 truncate max-w-[150px] tooltip" [attr.data-tip]="record.machine">
+                              <div 
+                                class="text-xs text-base-content/50 truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.machine"
+                                (click)="onViewMachineDetail(record.machineId, $event)">
                                 {{ record.machine }}
                               </div>
                             </div>
@@ -368,8 +355,11 @@ interface DailyRecordView {
                           <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm hidden xl:table-cell">
                             {{ record.dieselExpense > 0 ? formatCurrency(record.dieselExpense) : '-' }}
                           </td>
+                          <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm hidden xl:table-cell">
+                            {{ record.driverPayment > 0 ? formatCurrency(record.driverPayment) : '-' }}
+                          </td>
                           <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm hidden xl:table-cell">
-                            {{ formatCurrency(record.income - record.dieselExpense) }}
+                            {{ formatCurrency(record.income - record.dieselExpense - record.driverPayment) }}
                           </td>
                           <td class="text-center py-4">
                             @if (record.status === 'complete') {
@@ -384,10 +374,8 @@ interface DailyRecordView {
                                 Incidente
                               </div>
                             } @else if (record.status === 'no_worked') {
-                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                                </svg>
+                              <div class="badge badge-sm inline-flex items-center justify-center gap-1 bg-base-300/40 text-base-content/70 border border-base-300/60 min-h-[1.5rem]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-base-content/70 opacity-0"></span>
                                 No Trabajado
                               </div>
                             } @else {
@@ -402,30 +390,32 @@ interface DailyRecordView {
                               @if (record.hasIncident) {
                                 <div class="tooltip tooltip-top" data-tip="Tiene observaciones">
                                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
-                                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                    </svg>
+                                    <ui-icon name="Info" size="sm" class="text-primary group-hover:scale-110 transition-transform" />
                                   </div>
                                 </div>
                               } @else {
                                 <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
-                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                  </svg>
+                                  <ui-icon name="Info" size="sm" class="text-base-content/30" />
                                 </div>
                               }
                             </div>
                           </td>
-                          <td class="pr-4 lg:pr-6 text-right py-4" (click)="$event.stopPropagation()">
-                            <a 
-                              [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 lg:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 lg:gap-1.5 font-normal justify-center min-w-[44px]">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
-                              <span class="hidden lg:inline">Ver</span>
-                            </a>
+                          <td class="pr-4 lg:pr-6 text-center py-4" (click)="$event.stopPropagation()">
+                            <div class="flex flex-col items-center gap-2 w-full" style="display: flex !important; flex-direction: column !important; align-items: center !important; gap: 0.5rem !important; width: 100%;">
+                              <a 
+                                [routerLink]="['/registro-diario', record.id]"
+                                class="btn btn-xs h-8 px-3 lg:px-4 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal justify-center whitespace-nowrap">
+                                <ui-icon name="Eye" size="sm" />
+                                <span class="hidden lg:inline">Ver</span>
+                              </a>
+                              <button
+                                (click)="onDeleteRecord(record)"
+                                class="btn btn-xs h-8 px-3 lg:px-4 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-normal justify-center whitespace-nowrap"
+                                [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                                <ui-icon name="Trash2" size="sm" />
+                                <span class="hidden lg:inline">Eliminar</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       } @empty {
@@ -433,9 +423,7 @@ interface DailyRecordView {
                           <td colspan="8" class="py-16 sm:py-20">
                             <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                               <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="xl" class="text-base-content/40" />
                               </div>
                               <div class="space-y-2">
                                 <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -462,21 +450,6 @@ interface DailyRecordView {
                   </div>
                 } @else if (isLoading() && paginatedRecords().length === 0 && !sequentialState.contentError()) {
                   <app-loading-skeleton type="table" [count]="10" />
-                } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-                  <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                    <div class="flex flex-col items-center gap-4 text-center">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      <div>
-                        <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                        <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                        <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                          Reintentar
-                        </button>
-                      </div>
-                    </div>
-                  </div>
                 } @else {
                   <table class="table w-full table-min-height">
                     <thead class="bg-base-50 border-b border-base-200">
@@ -484,6 +457,7 @@ interface DailyRecordView {
                         <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[200px]">Conductor</th>
                         <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
                         <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
                         <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
                       </tr>
@@ -491,16 +465,13 @@ interface DailyRecordView {
                     <tbody>
                       @for (record of paginatedRecords(); track record.id; let i = $index) {
                         <tr 
-                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
+                          class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                           [style.animation-delay.ms]="i * 30"
-                          [style.animation-fill-mode]="'both'"
-                          (click)="onViewRecordDetail(record)">
+                          [style.animation-fill-mode]="'both'">
                           <td class="pl-6 py-4">
                             <div class="flex items-center gap-3">
                               <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="sm" />
                               </div>
                               <div>
                                 <div class="font-bold text-base-content">{{ record.date }}</div>
@@ -510,17 +481,26 @@ interface DailyRecordView {
                           </td>
                           <td class="py-4 text-center">
                             <div class="flex flex-col items-center gap-2">
-                              <app-driver-icon class="w-5 h-5 text-primary"></app-driver-icon>
-                              <div class="font-bold text-base-content truncate max-w-[150px] tooltip" [attr.data-tip]="record.driver">
+                              <ui-icon name="IdCard" size="md" class="text-primary" />
+                              <div 
+                                class="font-bold text-base-content truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.driver"
+                                (click)="onViewDriverDetail(record.driverId, $event)">
                                 {{ record.driver }}
                               </div>
-                              <div class="text-xs text-base-content/50 truncate max-w-[150px] tooltip" [attr.data-tip]="record.machine">
+                              <div 
+                                class="text-xs text-base-content/50 truncate max-w-[150px] tooltip cursor-pointer hover:text-primary transition-colors" 
+                                [attr.data-tip]="record.machine"
+                                (click)="onViewMachineDetail(record.machineId, $event)">
                                 {{ record.machine }}
                               </div>
                             </div>
                           </td>
                           <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
                             {{ formatCurrency(record.income) }}
+                          </td>
+                          <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                            {{ record.driverPayment > 0 ? formatCurrency(record.driverPayment) : '-' }}
                           </td>
                           <td class="text-center py-4">
                             @if (record.status === 'complete') {
@@ -535,10 +515,8 @@ interface DailyRecordView {
                                 Incidente
                               </div>
                             } @else if (record.status === 'no_worked') {
-                              <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                                </svg>
+                              <div class="badge badge-sm inline-flex items-center justify-center gap-1 bg-base-300/40 text-base-content/70 border border-base-300/60 min-h-[1.5rem]">
+                                <span class="w-1.5 h-1.5 rounded-full bg-base-content/70 opacity-0"></span>
                                 No Trabajado
                               </div>
                             } @else {
@@ -548,16 +526,22 @@ interface DailyRecordView {
                               </div>
                             }
                           </td>
-                          <td class="pr-6 text-right py-4" (click)="$event.stopPropagation()">
-                            <a 
-                              [routerLink]="['/registro-diario', record.id]"
-                              class="btn btn-xs h-8 px-2 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 font-normal">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
-                              <span>Ver</span>
-                            </a>
+                          <td class="pr-6 text-center py-4" (click)="$event.stopPropagation()">
+                            <div class="flex flex-col items-center gap-2 w-full" style="display: flex !important; flex-direction: column !important; align-items: center !important; gap: 0.5rem !important; width: 100%;">
+                              <a 
+                                [routerLink]="['/registro-diario', record.id]"
+                                class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal whitespace-nowrap">
+                                <ui-icon name="Eye" size="sm" />
+                                <span>Ver</span>
+                              </a>
+                              <button
+                                (click)="onDeleteRecord(record)"
+                                class="btn btn-xs h-8 px-3 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-normal whitespace-nowrap"
+                                [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                                <ui-icon name="Trash2" size="sm" />
+                                <span>Eliminar</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       } @empty {
@@ -565,9 +549,7 @@ interface DailyRecordView {
                           <td colspan="5" class="py-16 sm:py-20">
                             <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                               <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                </svg>
+                                <ui-icon name="Calendar" size="xl" class="text-base-content/40" />
                               </div>
                               <div class="space-y-2">
                                 <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -596,21 +578,6 @@ interface DailyRecordView {
               @for (i of [1,2,3,4,5]; track i) {
                 <app-loading-skeleton type="card" />
               }
-            } @else if (sequentialState.contentError() && paginatedRecords().length === 0) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar registros</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los registros desde el servidor.</p>
-                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                      Reintentar
-                    </button>
-                  </div>
-                </div>
-              </div>
             } @else {
               @for (record of paginatedRecords(); track record.id) {
               <div 
@@ -634,46 +601,50 @@ interface DailyRecordView {
                         [class.bg-gradient-to-br]="record.status !== 'incident'"
                         [class.from-primary/20]="record.status !== 'incident'"
                         [class.to-primary/10]="record.status !== 'incident'">
-                        <app-bus-icon 
-                          [class]="record.status === 'incident' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
+                        <ui-icon 
+                          name="BusFront" 
+                          size="lg" 
+                          [class]="record.status === 'incident' ? 'text-error' : 'text-primary'" />
                       </div>
                     </div>
 
                     <!-- Información Principal -->
                     <div class="flex-1 min-w-0">
-                      <div class="flex items-start justify-between gap-2 mb-2">
-                        <div class="flex-1 min-w-0">
-                          <h3 class="font-bold text-base text-base-content truncate tooltip" [attr.data-tip]="record.machine">
+                      <!-- Vista móvil: Layout vertical con elementos separados -->
+                      <div class="space-y-2.5">
+                        <div class="flex items-start justify-between gap-2">
+                          <h3 class="font-bold text-base text-base-content tooltip" [attr.data-tip]="record.machine">
                             {{ record.machine }}
                           </h3>
-                          <div class="flex items-center gap-2 mt-1.5">
-                            <div class="avatar placeholder shrink-0">
-                              <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                                <app-driver-icon class="w-full h-full" />
-                              </div>
-                            </div>
-                            <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
-                              {{ record.driver }}
-                            </span>
-                          </div>
                         </div>
-                        
-                        <!-- Badge Estado -->
-                        <div class="shrink-0">
+                        <div class="flex items-center gap-2">
+                          <div class="avatar placeholder shrink-0">
+                            <div class="bg-linear-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
+                              <ui-icon name="IdCard" size="sm" />
+                            </div>
+                          </div>
+                          <span 
+                            class="text-sm tooltip wrap-break-word" 
+                            [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                            [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                            [class.italic]="record.driver === 'Sin asignar'"
+                            [attr.data-tip]="record.driver">
+                            {{ record.driver }}
+                          </span>
+                        </div>
+                        <!-- Badge Estado - Debajo del nombre -->
+                        <div>
                           @if (record.status === 'complete') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/10">
                               Completo
                             </div>
                           } @else if (record.status === 'incident') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                              <ui-icon name="OctagonAlert" size="xs" class="mr-1" />
                               Incidente
                             </div>
                           } @else if (record.status === 'no_worked') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-300/40 text-base-content/70 border border-base-300/60 shadow-sm">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1.5">
-                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" />
-                              </svg>
                               No Trabajado
                             </div>
                           } @else {
@@ -711,11 +682,11 @@ interface DailyRecordView {
                     </div>
                   </div>
                   
-                  <!-- Botón de Acción -->
-                  <div class="mt-2">
+                  <!-- Botones de Acción -->
+                  <div class="mt-2 flex gap-2">
                     <a 
                       [routerLink]="['/registro-diario', record.id]"
-                      class="btn btn-sm h-11 min-h-[44px] w-full rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
+                      class="btn btn-sm h-11 min-h-11 flex-1 rounded-lg btn-ghost text-base-content/70 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-medium"
                       [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
                         <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
@@ -723,6 +694,12 @@ interface DailyRecordView {
                       </svg>
                       Ver detalle
                     </a>
+                    <button
+                      (click)="onDeleteRecord(record)"
+                      class="btn btn-sm h-11 min-h-11 rounded-lg btn-ghost text-error/70 hover:text-error hover:bg-error/10 transition-all duration-200 gap-1.5 font-medium"
+                      [attr.aria-label]="'Eliminar registro de ' + record.driver">
+                      <ui-icon name="Trash2" size="sm" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -785,24 +762,77 @@ interface DailyRecordView {
       }
     }
     
+    @keyframes skeletonFadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
     .skeleton-shimmer {
       background: linear-gradient(90deg, #f0f0f0 0%, #f8f8f8 50%, #f0f0f0 100%);
       background-size: 2000px 100%;
       animation: shimmer 2s infinite;
+    }
+    
+    .skeleton-entering {
+      animation: skeletonFadeIn 400ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    
+    /* Forzar layout vertical para botones de acciones */
+    table tbody td:last-child {
+      width: auto !important;
+      min-width: 100px !important;
+    }
+    
+    @media (min-width: 1024px) {
+      table tbody td:last-child {
+        min-width: 140px !important;
+      }
+    }
+    
+    table tbody td:last-child > div {
+      display: flex !important;
+      flex-direction: column !important;
+      flex-wrap: nowrap !important;
+      align-items: center !important;
+      gap: 0.5rem !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+    
+    /* Forzar que los botones estén en columna, sobrescribiendo cualquier estilo inline */
+    table tbody td:last-child > div.flex {
+      flex-direction: column !important;
+      align-items: center !important;
+    }
+    
+    table tbody td:last-child > div > a,
+    table tbody td:last-child > div > button {
+      width: auto !important;
+      min-width: fit-content !important;
+      flex-shrink: 0 !important;
     }
   `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BitacoraOperaciones implements OnInit {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   private fb = inject(FormBuilder);
   private dailyRecordService = inject(DailyRecordService);
   private alertModalService = inject(AlertModalService);
+  private confirmModalService = inject(ConfirmModalService);
   private driverService = inject(DriverService);
   private destroyRef = inject(DestroyRef);
   private loadingStateService = inject(LoadingStateService);
   private newRecordModalService = inject(NewRecordModalService);
   private storageService = inject(StorageService);
+  private globalErrorService = inject(GlobalErrorService);
 
   // Cargar datos del servicio con paginación real
   private recordsResponse = signal<{ datos: UnifiedDailyRecord[]; total: number; pagina: number; por_pagina: number; total_paginas: number }>({
@@ -829,6 +859,11 @@ export class BitacoraOperaciones implements OnInit {
     this.dailyRecordService.getDailyRecordsKPIs().pipe(
       catchError((error) => {
         console.error('Error cargando KPIs:', error);
+        // Mostrar error global en lugar de error local
+        this.globalErrorService.showError(
+          'No se pudieron cargar los datos desde el servidor.',
+          'Error al cargar registros diarios'
+        );
         this.sequentialState.setKPIsReady(true); // Marcar error
         setTimeout(() => {
           this.kpisLoading.set(false);
@@ -873,12 +908,14 @@ export class BitacoraOperaciones implements OnInit {
   statusFilter = signal('all');
   dateFilter = signal('');
   currentPage = signal(1);
-  itemsPerPage = 20; // Paginación real del backend
+  itemsPerPage = 15; // Paginación real del backend
   isLoading = signal(true);
   isLoadingPage = signal(false);
   private isLoadingRecords = false; // Flag para evitar múltiples peticiones simultáneas
   private isManualReload = false; // Flag para indicar que estamos recargando manualmente (evita que el effect interfiera)
   private isInitialLoad = true; // Flag para evitar que el effect se ejecute en la carga inicial
+  private lastPage = 1; // Rastrear la última página para actualizar query params solo cuando cambia
+  private isRestoringFromQueryParams = false; // Flag para evitar actualizar query params cuando se restauran desde la URL
   showFiltersMobile = signal(false);
   
   // Función helper para obtener fechas del mes actual
@@ -951,14 +988,37 @@ export class BitacoraOperaciones implements OnInit {
   });
   
   onRecordFilterChange(newFilters: Record<string, any>): void {
-    const filters = {
-      chofer: newFilters['chofer'] || null,
-      desde: newFilters['desde'] || null,
-      hasta: newFilters['hasta'] || null,
-      orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
-    };
+    // Si se recibe un objeto vacío (al limpiar filtros), restaurar valores por defecto del mes actual
+    const isClearing = Object.keys(newFilters).length === 0;
+    
+    let filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' };
+    
+    if (isClearing) {
+      // Restaurar filtros por defecto (mes actual)
+      const { desde, hasta } = this.getCurrentMonthDates();
+      filters = {
+        chofer: null,
+        desde,
+        hasta,
+        orden: 'mas_reciente'
+      };
+    } else {
+      // Aplicar los nuevos filtros
+      filters = {
+        chofer: newFilters['chofer'] || null,
+        desde: newFilters['desde'] || null,
+        hasta: newFilters['hasta'] || null,
+        orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+      };
+    }
+    
     this.recordFilters.set(filters);
-    this.showFiltersMobile.set(false);
+    
+    // Actualizar query params para persistir los filtros
+    this.updateQueryParams(filters);
+    
+    // NO cerrar automáticamente el panel móvil - dejar que el usuario lo cierre manualmente
+    // Esto permite seleccionar múltiples filtros sin que el panel se cierre
     
     // Actualizar los filtros existentes para compatibilidad
     if (filters.desde) {
@@ -969,6 +1029,12 @@ export class BitacoraOperaciones implements OnInit {
     
     // Resetear a página 1 cuando cambian los filtros
     this.currentPage.set(1);
+    
+    // Asegurar que se carguen los registros con los nuevos filtros
+    // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
+    untracked(() => {
+      this.loadRecords();
+    });
   }
 
   toggleFiltersMobile(): void {
@@ -1103,6 +1169,14 @@ export class BitacoraOperaciones implements OnInit {
       por_pagina: this.itemsPerPage
     };
     
+    // Debug: Log para verificar filtros aplicados
+    console.log('🔍 Filtros aplicados:', {
+      recordFilters,
+      filters,
+      currentPage: this.currentPage(),
+      itemsPerPage: this.itemsPerPage
+    });
+    
     // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
     if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
       this.isLoading.set(true);
@@ -1150,8 +1224,12 @@ export class BitacoraOperaciones implements OnInit {
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
             
-            // Si es la primera carga y hay error, marcar error
+            // Si es la primera carga y hay error, mostrar error global
             if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
+              this.globalErrorService.showError(
+                'No se pudieron cargar los registros diarios desde el servidor.',
+                'Error al cargar registros diarios'
+              );
               this.sequentialState.setContentReady(true);
             }
           });
@@ -1181,6 +1259,14 @@ export class BitacoraOperaciones implements OnInit {
       const date = this.dateFilter();
       const page = this.currentPage();
       const filters = this.recordFilters(); // También reaccionar a cambios en recordFilters
+      
+      // Actualizar query params cuando cambia la página (pero no cuando cambian los filtros, eso se hace en onRecordFilterChange)
+      if (page !== this.lastPage) {
+        this.lastPage = page;
+        untracked(() => {
+          this.updateQueryParams(filters);
+        });
+      }
       
       // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
       untracked(() => {
@@ -1213,10 +1299,14 @@ export class BitacoraOperaciones implements OnInit {
       id: record.id,
       date: formattedDate,
       machine: record.maquina_identificador || `Máquina ${record.maquina_id}`,
+      machineId: record.maquina_id,
       driver: record.chofer_nombre || '',
+      driverId: record.chofer_id,
       status,
       income: record.recaudado,
       dieselExpense: record.costo_diesel,
+      driverPayment: record.pago_chofer ?? 0,
+      net: record.neto ?? (record.recaudado - record.costo_diesel - (record.pago_chofer ?? 0)),
       hasIncident: record.es_emergencia || record.estado === 'INCIDENTE_REPORTADO'
     };
   }
@@ -1252,17 +1342,39 @@ export class BitacoraOperaciones implements OnInit {
   goToPreviousPage(): void {
     if (this.currentPage() > 1) {
       this.currentPage.update(p => p - 1);
+      // Actualizar query params
+      this.updateQueryParams(this.recordFilters());
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadRecords();
+      });
     }
   }
 
   goToNextPage(): void {
     if (this.currentPage() < this.totalPages()) {
       this.currentPage.update(p => p + 1);
+      // Actualizar query params
+      this.updateQueryParams(this.recordFilters());
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadRecords();
+      });
     }
   }
 
   goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return; // Ya estamos en esa página
+    }
     this.currentPage.set(page);
+    // Actualizar query params
+    this.updateQueryParams(this.recordFilters());
+    // Asegurar que se carguen los registros de la nueva página
+    // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
+    untracked(() => {
+      this.loadRecords();
+    });
   }
 
   openNewRecordModal(): void {
@@ -1337,7 +1449,16 @@ export class BitacoraOperaciones implements OnInit {
               const errorDetail = error?.error?.detail || error?.message || '';
               const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
               
-              if (errorDetail.includes('Ya existe un registro diario') || 
+              // Verificar si es error de máquina duplicada (TC-181)
+              if (typeof errorDetail === 'string' && 
+                  (errorDetail.includes('Ya existe un registro para') && 
+                   errorDetail.includes('máquina') && 
+                   errorDetail.includes('fecha'))) {
+                errorTitle = 'Registro Duplicado';
+                errorMessage = errorDetail; // Usar el mensaje completo del backend que incluye info de máquina y chofer
+              } 
+              // Verificar si es error de chofer duplicado
+              else if (errorDetail.includes('Ya existe un registro diario') || 
                   errorDetail.includes('registro diario para este chofer y fecha') ||
                   errorDetail.toLowerCase().includes('duplicado')) {
                 errorTitle = 'Registro Duplicado';
@@ -1388,18 +1509,175 @@ export class BitacoraOperaciones implements OnInit {
   }
 
   ngOnInit(): void {
-    // Inicializar filtros con el mes actual por defecto
-    const { desde, hasta } = this.getCurrentMonthDates();
-    this.recordFilters.set({
-      desde,
-      hasta,
-      orden: 'mas_reciente'
-    });
+    // Cargar choferes primero y esperar a que se carguen antes de restaurar filtros
+    this.driverService.getActiveDrivers()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (drivers) => {
+          this.drivers.set(drivers);
+          
+          // Una vez que los choferes están cargados, restaurar filtros desde query params
+          firstValueFrom(this.route.queryParams).then(params => {
+            this.isRestoringFromQueryParams = true;
+            const { desde, hasta } = this.getCurrentMonthDates();
+            
+            // Restaurar filtros desde query params o usar valores por defecto
+            const choferValue = params['chofer'];
+            const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
+              chofer: choferValue && choferValue !== '' ? choferValue : null,
+              desde: params['desde'] || desde,
+              hasta: params['hasta'] || hasta,
+              orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+            };
+            
+            // Establecer los filtros directamente (no verificar si cambiaron para asegurar que se muestren)
+            this.recordFilters.set(filters);
+            
+            // Restaurar página si existe en query params
+            if (params['pagina']) {
+              const pagina = parseInt(params['pagina'], 10);
+              if (!isNaN(pagina) && pagina > 0) {
+                this.currentPage.set(pagina);
+                this.lastPage = pagina;
+              }
+            }
+            
+            // Marcar que ya no estamos restaurando desde query params
+            setTimeout(() => {
+              this.isRestoringFromQueryParams = false;
+            }, 100);
+            
+            // Cargar datos después de restaurar los filtros
+            this.loadRecords();
+          }).catch(() => {
+            // Si hay error, usar valores por defecto
+            const { desde, hasta } = this.getCurrentMonthDates();
+            this.recordFilters.set({
+              desde,
+              hasta,
+              orden: 'mas_reciente'
+            });
+            this.loadRecords();
+          });
+        },
+        error: (error) => {
+          console.error('Error cargando choferes:', error);
+          // Mantener array vacío en caso de error
+          this.drivers.set([]);
+          
+          // Aún así, restaurar filtros con valores por defecto
+          firstValueFrom(this.route.queryParams).then(params => {
+            const { desde, hasta } = this.getCurrentMonthDates();
+            const choferValue = params['chofer'];
+            this.recordFilters.set({
+              chofer: choferValue && choferValue !== '' ? choferValue : null,
+              desde: params['desde'] || desde,
+              hasta: params['hasta'] || hasta,
+              orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+            });
+            this.loadRecords();
+          }).catch(() => {
+            const { desde, hasta } = this.getCurrentMonthDates();
+            this.recordFilters.set({
+              desde,
+              hasta,
+              orden: 'mas_reciente'
+            });
+            this.loadRecords();
+          });
+        }
+      });
     
-    // Cargar datos iniciales manualmente (el effect no se ejecuta en la carga inicial)
-    this.loadRecords();
-    // Cargar choferes activos para el filtro
-    this.loadDrivers();
+    // También suscribirse a cambios posteriores de query params (por si se navega de vuelta)
+    this.route.queryParams
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(params => {
+        // Solo restaurar si no estamos actualizando nosotros mismos
+        if (this.isRestoringFromQueryParams) {
+          return;
+        }
+        
+        const { desde, hasta } = this.getCurrentMonthDates();
+        
+        // Restaurar filtros desde query params
+        const choferValue = params['chofer'];
+        const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
+          chofer: choferValue && choferValue !== '' ? choferValue : null,
+          desde: params['desde'] || desde,
+          hasta: params['hasta'] || hasta,
+          orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
+        };
+        
+        // Solo actualizar si los filtros son diferentes
+        const currentFilters = this.recordFilters();
+        const filtersChanged = 
+          filters.chofer !== currentFilters.chofer ||
+          filters.desde !== currentFilters.desde ||
+          filters.hasta !== currentFilters.hasta ||
+          filters.orden !== currentFilters.orden;
+        
+        if (filtersChanged) {
+          this.isRestoringFromQueryParams = true;
+          this.recordFilters.set(filters);
+          
+          // Restaurar página si existe en query params
+          if (params['pagina']) {
+            const pagina = parseInt(params['pagina'], 10);
+            if (!isNaN(pagina) && pagina > 0 && pagina !== this.currentPage()) {
+              this.currentPage.set(pagina);
+              this.lastPage = pagina;
+            }
+          } else if (this.currentPage() !== 1) {
+            this.currentPage.set(1);
+            this.lastPage = 1;
+          }
+          
+          setTimeout(() => {
+            this.isRestoringFromQueryParams = false;
+          }, 100);
+        }
+      });
+  }
+  
+  /**
+   * Actualiza los query params de la URL para persistir los filtros
+   */
+  private updateQueryParams(filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }): void {
+    // No actualizar query params si estamos restaurando desde la URL
+    if (this.isRestoringFromQueryParams) {
+      return;
+    }
+    
+    const queryParams: Record<string, string | null> = {};
+    
+    if (filters.chofer) {
+      queryParams['chofer'] = filters.chofer;
+    }
+    if (filters.desde) {
+      queryParams['desde'] = filters.desde;
+    }
+    if (filters.hasta) {
+      queryParams['hasta'] = filters.hasta;
+    }
+    if (filters.orden) {
+      queryParams['orden'] = filters.orden;
+    }
+    
+    // Agregar página actual (solo si es mayor a 1 para mantener URL limpia)
+    if (this.currentPage() > 1) {
+      queryParams['pagina'] = this.currentPage().toString();
+    } else {
+      // Si volvemos a la página 1, eliminar el parámetro de página
+      queryParams['pagina'] = null;
+    }
+    
+    // Actualizar URL sin recargar la página
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queryParams,
+      queryParamsHandling: 'merge',
+      replaceUrl: true // Reemplazar en lugar de agregar al historial
+    });
   }
 
   private loadDrivers(): void {
@@ -1417,14 +1695,11 @@ export class BitacoraOperaciones implements OnInit {
       });
   }
 
-  // Función para reintentar carga
+  // Función para reintentar carga (ya no se usa, pero se mantiene por compatibilidad)
   retryLoad(): void {
-    this.sequentialState.resetErrors();
-    this.sequentialState.reset();
-    this.isLoading.set(true);
-    this.currentPage.set(1);
-    this.isInitialLoad = false; // Asegurar que el effect funcione después de un retry
-    this.loadRecords();
+    // Limpiar error global y recargar página
+    this.globalErrorService.clearError();
+    this.globalErrorService.reloadPage();
   }
 
 
@@ -1513,6 +1788,56 @@ export class BitacoraOperaciones implements OnInit {
   
   onViewRecordDetail(record: DailyRecordView): void {
     this.router.navigate(['/registro-diario', record.id]);
+  }
+
+  async onDeleteRecord(record: DailyRecordView): Promise<void> {
+    const confirmed = await this.confirmModalService.open({
+      title: 'Eliminar Registro Diario',
+      message: `¿Estás seguro de que deseas eliminar el registro de ${record.driver} del ${record.date}? Esta acción no se puede deshacer y afectará los reportes mensuales.`,
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      await firstValueFrom(this.dailyRecordService.deleteDailyRecord(record.id));
+      
+      // Mostrar mensaje de éxito
+      this.alertModalService.show({
+        type: 'success',
+        title: 'Registro Eliminado',
+        message: `El registro de ${record.driver} del ${record.date} ha sido eliminado correctamente.`,
+        buttonText: 'Entendido'
+      });
+      
+      // Recargar la lista de registros
+      this.loadRecords();
+    } catch (error: any) {
+      console.error('Error eliminando registro:', error);
+      
+      const errorMessage = error?.error?.detail || error?.message || 'No se pudo eliminar el registro. Por favor, intenta nuevamente.';
+      
+      this.alertModalService.show({
+        type: 'error',
+        title: 'Error al Eliminar',
+        message: errorMessage,
+        buttonText: 'Entendido'
+      });
+    }
+  }
+
+  onViewMachineDetail(machineId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
+  }
+
+  onViewDriverDetail(driverId: number, event: Event): void {
+    event.stopPropagation();
+    this.router.navigate(['/choferes', driverId]);
   }
 }
 

@@ -15,20 +15,21 @@ import { MachineDailyRecord, MachineDailyRecordFilters, MachineAssignment, Maint
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { calculateMachineDocumentStatus } from '../../../shared/utils/document.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
-import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
+import { GlobalErrorService } from '../../../shared/services/global-error.service';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
+import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
 
 @Component({
   selector: 'app-machine-detail',
-  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, BusIcon],
+  imports: [CommonModule, FormsModule, MachineDailyRecords, MachineAssignmentHistory, MachineMaintenance, UiIconComponent],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (machine()) {
         <!-- Hero Section Premium -->
-        <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+        <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
             <div class="relative">
@@ -47,9 +48,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto btn btn-ghost btn-sm gap-2 hover:bg-base-200/50 transition-all shrink-0 z-10"
                 aria-label="Volver a la lista de máquinas"
                 (click)="onBack()">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-                </svg>
+                <ui-icon name="ChevronLeft" size="sm" />
                 <span class="hidden sm:inline">Volver</span>
               </button>
             </div>
@@ -59,8 +58,8 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               <!-- Información de la máquina -->
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
-                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <app-bus-icon class="w-6 h-6" />
+                  <div class="w-12 h-12 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <ui-icon name="BusFront" size="md" />
                   </div>
                   <div class="min-w-0">
                     <h2 class="text-xl md:text-2xl font-bold text-base-content">
@@ -94,19 +93,14 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     type="button"
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Eliminar</span>
                   </button>
                   <button
                     type="button"
                     class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="toggleEditGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                    </svg>
+                    <ui-icon name="Pencil" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Editar</span>
                   </button>
                 } @else {
@@ -120,9 +114,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     type="button"
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
                 }
@@ -186,9 +178,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
                 <div class="card-body p-6">
                   <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
-                    </svg>
+                    <ui-icon name="Settings" size="sm" class="text-primary" />
                     Ficha Técnica
                   </h3>
                   <div class="grid grid-cols-1 gap-4">
@@ -238,8 +228,9 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                             type="text"
                             class="input input-sm w-full mt-1 font-mono font-bold"
                             [value]="editPatente()"
-                            (input)="editPatente.set($any($event.target).value)"
+                            (input)="onPatenteInput($event)"
                             placeholder="Patente">
+                          <p class="text-[11px] text-base-content/60 mt-1">Formato: ABCD-12 (mayúsculas, 4 letras + guion + 2 números).</p>
                         } @else {
                           <div class="font-mono font-bold text-base-content">
                             {{ machine()?.patente || '--' }}
@@ -279,9 +270,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl h-full animate-card-stagger" [style.animation-delay]="'100ms'">
                 <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
                 <h3 class="font-bold text-lg flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M10 2c-1.716 0-3.408.106-5.07.31C3.806 2.45 3 3.414 3 4.517V17.25a.75.75 0 0 0 1.075.676L10 15.082l5.925 2.844A.75.75 0 0 0 17 17.25V4.517c0-1.103-.806-2.068-1.93-2.207A41.403 41.403 0 0 0 10 2Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="FileText" size="sm" class="text-primary" />
                   Documentación
                 </h3>
               </div>
@@ -300,17 +289,21 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     [class.bg-success/5]="docStatus().revision_tecnica?.estado === 'ok'"
                     [class.text-success]="docStatus().revision_tecnica?.estado === 'ok'"
                     [class.border-success/20]="docStatus().revision_tecnica?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-                      </svg>
+                    <ui-icon name="CheckCircle2" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Revisión Técnica
                       </p>
-                      @if (!isEditingGeneral() && docStatus().revision_tecnica?.estado === 'error') {
-                        <span class="badge badge-xs badge-error badge-outline">Vencida</span>
+                      @if (!isEditingGeneral() && docStatus().revision_tecnica) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().revision_tecnica?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().revision_tecnica?.estado === 'warning'"
+                          [class.badge-error]="docStatus().revision_tecnica?.estado === 'error'">
+                          {{ docStatus().revision_tecnica?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -340,17 +333,21 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     [class.bg-success/5]="docStatus().permiso_circulacion?.estado === 'ok'"
                     [class.text-success]="docStatus().permiso_circulacion?.estado === 'ok'"
                     [class.border-success/20]="docStatus().permiso_circulacion?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                      </svg>
+                    <ui-icon name="FileText" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Permiso Circulación
                       </p>
-                      @if (!isEditingGeneral() && docStatus().permiso_circulacion?.estado === 'error') {
-                        <span class="badge badge-xs badge-error badge-outline">Vencido</span>
+                      @if (!isEditingGeneral() && docStatus().permiso_circulacion) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().permiso_circulacion?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().permiso_circulacion?.estado === 'warning'"
+                          [class.badge-error]="docStatus().permiso_circulacion?.estado === 'error'">
+                          {{ docStatus().permiso_circulacion?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -380,17 +377,21 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                     [class.bg-success/5]="docStatus().seguro_obligatorio?.estado === 'ok'"
                     [class.text-success]="docStatus().seguro_obligatorio?.estado === 'ok'"
                     [class.border-success/20]="docStatus().seguro_obligatorio?.estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
-                      </svg>
+                    <ui-icon name="CheckCircle2" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
                       <p class="text-xs font-bold uppercase tracking-wider text-base-content/60">
                         Seguro SOAP
                       </p>
-                      @if (!isEditingGeneral() && docStatus().seguro_obligatorio?.estado === 'ok') {
-                        <span class="badge badge-xs badge-success badge-outline">Vigente</span>
+                      @if (!isEditingGeneral() && docStatus().seguro_obligatorio) {
+                        <span
+                          class="badge badge-xs badge-outline"
+                          [class.badge-success]="docStatus().seguro_obligatorio?.estado === 'ok'"
+                          [class.badge-warning]="docStatus().seguro_obligatorio?.estado === 'warning'"
+                          [class.badge-error]="docStatus().seguro_obligatorio?.estado === 'error'">
+                          {{ docStatus().seguro_obligatorio?.texto }}
+                        </span>
                       }
                     </div>
                     @if (isEditingGeneral()) {
@@ -411,7 +412,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               
               <!-- Conductor responsable -->
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden h-full animate-card-stagger" [style.animation-delay]="'200ms'">
-                <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                 <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                   @if (machine()!.chofer_actual) {
                     <div class="avatar mb-4">
@@ -458,9 +459,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                   } @else {
                     <div class="avatar mb-4 placeholder">
                       <div class="w-24 rounded-full bg-base-200 ring ring-base-100 ring-offset-2 flex items-center justify-center text-base-content/20">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-10 h-10">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                        </svg>
+                        <ui-icon name="UserRound" size="lg" />
                       </div>
                     </div>
                     <h4 class="text-lg font-bold text-base-content/70">
@@ -511,7 +510,12 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                 [records]="dailyRecords()"
                 [choferes]="choferes()"
                 [filters]="recordFilters()"
+                [totalRecords]="dailyRecordsTotal()"
+                [currentPage]="dailyRecordsCurrentPage()"
+                [totalPages]="dailyRecordsTotalPages()"
+                [isLoading]="dailyRecordsLoading()"
                 (filterChange)="onRecordFilterChange($event)"
+                (pageChange)="onDailyRecordsPageChange($event)"
                 (viewDetail)="onViewRecordDetail($event)">
               </app-machine-daily-records>
             </div>
@@ -521,7 +525,14 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           @if (activeTab() === 'assignments' && loadedTabs().has('assignments')) {
             <div class="animate-tab-enter">
               <app-machine-assignment-history
-                [assignments]="assignments()">
+                [assignments]="assignments()"
+                [totalAssignments]="assignmentsTotal()"
+                [currentPage]="assignmentsCurrentPage()"
+                [totalPages]="assignmentsTotalPages()"
+                [isLoading]="assignmentsLoading()"
+                [activeFilter]="assignmentsFilter()"
+                (filterChange)="onAssignmentFilterChange($event)"
+                (pageChange)="onAssignmentPageChange($event)">
               </app-machine-assignment-history>
             </div>
           }
@@ -535,9 +546,16 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
                   [records]="maintenanceRecords()"
                   [availableItems]="maintenanceItems()"
                   [filters]="maintenanceFilters()"
+                  [totalRecords]="maintenanceTotal()"
+                  [totalRecordsGlobal]="maintenanceTotalGlobal()"
+                  [gastoMesActual]="maintenanceGastoMesActual()"
+                  [currentPage]="maintenanceCurrentPage()"
+                  [totalPages]="maintenanceTotalPages()"
+                  [isLoading]="maintenanceLoading()"
                   (recordAdded)="onMaintenanceRecordAdded($event)"
                   (recordDeleted)="onMaintenanceRecordDeleted($event)"
-                  (filterChange)="onMaintenanceFilterChange($event)">
+                  (filterChange)="onMaintenanceFilterChange($event)"
+                  (pageChange)="onMaintenancePageChange($event)">
                 </app-machine-maintenance>
               </div>
             }
@@ -549,7 +567,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
           <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
           <div class="space-y-6 lg:space-y-8 animate-fade-in">
             <!-- Hero Section Skeleton -->
-            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
+            <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6">
               <div class="flex flex-col gap-6">
                 <!-- Header con Botón Volver -->
                 <div class="relative">
@@ -650,7 +668,7 @@ import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
               
               <!-- Conductor responsable Skeleton -->
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden h-full">
-                <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                 <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                   <div class="w-24 h-24 skeleton-shimmer rounded-full mb-4"></div>
                   <div class="h-6 w-40 skeleton-shimmer rounded mb-2"></div>
@@ -846,7 +864,8 @@ export class MachineDetail implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
-  
+  private globalErrorService = inject(GlobalErrorService);
+
   // Estado de carga con umbral de 200ms
   machineLoadingState = this.loadingStateService.createLoadingState();
 
@@ -855,6 +874,13 @@ export class MachineDetail implements OnInit {
   recordFilters = signal<MachineDailyRecordFilters>({});
   maintenanceFilters = signal<MaintenanceFilters>({});
   maintenanceRecords = signal<MaintenanceRecord[]>([]);
+  maintenanceTotal = signal<number>(0);
+  maintenanceTotalGlobal = signal<number>(0);
+  maintenanceGastoMesActual = signal<number>(0);
+  maintenanceCurrentPage = signal<number>(1);
+  maintenanceTotalPages = signal<number>(0);
+  maintenanceLoading = signal<boolean>(false);
+  maintenanceItemsPerPage = 12;
   maintenanceItems = signal<string[]>(['Neumáticos', 'Aceite Motor', 'Filtros', 'Reparación Frenos']);
 
   // Valores editables temporales
@@ -866,10 +892,10 @@ export class MachineDetail implements OnInit {
   editPermisoCirculacion = signal<string>('');
   editSeguroObligatorio = signal<string>('');
   editChoferId = signal<number | null>(null);
-  
+
   // Signal para el valor del select (para evitar problemas con el binding)
   choferSelectValue = signal<string>('');
-  
+
   // Computed signal para el valor del select que siempre está sincronizado
   choferSelectValueComputed = computed(() => {
     if (this.isEditingGeneral()) {
@@ -878,18 +904,18 @@ export class MachineDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editChoferId, verificar choferSelectValue (puede haber sido cambiado por el usuario)
       const selectValue = this.choferSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor de la máquina como fallback
       const machineId = this.machine()?.chofer_actual?.id;
       return machineId ? String(machineId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor de la máquina
     const machineId = this.machine()?.chofer_actual?.id;
     return machineId ? String(machineId) : '';
@@ -936,7 +962,15 @@ export class MachineDetail implements OnInit {
             }
             return machine;
           }),
-          catchError(() => of<Machine | null>(null))
+          catchError((error) => {
+            console.error('Error cargando máquina:', error);
+            // Mostrar error global
+            this.globalErrorService.showError(
+              'No se pudo cargar la información de la máquina desde el servidor.',
+              'Error al cargar máquina'
+            );
+            return of<Machine | null>(null);
+          })
         );
       })
     ),
@@ -948,65 +982,77 @@ export class MachineDetail implements OnInit {
   // Estados de documentos
   docStatus = computed(() => {
     const m = this.machine();
-    if (!m) {
-      return {
-        revision_tecnica: undefined,
-        permiso_circulacion: undefined,
-        seguro_obligatorio: undefined
-      };
-    }
-    return calculateMachineDocumentStatus(m, 30);
+    return m?.documentos_estado ?? {};
   });
 
-  // Cargar choferes activos desde backend (para el select)
+
+  // Cargar choferes activos sin máquina desde backend (para el select)
   choferesSelectData = toSignal(
-    this.driverService.getActiveDrivers().pipe(
+    this.driverService.getActiveDriversWithoutMachine().pipe(
       catchError((error) => {
-        console.error('Error cargando choferes activos:', error);
+        console.error('Error cargando choferes activos sin máquina:', error);
         // Retornar array vacío si hay error
         return of([]);
       })
     ),
     { initialValue: [] }
   );
-  
+
   choferesSelect = computed(() => {
-    return this.choferesSelectData() ?? [];
+    const choferesDisponibles = this.choferesSelectData() ?? [];
+    const choferActual = this.machine()?.chofer_actual;
+
+    if (choferActual && !choferesDisponibles.some((c) => c.id === choferActual.id)) {
+      return [choferActual, ...choferesDisponibles];
+    }
+
+    return choferesDisponibles;
   });
 
   // Choferes ordenados: el asignado primero, luego los demás
   choferesSelectOrdered = computed(() => {
     const choferes = this.choferesSelect();
     const currentChoferId = this.machine()?.chofer_actual?.id;
-    
+
     if (!currentChoferId) {
       return choferes;
     }
-    
+
     // Separar el conductor asignado del resto
     const assignedChofer = choferes.find(c => c.id === currentChoferId);
     const otherChoferes = choferes.filter(c => c.id !== currentChoferId);
-    
+
     // Retornar el asignado primero, luego los demás
     return assignedChofer ? [assignedChofer, ...otherChoferes] : choferes;
   });
-  
+
   // Cargar choferes completos para otros componentes (MachineDailyRecords)
   choferesData = toSignal(
-    this.driverService.getDrivers({ estado: 'activo' }).pipe(
+    this.driverService.getDrivers({ estado: 'activos' }).pipe(
+      map(response => response.datos),
       catchError(() => of([]))
     ),
     { initialValue: [] }
   );
-  
+
   choferes = computed(() => this.choferesData() ?? []);
 
   // Registros diarios
   dailyRecords = signal<MachineDailyRecord[]>([]);
+  dailyRecordsTotal = signal<number>(0);
+  dailyRecordsCurrentPage = signal<number>(1);
+  dailyRecordsTotalPages = signal<number>(0);
+  dailyRecordsLoading = signal<boolean>(false);
+  itemsPerPage = 10;
 
   // Asignaciones
   assignments = signal<MachineAssignment[]>([]);
-  
+  assignmentsTotal = signal<number>(0);
+  assignmentsCurrentPage = signal<number>(1);
+  assignmentsTotalPages = signal<number>(0);
+  assignmentsLoading = signal<boolean>(false);
+  assignmentsFilter = signal<'todas' | 'actual' | 'cerradas'>('todas');
+
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general'])); // 'general' siempre se carga
 
@@ -1026,11 +1072,11 @@ export class MachineDetail implements OnInit {
 
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
-    
+
     if (isEditing) {
       // Cambiar a la tab 'general' antes de activar el modo edición
       this.activeTab.set('general');
-      
+
       // Inicializar valores editables con los valores actuales
       const m = this.machine();
       if (m) {
@@ -1052,7 +1098,7 @@ export class MachineDetail implements OnInit {
       this.choferSelectValue.set('');
       this.editChoferId.set(null);
     }
-    
+
     this.isEditingGeneral.set(isEditing);
   }
 
@@ -1063,9 +1109,21 @@ export class MachineDetail implements OnInit {
     const choferId = this.editChoferId();
     const estado = this.editEstadoOperativo() as 'Operativa' | 'En Taller' | 'Inactiva' | undefined;
     const currentMachine = this.machine();
-    
+
     if (!currentMachine) return;
-    
+
+    const patenteRegex = /^[A-Z]{4}-\d{2}$/;
+
+    if (!this.editPatente() || !patenteRegex.test(this.editPatente())) {
+      this.alertModalService.show({
+        title: 'Patente inválida',
+        message: 'Usa el formato ABCD-12 (mayúsculas, 4 letras, guion y 2 números).',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     // Validar que las fechas de documentación estén presentes
     if (!this.editRevisionTecnica() || !this.editPermisoCirculacion() || !this.editSeguroObligatorio()) {
       this.alertModalService.show({
@@ -1076,10 +1134,10 @@ export class MachineDetail implements OnInit {
       });
       return;
     }
-    
+
     // Asegurar que chofer_id sea un número o null
     const choferIdFinal = choferId !== null && choferId !== undefined ? Number(choferId) : null;
-    
+
     const updateData: Partial<Machine> = {
       numero: currentMachine.numero,
       marca: this.editMarca(),
@@ -1101,7 +1159,7 @@ export class MachineDetail implements OnInit {
           const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
           this.alertModalService.show({
             title: 'Error al Guardar',
-            message: `Hubo un error al guardar los cambios de la máquina: ${errorMessage}. Por favor, intenta nuevamente.`,
+            message: `Hubo un error al guardar los cambios de la máquina: ${errorMessage} Por favor, intenta nuevamente.`,
             type: 'error',
             buttonText: 'Entendido'
           });
@@ -1111,24 +1169,24 @@ export class MachineDetail implements OnInit {
       .subscribe((updatedMachine) => {
         if (updatedMachine) {
           this.isEditingGeneral.set(false);
-          
+
           this.alertModalService.show({
             title: 'Cambios Guardados',
             message: 'La información de la máquina ha sido actualizada correctamente.',
             type: 'success',
             buttonText: 'Entendido'
           });
-          
+
           // Esperar un momento para asegurar que el backend haya procesado
           setTimeout(() => {
             // Forzar recarga de datos actualizando el refreshTrigger
             this.refreshTrigger.set(this.refreshTrigger() + 1);
-            
+
             // Verificar después de un momento si se cargó correctamente
             setTimeout(() => {
               const machine = this.machine();
               const choferes = this.choferes();
-              
+
               if (machine && machine.chofer_id && !machine.chofer_actual && choferes.length > 0) {
                 this.refreshTrigger.set(this.refreshTrigger() + 1);
               }
@@ -1138,20 +1196,32 @@ export class MachineDetail implements OnInit {
       });
   }
 
+  onPatenteInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const raw = input.value || '';
+    const sanitized = raw.toUpperCase().replace(/[^A-Z0-9-]/g, '').slice(0, 7);
+
+    if (sanitized !== raw) {
+      input.value = sanitized;
+    }
+
+    this.editPatente.set(sanitized);
+  }
+
   setActiveTab(tab: 'general' | 'records' | 'assignments' | 'maintenance'): void {
     // No permitir cambiar de tab si se está editando
     if (this.isEditingGeneral()) {
       return;
     }
-    
+
     this.activeTab.set(tab);
-    
+
     // Cargar datos solo si el tab no ha sido cargado antes
     const loaded = this.loadedTabs();
     if (!loaded.has(tab)) {
       loaded.add(tab);
       this.loadedTabs.set(new Set(loaded));
-      
+
       // Cargar datos según el tab
       switch (tab) {
         case 'records':
@@ -1175,9 +1245,21 @@ export class MachineDetail implements OnInit {
   }
 
   async onDelete(): Promise<void> {
+    const machine = this.machine();
+
+    if (machine?.chofer_actual) {
+      this.alertModalService.show({
+        title: 'Eliminar Máquina',
+        message: 'La máquina tiene una asignación activa, no puede ser eliminada.',
+        type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
     const confirmed = await this.confirmModalService.open({
       title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${this.machine()?.numero || 'esta máquina'}? Esta acción desactivará la máquina y liberará al chofer asignado.`,
+      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Esta acción desactivará la máquina.`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'
     });
@@ -1219,7 +1301,14 @@ export class MachineDetail implements OnInit {
 
   onRecordFilterChange(filters: MachineDailyRecordFilters): void {
     this.recordFilters.set(filters);
-    // Aquí podrías recargar los registros con los nuevos filtros
+    // Resetear a página 1 cuando cambian los filtros
+    this.dailyRecordsCurrentPage.set(1);
+    // Recargar los registros con los nuevos filtros
+    this.loadDailyRecords();
+  }
+
+  onDailyRecordsPageChange(page: number): void {
+    this.dailyRecordsCurrentPage.set(page);
     this.loadDailyRecords();
   }
 
@@ -1233,19 +1322,22 @@ export class MachineDetail implements OnInit {
     if (!machine) return;
 
     const filters = this.recordFilters();
-    
+    const currentPage = this.dailyRecordsCurrentPage();
+
+    this.dailyRecordsLoading.set(true);
+
     this.dailyRecordService.getDailyRecords({
       maquina_id: machine.id,
       chofer_id: filters.chofer_id || undefined,
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
-      pagina: 1,
-      por_pagina: 100 // Obtener todos los registros de la máquina
+      pagina: currentPage,
+      por_pagina: this.itemsPerPage
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
-        
+
         // Mapear DailyRecord a MachineDailyRecord
         const machineRecords: MachineDailyRecord[] = records.map((record: DailyRecord) => ({
           id: parseInt(record.id),
@@ -1254,22 +1346,23 @@ export class MachineDetail implements OnInit {
           chofer_id: record.chofer_id,
           recaudado: record.recaudado || 0,
           diesel: record.costo_diesel || 0,
-          observaciones: record.observaciones || null, // null si no hay, string si hay (aunque sea vacío)
+          pago_chofer: record.pago_chofer || 0,
+          neto: record.neto,
+          observaciones: record.observaciones || null,
           estado: record.estado
         }));
 
-        // Ordenar según filtro (aunque el backend ya lo ordena, por si acaso)
-        if (filters.orden === 'mas_antiguo') {
-          machineRecords.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-        } else {
-          machineRecords.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-        }
-
         this.dailyRecords.set(machineRecords);
+        this.dailyRecordsTotal.set(response.total || 0);
+        this.dailyRecordsTotalPages.set(response.total_paginas || 0);
+        this.dailyRecordsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar registros diarios:', error);
         this.dailyRecords.set([]);
+        this.dailyRecordsTotal.set(0);
+        this.dailyRecordsTotalPages.set(0);
+        this.dailyRecordsLoading.set(false);
       }
     });
   }
@@ -1278,34 +1371,81 @@ export class MachineDetail implements OnInit {
     const machineId = this.machineId();
     if (!machineId) return;
 
-    this.machineService.getMachineAssignments(machineId).subscribe({
-      next: (assignments) => {
-        this.assignments.set(assignments);
+    this.assignmentsLoading.set(true);
+    const currentPage = this.assignmentsCurrentPage();
+    const filter = this.assignmentsFilter();
+
+    this.machineService.getMachineAssignments(machineId, {
+      filtro: filter,
+      page: currentPage,
+      per_page: 10
+    }).subscribe({
+      next: (response) => {
+        this.assignments.set(response.items);
+        this.assignmentsTotal.set(response.total);
+        this.assignmentsTotalPages.set(Math.ceil(response.total / response.per_page));
+        this.assignmentsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar asignaciones:', error);
         this.assignments.set([]);
+        this.assignmentsTotal.set(0);
+        this.assignmentsTotalPages.set(0);
+        this.assignmentsLoading.set(false);
       }
     });
   }
 
+  onAssignmentFilterChange(filter: 'todas' | 'actual' | 'cerradas'): void {
+    this.assignmentsFilter.set(filter);
+    this.assignmentsCurrentPage.set(1);
+    this.loadAssignments();
+  }
+
+  onAssignmentPageChange(page: number): void {
+    this.assignmentsCurrentPage.set(page);
+    this.loadAssignments();
+  }
+
   private loadMaintenanceRecords(): void {
     const machineId = this.machineId();
-    if (!machineId) return;
+    if (!machineId) {
+      console.warn('No hay machineId para cargar mantenimientos');
+      return;
+    }
 
     const filters = this.maintenanceFilters();
+    const currentPage = this.maintenanceCurrentPage();
+
+    console.log('Cargando mantenimientos:', { machineId, filters, currentPage, per_page: this.maintenanceItemsPerPage });
+
+    this.maintenanceLoading.set(true);
+
     this.machineService.getMachineMaintenances(machineId, {
       categoria: filters.categoria && filters.categoria !== 'all' ? filters.categoria : undefined,
       item: filters.item,
       desde: filters.desde,
-      hasta: filters.hasta
+      hasta: filters.hasta,
+      page: currentPage,
+      per_page: this.maintenanceItemsPerPage
     }).subscribe({
       next: (response) => {
+        console.log('Respuesta de mantenimientos:', response);
         this.maintenanceRecords.set(response.items);
+        this.maintenanceTotal.set(response.total_registros);
+        this.maintenanceTotalGlobal.set(response.total_registros_global);
+        this.maintenanceGastoMesActual.set(response.gasto_mes_actual);
+        this.maintenanceTotalPages.set(response.total_paginas);
+        this.maintenanceLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar mantenimientos:', error);
         this.maintenanceRecords.set([]);
+        this.maintenanceTotal.set(0);
+        this.maintenanceTotalGlobal.set(0);
+        this.maintenanceGastoMesActual.set(0);
+        this.maintenanceTotalPages.set(0);
+        this.maintenanceLoading.set(false);
       }
     });
   }
@@ -1322,13 +1462,26 @@ export class MachineDetail implements OnInit {
       fecha: record.fecha
     }).subscribe({
       next: (newRecord) => {
-        const current = this.maintenanceRecords();
-        // Agregar al inicio para que aparezca primero
-        this.maintenanceRecords.set([newRecord, ...current]);
+        // Recargar los registros para obtener la lista actualizada con paginación
+        this.maintenanceCurrentPage.set(1);
+        this.loadMaintenanceRecords();
+        this.alertModalService.show({
+          title: 'Mantenimiento registrado',
+          message: 'El registro de mantenimiento de la máquina se guardó correctamente.',
+          type: 'success',
+          buttonText: 'Entendido'
+        });
       },
       error: (error) => {
         console.error('Error al crear mantenimiento:', error);
         // Mostrar error al usuario
+        const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+        this.alertModalService.show({
+          title: 'No se pudo registrar el mantenimiento',
+          message: `Ocurrió un error al guardar el registro de mantenimiento: ${errorMessage}. Por favor, intenta nuevamente.`,
+          type: 'error',
+          buttonText: 'Entendido'
+        });
       }
     });
   }
@@ -1336,18 +1489,41 @@ export class MachineDetail implements OnInit {
   onMaintenanceRecordDeleted(id: number): void {
     this.machineService.deleteMaintenance(id).subscribe({
       next: () => {
-        const current = this.maintenanceRecords();
-        this.maintenanceRecords.set(current.filter(r => r.id !== id));
+        // Recargar los registros para obtener la lista actualizada con paginación
+        this.loadMaintenanceRecords();
+        this.alertModalService.show({
+          title: 'Mantenimiento eliminado',
+          message: 'El registro de mantenimiento se eliminó correctamente.',
+          type: 'success',
+          buttonText: 'Entendido'
+        });
       },
       error: (error) => {
         console.error('Error al eliminar mantenimiento:', error);
         // Mostrar error al usuario
+        const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+
+        this.alertModalService.show({
+          title: 'Error al Eliminar',
+          message: `No se pudo eliminar el mantenimiento: ${errorMessage}. Por favor, intenta nuevamente.`,
+          type: 'error',
+          buttonText: 'Entendido'
+        });
       }
     });
   }
 
   onMaintenanceFilterChange(filters: MaintenanceFilters): void {
     this.maintenanceFilters.set(filters);
+    // Resetear a página 1 cuando cambian los filtros
+    this.maintenanceCurrentPage.set(1);
+    // Recargar los registros con los nuevos filtros
+    this.loadMaintenanceRecords();
+  }
+
+  onMaintenancePageChange(page: number): void {
+    this.maintenanceCurrentPage.set(page);
+    this.loadMaintenanceRecords();
   }
 
   // Métodos auxiliares para el template
@@ -1363,8 +1539,16 @@ export class MachineDetail implements OnInit {
   formatDocumentDate(date: string | null): string {
     if (!date) return 'Sin fecha';
     try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' });
+      // Normalizar a fecha local para evitar desfasajes por zona horaria
+      const normalizedDate = date.split('T')[0];
+      const [year, month, day] = normalizedDate.split('-').map(Number);
+
+      if (!year || !month || !day) {
+        return date;
+      }
+
+      const localDate = new Date(year, month - 1, day);
+      return localDate.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: 'numeric' });
     } catch {
       return date;
     }
@@ -1373,13 +1557,9 @@ export class MachineDetail implements OnInit {
   getDaysAgo(date: string | null): string {
     if (!date) return '';
     try {
-      const d = new Date(date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      d.setHours(0, 0, 0, 0);
-      const diffTime = today.getTime() - d.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
+      // Usar función helper que considera zona horaria de Chile
+      const diffDays = getDaysDifferenceInChile(date);
+
       if (diffDays === 0) return 'Hoy';
       if (diffDays === 1) return 'Hace 1 día';
       return `Hace ${diffDays} días`;
@@ -1406,18 +1586,18 @@ export class MachineDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editChoferId, usar choferSelectValue
       const selectValue = this.choferSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor de la máquina
       const machineId = this.machine()?.chofer_actual?.id;
       return machineId ? String(machineId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor de la máquina
     const machineId = this.machine()?.chofer_actual?.id;
     return machineId ? String(machineId) : '';
@@ -1426,17 +1606,17 @@ export class MachineDetail implements OnInit {
   handleChoferChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const value = target.value;
-    
+
     // Actualizar el signal del select primero
     this.choferSelectValue.set(value);
-    
+
     // Si el valor es una cadena vacía, establecer null inmediatamente
     if (value === '' || value === null || value === undefined) {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     // Llamar directamente a onChoferIdChange para valores no vacíos
     this.onChoferIdChange(value);
   }
@@ -1444,14 +1624,14 @@ export class MachineDetail implements OnInit {
   handleChoferChangeFromNgModel(value: string): void {
     // Actualizar el signal del select primero
     this.choferSelectValue.set(value);
-    
+
     // Si el valor es una cadena vacía, establecer null inmediatamente
     if (value === '' || value === null || value === undefined) {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     // Llamar directamente a onChoferIdChange para valores no vacíos
     this.onChoferIdChange(value);
   }
@@ -1459,14 +1639,14 @@ export class MachineDetail implements OnInit {
   onChoferIdChange(value: string | number | null | undefined): void {
     // Convertir a string si es necesario
     const stringValue = value === null || value === undefined ? '' : String(value);
-    
+
     // Si el valor es una cadena vacía, null, undefined, o el string "null", establecer null
     if (!stringValue || stringValue.trim() === '' || stringValue === 'null' || stringValue === 'undefined') {
       this.editChoferId.set(null);
       this.choferSelectValue.set('');
       return;
     }
-    
+
     const numValue = parseInt(stringValue, 10);
     // Si es un número válido, establecerlo; de lo contrario, null
     if (!isNaN(numValue) && numValue > 0) {
@@ -1484,13 +1664,13 @@ export class MachineDetail implements OnInit {
 
     const choferId = value ? parseInt(value, 10) : null;
     const currentMachine = this.machine();
-    
+
     if (!currentMachine) return;
-    
+
     // Validar que las fechas de documentación estén presentes
-    if (!currentMachine.documentos?.revision_tecnica || 
-        !currentMachine.documentos?.permiso_circulacion || 
-        !currentMachine.documentos?.seguro_obligatorio) {
+    if (!currentMachine.documentos?.revision_tecnica ||
+      !currentMachine.documentos?.permiso_circulacion ||
+      !currentMachine.documentos?.seguro_obligatorio) {
       this.alertModalService.show({
         title: 'Documentación Pendiente',
         message: 'No se puede asignar un conductor a esta máquina porque faltan fechas de documentación. Por favor, edita la máquina y completa la documentación primero.',
@@ -1499,7 +1679,7 @@ export class MachineDetail implements OnInit {
       });
       return;
     }
-    
+
     const updateData: Partial<Machine> = {
       numero: currentMachine.numero,
       marca: currentMachine.marca,

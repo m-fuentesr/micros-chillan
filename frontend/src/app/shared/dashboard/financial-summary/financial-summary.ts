@@ -11,7 +11,7 @@ import { LazyChartDirective } from '../../directives/lazy-chart.directive';
   selector: 'app-financial-summary',
   imports: [BaseChartDirective, CommonModule, LazyChartDirective],
   template: `
-    <div class="card bg-white shadow-xl border border-zinc-200 h-full flex flex-col overflow-hidden rounded-3xl animate-card-enter" [class.h-[424px]]="showChartOnly()">
+    <div class="card bg-white shadow-xl border border-zinc-200 flex flex-col overflow-hidden rounded-3xl animate-card-enter" [ngClass]="showChartOnly() ? 'h-[424px]' : 'h-full'">
       <div class="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 mb-4 sm:mb-6 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-3 sm:gap-0 border-b border-zinc-100 bg-zinc-50/60">
         <h2 class="text-xs sm:text-sm font-bold uppercase tracking-wider text-base-content">Rendimiento Financiero (Periodo Actual)</h2>
         <div class="flex gap-1.5 sm:gap-2 flex-wrap">
@@ -139,6 +139,13 @@ export class FinancialSummary implements OnInit {
     const data = this.summaryData();
     const labels = data.map(item => item.machineId);
 
+    // Determinar colores dinámicamente según si la ganancia es positiva o negativa
+    const gananciaNetaColors = data.map(item => {
+      return item.net >= 0 
+        ? { bg: 'rgba(16, 185, 129, 0.9)', border: 'rgba(16, 185, 129, 1)' } // Verde para positivo
+        : { bg: 'rgba(239, 68, 68, 0.9)', border: 'rgba(239, 68, 68, 1)' }; // Rojo para negativo
+    });
+
     return {
       labels,
       datasets: [
@@ -162,8 +169,8 @@ export class FinancialSummary implements OnInit {
           type: 'bar' as const,
           label: 'Ganancia Neta',
           data: data.map(item => item.net),
-          backgroundColor: 'rgba(16, 185, 129, 0.9)',
-          borderColor: 'rgba(16, 185, 129, 1)',
+          backgroundColor: gananciaNetaColors.map(c => c.bg),
+          borderColor: gananciaNetaColors.map(c => c.border),
           borderWidth: 0,
           borderRadius: 10,
           borderSkipped: false,

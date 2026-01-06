@@ -2,11 +2,11 @@ import { Component, ChangeDetectionStrategy, input, computed } from '@angular/co
 import { RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { Machine, DocumentStatus } from '../../models/machine.models';
-import { BusIcon } from '../../components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-machine-card',
-  imports: [RouterLink, CommonModule, BusIcon],
+  imports: [RouterLink, CommonModule, UiIconComponent],
   template: `
     <!-- La tarjeta completa actúa como CTA principal -->
     <a
@@ -53,14 +53,14 @@ import { BusIcon } from '../../components/bus-icon/bus-icon';
           <div class="flex gap-4 flex-grow min-h-0">
             <!-- Avatar (80x80 = w-20 h-20) -->
             <div class="w-20 h-20 rounded-lg bg-base-200 flex-shrink-0 overflow-hidden border border-base-300 flex items-center justify-center group-hover:border-primary/30 transition-colors">
-              <app-bus-icon class="w-full h-full p-2 text-primary" />
+              <ui-icon name="BusFront" size="lg" class="text-primary" />
             </div>
 
             <!-- Datos: Patente + Especificaciones -->
             <div class="flex flex-col justify-between flex-grow min-w-0">
               <!-- PATENTE - El elemento estrella -->
               <div class="mb-3">
-                <div class="inline-block bg-base-100 text-base-content font-mono font-bold text-xl px-2 py-1 rounded border-2 border-base-content tracking-wider shadow-sm">
+                <div class="inline-block bg-base-100 text-base-content font-mono font-bold text-xl px-2 py-1 rounded border border-base-300/50 tracking-wider shadow-sm">
                   {{ machine().patente | uppercase }}
                 </div>
               </div>

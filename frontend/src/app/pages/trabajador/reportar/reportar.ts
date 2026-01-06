@@ -1,4 +1,4 @@
-import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed } from '@angular/core';
+import { Component, inject, ChangeDetectionStrategy, signal, OnInit, effect, computed, ViewChild, ElementRef } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,6 +10,7 @@ import { WorkerService } from '../../../shared/services/worker.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { TransitionService } from '../../../shared/services/transition.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, tap } from 'rxjs';
 import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
@@ -18,25 +19,22 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
 @Component({
   selector: 'app-reportar',
-  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton],
+  imports: [CommonModule, RouterLink, ReactiveFormsModule, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="reportar-background-enter bg-slate-50 font-sans">
       <header 
-        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-0 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
+        class="reportar-header-enter bg-gradient-to-br from-blue-600 to-indigo-800 pt-12 pb-24 px-6 relative overflow-hidden shadow-lg rounded-b-3xl"
         [class.reportar-header-fade-out]="expanding()"
       >
         <a
           routerLink="/trabajador"
-          class="absolute left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
-          [style.top]="'calc(12px + env(safe-area-inset-top, 0px))'"
+          class="absolute top-12 left-6 btn btn-circle btn-ghost text-white hover:bg-white/20 z-20"
           aria-label="Volver"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" class="w-6 h-6">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-          </svg>
+          <ui-icon name="ChevronLeft" size="md" />
         </a>
 
-        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30" [style.padding-top]="'calc(48px + env(safe-area-inset-top, 0px))'">
+        <div class="relative z-10 text-left pl-20 pr-4 border-l-4 border-l-white/30">
           <p class="text-blue-200 text-xs font-bold uppercase tracking-[0.35em] mb-1">Nuevo registro</p>
           <h1 class="text-2xl sm:text-3xl font-bold text-white tracking-tight">Reporte diario</h1>
         </div>
@@ -64,8 +62,8 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
       >
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-1 overflow-hidden" [style.animation-delay.ms]="200">
           <div class="flex items-center p-4 gap-4">
-            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center text-2xl shadow-inner">
-              🚛
+            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center shadow-inner">
+              <ui-icon name="BusFront" size="lg" class="text-blue-600" />
             </div>
             <div class="flex-1">
               <label class="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">Máquina asignada</label>
@@ -80,9 +78,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   }
                 </select>
                 <div class="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500 transition-transform">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
-                    <path fill-rule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="ChevronDown" size="sm" />
                 </div>
               </div>
             </div>
@@ -91,10 +87,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-6 border-l-4 border-emerald-500 relative overflow-hidden focus-within:ring-2 focus-within:ring-emerald-500/50 transition-all" [style.animation-delay.ms]="300">
           <label class="flex items-center gap-2 text-xs font-bold text-emerald-600 uppercase tracking-[0.35em] mb-2">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16ZM8.732 6.232a2.5 2.5 0 0 1 3.536 0 .75.75 0 1 0 1.06-1.06A4 4 0 0 0 6.5 8v.165c0 .364.034.709.13 1.04l.635 2.048a.75.75 0 0 1-1.428.442l-.636-2.047a5.507 5.507 0 0 1-.18-.762 3.996 3.996 0 0 1 .978-3.654Z" clip-rule="evenodd" />
-              <path d="M6.25 8a2.5 2.5 0 0 1 2.5-2.5h2.5a2.5 2.5 0 0 1 2.5 2.5v.5a2.5 2.5 0 0 1-2.5 2.5h-2.5a2.5 2.5 0 0 1-2.5-2.5V8Z" />
-            </svg>
+            <ui-icon name="Wallet" size="xs" />
             Total recaudado
           </label>
           <div class="flex items-center gap-2">
@@ -115,7 +108,9 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="400">
           <div class="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
-            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 text-xs">⛽</div>
+            <div class="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
+              <ui-icon name="Droplet" size="xs" />
+            </div>
             <span class="text-sm font-bold text-slate-700">Carga de combustible</span>
             <span class="ml-auto text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
           </div>
@@ -129,12 +124,17 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   formControlName="fuelLiters"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl px-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  [class.border-2]="reportForm.get('fuelLiters')?.invalid && reportForm.get('fuelLiters')?.touched"
+                  [class.border-red-500]="reportForm.get('fuelLiters')?.invalid && reportForm.get('fuelLiters')?.touched"
                   max="999"
                   (keydown)="preventInvalidNumberInput($event)"
                   (input)="limitFieldDigits($event, 'fuelLiters', 3)"
                 />
                 <span class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">L</span>
               </div>
+              @if (reportForm.get('fuelLiters')?.errors?.['fuelCoherence'] && reportForm.get('fuelLiters')?.touched) {
+                <p class="text-xs text-red-600 font-semibold ml-1">{{ reportForm.get('fuelLiters')?.errors?.['fuelCoherence']?.message }}</p>
+              }
             </div>
             <div class="space-y-2">
               <label class="text-xs text-slate-400 font-normal ml-1">Costo total</label>
@@ -144,21 +144,24 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                   formControlName="fuelCost"
                   placeholder="0"
                   class="w-full bg-slate-50 rounded-xl pl-8 pr-4 py-3 font-bold text-slate-700 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-left"
+                  [class.border-2]="reportForm.get('fuelCost')?.invalid && reportForm.get('fuelCost')?.touched"
+                  [class.border-red-500]="reportForm.get('fuelCost')?.invalid && reportForm.get('fuelCost')?.touched"
                   max="999999"
                   (keydown)="preventInvalidNumberInput($event)"
                   (input)="limitFieldDigits($event, 'fuelCost', 6)"
                 />
                 <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-bold">$</span>
               </div>
+              @if (reportForm.get('fuelCost')?.errors?.['fuelCoherence'] && reportForm.get('fuelCost')?.touched) {
+                <p class="text-xs text-red-600 font-semibold ml-1">{{ reportForm.get('fuelCost')?.errors?.['fuelCoherence']?.message }}</p>
+              }
             </div>
           </div>
         </div>
 
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="500">
           <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em] mb-3">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-              <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Camera" size="xs" />
             Foto del comprobante del registro diario *
           </label>
 
@@ -173,43 +176,49 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
 
           <!-- Input de archivo -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-blue-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
+          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative overflow-hidden" 
+            [class.border-red-500]="showPhotoError() && !imagePreview()"
+            [class.bg-red-50]="showPhotoError() && !imagePreview()"
+            [class.border-slate-300]="!showPhotoError() || imagePreview()"
+            [class.hover:border-blue-400]="!showPhotoError() || imagePreview()"
+            [class.opacity-50]="isSubmitting()" 
+            [class.cursor-not-allowed]="isSubmitting()">
             <input 
               type="file" 
               class="hidden" 
               accept="image/*" 
+              capture="environment"
               (change)="onEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-blue-500 transition-colors">
+            <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
+              [class.text-slate-400]="!showPhotoError() || imagePreview()"
+              [class.text-red-600]="showPhotoError() && !imagePreview()"
+              [class.hover:text-blue-500]="!showPhotoError() || imagePreview()">
               @if (!imagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-blue-600">Cambiar imagen</span>
               }
             </div>
           </label>
+          @if (showPhotoError() && !imagePreview()) {
+            <p class="text-xs text-red-600 font-semibold mt-2 ml-1">Campo requerido</p>
+          }
         </div>
 
         <!-- Comprobante de combustible (opcional) -->
         <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="550">
           <div class="flex items-center gap-2 mb-3">
             <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em]">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M1 5.25A2.25 2.25 0 0 1 3.25 3h13.5A2.25 2.25 0 0 1 19 5.25v9.5A2.25 2.25 0 0 1 16.75 17H3.25A2.25 2.25 0 0 1 1 14.75v-9.5Zm1.5 5.81v3.69c0 .414.336.75.75.75h13.5a.75.75 0 0 0 .75-.75v-2.69l-2.22-2.219a.75.75 0 0 0-1.06 0l-1.91 1.909.47.47a.75.75 0 1 1-1.06 1.06L6.53 8.091a.75.75 0 0 0-1.06 0l-2.97 2.97ZM12 7a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z" clip-rule="evenodd" />
-              </svg>
+              <ui-icon name="Camera" size="xs" />
               Foto del comprobante de combustible
             </label>
             <span class="text-[10px] bg-slate-100 px-2 py-1 rounded text-slate-500">Opcional</span>
@@ -226,62 +235,92 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
                 aria-label="Eliminar imagen"
                 [disabled]="isSubmitting()"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                  <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
-                </svg>
+                <ui-icon name="X" size="xs" />
               </button>
             </div>
           }
 
           <!-- Input de archivo combustible -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 hover:border-amber-400 transition-colors cursor-pointer relative overflow-hidden" [class.opacity-50]="isSubmitting()" [class.cursor-not-allowed]="isSubmitting()">
+          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl transition-colors cursor-pointer relative overflow-hidden" 
+            [class.border-amber-400]="shouldShowDieselPhotoWarning()"
+            [class.bg-amber-50]="shouldShowDieselPhotoWarning()"
+            [class.border-slate-300]="!shouldShowDieselPhotoWarning()"
+            [class.bg-slate-50]="!shouldShowDieselPhotoWarning()"
+            [class.hover:bg-slate-100]="!shouldShowDieselPhotoWarning()"
+            [class.hover:border-amber-400]="!shouldShowDieselPhotoWarning() || shouldShowDieselPhotoWarning()"
+            [class.opacity-50]="isSubmitting()" 
+            [class.cursor-not-allowed]="isSubmitting()">
             <input 
               type="file" 
               class="hidden" 
               accept="image/*" 
+              capture="environment"
               (change)="onDieselEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
-            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 hover:text-amber-500 transition-colors">
+            <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
+              [class.text-slate-400]="!shouldShowDieselPhotoWarning()"
+              [class.text-amber-600]="shouldShowDieselPhotoWarning()"
+              [class.hover:text-amber-500]="true">
               @if (!dieselImagePreview()) {
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 mb-1">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.774 48.774 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm2.25-2.25h.008v.008h-.008V10.5Z" />
-                </svg>
+                <ui-icon name="Camera" size="lg" class="mb-1" />
                 <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-amber-600">Cambiar imagen</span>
               }
             </div>
           </label>
+          @if (shouldShowDieselPhotoWarning()) {
+            <div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+              <p class="text-xs text-amber-700 font-semibold flex items-center gap-1">
+                <ui-icon name="TriangleAlert" size="xs" />
+                Advertencia: Has declarado gasto de combustible pero no has adjuntado el comprobante. Se recomienda agregarlo.
+              </p>
+            </div>
+          }
         </div>
 
-        <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="600">
-          <textarea
-            placeholder="Observaciones o notas adicionales..."
-            formControlName="notes"
-            class="w-full bg-slate-50 rounded-xl p-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all resize-none"
-            rows="3"
-          ></textarea>
-        </div>
-
-        <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="700">
+        <!-- ¿Hubo incidente? - Movido antes de observaciones (TC-24) -->
+        <div class="reportar-field-enter bg-red-50 rounded-2xl border border-red-100 p-4 flex items-center justify-between" [style.animation-delay.ms]="600">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">⚠️</div>
+            <div class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-red-500 shadow-sm">
+              <ui-icon name="TriangleAlert" size="sm" />
+            </div>
             <div>
               <p class="text-sm font-bold text-red-800">¿Hubo incidente?</p>
               <p class="text-[10px] text-red-600/70">Choque, falla mecánica, etc.</p>
             </div>
           </div>
           <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" class="sr-only peer" formControlName="incident" />
+            <input type="checkbox" class="sr-only peer" formControlName="incident" (change)="onIncidentToggle()" />
             <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
           </label>
         </div>
 
+        <!-- Observaciones - Ahora después de incidente (TC-24) -->
+        <div class="reportar-field-enter bg-white rounded-2xl shadow-xl shadow-blue-900/5 p-5" [style.animation-delay.ms]="650">
+          <label class="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.35em] mb-3">
+            <ui-icon name="FileText" size="xs" />
+            Observaciones
+            @if (reportForm.get('incident')?.value) {
+              <span class="text-red-600">*</span>
+            }
+          </label>
+          <textarea
+            placeholder="Observaciones o notas adicionales..."
+            formControlName="notes"
+            class="w-full bg-slate-50 rounded-xl p-4 text-sm focus:bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all resize-none"
+            [class.border-2]="reportForm.get('notes')?.invalid && reportForm.get('notes')?.touched"
+            [class.border-red-500]="reportForm.get('notes')?.invalid && reportForm.get('notes')?.touched"
+            rows="3"
+          ></textarea>
+          @if (reportForm.get('notes')?.errors?.['required'] && reportForm.get('notes')?.touched) {
+            <p class="text-xs text-red-600 font-semibold mt-2 ml-1">Las observaciones son obligatorias cuando hay un incidente</p>
+          }
+        </div>
+
         <div
-          class="reportar-button-enter fixed bottom-0 left-0 right-0 p-4 bg-white rounded-t-3xl shadow-xl shadow-blue-900/5 border-t border-slate-100 z-[60]"
-          style="padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 1rem);"
+          class="reportar-button-enter p-4 bg-white rounded-2xl shadow-xl shadow-blue-900/5"
         >
           <button
             #submitButton
@@ -317,9 +356,7 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               }
               @if (reportSuccess() && !hasError()) {
                 <div class="checkmark-premium-wrapper">
-                  <svg class="checkmark-premium" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <path class="checkmark-path" d="M20 6L9 17l-5-5"/>
-                  </svg>
+                  <ui-icon name="Check" size="lg" class="checkmark-premium" />
                   <div class="checkmark-ripple"></div>
                 </div>
               }
@@ -333,6 +370,25 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
         </div>
       </form>
       }
+      
+      <!-- Modal de Error para errores críticos (duplicados, etc.) -->
+      <dialog #errorModal class="modal" [class.modal-open]="showErrorModal()">
+        <form method="dialog" class="modal-box" (submit)="closeErrorModal()">
+          <h3 class="font-bold text-lg text-error mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="inline-block h-6 w-6 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            Error al crear registro
+          </h3>
+          <p class="py-4 text-base-content whitespace-pre-line">{{ errorModalMessage() }}</p>
+          <div class="modal-action">
+            <button type="submit" class="btn btn-primary" (click)="closeErrorModal()">Entendido</button>
+          </div>
+        </form>
+        <form method="dialog" class="modal-backdrop" (click)="closeErrorModal()">
+          <button type="button">Cerrar</button>
+        </form>
+      </dialog>
     </div>
   `,
   styles: [
@@ -782,23 +838,28 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
       position: relative;
       width: 28px;
       height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .checkmark-premium {
-      width: 100%;
-      height: 100%;
-      stroke: white;
-      stroke-dasharray: 24;
-      stroke-dashoffset: 24;
-      animation: checkmarkDrawReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      width: 28px;
+      height: 28px;
+      color: white;
+      animation: checkmarkScaleReportar 600ms var(--button-ease-elastic) 100ms forwards;
+      transform: scale(0);
     }
 
-    @keyframes checkmarkDrawReportar {
+    @keyframes checkmarkScaleReportar {
       0% {
-        stroke-dashoffset: 24;
+        transform: scale(0);
+      }
+      50% {
+        transform: scale(1.2);
       }
       100% {
-        stroke-dashoffset: 0;
+        transform: scale(1);
       }
     }
 
@@ -944,6 +1005,7 @@ export class Reportar implements OnInit {
   evidenceName = signal('');
   evidenceFile = signal<File | null>(null);
   imagePreview = signal<string | null>(null);
+  showPhotoError = signal(false); // Para mostrar error visual cuando falta la foto
   
   // Imagen del comprobante de diesel (opcional)
   dieselEvidenceName = signal('');
@@ -955,6 +1017,11 @@ export class Reportar implements OnInit {
   reportSuccess = signal(false);
   expanding = signal(false);
   hasError = signal(false);
+  
+  // Modal de error
+  @ViewChild('errorModal') errorModalRef!: ElementRef<HTMLDialogElement>;
+  showErrorModal = signal(false);
+  errorModalMessage = signal('');
   buttonX = 0;
   buttonY = 0;
 
@@ -1048,14 +1115,130 @@ export class Reportar implements OnInit {
     }
   });
 
+  /**
+   * Validador de coherencia de combustible (TC-21)
+   * Si hay litros > 0, entonces costo > 0 es requerido
+   * Si hay costo > 0, entonces litros > 0 es requerido
+   */
+  private fuelCoherenceValidator(fieldType: 'liters' | 'cost') {
+    return (control: any) => {
+      const form = control.parent;
+      if (!form) {
+        return null;
+      }
+
+      const fuelLiters = form.get('fuelLiters')?.value;
+      const fuelCost = form.get('fuelCost')?.value;
+
+      // Si ambos están vacíos, es válido (combustible es opcional)
+      if ((!fuelLiters || fuelLiters === 0) && (!fuelCost || fuelCost === 0)) {
+        return null;
+      }
+
+      // Si hay litros > 0 pero costo es 0 o vacío
+      if (fieldType === 'cost' && fuelLiters > 0 && (!fuelCost || fuelCost === 0)) {
+        return { fuelCoherence: { message: 'Si ingresas litros, debes ingresar el costo total' } };
+      }
+
+      // Si hay costo > 0 pero litros es 0 o vacío
+      if (fieldType === 'liters' && fuelCost > 0 && (!fuelLiters || fuelLiters === 0)) {
+        return { fuelCoherence: { message: 'Si ingresas costo, debes ingresar los litros' } };
+      }
+
+      return null;
+    };
+  }
+
+  private maxDigitsValidator(maxDigits: number) {
+    return (control: any) => {
+      if (!control.value) {
+        return null; // Permitir valores vacíos, el required se encarga de eso
+      }
+      
+      const value = control.value.toString().replace(/[^0-9]/g, '');
+      if (value.length > maxDigits) {
+        return { maxDigits: { maxDigits, actual: value.length } };
+      }
+      
+      return null;
+    };
+  }
+
+  // Effect para actualizar validación de combustible cuando cambian los valores
+  private fuelValidationEffect = effect(() => {
+    // Suscribirse a cambios en fuelLiters y fuelCost para actualizar validación cruzada
+    const fuelLitersControl = this.reportForm.get('fuelLiters');
+    const fuelCostControl = this.reportForm.get('fuelCost');
+    
+    if (fuelLitersControl && fuelCostControl) {
+      // Cuando cambia fuelLiters, actualizar validación de fuelCost
+      fuelLitersControl.valueChanges.subscribe(() => {
+        fuelCostControl.updateValueAndValidity();
+      });
+      
+      // Cuando cambia fuelCost, actualizar validación de fuelLiters
+      fuelCostControl.valueChanges.subscribe(() => {
+        fuelLitersControl.updateValueAndValidity();
+      });
+    }
+  });
+
+  // Effect para validación condicional de observaciones cuando hay incidente (TC-24)
+  private incidentValidationEffect = effect(() => {
+    const incidentControl = this.reportForm.get('incident');
+    const notesControl = this.reportForm.get('notes');
+    
+    if (incidentControl && notesControl) {
+      // Suscribirse a cambios en el toggle de incidente
+      incidentControl.valueChanges.subscribe((hasIncident) => {
+        if (hasIncident) {
+          // Si hay incidente, hacer observaciones obligatorias
+          notesControl.setValidators([Validators.required]);
+        } else {
+          // Si no hay incidente, quitar validación requerida
+          notesControl.clearValidators();
+        }
+        notesControl.updateValueAndValidity();
+      });
+    }
+  });
+
+  // Computed: Detectar si hay gasto de combustible sin foto (TC-23)
+  // Se actualiza inmediatamente cuando el usuario escribe en los campos (en tiempo real)
+  shouldShowDieselPhotoWarning = computed(() => {
+    // Usar los signals reactivos que se actualizan en tiempo real mientras el usuario escribe
+    const fuelCost = this.fuelCostValue();
+    const fuelLiters = this.fuelLitersValue();
+    const hasDieselFile = this.dieselEvidenceFile() !== null;
+    
+    // Mostrar advertencia si hay gasto de combustible pero no hay foto
+    // Se muestra inmediatamente cuando el usuario escribe (sin necesidad de hacer blur)
+    const hasFuelCost = fuelCost !== null && fuelCost > 0;
+    const hasFuelLiters = fuelLiters !== null && fuelLiters > 0;
+    
+    return (hasFuelCost || hasFuelLiters) && !hasDieselFile;
+  });
+
   reportForm = this.fb.group({
     machine: [null as number | null, Validators.required],
     amount: [null as number | null, [Validators.required, this.maxDigitsValidator(6)]],
-    fuelLiters: [null as number | null, this.maxDigitsValidator(3)],
-    fuelCost: [null as number | null, this.maxDigitsValidator(6)],
+    fuelLiters: [null as number | null, [this.maxDigitsValidator(3), this.fuelCoherenceValidator('liters')]],
+    fuelCost: [null as number | null, [this.maxDigitsValidator(6), this.fuelCoherenceValidator('cost')]],
     notes: [''],
     incident: [false],
   });
+
+  // Signals reactivos para los valores de combustible (se actualizan en tiempo real mientras el usuario escribe)
+  // Estos signals se actualizan inmediatamente cuando el usuario escribe en los campos
+  fuelCostValue = toSignal(
+    this.reportForm.get('fuelCost')?.valueChanges ?? of(null),
+    { initialValue: this.reportForm.get('fuelCost')?.value ?? null }
+  );
+  
+  fuelLitersValue = toSignal(
+    this.reportForm.get('fuelLiters')?.valueChanges ?? of(null),
+    { initialValue: this.reportForm.get('fuelLiters')?.value ?? null }
+  );
 
   ngOnInit(): void {
     // Verificar si ya tiene un reporte para hoy
@@ -1098,15 +1281,53 @@ export class Reportar implements OnInit {
   async enviarReporte() {
     if (this.reportForm.invalid) {
       this.reportForm.markAllAsTouched();
+      
+      // Mostrar mensaje específico si hay error de coherencia de combustible
+      const fuelLitersError = this.reportForm.get('fuelLiters')?.errors?.['fuelCoherence'];
+      const fuelCostError = this.reportForm.get('fuelCost')?.errors?.['fuelCoherence'];
+      if (fuelLitersError || fuelCostError) {
+        const errorMessage = fuelLitersError?.message || fuelCostError?.message || 'Los datos de combustible deben ser coherentes';
+        this.showErrorToast(errorMessage);
+        return;
+      }
+      
+      // Mostrar mensaje específico si hay incidente pero no hay observaciones (TC-24)
+      const hasIncident = this.reportForm.get('incident')?.value === true;
+      const notesError = this.reportForm.get('notes')?.errors?.['required'];
+      if (hasIncident && notesError) {
+        this.showErrorToast('Las observaciones son obligatorias cuando hay un incidente');
+        // Scroll suave al campo de observaciones
+        setTimeout(() => {
+          const notesField = document.querySelector('[formcontrolname="notes"]');
+          if (notesField) {
+            notesField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+        return;
+      }
+      
       return;
     }
 
-    // Validar que haya foto del comprobante (obligatorio)
+    // Validar que haya foto del comprobante (obligatorio) - TC-22
     if (!this.evidenceFile()) {
       this.isSubmitting.set(false);
+      this.showPhotoError.set(true); // Mostrar error visual
       this.showErrorToast('Debes adjuntar una foto del comprobante');
+      // Scroll suave al campo de foto para que el usuario vea el error
+      setTimeout(() => {
+        const photoField = document.querySelector('[formcontrolname="photo"]') || 
+                          document.querySelector('label[for*="photo"]') ||
+                          document.querySelector('.reportar-field-enter:nth-of-type(4)');
+        if (photoField) {
+          photoField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
       return;
     }
+    
+    // Si hay foto, ocultar el error
+    this.showPhotoError.set(false);
 
     this.isSubmitting.set(true);
     this.reportSuccess.set(false);
@@ -1227,7 +1448,29 @@ export class Reportar implements OnInit {
             
             // Obtener mensaje de error específico
             const errorMessage = this.getErrorMessage(error);
-            this.showErrorToast(errorMessage);
+            
+            // Detectar si es un error crítico (duplicado de máquina) para mostrar en modal
+            const errorDetail = error?.error?.detail || error?.error?.message || '';
+            const isCriticalError = typeof errorDetail === 'string' && (
+              errorDetail.includes('Ya existe un registro para') ||
+              errorDetail.includes('máquina') && errorDetail.includes('fecha') ||
+              errorDetail.includes('No se puede facturar dos veces')
+            );
+            
+            if (isCriticalError) {
+              // Mostrar en modal para errores críticos
+              this.errorModalMessage.set(errorMessage);
+              this.showErrorModal.set(true);
+              // Abrir el modal usando la API nativa
+              setTimeout(() => {
+                if (this.errorModalRef?.nativeElement) {
+                  this.errorModalRef.nativeElement.showModal();
+                }
+              }, 100);
+            } else {
+              // Mostrar toast para errores no críticos
+              this.showErrorToast(errorMessage);
+            }
             
             // Resetear estado de error después de la animación
             setTimeout(() => {
@@ -1320,7 +1563,28 @@ export class Reportar implements OnInit {
       this.isSubmitting.set(false);
       this.hasError.set(true);
       this.uploadProgress.set(null);
-      this.showErrorToast(error.message || 'Error al subir las imágenes');
+      
+      // Verificar si es un error crítico (duplicado)
+      const errorMessage = error?.error?.detail || error?.message || 'Error al subir las imágenes';
+      const isCriticalError = typeof errorMessage === 'string' && (
+        errorMessage.includes('Ya existe un registro para') ||
+        errorMessage.includes('máquina') && errorMessage.includes('fecha') ||
+        errorMessage.includes('No se puede facturar dos veces')
+      );
+      
+      if (isCriticalError) {
+        // Mostrar en modal para errores críticos
+        this.errorModalMessage.set(errorMessage);
+        this.showErrorModal.set(true);
+        setTimeout(() => {
+          if (this.errorModalRef?.nativeElement) {
+            this.errorModalRef.nativeElement.showModal();
+          }
+        }, 100);
+      } else {
+        // Mostrar toast para errores no críticos
+        this.showErrorToast(errorMessage);
+      }
       return;
     }
 
@@ -1340,6 +1604,7 @@ export class Reportar implements OnInit {
 
       this.evidenceName.set(file.name);
       this.evidenceFile.set(file);
+      this.showPhotoError.set(false); // Ocultar error cuando se selecciona una foto
 
       // Generar preview inmediato
       this.storageService.createPreviewUrl(file).subscribe({
@@ -1379,6 +1644,26 @@ export class Reportar implements OnInit {
     const inputs = document.querySelectorAll('input[type="file"]') as NodeListOf<HTMLInputElement>;
     if (inputs.length > 0) {
       inputs[0].value = '';
+    }
+  }
+
+  // Método para manejar el toggle de incidente (TC-24)
+  onIncidentToggle(): void {
+    const incidentControl = this.reportForm.get('incident');
+    const notesControl = this.reportForm.get('notes');
+    
+    if (!incidentControl || !notesControl) return;
+    
+    const hasIncident = incidentControl.value === true;
+    
+    if (hasIncident) {
+      // Si hay incidente, hacer observaciones obligatorias
+      notesControl.setValidators([Validators.required]);
+      notesControl.updateValueAndValidity();
+    } else {
+      // Si no hay incidente, quitar validación requerida
+      notesControl.clearValidators();
+      notesControl.updateValueAndValidity();
     }
   }
 
@@ -1475,31 +1760,83 @@ export class Reportar implements OnInit {
     this.reportForm.patchValue({ [fieldName]: numericValue }, { emitEvent: false });
   }
 
-  private maxDigitsValidator(maxDigits: number) {
-    return (control: any) => {
-      if (!control.value) {
-        return null; // Permitir valores vacíos, el required se encarga de eso
-      }
-      
-      const value = control.value.toString().replace(/[^0-9]/g, '');
-      if (value.length > maxDigits) {
-        return { maxDigits: { maxDigits, actual: value.length } };
-      }
-      
-      return null;
-    };
-  }
-
   private getErrorMessage(error: any): string {
     // Error de red (sin conexión)
     if (!error.status || error.status === 0) {
       return 'No hay conexión a internet. Verifica tu conexión e intenta nuevamente.';
     }
     
-    // Error 400 (Bad Request) - Validación
+    // Error 422 (Unprocessable Entity) - Validación de Pydantic (TC-27)
+    if (error.status === 422) {
+      const detail = error.error?.detail;
+      
+      // Si detail es un array, son errores de validación de campos específicos
+      if (Array.isArray(detail) && detail.length > 0) {
+        const errorMessages: string[] = [];
+        
+        detail.forEach((err: any) => {
+          const field = err.loc?.[err.loc.length - 1]; // Último elemento del path
+          const message = err.msg || 'Campo inválido';
+          
+          // Mapear nombres de campos técnicos a nombres amigables
+          const fieldNames: Record<string, string> = {
+            'maquina_id': 'Máquina',
+            'fecha': 'Fecha',
+            'monto_recaudado': 'Monto recaudado',
+            'litros_diesel': 'Litros de diésel',
+            'costo_total_diesel': 'Costo de diésel',
+            'imagen_url': 'Foto del comprobante',
+            'imagen_comprobante_diesel_url': 'Foto del comprobante de combustible',
+            'observaciones': 'Observaciones',
+            'incidente_critico': 'Incidente crítico'
+          };
+          
+          const friendlyFieldName = fieldNames[field] || field;
+          
+          // Mensajes más amigables según el tipo de error
+          let friendlyMessage = message;
+          if (message.includes('field required')) {
+            friendlyMessage = `${friendlyFieldName} es obligatorio`;
+          } else if (message.includes('value is not a valid')) {
+            friendlyMessage = `${friendlyFieldName} tiene un formato inválido`;
+          } else if (message.includes('cannot be negative')) {
+            friendlyMessage = `${friendlyFieldName} no puede ser negativo`;
+          } else if (message.includes('greater than')) {
+            friendlyMessage = `${friendlyFieldName} debe ser mayor a 0`;
+          }
+          
+          errorMessages.push(friendlyMessage);
+        });
+        
+        // Si hay múltiples errores, mostrar los primeros 3
+        if (errorMessages.length > 3) {
+          return `${errorMessages.slice(0, 3).join('. ')}. Y ${errorMessages.length - 3} error(es) más.`;
+        }
+        
+        return errorMessages.join('. ');
+      }
+      
+      // Si detail es un string, es un mensaje de error general
+      if (typeof detail === 'string') {
+        return detail;
+      }
+      
+      // Fallback para errores 422 sin formato esperado
+      return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';
+    }
+    
+    // Error 400 (Bad Request) - Validación general
     if (error.status === 400) {
       const errorDetail = error.error?.detail || error.error?.message;
       if (errorDetail) {
+        // Si es un string, mostrarlo directamente
+        if (typeof errorDetail === 'string') {
+          return errorDetail;
+        }
+        // Si es un objeto, intentar extraer el mensaje
+        if (typeof errorDetail === 'object') {
+          return errorDetail.message || JSON.stringify(errorDetail);
+        }
         return `Error de validación: ${errorDetail}`;
       }
       return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';
@@ -1529,14 +1866,23 @@ export class Reportar implements OnInit {
     return 'Error al enviar el reporte. Por favor, intenta nuevamente.';
   }
 
+  closeErrorModal(): void {
+    this.showErrorModal.set(false);
+    if (this.errorModalRef?.nativeElement) {
+      this.errorModalRef.nativeElement.close();
+    }
+  }
+
   private showErrorToast(message: string): void {
     // Crear toast usando DaisyUI
     const toast = document.createElement('div');
     toast.className = 'toast toast-top toast-end z-[100]';
     toast.innerHTML = `
       <div class="alert alert-error shadow-lg animate-fade-in">
-        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="m15 9-6 6"/>
+          <path d="m9 9 6 6"/>
         </svg>
         <div class="flex-1">
           <h3 class="font-bold">Error al enviar reporte</h3>

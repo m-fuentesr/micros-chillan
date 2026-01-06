@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { getTodayStringInChile } from '../utils/date.utils';
 import { LiquidationDriver } from '../models/accounting.models';
 
 export interface PaymentConfirmFormData {
@@ -39,7 +40,8 @@ export class PaymentConfirmModalService {
    */
   open(chofer: LiquidationDriver, mes: number, anio: number, semana: number): Promise<PaymentConfirmFormData | null> {
     return new Promise((resolve) => {
-      const today = new Date().toISOString().split('T')[0];
+      // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
+      const today = getTodayStringInChile();
       this._chofer.set(chofer);
       this._mes.set(mes);
       this._anio.set(anio);
@@ -109,7 +111,8 @@ export class PaymentConfirmModalService {
 
   private close(): void {
     this._isVisible.set(false);
-    const today = new Date().toISOString().split('T')[0];
+    // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
+    const today = getTodayStringInChile();
     this._formData.set({
       metodo_pago: '',
       fecha_pago: today,

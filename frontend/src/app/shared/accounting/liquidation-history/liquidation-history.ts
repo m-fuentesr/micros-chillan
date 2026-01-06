@@ -1,29 +1,65 @@
-import { Component, ChangeDetectionStrategy, input, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ClosedLiquidation, ClosedLiquidationWeek, LiquidationDriver } from '../../models/accounting.models';
 import { AccountingService } from '../../services/accounting.service';
+import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-liquidation-history',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SearchFilters, UiIconComponent],
   template: `
-    <div class="card bg-base-100 shadow-xl border border-base-200">
-      <div class="card-body p-4 sm:p-6">
-        
-        <div class="mb-6">
-          <h2 class="text-2xl font-bold border-l-4 border-l-primary pl-3">Historial de Cierres</h2>
-          <p class="text-xs sm:text-sm text-base-content/60">Registro inmutable de liquidaciones.</p>
+    <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden">
+      <!-- Header -->
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/50">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 sm:gap-6">
+          <div class="flex-1 min-w-0">
+            <h2 class="card-title text-xl sm:text-2xl lg:text-3xl font-bold border-l-4 border-l-primary pl-3 sm:pl-4 mb-2">
+              Historial de Cierres
+            </h2>
+            <p class="text-xs sm:text-sm text-base-content/70 leading-relaxed max-w-2xl">
+              Registro inmutable de liquidaciones.
+            </p>
+          </div>
+          
+          <!-- Badge de conteo -->
+          <div class="shrink-0">
+            <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
+              <span class="w-2 h-2 rounded-full bg-primary"></span>
+              {{ totalGlobal() }} {{ totalGlobal() === 1 ? 'período' : 'períodos' }}
+            </span>
+          </div>
         </div>
+      </div>
 
-        <!-- Vista Desktop: Tabla (solo desde lg: 1024px) -->
-        <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
+      <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6 pb-32 sm:pb-40 lg:pb-48">
+        <!-- Filtros -->
+        <div class="mb-6">
+          <app-search-filters
+            [fields]="filterFields()"
+            [filters]="filters()"
+            (filterChange)="onFilterChange($event)"
+          />
+        </div>
+        
+        <!-- Contenido: Tabla o mensaje de vacío -->
+        @if (isLoading()) {
+          <div class="flex justify-center items-center py-12">
+            <div class="flex flex-col items-center gap-3">
+              <span class="loading loading-spinner loading-lg text-primary"></span>
+              <span class="text-sm text-base-content/60 font-medium">Cargando períodos...</span>
+            </div>
+          </div>
+        } @else if (liquidations().length > 0) {
+          <!-- Vista Desktop: Tabla (solo desde lg: 1024px) -->
+          <div class="hidden lg:block overflow-hidden rounded-xl border border-base-200">
           <table class="table w-full table-fixed">
             <thead class="bg-base-50 border-b border-base-200">
               <tr>
-                <th class="pl-6 w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Período</th>
-                <th class="w-1/6 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha Cierre</th>
-                <th class="w-1/4 text-xs font-bold uppercase tracking-widest text-base-content/60">Responsable</th>
+                <th class="pl-6 w-2/5 text-xs font-bold uppercase tracking-widest text-base-content/60">Período</th>
+                <th class="w-1/5 text-xs font-bold uppercase tracking-widest text-base-content/60">Fecha Cierre</th>
                 <th class="text-left text-xs font-bold uppercase tracking-widest text-base-content/60 pr-12 font-mono tabular-nums">Total</th>
                 <th class="w-16"></th>
               </tr>
@@ -48,18 +84,6 @@ import { AccountingService } from '../../services/accounting.service';
                     </div>
                   </td>
                   <td class="tabular-nums text-sm text-base-content/70">{{ formatDate(liquidation.fecha_cierre) }}</td>
-                  <td class="pr-4">
-                    <div class="flex items-center gap-2 w-full">
-                      <div class="avatar placeholder shrink-0">
-                        <div class="bg-primary text-primary-content rounded-full w-6 h-6 flex items-center justify-center">
-                          <span class="text-[10px] font-bold">{{ getInitials(liquidation.cerrado_por) }}</span>
-                        </div>
-                      </div>
-                      <span class="text-sm text-base-content/80 truncate block w-full" [attr.title]="liquidation.cerrado_por">
-                        {{ liquidation.cerrado_por }}
-                      </span>
-                    </div>
-                  </td>
                   <td class="text-left pr-12 font-mono tabular-nums">
                     <span class="font-black text-base-content tabular-nums tracking-tight">{{ formatCurrency(liquidation.total_pagado) }}</span>
                   </td>
@@ -71,7 +95,7 @@ import { AccountingService } from '../../services/accounting.service';
                   </td>
                 </tr>
                 <tr>
-                  <td colspan="5" class="p-0 border-b border-base-200">
+                  <td colspan="4" class="p-0 border-b border-base-200">
                     <div class="collapse-anim" [class.collapse-expanded]="expandedIds().has(liquidation.id)">
                       <div class="bg-base-200/30 p-6 flex border-l-4 border-base-300 motion-panel"
                            [attr.id]="'history-detail-' + liquidation.id">
@@ -94,11 +118,11 @@ import { AccountingService } from '../../services/accounting.service';
               }
             </tbody>
           </table>
-        </div>
+          </div>
 
-        <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
-        <div class="lg:hidden space-y-4">
-          @for (liquidation of liquidations(); track liquidation.id) {
+          <!-- Vista Móvil y Tablet: Tarjetas (hasta lg: 1024px) -->
+          <div class="lg:hidden space-y-4">
+            @for (liquidation of liquidations(); track liquidation.id) {
             @let liquidationWithDetails = getLiquidationWithDetails(liquidation.id);
             @let isLoading = isLoadingDetails(liquidation.id);
             <div class="border border-base-200 rounded-xl overflow-hidden shadow-sm bg-base-100"
@@ -115,10 +139,8 @@ import { AccountingService } from '../../services/accounting.service';
                   </div>
                   <div class="truncate">
                     <div class="font-bold text-sm sm:text-base truncate">{{ liquidation.periodo }}</div>
-                    <div class="text-[11px] sm:text-xs text-base-content/50 flex items-center gap-1 flex-wrap">
+                    <div class="text-[11px] sm:text-xs text-base-content/50">
                       <span>{{ formatDate(liquidation.fecha_cierre) }}</span>
-                      <span>•</span>
-                      <span class="truncate max-w-[100px]">{{ liquidation.cerrado_por }}</span>
                     </div>
                   </div>
                 </div>
@@ -148,8 +170,18 @@ import { AccountingService } from '../../services/accounting.service';
                 }
               </div>
             </div>
-          }
-        </div>
+            }
+          </div>
+        } @else {
+          <!-- Mensaje cuando no hay datos -->
+          <div class="flex flex-col items-center justify-center py-12">
+            <ui-icon name="FileText" size="lg" class="text-base-content/40 mb-4" />
+            <h3 class="text-lg font-semibold text-base-content mb-2">No hay períodos disponibles</h3>
+            <p class="text-sm text-base-content/70 text-center max-w-md">
+              No se encontraron períodos con los filtros aplicados.
+            </p>
+          </div>
+        }
 
       </div>
     </div>
@@ -183,12 +215,21 @@ import { AccountingService } from '../../services/accounting.service';
           </div>
           <div>
             <div class="text-[10px] sm:text-xs text-base-content/50 uppercase mb-1">Estado</div>
-            <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
-                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-              </svg>
-              Finalizado
-            </div>
+            @if (liquidation.estado === 'Finalizado') {
+              <div class="badge badge-xs badge-success gap-1 pl-1.5 pr-3 text-white font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+                Finalizado
+              </div>
+            } @else {
+              <div class="badge badge-xs badge-warning gap-1 pl-1.5 pr-3 text-white font-bold">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2 h-2 sm:w-2.5 sm:h-2.5">
+                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clip-rule="evenodd" />
+                </svg>
+                En Proceso
+              </div>
+            }
           </div>
         </div>
 
@@ -198,7 +239,7 @@ import { AccountingService } from '../../services/accounting.service';
           
           <div class="weeks-container space-y-3">
             @for (week of liquidation.semanas || []; track week.semana) {
-            <div class="border border-base-200 rounded-lg overflow-hidden bg-base-50/30">
+              <div class="border border-base-200 rounded-lg overflow-hidden bg-base-50/30">
               <!-- Header de Semana -->
               <div 
                 class="p-3 flex justify-between items-center cursor-pointer hover:bg-base-100/50 transition-colors"
@@ -291,8 +332,8 @@ import { AccountingService } from '../../services/accounting.service';
                   }
                 </div>
               }
-            </div>
-          }
+              </div>
+            }
           </div>
         </div>
         
@@ -373,7 +414,20 @@ import { AccountingService } from '../../services/accounting.service';
 })
 export class LiquidationHistory {
   liquidations = input.required<ClosedLiquidation[]>();
+  totalGlobal = input<number>(0);
+  isLoading = input<boolean>(false);
+  filters = input<{ fecha_desde?: string | null; fecha_hasta?: string | null }>({});
+  filterChange = output<Record<string, any>>();
   private accountingService = inject(AccountingService);
+  
+  filterFields = computed<FilterField[]>(() => [
+    { key: 'fecha_desde', label: 'Mes Desde', type: 'date', monthOnly: true },
+    { key: 'fecha_hasta', label: 'Mes Hasta', type: 'date', monthOnly: true }
+  ]);
+  
+  onFilterChange(filters: Record<string, any>): void {
+    this.filterChange.emit(filters);
+  }
   
   /**
    * Cache de detalles cargados para evitar recargas innecesarias
@@ -512,10 +566,16 @@ export class LiquidationHistory {
 
   formatDateRange(start: string, end: string): string {
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const startStr = startDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short' });
-      const endStr = endDate.toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const startMonth = monthNames[startParts.month - 1];
+      const endMonth = monthNames[endParts.month - 1];
+      
+      const startStr = `${startParts.day}-${startMonth}`;
+      const endStr = `${endParts.day} ${endMonth} ${endParts.year}`;
       return `${startStr} - ${endStr}`;
     } catch {
       return `${start} - ${end}`;
@@ -584,8 +644,11 @@ export class LiquidationHistory {
 
   formatDate(date: string): string {
     try {
-      const d = new Date(date);
-      return d.toLocaleDateString('es-CL', { year: 'numeric', month: 'short', day: '2-digit' });
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const parts = getDatePartsInChile(date);
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = monthNames[parts.month - 1];
+      return `${parts.day} ${month} ${parts.year}`;
     } catch {
       return date;
     }

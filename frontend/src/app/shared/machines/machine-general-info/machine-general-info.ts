@@ -1,6 +1,5 @@
 import { Component, ChangeDetectionStrategy, input, output, computed } from '@angular/core';
 import { Machine } from '../../models/machine.models';
-import { calculateMachineDocumentStatus } from '../../utils/document.utils';
 
 @Component({
   selector: 'app-machine-general-info',
@@ -164,8 +163,9 @@ export class MachineGeneralInfo {
   editDocs = output<void>();
 
   docStatus = computed(() => {
-    return calculateMachineDocumentStatus(this.machine(), 30);
+    return this.machine().documentos_estado ?? {};
   });
+
 
   year = computed(() => {
     return this.machine().año || null;

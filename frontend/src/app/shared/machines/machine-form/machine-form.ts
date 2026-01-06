@@ -19,7 +19,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="numero"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: 05"
             inputmode="numeric"
             autocomplete="off"
@@ -49,7 +49,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="marca"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: Mercedes-Benz"
             [disabled]="disabled()"
             [class.input-error]="form.get('marca')?.invalid && form.get('marca')?.touched">
@@ -74,7 +74,7 @@ import { Machine } from '../../models/machine.models';
           <input
             type="text"
             formControlName="patente"
-            class="input input-bordered w-full"
+            class="input input-bordered w-full placeholder-gray-400"
             placeholder="Ej: ABCD-12"
             autocomplete="off"
             (input)="onPatenteInput($event)"
@@ -143,7 +143,7 @@ import { Machine } from '../../models/machine.models';
               [attr.size]="choferes().length > 10 ? 10 : null"
               style="max-height: 16rem; overflow-y: auto;"
             >
-              <option value="">-- Seleccionar Chofer --</option>
+              <option value="" selected disabled>-- Seleccionar chofer disponible --</option>
               @for (chofer of choferes(); track chofer.id) {
                 <option [value]="chofer.id">{{ chofer.nombre_completo }}</option>
               }
@@ -170,7 +170,6 @@ import { Machine } from '../../models/machine.models';
       </div>
     </form>
   `,
-  styles: [],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MachineForm {
@@ -193,7 +192,7 @@ export class MachineForm {
     marca: ['', [Validators.required, Validators.minLength(2)]],
     patente: ['', [Validators.required, Validators.pattern(/^[A-Z]{4}-\d{2}$/i)]],
     año: [null as number | null, [Validators.min(1900), Validators.max(new Date().getFullYear())]],
-    chofer_id: [null as number | null],
+    chofer_id: ['' as string | number | null],
     estado_operativo: ['Operativa', Validators.required]
   });
 
@@ -211,7 +210,7 @@ export class MachineForm {
         patente: value.patente || undefined,
         año: Number.isFinite(parsedYear) ? parsedYear : undefined,
         estado_operativo: value.estado_operativo as 'Operativa' | 'En Taller' | 'Inactiva' || 'Operativa',
-        chofer_id: value.chofer_id !== null && value.chofer_id !== undefined
+        chofer_id: value.chofer_id !== null && value.chofer_id !== undefined && value.chofer_id !== ''
           ? Number(value.chofer_id)
           : undefined
       });

@@ -7,19 +7,24 @@ import { DashboardService } from '../../shared/services/dashboard.service';
 import { Alert, DailyRecord, FinancialData, FinancialMetric } from '../../shared/models/dashboard.models';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, EMPTY } from 'rxjs';
-import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
 import { TransitionService } from '../../shared/services/transition.service';
-import { BusIcon } from '../../shared/components/bus-icon/bus-icon';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 import { KpiCard } from '../../shared/components/kpi-card/kpi-card';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { AnimatedCounterDirective } from '../../shared/directives/animated-counter.directive';
+import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton';
 
 @Component({
   selector: 'app-home',
-  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, LoadingSkeleton, BusIcon, KpiCard, AnimatedCounterDirective],
+  imports: [CommonModule, AlertList, FinancialSummary, DailyRecordsTable, KpiCard, AnimatedCounterDirective, UiIconComponent, HomeSkeleton],
   template: `
+    @if ((kpisLoadingState.isLoading() || contentLoadingState.isLoading()) && !sequentialState.kpisError() && !sequentialState.contentError()) {
+      <!-- Skeleton completo de alta fidelidad mientras carga -->
+      <app-home-skeleton />
+    } @else {
     <div class="space-y-6">
       <!-- Header - coherente con el resto de la app -->
       <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
@@ -38,27 +43,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
       <!-- Zona VIP: KPIs Superiores (4 Cards) -->
       <div class="pl-3 md:pl-4">
-        @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="dashboard-kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-            <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
-              </div>
-            </div>
-          </div>
+        @if (!sequentialState.kpisError()) {
           <div 
             [class.opacity-0]="!sequentialState.canShowKPIs()" 
             [class.animate-fade-in]="sequentialState.canShowKPIs()" 
@@ -72,88 +57,26 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                 [numericValue]="gananciaNetaTotalNumeric()"
                 [valueFormat]="'currency'"
                 [animationDuration]="1500"
-                type="success"
+                [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
-                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-                  <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-                </svg>
+                <ui-icon icon name="Wallet" size="md" />
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
-              <div 
-                class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-card-enter-in-context-delay-1"
-                [ngClass]="{
-                  'gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]': cardSize() === 'default',
-                  'gap-2 md:gap-3 p-3 md:p-4 min-h-[112px] md:min-h-[128px]': cardSize() === 'medium',
-                  'gap-1.5 md:gap-2 p-2 md:p-2.5 min-h-[75px] md:min-h-[85px]': cardSize() === 'compact'
-                }">
-                <div class="flex items-center"
-                  [ngClass]="{
-                    'gap-3': cardSize() === 'default',
-                    'gap-2.5': cardSize() === 'medium',
-                    'gap-2': cardSize() === 'compact'
-                  }">
-                  <div 
-                    class="flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
-                    [ngClass]="{
-                      'h-10 w-10': cardSize() === 'default',
-                      'h-8 w-8': cardSize() === 'medium',
-                      'h-5 w-5': cardSize() === 'compact'
-                    }">
-                    <svg xmlns="http://www.w3.org/2000/svg" 
-                      [ngClass]="{
-                        'w-5 h-5': cardSize() === 'default',
-                        'w-4 h-4': cardSize() === 'medium',
-                        'w-3 h-3': cardSize() === 'compact'
-                      }"
-                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-                  </div>
-                  <div>
-                    <h3 
-                      class="font-bold uppercase tracking-wider text-base-content"
-                      [ngClass]="{
-                        'text-xs': cardSize() === 'default',
-                        'text-[10px]': cardSize() === 'medium' || cardSize() === 'compact'
-                      }">Recaudación Total</h3>
-                    <p 
-                      class="font-medium text-zinc-400"
-                      [ngClass]="{
-                        'text-[10px] mt-0.5': cardSize() === 'default',
-                        'text-[9px] mt-0.5': cardSize() === 'medium',
-                        'text-[8px] mt-0.5': cardSize() === 'compact'
-                      }">Bruto sin descuentos</p>
-                  </div>
-                </div>
-
-                <div class="flex flex-col w-full">
-                  <div 
-                    class="font-black tracking-tight text-zinc-900 break-words overflow-hidden leading-tight"
-                    [ngClass]="{
-                      'text-base sm:text-lg md:text-xl lg:text-2xl': cardSize() === 'default',
-                      'text-[10px] sm:text-xs md:text-sm lg:text-base': cardSize() === 'medium',
-                      'text-[9px] sm:text-[10px] md:text-xs lg:text-sm': cardSize() === 'compact'
-                    }">{{ ingresoTotal() }}</div>
-                  <div 
-                    [ngClass]="{
-                      'mt-2': cardSize() === 'default',
-                      'mt-1.5': cardSize() === 'medium',
-                      'mt-1': cardSize() === 'compact'
-                    }">
-                    <span 
-                      class="inline-flex items-center rounded bg-primary/10 font-bold text-primary ring-1 ring-inset ring-primary/15"
-                      [ngClass]="{
-                        'px-1.5 py-0.5 text-[10px]': cardSize() === 'default',
-                        'px-1 py-0.5 text-[9px]': cardSize() === 'medium',
-                        'px-1 py-0.5 text-[8px]': cardSize() === 'compact'
-                      }">
-                      Total hoy
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <app-kpi-card
+                title="Recaudación Total"
+                [subtitle]="'Bruto sin descuentos'"
+                [numericValue]="ingresoTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
+                type="info"
+                badgeText="Total hoy"
+                [externalSize]="cardSize()"
+                [animationDelay]="100">
+                <ui-icon icon name="HandCoins" size="md" />
+              </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
               <div 
@@ -177,12 +100,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                         'h-8 w-8': cardSize() === 'medium',
                         'h-5 w-5': cardSize() === 'compact'
                       }">
-                      <app-bus-icon 
-                        [ngClass]="{
-                          'h-5 w-5': cardSize() === 'default',
-                          'h-4 w-4': cardSize() === 'medium',
-                          'h-3 w-3': cardSize() === 'compact'
-                        }" />
+                      <ui-icon 
+                        name="BusFront" 
+                        [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                     </div>
                     <div>
                       <h3 
@@ -392,90 +312,26 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                 [numericValue]="gananciaNetaTotalNumeric()"
                 [valueFormat]="'currency'"
                 [animationDuration]="1500"
-                type="success"
+                [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
                 [animationDelay]="0">
-                <svg icon xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-                  <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-                </svg>
+                <ui-icon icon name="Wallet" size="md" />
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
-              <div 
-                class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] animate-card-enter-in-context-delay-1"
-                [ngClass]="{
-                  'gap-3 md:gap-4 p-4 md:p-5 min-h-[150px] md:min-h-[170px]': cardSize() === 'default',
-                  'gap-2 md:gap-3 p-3 md:p-4 min-h-[112px] md:min-h-[128px]': cardSize() === 'medium',
-                  'gap-1.5 md:gap-2 p-2 md:p-2.5 min-h-[75px] md:min-h-[85px]': cardSize() === 'compact'
-                }">
-                <div class="flex items-center"
-                  [ngClass]="{
-                    'gap-3': cardSize() === 'default',
-                    'gap-2.5': cardSize() === 'medium',
-                    'gap-2': cardSize() === 'compact'
-                  }">
-                  <div 
-                    class="flex items-center justify-center rounded-xl bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100"
-                    [ngClass]="{
-                      'h-10 w-10': cardSize() === 'default',
-                      'h-8 w-8': cardSize() === 'medium',
-                      'h-5 w-5': cardSize() === 'compact'
-                    }">
-                    <svg xmlns="http://www.w3.org/2000/svg" 
-                      [ngClass]="{
-                        'w-5 h-5': cardSize() === 'default',
-                        'w-4 h-4': cardSize() === 'medium',
-                        'w-3 h-3': cardSize() === 'compact'
-                      }"
-                      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>
-                  </div>
-                  <div>
-                    <h3 
-                      class="font-bold uppercase tracking-wider text-base-content"
-                      [ngClass]="{
-                        'text-xs': cardSize() === 'default',
-                        'text-[10px]': cardSize() === 'medium' || cardSize() === 'compact'
-                      }">Recaudación Total</h3>
-                    <p 
-                      class="font-medium text-zinc-400"
-                      [ngClass]="{
-                        'text-[10px] mt-0.5': cardSize() === 'default',
-                        'text-[9px] mt-0.5': cardSize() === 'medium',
-                        'text-[8px] mt-0.5': cardSize() === 'compact'
-                      }">Bruto sin descuentos</p>
-                  </div>
-                </div>
-
-                <div class="flex flex-col w-full">
-                  <div 
-                    class="font-black tracking-tight text-zinc-900 break-words overflow-hidden leading-tight"
-                    [ngClass]="{
-                      'text-base sm:text-lg md:text-xl lg:text-2xl': cardSize() === 'default',
-                      'text-[10px] sm:text-xs md:text-sm lg:text-base': cardSize() === 'medium',
-                      'text-[9px] sm:text-[10px] md:text-xs lg:text-sm': cardSize() === 'compact'
-                    }">
-                    <span [appAnimatedCounter]="ingresoTotalNumeric()" format="currency" [duration]="1500"></span>
-                  </div>
-                  <div 
-                    [ngClass]="{
-                      'mt-2': cardSize() === 'default',
-                      'mt-1.5': cardSize() === 'medium',
-                      'mt-1': cardSize() === 'compact'
-                    }">
-                    <span 
-                      class="inline-flex items-center rounded bg-primary/10 font-bold text-primary ring-1 ring-inset ring-primary/15"
-                      [ngClass]="{
-                        'px-1.5 py-0.5 text-[10px]': cardSize() === 'default',
-                        'px-1 py-0.5 text-[9px]': cardSize() === 'medium',
-                        'px-1 py-0.5 text-[8px]': cardSize() === 'compact'
-                      }">
-                      Total hoy
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <app-kpi-card
+                title="Recaudación Total"
+                [subtitle]="'Bruto sin descuentos'"
+                [numericValue]="ingresoTotalNumeric()"
+                [valueFormat]="'currency'"
+                [animationDuration]="1500"
+                type="info"
+                badgeText="Total hoy"
+                [externalSize]="cardSize()"
+                [animationDelay]="100">
+                <ui-icon icon name="HandCoins" size="md" />
+              </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
               <div 
@@ -499,12 +355,9 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
                         'h-8 w-8': cardSize() === 'medium',
                         'h-5 w-5': cardSize() === 'compact'
                       }">
-                      <app-bus-icon 
-                        [ngClass]="{
-                          'h-5 w-5': cardSize() === 'default',
-                          'h-4 w-4': cardSize() === 'medium',
-                          'h-3 w-3': cardSize() === 'compact'
-                        }" />
+                      <ui-icon 
+                        name="BusFront" 
+                        [size]="cardSize() === 'default' ? 'md' : cardSize() === 'medium' ? 'sm' : 'xs'" />
                     </div>
                     <div>
                       <h3 
@@ -705,80 +558,13 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
 
       <!-- Zona de Análisis: Gráfico (66%) + Alertas (33%) -->
       <div class="page-entry-content">
-        @if (!sequentialState.canShowContent()) {
-          <!-- Mostrar skeleton mientras esperamos que los KPIs aparezcan -->
-          @if (contentLoadingState.isLoading() && !sequentialState.contentError()) {
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
-              <div class="xl:col-span-2">
-                <app-loading-skeleton 
-                  type="dashboard-chart" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-              <div class="xl:col-span-1">
-                <app-loading-skeleton 
-                  type="dashboard-alerts" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-            </div>
-            <div class="border-t-2 border-t-base-300 pt-6">
-              <app-loading-skeleton 
-                type="dashboard-table" 
-                [count]="5"
-                [isExiting]="contentLoadingState.isSkeletonExiting()" />
-            </div>
-          } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-              <div class="flex flex-col items-center gap-4 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
-                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                </div>
-              </div>
-            </div>
-          } @else {
-            <!-- Mantener skeleton visible hasta que canShowContent sea true -->
-            <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
-              <div class="xl:col-span-2">
-                <app-loading-skeleton 
-                  type="dashboard-chart" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-              <div class="xl:col-span-1">
-                <app-loading-skeleton 
-                  type="dashboard-alerts" 
-                  [isExiting]="contentLoadingState.isSkeletonExiting()" />
-              </div>
-            </div>
-            <div class="border-t-2 border-t-base-300 pt-6">
-              <app-loading-skeleton 
-                type="dashboard-table" 
-                [count]="5"
-                [isExiting]="contentLoadingState.isSkeletonExiting()" />
-            </div>
-          }
-        } @else {
-          <!-- Solo renderizar el contenido cuando canShowContent es true -->
+        @if (sequentialState.canShowContent()) {
           <div 
             [class.animate-fade-in]="sequentialState.canShowContent()" 
             [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar contenido</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los datos desde el servidor.</p>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (!sequentialState.contentError()) {
               <!-- Gráfico Financiero (2/3 del ancho) + Alertas (1/3 del ancho) -->
               <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 border-t-2 border-t-base-300 pt-6">
                 <div class="xl:col-span-2">
@@ -799,6 +585,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
               <div class="border-t-2 border-t-base-300 pt-6">
                 <app-daily-records-table
                   [records]="dailyRecords()"
+                  [updatedValueIds]="updatedValueIds()"
                   [showOnlyPending]="showOnlyPending()"
                   (toggleFilter)="togglePendingFilter()" />
               </div>
@@ -807,6 +594,7 @@ import { AnimatedCounterDirective } from '../../shared/directives/animated-count
         }
       </div>
     </div>
+    }
   `,
   styles: [
     `
@@ -838,6 +626,7 @@ export class Home implements OnInit, OnDestroy {
   private dashboardService = inject(DashboardService);
   private transitionService = inject(TransitionService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private platformId = inject(PLATFORM_ID);
   
   // Signals para detección de tamaño de pantalla
@@ -905,15 +694,34 @@ export class Home implements OnInit, OnDestroy {
     }
   }
   
+  // Effect para detectar errores del dashboard y mostrar error global
+  private dashboardErrorEffect = effect(() => {
+    const connectionError = this.dashboardService.connectionError();
+    const dashboardData = this.dashboardService.dashboardData();
+    const isLoading = this.kpisLoadingState.isLoading() || this.contentLoadingState.isLoading();
+    
+    // Si hay error de conexión y estamos cargando, mostrar error global
+    if (connectionError && isLoading && !dashboardData) {
+      this.globalErrorService.showError(
+        'No se pudieron cargar los datos del panel desde el servidor.',
+        'Error al cargar panel principal'
+      );
+      // Marcar errores en sequential state
+      this.sequentialState.setKPIsReady(true);
+      this.sequentialState.setContentReady(true);
+    }
+  });
+
   // Effects para detectar cuando los datos están listos
   private kpisEffect = effect(() => {
     // Los KPIs se calculan desde financialData y dailyRecords
     // Consideramos que están listos cuando dailyRecords tiene datos o después de un tiempo mínimo
     const hasRecords = this.dailyRecords().length > 0;
+    const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.kpisLoadingState.isLoading();
     
     // Cuando hay datos y está cargando, marcar como cargado directamente
-    if (hasRecords && isLoading && !this.sequentialState.kpisError()) {
+    if ((hasRecords || dashboardData) && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
       // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
@@ -928,10 +736,11 @@ export class Home implements OnInit, OnDestroy {
     // El contenido está listo cuando tenemos registros diarios o alertas cargadas
     const hasRecords = this.dailyRecords().length > 0;
     const hasAlerts = this.alertsInitialized; // Verificar si las alertas se inicializaron
+    const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.contentLoadingState.isLoading();
     
     // Cuando hay datos y está cargando, marcar como cargado directamente
-    if ((hasRecords || hasAlerts) && isLoading && !this.sequentialState.contentError()) {
+    if ((hasRecords || hasAlerts || dashboardData) && isLoading && !this.sequentialState.contentError()) {
       this.contentLoadingState.setDataLoaded();
       // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
@@ -978,6 +787,18 @@ export class Home implements OnInit, OnDestroy {
       this.alertsInitialized = true;
     }
   });
+
+  // Effect para refrescar alertas cuando hay cambios en Realtime (detectados a través de dashboardData)
+  private alertsRealtimeEffect = effect(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    // Cuando dashboardData cambia (incluyendo cambios de Realtime en alertas), refrescar alertas
+    if (dashboardData && this.alertsInitialized) {
+      // Refrescar alertas después de un pequeño delay para evitar múltiples llamadas
+      setTimeout(() => {
+        this.refreshAlerts();
+      }, 500);
+    }
+  });
   
   alerts = computed(() => {
     const loaded = this.alertsData();
@@ -1011,21 +832,9 @@ export class Home implements OnInit, OnDestroy {
     };
   });
 
-  // Cargar registros diarios
-  dailyRecordsData = toSignal(
-    this.dashboardService.getDailyRecords().pipe(
-      catchError((error) => {
-        console.error('Error al cargar registros diarios en home:', error);
-        return of<DailyRecord[]>([]);
-      })
-    ),
-    { initialValue: [] }
-  );
-
-  dailyRecords = computed(() => {
-    const records = this.dailyRecordsData() ?? [];
-    return records;
-  });
+  // Cargar registros diarios desde el signal del servicio (se actualiza vía WebSocket)
+  dailyRecords = this.dashboardService.dailyRecords;
+  updatedValueIds = this.dashboardService.updatedValueIds;
 
   // Datos financieros (se obtienen del backend)
   financialData = signal<Record<FinancialMetric, FinancialData[]>>({
@@ -1035,12 +844,54 @@ export class Home implements OnInit, OnDestroy {
 
   // KPIs calculados - Usar datos del nuevo servicio cuando estén disponibles, sino usar fallback
   // Signals numéricos para animación
-  gananciaNetaTotalNumeric = computed(() => {
+  // Mantener el último valor conocido para evitar mostrar 0 mientras se recargan los datos
+  private lastGananciaNeta = signal<number | null>(null);
+
+  // Effect para guardar el último valor conocido cuando cambian los datos
+  private gananciaNetaEffect = effect(() => {
     const dashboardData = this.dashboardService.dashboardData();
     if (dashboardData?.kpis?.ganancia_neta !== undefined) {
-      return dashboardData.kpis.ganancia_neta;
+      this.lastGananciaNeta.set(dashboardData.kpis.ganancia_neta);
     }
+  });
+
+  gananciaNetaTotalNumeric = computed(() => {
+    const dashboardData = this.dashboardService.dashboardData();
+    
+    // Debug: Verificar qué está pasando en el computed
+    console.log('🔍 gananciaNetaTotalNumeric computed:', {
+      dashboardData: dashboardData,
+      kpis: dashboardData?.kpis,
+      ganancia_neta: dashboardData?.kpis?.ganancia_neta,
+      tipo: typeof dashboardData?.kpis?.ganancia_neta,
+      lastValue: this.lastGananciaNeta()
+    });
+    
+    // Si hay datos del dashboard, usar el valor (puede ser negativo, positivo o cero)
+    // Verificar explícitamente que sea un número (incluyendo 0 y negativos)
+    if (dashboardData?.kpis && typeof dashboardData.kpis.ganancia_neta === 'number') {
+      const value = dashboardData.kpis.ganancia_neta;
+      console.log('✅ Retornando ganancia_neta del dashboard:', value);
+      return value;
+    }
+    
+    // Si no hay datos aún pero tenemos un último valor conocido, usarlo
+    // Esto evita mostrar $0 mientras se recargan los datos al volver a la página
+    const lastValue = this.lastGananciaNeta();
+    if (lastValue !== null) {
+      console.log('📌 Retornando último valor conocido:', lastValue);
+      return lastValue;
+    }
+    
+    // Solo retornar 0 si nunca hemos tenido datos
+    console.log('⚠️ No hay datos, retornando 0');
     return 0;
+  });
+
+  // Determinar el tipo del KPI según si la ganancia es positiva o negativa
+  gananciaNetaType = computed<'success' | 'danger'>(() => {
+    const value = this.gananciaNetaTotalNumeric();
+    return value >= 0 ? 'success' : 'danger';
   });
 
   ingresoTotalNumeric = computed(() => {
@@ -1140,25 +991,37 @@ export class Home implements OnInit, OnDestroy {
 
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
+    const alertToDelete = previousAlerts.find(a => a.id === alertId);
     
     // 2. Optimistic update: Remover inmediatamente de la UI
     this._alerts.set(previousAlerts.filter(a => a.id !== alertId));
     this.isDeletingAlert.set(true);
     
-    // 3. Llamar al servidor en segundo plano
-    this.alertService.deleteAlert(alertId).pipe(
-      catchError((error) => {
+    // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
+    this.alertService.resolveAlert(parseInt(alertId)).pipe(
+      catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
         
-        // 5. Notificar al usuario
-        this.showErrorToast('No se pudo eliminar la alerta. Intenta nuevamente.');
+        // 5. Manejar errores específicos
+        if (error?.status === 409) {
+          // Error 409: Incidente crítico que debe resolverse desde el Registro Diario
+          this.showErrorToast('Los incidentes críticos deben resolverse desde el Registro Diario.');
+        } else if (error?.status === 400) {
+          this.showErrorToast('No se pudo resolver la alerta. Verifica los datos e intenta nuevamente.');
+        } else if (error?.status >= 500) {
+          this.showErrorToast('Error del servidor. Intenta nuevamente más tarde.');
+        } else {
+          this.showErrorToast('No se pudo resolver la alerta. Intenta nuevamente.');
+        }
         
         return EMPTY;
       })
     ).subscribe({
       next: () => {
         this.isDeletingAlert.set(false);
+        // Refrescar alertas después de resolver
+        this.refreshAlerts();
       },
       error: () => {
         this.isDeletingAlert.set(false);
@@ -1175,27 +1038,52 @@ export class Home implements OnInit, OnDestroy {
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
     
-    // 2. Optimistic update: Remover todas las alertas inmediatamente
-    this._alerts.set([]);
+    // 2. Optimistic update: Remover solo las alertas NO críticas
+    // Las alertas críticas deben permanecer (TC025)
+    const alertsToKeep = this._alerts().filter(alert => alert.severity === 'critical');
+    this._alerts.set(alertsToKeep);
     this.isDeletingAllAlerts.set(true);
     
-    // 3. Llamar al servidor en segundo plano
-    this.alertService.deleteAllAlerts().pipe(
-      catchError((error) => {
+    // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
+    this.alertService.resolveAllAdminAlerts().pipe(
+      catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
         
-        // 5. Notificar al usuario
-        this.showErrorToast('No se pudieron eliminar las alertas. Intenta nuevamente.');
+        // 5. Manejar errores específicos
+        if (error?.status === 400) {
+          this.showErrorToast('No se pudieron resolver todas las alertas. Verifica los datos e intenta nuevamente.');
+        } else if (error?.status >= 500) {
+          this.showErrorToast('Error del servidor. Intenta nuevamente más tarde.');
+        } else {
+          this.showErrorToast('No se pudieron resolver todas las alertas. Intenta nuevamente.');
+        }
         
         return EMPTY;
       })
     ).subscribe({
       next: () => {
         this.isDeletingAllAlerts.set(false);
+        // Refrescar alertas después de resolver
+        this.refreshAlerts();
       },
       error: () => {
         this.isDeletingAllAlerts.set(false);
+      }
+    });
+  }
+
+  /**
+   * Refrescar alertas desde el servidor
+   * Se llama después de resolver alertas o cuando hay cambios en Realtime
+   */
+  private refreshAlerts(): void {
+    this.alertService.getAlerts().pipe(
+      catchError(() => of<Alert[]>([]))
+    ).subscribe({
+      next: (alerts) => {
+        this._alerts.set(alerts);
+        this.alertsInitialized = true;
       }
     });
   }

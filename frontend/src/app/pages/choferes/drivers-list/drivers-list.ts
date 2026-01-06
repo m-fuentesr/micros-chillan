@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect, untracked } from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { DriverService } from '../../../shared/services/driver.service';
@@ -10,10 +10,12 @@ import { catchError, of } from 'rxjs';
 import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../../shared/services/global-error.service';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-drivers-list',
-  imports: [DriverKPIs, DriverList, RouterLink, LoadingSkeleton],
+  imports: [DriverKPIs, DriverList, RouterLink, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -28,9 +30,7 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
             </p>
           </div>
           <a routerLink="/choferes/nuevo" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <ui-icon name="CirclePlus" size="sm" />
             <span class="sm:hidden">Registrar</span>
             <span class="hidden sm:inline">Registrar Chofer</span>
           </a>
@@ -40,33 +40,10 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
         @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-            <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
-              </div>
-            </div>
-          </div>
-          <div 
-            [class.opacity-0]="!sequentialState.canShowKPIs()" 
-            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
-            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-            <app-driver-kpis [kpis]="kpis()" />
-          </div>
+          <!-- Skeleton responsive - replica exacta de las KPI cards -->
+          <app-loading-skeleton 
+            type="responsive-kpis" 
+            [isExiting]="kpisLoadingState.isSkeletonExiting()" />
         } @else {
           <div 
             [class.opacity-0]="!sequentialState.canShowKPIs()" 
@@ -88,21 +65,6 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
               type="machine-list" 
               [count]="6"
               [isExiting]="driversLoadingState.isSkeletonExiting()" />
-          } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-              <div class="flex flex-col items-center gap-4 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar conductores</h3>
-                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar los conductores desde el servidor.</p>
-                  <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                    Reintentar
-                  </button>
-                </div>
-              </div>
-            </div>
           } @else {
             <!-- Mantener skeleton visible hasta que canShowContent sea true -->
             <app-loading-skeleton 
@@ -117,31 +79,48 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
             [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar conductores</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar los conductores desde el servidor.</p>
-                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                      Reintentar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (!sequentialState.contentError()) {
               <app-driver-list
                 [drivers]="drivers()"
                 [viewMode]="viewMode()"
                 [statusFilter]="statusFilter()"
                 [licenseFilter]="licenseFilter()"
                 [licenseAlerts]="licenseAlerts()"
+                [isLoading]="isLoadingPage()"
+                [totalActivos]="kpis().activos"
                 (viewModeChange)="onViewModeChange($event)"
                 (filterChange)="onFilterChange($event)"
                 (licenseFilterChange)="onLicenseFilterChange($event)" />
+              
+              <!-- Paginación -->
+              @if (totalDrivers() > 0) {
+                <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+                  <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalDrivers() }} conductores</span>
+                  <div class="join">
+                    <button 
+                      (click)="goToPreviousPage()" 
+                      [disabled]="currentPage() === 1 || isLoadingPage()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="currentPage() === 1 || isLoadingPage()">
+                      «
+                    </button>
+                    @for (page of pages(); track page) {
+                      <button 
+                        (click)="goToPage(page)" 
+                        [disabled]="isLoadingPage()" 
+                        [class.btn-active]="page === currentPage()" 
+                        class="join-item btn btn-sm px-4">{{ page }}</button>
+                    }
+                    <button 
+                      (click)="goToNextPage()" 
+                      [disabled]="currentPage() === totalPages() || isLoadingPage()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="currentPage() === totalPages() || isLoadingPage()">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
             }
           </div>
         }
@@ -168,12 +147,32 @@ import { LoadingStateService } from '../../../shared/services/loading-state.serv
 export class DriversList implements OnInit, OnDestroy {
   private driverService = inject(DriverService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private router = inject(Router);
   private navigationSubscription?: Subscription;
 
   viewMode = signal<DriverViewMode>('cards');
   statusFilter = signal<DriverStatusFilter>('all');
   licenseFilter = signal<LicenseFilter>('all');
+  
+  // Paginación
+  currentPage = signal(1);
+  itemsPerPage = 12;
+  isLoadingPage = signal(false); // Indicador de carga para cambios de página
+  private isLoadingDrivers = false; // Flag para evitar múltiples peticiones simultáneas
+  private driversResponse = signal<{
+    datos: Driver[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }>({
+    datos: [],
+    total: 0,
+    pagina: 1,
+    por_pagina: 12,
+    total_paginas: 0
+  });
   
   // Estados de carga simplificados (siguiendo patrón de driver-detail)
   kpisLoadingState = this.loadingStateService.createLoadingState();
@@ -202,59 +201,143 @@ export class DriversList implements OnInit, OnDestroy {
     this.driversLoadingState.setLoading(true);
   }
 
-  // Cargar choferes con manejo de errores
-  driversData = toSignal(
-    this.driverService.getDrivers().pipe(
-      catchError((error) => {
-        console.error('Error cargando conductores:', error);
-        this.sequentialState.setContentReady(true); // Marcar error
-        setTimeout(() => {
-          this.driversLoadingState.setDataLoaded();
-        }, 100);
-        return of<Driver[]>([]);
-      })
-    ),
-    { initialValue: [] }
-  );
-
-  drivers = computed(() => this.driversData() ?? []);
-
-  // Calcular KPIs
-  kpis = computed(() => {
-    const drivers = this.drivers();
-    // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
-    if (drivers.length === 0 && this.kpisLoadingState.isLoading()) {
-      return { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
+  // Cargar conductores con paginación
+  private loadDrivers(): void {
+    // Evitar múltiples peticiones simultáneas
+    if (this.isLoadingDrivers) {
+      return;
     }
     
-    let activos = 0;
-    let inactivos = 0;
-    let con_maquina = 0;
-    let licencias_por_vencer = 0;
-
-    drivers.forEach(driver => {
-      if (driver.estado === 'activo') activos++;
-      else if (driver.estado === 'inactivo') inactivos++;
-
-      if (driver.maquina_actual) con_maquina++;
-
-      const licenseStatus = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
-      if (licenseStatus.estado !== 'ok') {
-        licencias_por_vencer++;
+    this.isLoadingDrivers = true;
+    
+    // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
+    const isFirstLoad = this.currentPage() === 1 && this.driversResponse().datos.length === 0;
+    if (isFirstLoad) {
+      this.driversLoadingState.setLoading(true);
+    } else {
+      this.isLoadingPage.set(true);
+    }
+    
+    const filters: {
+      estado?: 'todos' | 'activos' | 'inactivos';
+      licencia_estado?: 'vencidas' | 'por_vencer' | 'vigentes';
+      search?: string;
+      page: number;
+      per_page: number;
+    } = {
+      page: this.currentPage(),
+      per_page: this.itemsPerPage
+    };
+    
+    // Aplicar filtros
+    if (this.statusFilter() !== 'all') {
+      const estadoMap: Record<DriverStatusFilter, 'todos' | 'activos' | 'inactivos'> = {
+        'all': 'todos',
+        'activo': 'activos',
+        'inactivo': 'inactivos'
+      };
+      filters.estado = estadoMap[this.statusFilter()];
+    }
+    
+    // Aplicar filtro de licencia
+    if (this.licenseFilter() !== 'all') {
+      const licenciaMap: Record<LicenseFilter, 'vencidas' | 'por_vencer' | 'vigentes'> = {
+        'all': 'vigentes', // No debería llegar aquí
+        'vencidas': 'vencidas',
+        'por_vencer': 'por_vencer',
+        'al_dia': 'vigentes' // 'al_dia' en frontend se mapea a 'vigentes' en backend
+      };
+      filters.licencia_estado = licenciaMap[this.licenseFilter()];
+    }
+    
+    this.driverService.getDrivers(filters).pipe(
+      catchError((error) => {
+        console.error('Error cargando conductores:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.driversResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar los conductores desde el servidor.',
+            'Error al cargar conductores'
+          );
+        }
+        this.sequentialState.setContentReady(true); // Marcar error
+        this.driversLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingDrivers = false;
+        return of({
+          datos: [],
+          total: 0,
+          pagina: 1,
+          por_pagina: 12,
+          total_paginas: 0
+        });
+      })
+    ).subscribe({
+      next: (response) => {
+        this.driversResponse.set(response);
+        this.driversLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingDrivers = false;
+        if (!this.sequentialState.contentError()) {
+          setTimeout(() => {
+            this.sequentialState.setContentReady(false);
+          }, 50);
+        }
+      },
+      error: (error) => {
+        console.error('Error cargando conductores:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.driversResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar los conductores desde el servidor.',
+            'Error al cargar conductores'
+          );
+        }
+        this.sequentialState.setContentReady(true);
+        this.driversLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingDrivers = false;
       }
     });
+  }
 
-    return {
-      activos,
-      inactivos,
-      con_maquina,
-      licencias_por_vencer
-    };
+  drivers = computed(() => this.driversResponse().datos);
+  totalDrivers = computed(() => this.driversResponse().total);
+  totalPages = computed(() => this.driversResponse().total_paginas);
+
+  // Cargar KPIs desde el backend
+  kpisData = toSignal(
+    this.driverService.getKPIs().pipe(
+      catchError((error) => {
+        console.error('Error cargando KPIs:', error);
+        // Mostrar error global en lugar de error local
+        this.globalErrorService.showError(
+          'No se pudieron cargar los datos desde el servidor.',
+          'Error al cargar conductores'
+        );
+        this.sequentialState.setKPIsReady(true); // Marcar error
+        setTimeout(() => {
+          this.kpisLoadingState.setDataLoaded();
+        }, 100);
+        return of<DriverKPIsType>({ activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 });
+      })
+    ),
+    { initialValue: null }
+  );
+
+  kpis = computed(() => {
+    const kpisData = this.kpisData();
+    // Si aún no hay datos reales y estamos cargando, retornar KPIs vacíos para evitar mostrar 0s
+    if (kpisData === null && this.kpisLoadingState.isLoading()) {
+      return { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
+    }
+    return kpisData ?? { activos: 0, inactivos: 0, con_maquina: 0, licencias_por_vencer: 0 };
   });
 
-  // Effects simplificados (siguiendo patrón de driver-detail)
-  // Directos y sin delays artificiales - más simple y confiable
-  private driversEffect = effect(() => {
+  // Effect para actualizar estado de carga
+  private driversLoadingEffect = effect(() => {
     const drivers = this.drivers();
     const isLoading = this.driversLoadingState.isLoading();
     
@@ -271,11 +354,11 @@ export class DriversList implements OnInit, OnDestroy {
   });
 
   private kpisEffect = effect(() => {
-    const drivers = this.drivers();
+    const kpis = this.kpisData();
     const isLoading = this.kpisLoadingState.isLoading();
     
-    // Los KPIs se calculan desde los drivers, así que cuando los drivers están listos, los KPIs también
-    if (drivers.length > 0 && isLoading && !this.sequentialState.kpisError()) {
+    // Cuando los KPIs están listos
+    if (kpis !== null && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
       // Coordinar con sequentialState para animaciones suaves
       setTimeout(() => {
@@ -284,6 +367,55 @@ export class DriversList implements OnInit, OnDestroy {
     } else if (this.sequentialState.kpisError() && isLoading) {
       this.kpisLoadingState.setDataLoaded();
     }
+  });
+
+  // Cargar alertas de licencia desde el backend (sin filtro de licencia)
+  private licenseAlertsResponse = signal<{
+    vencidas: number;
+    por_vencer: number;
+    vigentes: number;
+  }>({
+    vencidas: 0,
+    por_vencer: 0,
+    vigentes: 0
+  });
+
+  // Cargar alertas de licencia
+  private loadLicenseAlerts(): void {
+    const filters: {
+      estado?: 'todos' | 'activos' | 'inactivos';
+    } = {};
+    
+    // Aplicar solo el filtro de estado (no el de licencia)
+    if (this.statusFilter() !== 'all') {
+      const estadoMap: Record<DriverStatusFilter, 'todos' | 'activos' | 'inactivos'> = {
+        'all': 'todos',
+        'activo': 'activos',
+        'inactivo': 'inactivos'
+      };
+      filters.estado = estadoMap[this.statusFilter()];
+    }
+    
+    this.driverService.getLicenseAlerts(filters).pipe(
+      catchError((error) => {
+        console.error('Error cargando alertas de licencia:', error);
+        return of({ vencidas: 0, por_vencer: 0, vigentes: 0 });
+      })
+    ).subscribe({
+      next: (alerts) => {
+        this.licenseAlertsResponse.set(alerts);
+      }
+    });
+  }
+
+  licenseAlerts = computed(() => {
+    const response = this.licenseAlertsResponse();
+    // Mapear 'vigentes' del backend a 'al_dia' que espera el componente
+    return {
+      vencidas: response.vencidas,
+      por_vencer: response.por_vencer,
+      al_dia: response.vigentes
+    };
   });
   
   // ============================================
@@ -348,52 +480,22 @@ export class DriversList implements OnInit, OnDestroy {
   // ============================================
 
   // Función para reintentar carga
+  // Función para reintentar carga (ya no se usa, pero se mantiene por compatibilidad)
   retryLoad(): void {
-    this.sequentialState.resetErrors();
-    this.sequentialState.reset();
-    this.driversLoadingState.setLoading(true);
-    
-    // Recargar conductores
-    this.driversData = toSignal(
-      this.driverService.getDrivers().pipe(
-        catchError((error) => {
-          console.error('Error cargando conductores:', error);
-          this.sequentialState.setContentReady(true);
-          setTimeout(() => {
-            this.driversLoadingState.setDataLoaded();
-          }, 100);
-          return of<Driver[]>([]);
-        })
-      ),
-      { initialValue: [] }
-    );
+    // Limpiar error global y recargar página
+    this.globalErrorService.clearError();
+    this.globalErrorService.reloadPage();
   }
-
-  // Calcular alertas de licencias desde todos los conductores (no filtrados)
-  licenseAlerts = computed(() => {
-    const drivers = this.drivers();
-    let vencidas = 0;
-    let por_vencer = 0;
-    let al_dia = 0;
-
-    drivers.forEach(driver => {
-      const status = calculateLicenseStatus(driver.fecha_venc_licencia, 30);
-      if (status.estado === 'error') {
-        vencidas++;
-      } else if (status.estado === 'warning') {
-        por_vencer++;
-      } else {
-        al_dia++;
-      }
-    });
-
-    return { vencidas, por_vencer, al_dia };
-  });
 
 
   private isFirstLoad = true;
 
   ngOnInit(): void {
+    // Cargar conductores inicialmente
+    this.loadDrivers();
+    // Cargar alertas de licencia inicialmente
+    this.loadLicenseAlerts();
+    
     // Suscribirse a eventos de navegación para resetear estados cuando se vuelve a la página
     this.navigationSubscription = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
@@ -422,6 +524,11 @@ export class DriversList implements OnInit, OnDestroy {
     // Simple y directo, como en driver-detail
     this.kpisLoadingState.setLoading(true);
     this.driversLoadingState.setLoading(true);
+    
+    // Recargar datos
+    this.currentPage.set(1);
+    this.loadDrivers();
+    this.loadLicenseAlerts();
   }
   
   // ============================================
@@ -463,10 +570,78 @@ export class DriversList implements OnInit, OnDestroy {
 
   onFilterChange(filter: DriverStatusFilter): void {
     this.statusFilter.set(filter);
+    this.currentPage.set(1); // Resetear a página 1 cuando cambian los filtros
+    // Recargar explícitamente los datos
+    untracked(() => {
+      this.loadDrivers();
+      this.loadLicenseAlerts(); // Recargar alertas cuando cambia el filtro de estado
+    });
   }
 
   onLicenseFilterChange(filter: LicenseFilter): void {
     this.licenseFilter.set(filter);
+    this.currentPage.set(1); // Resetear a página 1 cuando cambian los filtros
+    // Recargar explícitamente los datos
+    untracked(() => {
+      this.loadDrivers();
+    });
+  }
+  
+  // Funciones de paginación
+  pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    
+    for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  });
+  
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    return (page - 1) * pageSize + 1;
+  });
+  
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    const total = this.totalDrivers();
+    return Math.min(page * pageSize, total);
+  });
+  
+  goToPreviousPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadDrivers();
+      });
+    }
+  }
+  
+  goToNextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadDrivers();
+      });
+    }
+  }
+  
+  goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return;
+    }
+    this.currentPage.set(page);
+    // Asegurar que se carguen los registros de la nueva página
+    untracked(() => {
+      this.loadDrivers();
+    });
   }
 
 }

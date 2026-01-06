@@ -1,6 +1,7 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import date, datetime
+import html
 
 class DailyRecordCreate(BaseModel):
     maquina_id: int
@@ -12,6 +13,35 @@ class DailyRecordCreate(BaseModel):
     imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel (opcional)
     observaciones: Optional[str] = None
     incidente_critico: bool = False  # El checkbox (True/False)
+
+    @field_validator('observaciones')
+    @classmethod
+    def sanitize_observaciones(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza las observaciones para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('monto_recaudado')
+    @classmethod
+    def validate_monto_recaudado(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError('El monto recaudado no puede ser negativo')
+        return v
+
+    @field_validator('litros_diesel')
+    @classmethod
+    def validate_litros_diesel(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError('Los litros de diésel no pueden ser negativos')
+        return v
+
+    @field_validator('costo_total_diesel')
+    @classmethod
+    def validate_costo_total_diesel(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError('El costo total de diésel no puede ser negativo')
+        return v
 
 
 class DailyRecordCreateAdmin(BaseModel):
@@ -35,6 +65,43 @@ class DailyRecordCreateAdmin(BaseModel):
 
     observaciones: Optional[str] = None
     incidente_critico: bool = False
+
+    @field_validator('observaciones')
+    @classmethod
+    def sanitize_observaciones(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza las observaciones para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('motivo_no_trabajado_otro')
+    @classmethod
+    def sanitize_motivo_otro(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza el motivo otro para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('monto_recaudado')
+    @classmethod
+    def validate_monto_recaudado(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError('El monto recaudado no puede ser negativo')
+        return v
+
+    @field_validator('litros_diesel')
+    @classmethod
+    def validate_litros_diesel(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError('Los litros de diésel no pueden ser negativos')
+        return v
+
+    @field_validator('costo_total_diesel')
+    @classmethod
+    def validate_costo_total_diesel(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError('El costo total de diésel no puede ser negativo')
+        return v
 
 
 class MaquinaInfo(BaseModel):
@@ -84,7 +151,8 @@ class DailyRecordListItem(BaseModel):
     maquina: DailyRecordListMachine
     monto_recaudado: int
     diesel: Optional[float] = None # Corresponde al costo_total_diesel
-    neto: int                      # monto_recaudado - costo_total_diesel
+    pago_chofer: int
+    neto: int                      # monto_recaudado - costo_total_diesel - pago_chofer
     estado: str
     tiene_observaciones: bool = False
 
@@ -120,6 +188,13 @@ class DailyRecordPreviewPaymentRequest(BaseModel):
     chofer_id: int
     monto_recaudado_propuesto: int
 
+    @field_validator('monto_recaudado_propuesto')
+    @classmethod
+    def validate_monto_recaudado_propuesto(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError('El monto recaudado propuesto no puede ser negativo')
+        return v
+
 
 class DailyRecordPreviewPaymentResponse(BaseModel):
     porcentaje_aplicado: float
@@ -138,6 +213,47 @@ class DailyRecordUpdate(BaseModel):
     motivo_no_trabajado_otro: Optional[str] = None
 
     incidente_critico: bool = False
+    
+    # Campos de imágenes para actualización
+    imagen_url: Optional[str] = None  # Comprobante del registro diario
+    imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
+
+    @field_validator('observaciones')
+    @classmethod
+    def sanitize_observaciones(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza las observaciones para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('motivo_no_trabajado_otro')
+    @classmethod
+    def sanitize_motivo_otro(cls, v: Optional[str]) -> Optional[str]:
+        """Sanitiza el motivo otro para prevenir XSS"""
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
+
+    @field_validator('monto_recaudado')
+    @classmethod
+    def validate_monto_recaudado(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError('El monto recaudado no puede ser negativo')
+        return v
+
+    @field_validator('litros_diesel')
+    @classmethod
+    def validate_litros_diesel(cls, v: Optional[float]) -> Optional[float]:
+        if v is not None and v < 0:
+            raise ValueError('Los litros de diésel no pueden ser negativos')
+        return v
+
+    @field_validator('costo_total_diesel')
+    @classmethod
+    def validate_costo_total_diesel(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 0:
+            raise ValueError('El costo total de diésel no puede ser negativo')
+        return v
 
 
 class DailyRecordAuditDetail(BaseModel):
@@ -146,11 +262,18 @@ class DailyRecordAuditDetail(BaseModel):
     valor_nuevo: str
 
 
+class DailyRecordAuditActor(BaseModel):
+    nombre_completo: Optional[str] = None
+    rol: Optional[str] = None
+    tipo_actor: Optional[str] = None
+
+
 class DailyRecordAuditItem(BaseModel):
     id: int
     fecha_cambio: datetime
     usuario_responsable: str
     tipo_cambio: str
+    actor: Optional[DailyRecordAuditActor] = None
     detalles: List[DailyRecordAuditDetail]
 
     

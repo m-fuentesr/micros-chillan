@@ -1,6 +1,7 @@
 ﻿from pydantic import BaseModel, EmailStr, Field
 from typing import Literal, Optional
 from datetime import date
+from app.core.pagination import PaginationParams
 
 
 class DriverBase(BaseModel):
@@ -17,6 +18,10 @@ class DriverBase(BaseModel):
 
     fecha_venc_licencia: date = Field(
         ..., description="Fecha de vencimiento de licencia del chofer"
+    )
+
+    fecha_contrato: Optional[date] = Field(
+        None, description="Fecha de contrato del chofer"
     )
 
     estado: Literal["activo", "inactivo", "eliminado"] = Field(
@@ -42,14 +47,25 @@ class DriverListItem(BaseModel):
     telefono: str
     correo_electronico: str
     estado: Literal["activo", "inactivo", "eliminado"]
+    porcentaje_pago: float
 
     maquina_actual: Optional[DriverMachine]
     licencia_estado: DriverLicenseState
 
 
-class DriverDetail(BaseModel):
+class DriverDeletedListItem(BaseModel):
     id: int
     nombre_completo: str
+    rut: str
+    telefono: str
+
+
+class DriverDetail(BaseModel):
+    id: int
+    primer_nombre: str
+    segundo_nombre: Optional[str] = None
+    apellido_paterno: str
+    apellido_materno: str
     rut: str
     estado: Literal["activo", "inactivo", "eliminado"]
     telefono: str
@@ -58,6 +74,7 @@ class DriverDetail(BaseModel):
 
     maquina_actual: Optional[DriverMachine]
     licencia: DriverLicenseState
+    fecha_contrato: Optional[date] = None
 
 
 class DriverSelect(BaseModel):
@@ -82,6 +99,7 @@ class DriverUpdate(BaseModel):
     maquina_id: Optional[int] = None
 
     fecha_venc_licencia: date
+    fecha_contrato: Optional[date] = None
 
 
 class DriverCreate(DriverBase):
@@ -93,4 +111,50 @@ class DriverCreate(DriverBase):
         None,
         description="ID de la máquina a asignar"
     )
+
+
+class DriverReintegrate(BaseModel):
+    """
+    Datos requeridos para reintegrar un chofer eliminado.
+    """
+    correo_electronico: EmailStr = Field(
+        ..., description="Correo electrónico nuevo para el chofer"
+    )
+    maquina_asignada: Optional[int] = Field(
+        None,
+        description="ID de la máquina a asignar (opcional)"
+    )
+
+
+class DriverListFilters(PaginationParams):
+    estado: Optional[Literal["todos", "activos", "inactivos"]] = None
+    licencia_estado: Optional[Literal["vencidas", "por_vencer", "vigentes"]] = None
+    search: Optional[str] = None
+
+
+class DriverLicenseAlerts(BaseModel):
+    vencidas: int
+    por_vencer: int
+    vigentes: int
+
+
+class DriverLiquidationFilters(PaginationParams):
+    mes_desde: Optional[int] = Field(None, ge=1, le=12, description="Mes inicial del filtro")
+    anio_desde: Optional[int] = Field(None, ge=2020, description="Año inicial del filtro")
+    mes_hasta: Optional[int] = Field(None, ge=1, le=12, description="Mes final del filtro")
+    anio_hasta: Optional[int] = Field(None, ge=2020, description="Año final del filtro")
+    estado_pago: Optional[Literal["pendiente", "pagado"]] = Field(None, description="Filtrar por estado de pago")
+
+
+class DriverLiquidationItem(BaseModel):
+    id: int  # chofer_id + mes + anio como identificador único
+    fecha: str  # "MM/YYYY"
+    mes: int
+    anio: int
+    total_ganado: int  # Suma de base_ganado de todas las semanas del mes
+    minimo_garantizado: int  # 750000
+    pago_final: int  # total_pagado de la última semana o suma de todas
+    metodo_pago: Optional[str] = None
+    codigo_transferencia: Optional[str] = None
+    estado_pago: Literal["pendiente", "pagado"]
 

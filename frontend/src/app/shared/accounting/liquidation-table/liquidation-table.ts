@@ -2,12 +2,13 @@ import { Component, ChangeDetectionStrategy, input, output, computed, signal } f
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LiquidationPeriod, LiquidationDriver } from '../../models/accounting.models';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-liquidation-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, DriverIcon],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -72,6 +73,9 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     [class.bg-primary]="selectedWeek() === week"
                     [class.text-primary-content]="selectedWeek() === week"
                     [class.text-base-content/60]="selectedWeek() !== week"
+                    [class.opacity-50]="!isWeekEnabled()(week)"
+                    [class.cursor-not-allowed]="!isWeekEnabled()(week)"
+                    [disabled]="!isWeekEnabled()(week)"
                     (click)="onWeekChange(week)">
                     <span class="text-xs sm:text-sm">Semana {{ week }}</span>
                     @if (week === availableWeeks()[availableWeeks().length - 1]) {
@@ -99,36 +103,51 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
             </thead>
             <tbody>
               @if (liquidation().choferes.length === 0) {
-                <!-- Skeleton cuando no hay datos (cargando o esperando datos) -->
-                @for (i of [1,2,3,4,5,6]; track i) {
-                  <tr class="border-b border-base-100 last:border-none">
-                    <td class="pl-6 py-4">
-                      <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-base-200 animate-pulse"></div>
+                @if (isLoading()) {
+                  <!-- Skeleton cuando está cargando -->
+                  @for (i of [1,2,3,4,5,6]; track i) {
+                    <tr class="border-b border-base-100 last:border-none">
+                      <td class="pl-6 py-4">
+                        <div class="flex items-center gap-3">
+                          <div class="w-10 h-10 rounded-full bg-base-200 animate-pulse"></div>
+                          <div class="flex flex-col gap-2">
+                            <div class="h-4 w-32 bg-base-200 rounded animate-pulse"></div>
+                            <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+                          </div>
+                        </div>
+                      </td>
+                      <td class="text-left">
+                        <div class="h-4 w-24 bg-base-200 rounded animate-pulse"></div>
+                      </td>
+                      <td class="text-left">
                         <div class="flex flex-col gap-2">
-                          <div class="h-4 w-32 bg-base-200 rounded animate-pulse"></div>
+                          <div class="h-3 w-28 bg-base-200 rounded animate-pulse"></div>
                           <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
+                          <div class="h-4 w-16 bg-base-200 rounded animate-pulse"></div>
+                        </div>
+                      </td>
+                      <td class="text-left">
+                        <div class="h-8 w-24 bg-base-200 rounded animate-pulse ml-auto"></div>
+                      </td>
+                      <td class="text-left bg-base-50/50">
+                        <div class="h-5 w-28 bg-base-200 rounded animate-pulse"></div>
+                      </td>
+                      <td class="pr-6 bg-base-50/50 text-center">
+                        <div class="h-8 w-24 bg-base-200 rounded animate-pulse mx-auto"></div>
+                      </td>
+                    </tr>
+                  }
+                } @else {
+                  <!-- Mensaje cuando no hay datos y no está cargando -->
+                  <tr>
+                    <td colspan="6" class="text-center py-12">
+                      <div class="flex flex-col items-center gap-4">
+                        <ui-icon name="FileText" size="xl" class="text-base-content/30" />
+                        <div>
+                          <h3 class="text-lg font-semibold text-base-content mb-2">No hay datos de liquidación</h3>
+                          <p class="text-sm text-base-content/60">No se encontraron registros diarios para esta semana.</p>
                         </div>
                       </div>
-                    </td>
-                    <td class="text-left">
-                      <div class="h-4 w-24 bg-base-200 rounded animate-pulse"></div>
-                    </td>
-                    <td class="text-left">
-                      <div class="flex flex-col gap-2">
-                        <div class="h-3 w-28 bg-base-200 rounded animate-pulse"></div>
-                        <div class="h-3 w-20 bg-base-200 rounded animate-pulse"></div>
-                        <div class="h-4 w-16 bg-base-200 rounded animate-pulse"></div>
-                      </div>
-                    </td>
-                    <td class="text-left">
-                      <div class="h-8 w-24 bg-base-200 rounded animate-pulse ml-auto"></div>
-                    </td>
-                    <td class="text-left bg-base-50/50">
-                      <div class="h-5 w-28 bg-base-200 rounded animate-pulse"></div>
-                    </td>
-                    <td class="pr-6 bg-base-50/50 text-center">
-                      <div class="h-8 w-24 bg-base-200 rounded animate-pulse mx-auto"></div>
                     </td>
                   </tr>
                 }
@@ -152,13 +171,12 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <td class="pl-6 py-4">
                     <div class="flex items-center gap-3">
                       <div class="bg-primary/10 text-primary rounded-full w-10 h-10 flex items-center justify-center p-2">
-                        <app-driver-icon class="w-full h-full" />
+                        <ui-icon name="IdCard" size="md" />
                       </div>
                       <div class="flex flex-col">
                         <span class="font-bold text-base-content">{{ chofer.chofer_nombre }}</span>
-                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide" 
-                              [class.text-success]="chofer.estado_pago === 'pagado'">
-                          {{ chofer.estado_pago === 'pagado' ? 'Pagado' : 'Pendiente' }}
+                        <span class="text-[10px] text-base-content/50 uppercase tracking-wide">
+                          {{ formatDateRange(liquidation().fecha_inicio, liquidation().fecha_fin) }}
                         </span>
                       </div>
                     </div>
@@ -173,23 +191,31 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <td class="text-left">
                     @if (liquidation().es_ultima_semana) {
                       <!-- Última semana: mostrar acumulado mensual -->
-                      <div class="flex flex-col gap-2">
-                        <div class="flex flex-col gap-1">
-                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
-                            Acumulado mes: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                          </span>
-                          <span class="badge badge-xs sm:badge-sm badge-ghost tabular-nums text-[10px] sm:text-xs text-base-content/50 font-mono">
-                            Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                          </span>
+                      <div class="flex flex-col gap-2.5">
+                        <div class="flex flex-col gap-2 bg-base-200/50 rounded-lg p-2 border border-base-300/50">
+                          <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Acumulado mes:</span>
+                              <span class="badge badge-sm badge-primary/20 text-primary border border-primary/30 tabular-nums text-xs sm:text-sm font-bold font-mono px-2 py-0.5">
+                                {{ ((chofer.acumulado_mensual ?? 0) + chofer.total_ganado) | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                              </span>
+                            </div>
+                            <div class="flex items-center justify-between gap-2">
+                              <span class="text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider text-base-content/60 whitespace-nowrap">Mínimo:</span>
+                              <span class="badge badge-sm badge-ghost tabular-nums text-xs sm:text-sm font-mono text-base-content/70 px-2 py-0.5">
+                                {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                              </span>
+                            </div>
+                          </div>
                         </div>
                         <label class="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
                             class="toggle toggle-sm toggle-primary"
                             [checked]="chofer.aplicar_garantizado"
-                            [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
+                            [disabled]="liquidation().mes_cerrado_administrativamente || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
                             (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                          <span class="text-xs text-base-content/60">Aplicar</span>
+                          <span class="text-xs text-base-content/60 font-medium">Aplicar</span>
                         </label>
                       </div>
                     } @else {
@@ -219,7 +245,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                           <input
                             type="number"
                             [value]="chofer.monto_a_completar"
-                            [disabled]="(chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado || liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado'"
+                            [disabled]="(chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado || liquidation().mes_cerrado_administrativamente || chofer.estado_pago === 'pagado'"
                             (input)="onMissingAmountChange(chofer.chofer_id, $event)"
                             class="input input-sm input-ghost w-24 text-right tabular-nums font-bold focus:bg-base-100 focus:border-primary border border-transparent hover:border-base-300 transition-all rounded-lg p-0 pr-2"
                             [class.text-base-content/30]="chofer.monto_a_completar === 0"
@@ -250,20 +276,39 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
 
                   <td class="pr-6 bg-base-50/50 border-r border-base-200 text-center">
                     @if (chofer.estado_pago === 'pagado') {
-                      <div class="flex items-center justify-center gap-1 text-success font-bold text-xs bg-success/10 px-3 py-1.5 rounded-full border border-success/10 cursor-default animate-in zoom-in duration-200">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                          <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
-                        </svg>
-                        <span>Pagado</span>
+                      <div class="flex flex-col items-center gap-2">
+                        <div class="flex items-center justify-center gap-1 text-success font-bold text-xs bg-success/10 px-3 py-1.5 rounded-full border border-success/10 cursor-default animate-in zoom-in duration-200">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                          </svg>
+                          <span>Pagado</span>
+                        </div>
+                        <button 
+                          class="btn btn-xs btn-error btn-outline hover:!text-white gap-1 font-semibold transition-all"
+                          [disabled]="liquidation().mes_cerrado_administrativamente"
+                          (click)="onUndoPayment(chofer)"
+                          title="Deshacer pago">
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                          </svg>
+                          <span>Deshacer</span>
+                        </button>
                       </div>
                     } @else {
                       <button 
                         class="btn btn-sm btn-primary btn-outline hover:!text-white gap-2 font-bold transition-all shadow-sm hover:shadow-md"
+                        [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
+                        [disabled]="verifyingChoferId() === chofer.chofer_id"
                         (click)="onConfirmPayment(chofer)">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                        </svg>
-                        Confirmar
+                        @if (verifyingChoferId() === chofer.chofer_id) {
+                          <span class="loading loading-spinner loading-xs"></span>
+                          <span>Verificando...</span>
+                        } @else {
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          <span>Confirmar</span>
+                        }
                       </button>
                     }
                   </td>
@@ -278,8 +323,9 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         <div class="xl:hidden">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
             @if (liquidation().choferes.length === 0) {
-              <!-- Skeleton para móvil cuando no hay datos (cargando o esperando datos) -->
-              @for (i of [1,2,3,4,5,6]; track i) {
+              @if (isLoading()) {
+                <!-- Skeleton para móvil cuando está cargando -->
+                @for (i of [1,2,3,4,5,6]; track i) {
                 <div class="bg-base-100 border border-base-200 rounded-3xl p-4 shadow-sm">
                   <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-3">
@@ -313,6 +359,20 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <div class="h-10 w-full bg-base-200 rounded-lg animate-pulse mt-4"></div>
                 </div>
               }
+              } @else {
+                <!-- Mensaje cuando no hay datos y no está cargando (móvil) -->
+                <div class="col-span-full">
+                  <div class="card bg-base-100 border border-base-200 rounded-xl p-6">
+                    <div class="flex flex-col items-center gap-4 text-center">
+                      <ui-icon name="FileText" size="lg" class="text-base-content/30" />
+                      <div>
+                        <h3 class="text-lg font-semibold text-base-content mb-2">No hay datos de liquidación</h3>
+                        <p class="text-sm text-base-content/60">No se encontraron registros diarios para esta semana.</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
             } @else {
               <!-- Overlay de carga cuando hay datos pero se están recargando -->
               @if (isLoading() && liquidation().choferes.length > 0) {
@@ -331,7 +391,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               <div class="flex justify-between items-start mb-4">
                 <div class="flex items-center gap-3">
                   <div class="bg-primary/10 text-primary rounded-full w-12 h-12 flex items-center justify-center p-2.5">
-                    <app-driver-icon class="w-full h-full" />
+                    <ui-icon name="IdCard" size="lg" />
                   </div>
                   <div>
                     <div class="font-bold text-lg">{{ chofer.chofer_nombre }}</div>
@@ -360,21 +420,29 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                   <div class="flex items-center gap-2">
                     @if (liquidation().es_ultima_semana) {
                       <!-- Última semana: mostrar acumulado mensual -->
-                      <div class="flex flex-col items-end gap-1">
-                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
-                          Acum: {{ chofer.acumulado_mensual || chofer.total_ganado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                        </span>
-                        <span class="badge badge-xxs sm:badge-xs badge-ghost tabular-nums text-[9px] sm:text-[10px] text-base-content/50 font-mono">
-                          Min: {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                        </span>
-                        <label class="flex items-center gap-1 cursor-pointer">
+                      <div class="flex flex-col items-end gap-2 bg-base-200/50 rounded-lg p-2 border border-base-300/50 min-w-[140px]">
+                        <div class="flex flex-col items-end gap-1.5 w-full">
+                          <div class="flex flex-col items-end gap-0.5 w-full">
+                            <span class="text-[9px] font-semibold uppercase tracking-wider text-base-content/60">Acumulado mes:</span>
+                            <span class="badge badge-sm badge-primary/20 text-primary border border-primary/30 tabular-nums text-xs font-bold font-mono px-2 py-0.5">
+                              {{ ((chofer.acumulado_mensual ?? 0) + chofer.total_ganado) | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                            </span>
+                          </div>
+                          <div class="flex flex-col items-end gap-0.5 w-full">
+                            <span class="text-[9px] font-semibold uppercase tracking-wider text-base-content/60">Mínimo:</span>
+                            <span class="badge badge-sm badge-ghost tabular-nums text-xs font-mono text-base-content/70 px-2 py-0.5">
+                              {{ chofer.minimo_garantizado | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                            </span>
+                          </div>
+                        </div>
+                        <label class="flex items-center gap-1 cursor-pointer mt-1">
                           <input
                             type="checkbox"
                             class="toggle toggle-sm toggle-primary"
                             [checked]="chofer.aplicar_garantizado"
-                            [disabled]="liquidation().estado === 'cerrado' || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
+                            [disabled]="liquidation().mes_cerrado_administrativamente || chofer.estado_pago === 'pagado' || (chofer.acumulado_mensual || chofer.total_ganado) >= chofer.minimo_garantizado"
                             (change)="onAplicarGarantizadoChange(chofer.chofer_id, $event)">
-                          <span class="text-xs text-base-content/60">Aplicar</span>
+                          <span class="text-xs text-base-content/60 font-medium">Aplicar</span>
                         </label>
                       </div>
                     } @else {
@@ -429,8 +497,25 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               @if (chofer.estado_pago !== 'pagado') {
                 <button 
                   class="btn btn-primary btn-block shadow-lg shadow-primary/20"
+                  [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
+                  [disabled]="verifyingChoferId() === chofer.chofer_id"
                   (click)="onConfirmPayment(chofer)">
-                  Confirmar Pago
+                  @if (verifyingChoferId() === chofer.chofer_id) {
+                    <span class="loading loading-spinner loading-sm"></span>
+                    <span>Verificando...</span>
+                  } @else {
+                    <span>Confirmar Pago</span>
+                  }
+                </button>
+              } @else {
+                <button 
+                  class="btn btn-error btn-block btn-outline hover:!text-white gap-2 font-semibold shadow-sm"
+                  [disabled]="liquidation().estado === 'cerrado'"
+                  (click)="onUndoPayment(chofer)">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                  </svg>
+                  <span>Deshacer Pago</span>
                 </button>
               }
             </div>
@@ -440,7 +525,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         </div>
 
         <!-- Footer: Acciones Globales -->
-        @if (liquidation().es_ultima_semana && liquidation().estado === 'abierto') {
+        @if (liquidation().es_ultima_semana && !liquidation().mes_cerrado_administrativamente) {
           <div class="border-t border-base-200 mt-6 pt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             @if (!allChoferesPaid()) {
               <div class="text-xs text-base-content/50 flex items-center gap-2">
@@ -463,13 +548,13 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
               Finalizar Mes
             </button>
           </div>
-        } @else if (liquidation().estado === 'cerrado') {
+        } @else if (liquidation().mes_cerrado_administrativamente) {
           <div class="border-t border-base-200 mt-6 pt-6">
             <div class="alert alert-warning">
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
               </svg>
-              <span>Este período fue cerrado y no puede ser modificado.</span>
+              <span>Este período fue cerrado administrativamente y no puede ser modificado.</span>
             </div>
           </div>
         }
@@ -484,8 +569,11 @@ export class LiquidationTable {
   selectedWeek = input<number>(1);
   payrollPeriod = input<'current' | 'previous'>('current');
   isLoading = input<boolean>(false); // Estado de carga para mostrar skeleton
+  isWeekEnabled = input<(week: number) => boolean>(() => true); // Función para determinar si una semana está habilitada
+  verifyingChoferId = input<number | null>(null); // ID del chofer que se está verificando
   
   confirmPayment = output<{ choferId: number; data: { metodo_pago: 'transferencia' | 'efectivo'; codigo_transferencia?: string } }>();
+  undoPayment = output<{ choferId: number }>(); // Emite cuando se solicita deshacer un pago
   missingAmountChange = output<{ choferId: number; monto: number }>();
   aplicarGarantizadoChange = output<{ choferId: number; aplicar: boolean }>();
   closePeriod = output<void>();
@@ -529,8 +617,12 @@ export class LiquidationTable {
   calculatePagoFinal(chofer: LiquidationDriver): number {
     // Si es última semana y se aplica garantizado
     if (this.liquidation().es_ultima_semana && chofer.aplicar_garantizado) {
-      const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
-      if (acumulado < chofer.minimo_garantizado) {
+      // El acumulado_mensual contiene solo las semanas anteriores (sin la semana actual)
+      // Para calcular el total proyectado, sumamos: acumulado_mensual + total_ganado
+      const acumuladoAnterior = chofer.acumulado_mensual ?? 0;
+      const totalProyectado = acumuladoAnterior + chofer.total_ganado;
+      
+      if (totalProyectado < chofer.minimo_garantizado) {
         // El pago de la semana es lo ganado + el ajuste para completar el mínimo mensual
         return chofer.total_ganado + chofer.monto_a_completar;
       }
@@ -561,9 +653,35 @@ export class LiquidationTable {
     });
   }
 
+  onUndoPayment(chofer: LiquidationDriver): void {
+    // Emitir evento para deshacer el pago
+    this.undoPayment.emit({ choferId: chofer.chofer_id });
+  }
+
   onClosePeriod(): void {
-    if (confirm('¿Está seguro de que desea cerrar y finalizar este período de liquidación? Esta acción es irreversible.')) {
-      this.closePeriod.emit();
+    // El modal de confirmación se maneja en el componente padre (contabilidad.ts)
+    this.closePeriod.emit();
+  }
+
+  formatDateRange(start: string, end: string): string {
+    try {
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const startMonth = monthNames[startParts.month - 1];
+      const endMonth = monthNames[endParts.month - 1];
+      
+      // Si es el mismo mes, mostrar formato corto: "1-7 nov"
+      if (startParts.month === endParts.month) {
+        return `${startParts.day}-${endParts.day} ${startMonth}`;
+      }
+      
+      // Si son meses diferentes, mostrar formato completo: "30 nov - 6 dic"
+      return `${startParts.day} ${startMonth} - ${endParts.day} ${endMonth}`;
+    } catch {
+      return `${start} - ${end}`;
     }
   }
 }

@@ -31,6 +31,7 @@ export interface WeeklySummary {
   gasto_mantenimiento: number;
   total_egresos: number;
   ganancia_neta: number;
+  total_pago_choferes: number;
   choferes: WeeklyDriverBreakdown[];
 }
 
@@ -68,7 +69,8 @@ export interface LiquidationPeriod {
   fecha_inicio: string; // Fecha inicio de semana
   fecha_fin: string; // Fecha fin de semana
   es_ultima_semana: boolean; // Indica si es la última semana del mes
-  estado: 'abierto' | 'cerrado';
+  estado: 'abierto' | 'cerrado'; // Estado visual: 'cerrado' si todos los choferes están pagados
+  mes_cerrado_administrativamente: boolean; // Indica si el mes está cerrado en cierres_mensuales
   choferes: LiquidationDriver[];
 }
 
@@ -89,9 +91,45 @@ export interface ClosedLiquidation {
   fecha_cierre: string;
   total_pagado: number; // Suma de todas las semanas
   cerrado_por: string;
+  estado?: 'Finalizado' | 'En Proceso'; // Estado del mes: 'Finalizado' si está cerrado administrativamente, 'En Proceso' si no
   semanas: ClosedLiquidationWeek[]; // Array de semanas del mes
   choferes?: LiquidationDriver[]; // DEPRECATED: mantener para compatibilidad, usar semanas[].choferes
 }
 
-export type AccountingTab = 'summary' | 'weekly' | 'payroll' | 'history';
+export type AccountingTab = 'summary' | 'weekly' | 'payroll' | 'history' | 'ledger';
+
+// Modelos para Cuentas Corrientes Choferes (Ledger)
+export interface LedgerSummary {
+  chofer_id: number;
+  nombre_completo: string;
+  saldo_actual: number;
+  estado_cuenta: 'DEUDOR' | 'AL_DIA' | 'A_FAVOR';
+  ultimo_movimiento: string | null;
+}
+
+export interface MovementCreate {
+  chofer_id: number;
+  tipo: 'CARGO' | 'ABONO';
+  monto: number;
+  descripcion: string;
+  fecha_movimiento?: string; // YYYY-MM-DD, opcional (default: hoy)
+}
+
+export interface MovementResponse {
+  id: number;
+  tipo: string;
+  monto: number;
+  descripcion: string;
+  fecha_movimiento: string;
+  created_at: string;
+}
+
+export interface DriverLedgerHistory {
+  saldo_actual: number;
+  movimientos: MovementResponse[];
+  total: number; // Total de movimientos (sin paginar)
+  page: number; // Página actual
+  per_page: number; // Cantidad de registros por página
+  total_pages: number; // Total de páginas
+}
 

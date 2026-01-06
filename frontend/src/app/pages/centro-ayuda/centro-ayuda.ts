@@ -1,7 +1,7 @@
-import { Component, ChangeDetectionStrategy, OnDestroy, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnDestroy, OnInit, computed, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 type IconName =
   | 'introduccion'
@@ -40,7 +40,7 @@ interface FaqItem {
 @Component({
   selector: 'app-centro-ayuda',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
     <div class="min-h-screen bg-base-200 pb-16">
       <!-- Hero Section Premium -->
@@ -57,9 +57,7 @@ interface FaqItem {
 
           <div class="relative max-w-xl mx-auto group">
             <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-base-content/40 group-focus-within:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+              <ui-icon name="Search" size="sm" class="text-base-content/40 group-focus-within:text-primary transition-colors" />
             </div>
             <input
               type="text"
@@ -81,17 +79,11 @@ interface FaqItem {
                       class="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-base-200 transition-colors text-sm"
                       (click)="scrollToSection(item.id, true)"
                     >
-                      <svg
-                        class="w-5 h-5 text-primary"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        [innerHTML]="icons[item.icon]"
-                      ></svg>
+                      <ui-icon 
+                        [name]="getIconName(item.icon)" 
+                        size="sm" 
+                        class="text-primary"
+                        aria-hidden="true" />
                       <div class="flex-1">
                         <p class="font-bold">{{ item.title }}</p>
                         <p class="text-xs text-base-content/50 truncate">{{ item.description }}</p>
@@ -127,23 +119,14 @@ interface FaqItem {
                   [class.bg-base-100]="activeSection() !== item.id"
                 >
                   <div class="flex items-center gap-2">
-                    <svg
-                      class="w-5 h-5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="1.5"
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      aria-hidden="true"
-                      [innerHTML]="icons[item.icon]"
-                    ></svg>
+                    <ui-icon 
+                      [name]="getIconName(item.icon)" 
+                      size="sm"
+                      aria-hidden="true" />
                     <span>{{ item.title }}</span>
                   </div>
                   @if (activeSection() === item.id) {
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                      <path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="ChevronRight" size="xs" />
                   }
                 </button>
               }
@@ -161,17 +144,10 @@ interface FaqItem {
                   <header class="flex flex-col gap-3">
                     <div class="flex items-center gap-4">
                       <div class="w-12 h-12 rounded-3xl bg-primary/10 text-primary flex items-center justify-center">
-                        <svg
-                          class="w-7 h-7"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          stroke-width="1.5"
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          aria-hidden="true"
-                          [innerHTML]="icons[section.icon]"
-                        ></svg>
+                        <ui-icon 
+                          [name]="getIconName(section.icon)" 
+                          size="md"
+                          aria-hidden="true" />
                       </div>
                       <div>
                         <h2 class="text-2xl font-bold">{{ section.title }}</h2>
@@ -180,7 +156,7 @@ interface FaqItem {
                     </div>
                     @if (section.context) {
                       <div class="alert alert-info bg-info/10 border-info/20 text-sm text-base-content">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="stroke-info shrink-0 w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <ui-icon name="Info" size="sm" class="stroke-info shrink-0" />
                         <div>{{ section.context }}</div>
                       </div>
                     }
@@ -228,17 +204,10 @@ interface FaqItem {
                 <div class="card-body space-y-6">
                   <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                      <svg
-                        class="w-6 h-6"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.5"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        aria-hidden="true"
-                        [innerHTML]="icons['faq']"
-                      ></svg>
+                      <ui-icon 
+                        name="Info" 
+                        size="sm"
+                        aria-hidden="true" />
                     </div>
                     <div>
                       <h2 class="text-2xl font-bold">Preguntas Frecuentes</h2>
@@ -267,23 +236,7 @@ interface FaqItem {
             <section class="card bg-primary text-primary-content shadow-xl rounded-3xl animate-card-enter-delay-3">
               <div class="card-body flex flex-col md:flex-row md:items-center gap-6">
                 <div class="w-16 h-16 bg-primary-content/10 rounded-full flex items-center justify-center text-primary-content">
-                  <svg
-                    class="w-10 h-10"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    aria-hidden="true"
-                  >
-                    <circle cx="12" cy="12" r="7.5" />
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M12 4.5v2.25" />
-                    <path d="M12 17.25V19.5" />
-                    <path d="M4.5 12h2.25" />
-                    <path d="M17.25 12h2.25" />
-                  </svg>
+                  <ui-icon name="LifeBuoy" size="lg" />
                 </div>
                 <div class="space-y-2 flex-1">
                   <h2 class="text-2xl font-bold">¿Sigues con dudas?</h2>
@@ -347,63 +300,6 @@ export class CentroAyuda implements OnInit, OnDestroy {
   searchQuery = signal('');
   activeSection = signal('introduccion');
   private observer?: IntersectionObserver;
-  private readonly sanitizer = inject(DomSanitizer);
-
-  readonly icons: Record<IconName, SafeHtml> = {
-    introduccion: this.icon(`
-      <circle cx="12" cy="12" r="7.5"></circle>
-      <path d="M12 10.5v4.5"></path>
-      <path d="M12 7.5h.01"></path>
-    `),
-    dashboard: this.icon(`
-      <path d="M6 18.75V10.5"></path>
-      <path d="M12 18.75V5.25"></path>
-      <path d="M18 18.75v-6"></path>
-      <path d="M3.75 18.75h16.5"></path>
-    `),
-    maquinas: this.icon(`
-      <path d="M3.75 14.25h8.25V7.5A1.5 1.5 0 0 1 13.5 6h2.25l3 3v5.25H18"></path>
-      <path d="M12 14.25h3.75"></path>
-      <circle cx="7.5" cy="17.25" r="1.5"></circle>
-      <circle cx="17.25" cy="17.25" r="1.5"></circle>
-    `),
-    choferes: this.icon(`
-      <path d="M5.25 18.75v-1.5a4.5 4.5 0 0 1 4.5-4.5h4.5a4.5 4.5 0 0 1 4.5 4.5v1.5"></path>
-      <circle cx="12" cy="9.75" r="3.25"></circle>
-    `),
-    'registro-diario': this.icon(`
-      <path d="M9 5.25h6a1.5 1.5 0 0 1 1.5 1.5v11.25a1.5 1.5 0 0 1-1.5 1.5H9a1.5 1.5 0 0 1-1.5-1.5V6.75A1.5 1.5 0 0 1 9 5.25z"></path>
-      <path d="M9 8.25h6"></path>
-      <path d="M9 11.25h6"></path>
-      <path d="M9 14.25h4"></path>
-    `),
-    contabilidad: this.icon(`
-      <rect x="5.25" y="8.25" width="13.5" height="9.75" rx="1"></rect>
-      <circle cx="12" cy="13.125" r="2.25"></circle>
-      <path d="M12 10.875v4.5"></path>
-      <path d="M5.25 11.25h2.25"></path>
-      <path d="M16.5 15h2.25"></path>
-    `),
-    reportes: this.icon(`
-      <path d="M5.25 14.25l4.5-4.5 3 3 4.5-6"></path>
-      <path d="M4.5 18.75h15"></path>
-    `),
-    configuracion: this.icon(`
-      <circle cx="12" cy="12" r="5"></circle>
-      <circle cx="12" cy="12" r="2"></circle>
-      <path d="M12 4.5v1.5"></path>
-      <path d="M12 18v1.5"></path>
-      <path d="M6.6 6.6l1.05 1.05"></path>
-      <path d="M16.35 16.35l1.05 1.05"></path>
-      <path d="M4.5 12h1.5"></path>
-      <path d="M18 12h1.5"></path>
-    `),
-    faq: this.icon(`
-      <circle cx="12" cy="12" r="7.5"></circle>
-      <path d="M9.75 10.125a2.25 2.25 0 1 1 4.5 0c0 1.5-2.25 2.25-2.25 3.375v.375"></path>
-      <path d="M12 16.5h.01"></path>
-    `)
-  };
 
   readonly navItems = signal<HelpNavItem[]>([
     { id: 'introduccion', title: 'Introducción', icon: 'introduccion', description: 'Conceptos y roles' },
@@ -502,16 +398,17 @@ export class CentroAyuda implements OnInit, OnDestroy {
       id: 'contabilidad',
       title: 'Finanzas y Nómina',
       icon: 'contabilidad',
-      description: 'Todo lo relacionado con ingresos, gastos y liquidaciones.',
-      context: 'Organizado en pestañas: Resumen general, Semanal, Liquidación de choferes e Historial.',
+      description: 'Control financiero integral: desde el registro diario hasta la liquidación final.',
+      context: 'Este módulo es el corazón financiero. Centraliza ingresos, valida gastos y automatiza el cálculo de nómina compleja.',
       highlights: [
-        { title: 'Tabs intuitivas', body: 'Cada pestaña tiene un propósito claro y puedes alternar sin perder los filtros seleccionados.' },
-        { title: 'Botón Confirmar', body: 'Cuando un chofer tiene pago pendiente verás el botón "Confirmar" en modo outline (ligero).' }
+        { title: 'Ciclo de Liquidación Semanal', body: 'El sistema consolida los registros diarios automáticamente. Tu rol cambia de "calcular" a "validar y confirmar", reduciendo errores humanos en los pagos.' },
+        { title: 'Garantía de Sueldo Mínimo', body: 'Al final del mes, el sistema audita automáticamente si un conductor cumplió el sueldo base. Si no, calcula y sugiere el bono de ajuste necesario (Top-up) para cumplir la normativa.' },
+        { title: 'Cierre Contable Mensual', body: 'Al finalizar el período, utiliza la función de "Cierre Administrativo" para bloquear ediciones y generar los reportes históricos inmutables.' }
       ],
       list: [
-        'Resumen general: revisa los KPIs y el gráfico de tendencia antes de tomar decisiones.',
-        'Liquidación: edita montos faltantes y confirma pagos.',
-        'Historial de cierres: cada período cerrado aparece como “recibo” con la información clave y acciones de exportación.'
+        '<strong>Flujo de Trabajo:</strong> Revisa el "Resumen Semanal" cada lunes. Si los números cuadran, procede a la pestaña "Liquidación" para emitir pagos.',
+        '<strong>Confirmación de Pagos:</strong> El estado "Confirmado" es un paso intermedio vital. Úsalo cuando ya emitiste la transferencia bancaria pero el chofer aún no acusa recibo.',
+        'Las cuentas corrientes (Ledger) permiten gestionar préstamos y anticipos que se descuentan o abonan fuera del flujo operativo normal.'
       ]
     },
     {
@@ -532,17 +429,19 @@ export class CentroAyuda implements OnInit, OnDestroy {
     },
     {
       id: 'configuracion',
-      title: 'Configuración',
+      title: 'Configuracion',
       icon: 'configuracion',
-      description: 'Personaliza la plataforma según tu empresa.',
+      description: 'Panel de control para parámetros globales del sistema.',
+      context: 'Los cambios realizados aquí son críticos y afectan a toda la operación. Se recomienda cautela y verificación antes de guardar.',
       highlights: [
-        { title: 'Perfil de la compañía', body: 'Actualiza nombre, logo y datos de contacto que aparecerán en el encabezado y reportes.' },
-        { title: 'Alertas y notificaciones', body: 'Enciende o apaga recordatorios de documentos, mantenimientos o avisos contables.' }
+        { title: 'Actualización Inteligente de Porcentajes', body: 'Al modificar la comisión global, el sistema detecta automáticamente qué conductores tienen tasas personalizadas y las protege. Solo se actualizarán los conductores "Adheridos" (sincronizados con el valor anterior).' },
+        { title: 'Gestión de Nivel de Servicio', body: 'Configura los umbrales de alerta para documentación y licencias. Ajustar estos días permite ser más proactivo ante vencimientos.' },
+        { title: 'Reintegración de Personal', body: 'Utiliza el módulo de "Choferes Eliminados" para recuperar historial y evitar la duplicidad de registros al recontratar.' }
       ],
       list: [
-        'Solo los administradores pueden modificar esta sección.',
-        'Los cambios se aplican inmediatamente y afectan a todos los usuarios.',
-        'Revisa esta sección al menos una vez al trimestre para asegurarte de que los datos estén actualizados.'
+        '<strong>Validación de Impacto:</strong> Antes de aplicar un cambio masivo en porcentajes, revisa la vista detallada para confirmar exactamente a quiénes afectará.',
+        '<strong>Sueldo Mínimo Garantizado:</strong> Este valor impacta retroactivamente en liquidaciones abiertas. Úsalo para cumplir con normativas laborales.',
+        'Solo perfiles Administrador tienen acceso a este módulo para garantizar la integridad de los datos financieros.'
       ]
     }
   ]);
@@ -634,8 +533,19 @@ export class CentroAyuda implements OnInit, OnDestroy {
     }, 200);
   }
 
-  private icon(svg: string): SafeHtml {
-    return this.sanitizer.bypassSecurityTrustHtml(svg);
+  getIconName(iconName: IconName): string {
+    const iconMap: Record<IconName, string> = {
+      'introduccion': 'Info',
+      'dashboard': 'LayoutDashboard',
+      'maquinas': 'BusFront',
+      'choferes': 'Users',
+      'registro-diario': 'ClipboardList',
+      'contabilidad': 'HandCoins',
+      'reportes': 'ChartNoAxesCombined',
+      'configuracion': 'Settings',
+      'faq': 'Info'
+    };
+    return iconMap[iconName] || 'Info';
   }
 }
 

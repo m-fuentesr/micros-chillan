@@ -2,7 +2,7 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, tap, shareReplay, map } from 'rxjs/operators';
-import { Machine, MachineKPIs, MachineDocumentAlerts, MachineSelect } from '../models/machine.models';
+import { Machine, MachineKPIs, MachineDocumentAlerts, MachineSelect, DocumentStatus } from '../models/machine.models';
 import { environment } from '../../../environments/environment.development';
 
 @Injectable({
@@ -15,6 +15,8 @@ export class MachineService {
   // Sistema de caché para máquinas activas
   private activeMachinesCache: MachineSelect[] | null = null;
   private activeMachinesCacheTimestamp: number = 0;
+  private activeMachinesWithoutDriverCache: MachineSelect[] | null = null;
+  private activeMachinesWithoutDriverCacheTimestamp: number = 0;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
 
   // GET /api/machines/active - Listar máquinas operativas (para selector de choferes)
@@ -45,13 +47,46 @@ export class MachineService {
       );
   }
 
-  // GET /api/machines - Listar máquinas
-  // El backend retorna: { id, numero_interno, marca, patente, estado_operativo, chofer_asignado, documentos }
-  // Transformamos a: { id, numero, marca, patente, estado_operativo, chofer_actual, documentos }
+  // GET /api/machines/active/without-driver - Listar máquinas operativas sin chofer asignado (para selector en Crear Chofer)
+  getActiveMachinesWithoutDriver(forceRefresh = false): Observable<MachineSelect[]> {
+    const now = Date.now();
+
+    if (!forceRefresh && this.activeMachinesWithoutDriverCache && (now - this.activeMachinesWithoutDriverCacheTimestamp) < this.CACHE_TTL) {
+      return of(this.activeMachinesWithoutDriverCache);
+    }
+
+    return this.http.get<MachineSelect[]>(`${this.apiUrl}/api/machines/active/without-driver`).pipe(
+      tap((machines) => {
+        this.activeMachinesWithoutDriverCache = machines;
+        this.activeMachinesWithoutDriverCacheTimestamp = now;
+      }),
+      shareReplay(1),
+      catchError((error) => {
+        console.error('Error obteniendo máquinas activas sin chofer:', error);
+        if (this.activeMachinesWithoutDriverCache) {
+          return of(this.activeMachinesWithoutDriverCache);
+        }
+        return of([]);
+      })
+    );
+  }
+
+  // GET /api/machines - Listar máquinas con paginación
+  // El backend retorna: { total, page, per_page, items: [...] }
+  // Transformamos a: { datos: Machine[], total, pagina, por_pagina, total_paginas }
   getMachines(filters?: {
     estado?: string;
     search?: string;
-  }): Observable<Machine[]> {
+    documento_estado?: 'vencidos' | 'por_vencer' | 'al_dia';
+    page?: number;
+    per_page?: number;
+  }): Observable<{
+    datos: Machine[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.estado) {
       params = params.set('estado', filters.estado);
@@ -59,7 +94,18 @@ export class MachineService {
     if (filters?.search) {
       params = params.set('search', filters.search);
     }
-    
+
+    if (filters?.documento_estado) {
+      params = params.set('documento_estado', filters.documento_estado);
+    }
+
+    // Paginación por defecto: 12 registros por página
+    const pagina = filters?.page || 1;
+    const porPagina = filters?.per_page || 12;
+
+    params = params.set('page', pagina.toString());
+    params = params.set('per_page', porPagina.toString());
+
     // Tipo de respuesta del backend
     interface BackendMachine {
       id: number;
@@ -79,9 +125,16 @@ export class MachineService {
       };
     }
 
-    return this.http.get<BackendMachine[]>(`${this.apiUrl}/api/machines`, { params }).pipe(
-      map((machines) => 
-        machines.map((m): Machine => {
+    interface BackendPaginatedResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendMachine[];
+    }
+
+    return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/machines`, { params }).pipe(
+      map((response) => ({
+        datos: response.items.map((m): Machine => {
           // Transformar estado_operativo
           const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
             'operativa': 'Operativa',
@@ -92,14 +145,43 @@ export class MachineService {
 
           // Transformar documentos
           const documentos: Machine['documentos'] = {};
-          if (m.documentos['revision_tecnica']) {
-            documentos.revision_tecnica = m.documentos['revision_tecnica'].fecha_vencimiento.split('T')[0];
+          const documentos_estado: Machine['documentos_estado'] = {};
+
+          const mapEstado = (estado: string | undefined): DocumentStatus['estado'] => {
+            if (estado === 'vencido') return 'error';
+            if (estado === 'por_vencer') return 'warning';
+            return 'ok';
+          };
+
+          const buildStatus = (entrada?: { fecha_vencimiento: string; estado: string }): DocumentStatus | undefined => {
+            if (!entrada) return undefined;
+            return {
+              fecha: entrada.fecha_vencimiento.split('T')[0],
+              estado: mapEstado(entrada.estado),
+              texto: entrada.estado === 'vencido'
+                ? 'Vencido'
+                : entrada.estado === 'por_vencer'
+                  ? 'Por vencer'
+                  : 'Al día'
+            };
+          };
+
+          const rev = m.documentos['revision_tecnica'];
+          if (rev) {
+            documentos.revision_tecnica = rev.fecha_vencimiento.split('T')[0];
+            documentos_estado.revision_tecnica = buildStatus(rev);
           }
-          if (m.documentos['permiso_circulacion']) {
-            documentos.permiso_circulacion = m.documentos['permiso_circulacion'].fecha_vencimiento.split('T')[0];
+
+          const perm = m.documentos['permiso_circulacion'];
+          if (perm) {
+            documentos.permiso_circulacion = perm.fecha_vencimiento.split('T')[0];
+            documentos_estado.permiso_circulacion = buildStatus(perm);
           }
-          if (m.documentos['seguro_obligatorio']) {
-            documentos.seguro_obligatorio = m.documentos['seguro_obligatorio'].fecha_vencimiento.split('T')[0];
+
+          const seg = m.documentos['seguro_obligatorio'];
+          if (seg) {
+            documentos.seguro_obligatorio = seg.fecha_vencimiento.split('T')[0];
+            documentos_estado.seguro_obligatorio = buildStatus(seg);
           }
 
           return {
@@ -109,10 +191,15 @@ export class MachineService {
             patente: m.patente || '',
             estado_operativo: estadoOperativo,
             chofer_actual: m.chofer_asignado,
-            documentos: documentos
+            documentos: documentos,
+            documentos_estado: documentos_estado
           };
-        })
-      ),
+        }),
+        total: response.total,
+        pagina: response.page,
+        por_pagina: response.per_page,
+        total_paginas: Math.ceil(response.total / response.per_page)
+      })),
       catchError((error) => {
         console.error('Error obteniendo máquinas:', error);
         return throwError(() => error);
@@ -120,8 +207,15 @@ export class MachineService {
     );
   }
 
+
+
   // GET /api/machines/{id} - Obtener detalle de máquina
   getMachineById(id: number): Observable<Machine> {
+    type MachineDocumentKey =
+      | 'revision_tecnica'
+      | 'permiso_circulacion'
+      | 'seguro_obligatorio';
+
     interface BackendMachineDetail {
       id: number;
       numero_interno: number;
@@ -130,11 +224,13 @@ export class MachineService {
       anio_fabricacion: number;
       estado_operativo: 'operativa' | 'en_taller' | 'inactiva';
       chofer_actual_id: number | null;
-      documentos: {
-        fecha_venc_revision_tecnica: string | null;
-        fecha_venc_permiso_circulacion: string | null;
-        fecha_venc_seguro_obligatorio: string | null;
-      };
+      documentos: Partial<Record<
+        MachineDocumentKey,
+        {
+          fecha_vencimiento: string;
+          estado: 'ok' | 'por_vencer' | 'vencido';
+        }
+      >>;
     }
 
     const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
@@ -143,31 +239,62 @@ export class MachineService {
       inactiva: 'Inactiva'
     };
 
-    return this.http.get<BackendMachineDetail>(`${this.apiUrl}/api/machines/${id}`).pipe(
-      map((m): Machine => {
-        const machine: Machine = {
-          id: m.id,
-          numero: String(m.numero_interno),
-          marca: m.marca,
-          patente: m.patente || '',
-          año: m.anio_fabricacion,
-          estado_operativo: estadoMap[m.estado_operativo] || 'Operativa',
-          chofer_id: m.chofer_actual_id,
-          // El backend no retorna nombre del chofer; dejamos null para que se pueble después
-          chofer_actual: null,
-          documentos: {
-            revision_tecnica: m.documentos?.fecha_venc_revision_tecnica || undefined,
-            permiso_circulacion: m.documentos?.fecha_venc_permiso_circulacion || undefined,
-            seguro_obligatorio: m.documentos?.fecha_venc_seguro_obligatorio || undefined
+    const mapEstadoDocumento = (estado: string): DocumentStatus['estado'] => {
+      if (estado === 'vencido') return 'error';
+      if (estado === 'por_vencer') return 'warning';
+      return 'ok';
+    };
+
+    return this.http
+      .get<BackendMachineDetail>(`${this.apiUrl}/api/machines/${id}`)
+      .pipe(
+        map((m): Machine => {
+          const documentos: Machine['documentos'] = {};
+          const documentos_estado: Machine['documentos_estado'] = {};
+
+          for (const tipo of Object.keys(m.documentos ?? {}) as MachineDocumentKey[]) {
+            const doc = m.documentos[tipo];
+            if (!doc) continue;
+
+            const fecha = doc.fecha_vencimiento.split('T')[0];
+
+            documentos[tipo] = fecha;
+
+            const estado = mapEstadoDocumento(doc.estado);
+            const texto =
+              doc.estado === 'vencido'
+                ? tipo === 'revision_tecnica'
+                  ? 'Vencida'
+                  : 'Vencido'
+                : doc.estado === 'por_vencer'
+                  ? 'Por vencer'
+                  : 'Vigente';
+
+            documentos_estado[tipo] = {
+              fecha,
+              estado,
+              texto
+            };
           }
-        };
-        return machine;
-      }),
-      catchError((error) => {
-        console.error('Error obteniendo detalle de máquina:', error);
-        return throwError(() => error);
-      })
-    );
+
+          return {
+            id: m.id,
+            numero: String(m.numero_interno),
+            marca: m.marca,
+            patente: m.patente || '',
+            año: m.anio_fabricacion,
+            estado_operativo: estadoMap[m.estado_operativo] || 'Operativa',
+            chofer_id: m.chofer_actual_id,
+            chofer_actual: null, // se completa luego si corresponde
+            documentos,
+            documentos_estado
+          };
+        }),
+        catchError((error) => {
+          console.error('Error obteniendo detalle de máquina:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
 
@@ -195,9 +322,9 @@ export class MachineService {
     }
 
     // Validar que las fechas de documentación estén presentes
-    if (!machine.documentos?.revision_tecnica || 
-        !machine.documentos?.permiso_circulacion || 
-        !machine.documentos?.seguro_obligatorio) {
+    if (!machine.documentos?.revision_tecnica ||
+      !machine.documentos?.permiso_circulacion ||
+      !machine.documentos?.seguro_obligatorio) {
       return throwError(() => new Error('Todas las fechas de documentación son obligatorias'));
     }
 
@@ -208,8 +335,8 @@ export class MachineService {
     const seguroObligatorio = machine.documentos.seguro_obligatorio.trim();
 
     if (!fechaRegex.test(revisionTecnica) ||
-        !fechaRegex.test(permisoCirculacion) ||
-        !fechaRegex.test(seguroObligatorio)) {
+      !fechaRegex.test(permisoCirculacion) ||
+      !fechaRegex.test(seguroObligatorio)) {
       return throwError(() => new Error('Las fechas deben estar en formato YYYY-MM-DD'));
     }
 
@@ -218,9 +345,9 @@ export class MachineService {
     const permisoDate = new Date(permisoCirculacion);
     const seguroDate = new Date(seguroObligatorio);
 
-    if (isNaN(revisionDate.getTime()) || 
-        isNaN(permisoDate.getTime()) || 
-        isNaN(seguroDate.getTime())) {
+    if (isNaN(revisionDate.getTime()) ||
+      isNaN(permisoDate.getTime()) ||
+      isNaN(seguroDate.getTime())) {
       return throwError(() => new Error('Una o más fechas no son válidas'));
     }
 
@@ -309,10 +436,10 @@ export class MachineService {
 
     // Construir payload para el backend
     // Asegurar que chofer_id sea explícitamente null si no hay valor
-    const choferIdValue = machine.chofer_id !== undefined && machine.chofer_id !== null 
-      ? Number(machine.chofer_id) 
+    const choferIdValue = machine.chofer_id !== undefined && machine.chofer_id !== null
+      ? Number(machine.chofer_id)
       : null;
-    
+
     const payload: BackendMachineUpdate = {
       numero_interno: Number(machine.numero) || 0,
       patente: machine.patente || '',
@@ -399,10 +526,28 @@ export class MachineService {
   }
 
   // GET /api/machines/{id}/assignments - Obtener historial de asignaciones de una máquina
-  getMachineAssignments(machineId: number, filtro?: 'todas' | 'actual' | 'cerradas'): Observable<any[]> {
+  getMachineAssignments(
+    machineId: number,
+    filters?: {
+      filtro?: 'todas' | 'actual' | 'cerradas';
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{
+    total: number;
+    page: number;
+    per_page: number;
+    items: any[];
+  }> {
     let params = new HttpParams();
-    if (filtro && filtro !== 'todas') {
-      params = params.set('filtro', filtro);
+    if (filters?.filtro && filters.filtro !== 'todas') {
+      params = params.set('filtro', filters.filtro);
+    }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
     }
 
     // Tipo de respuesta del backend
@@ -416,9 +561,19 @@ export class MachineService {
       dias_asignado: number;
     }
 
-    return this.http.get<BackendAssignment[]>(`${this.apiUrl}/api/machines/${machineId}/assignments`, { params }).pipe(
-      map((assignments) => 
-        assignments.map((a) => ({
+    interface BackendResponse {
+      total: number;
+      page: number;
+      per_page: number;
+      items: BackendAssignment[];
+    }
+
+    return this.http.get<BackendResponse>(`${this.apiUrl}/api/machines/${machineId}/assignments`, { params }).pipe(
+      map((response) => ({
+        total: response.total,
+        page: response.page,
+        per_page: response.per_page,
+        items: response.items.map((a) => ({
           id: a.id,
           chofer: {
             id: a.chofer_id,
@@ -429,19 +584,39 @@ export class MachineService {
           duracion_dias: a.dias_asignado,
           estado: a.estado.toLowerCase() as 'activa' | 'cerrada'
         }))
-      ),
+      })),
       catchError((error) => {
         console.error('Error obteniendo asignaciones:', error);
-        return of([]);
+        return of({
+          total: 0,
+          page: 1,
+          per_page: 10,
+          items: []
+        });
       })
     );
   }
 
   // GET /api/machines/{id}/maintenances - Obtener mantenimientos de una máquina
   getMachineMaintenances(
-    machineId: number, 
-    filters?: { categoria?: string; item?: string; desde?: string; hasta?: string }
-  ): Observable<{ items: any[]; total_registros: number; gasto_mes_actual: number }> {
+    machineId: number,
+    filters?: {
+      categoria?: string;
+      item?: string;
+      desde?: string;
+      hasta?: string;
+      page?: number;
+      per_page?: number;
+    }
+  ): Observable<{
+    items: any[];
+    total_registros: number;
+    total_registros_global: number;
+    gasto_mes_actual: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }> {
     let params = new HttpParams();
     if (filters?.categoria) {
       params = params.set('categoria', filters.categoria);
@@ -455,11 +630,21 @@ export class MachineService {
     if (filters?.hasta) {
       params = params.set('hasta', filters.hasta);
     }
+    if (filters?.page) {
+      params = params.set('page', filters.page.toString());
+    }
+    if (filters?.per_page) {
+      params = params.set('per_page', filters.per_page.toString());
+    }
 
     // Tipo de respuesta del backend
     interface BackendMaintenanceResponse {
       total_registros: number;
+      total_registros_global: number;
       gasto_mes_actual: number;
+      pagina: number;
+      por_pagina: number;
+      total_paginas: number;
       items: Array<{
         id: number;
         fecha: string; // ISO date string
@@ -473,7 +658,11 @@ export class MachineService {
     return this.http.get<BackendMaintenanceResponse>(`${this.apiUrl}/api/machines/${machineId}/maintenances`, { params }).pipe(
       map((response) => ({
         total_registros: response.total_registros,
+        total_registros_global: response.total_registros_global,
         gasto_mes_actual: response.gasto_mes_actual,
+        pagina: response.pagina,
+        por_pagina: response.por_pagina,
+        total_paginas: response.total_paginas,
         items: response.items.map((item) => ({
           id: item.id,
           maquina_id: machineId,
@@ -486,7 +675,15 @@ export class MachineService {
       })),
       catchError((error) => {
         console.error('Error obteniendo mantenimientos:', error);
-        return of({ items: [], total_registros: 0, gasto_mes_actual: 0 });
+        return of({
+          items: [],
+          total_registros: 0,
+          total_registros_global: 0,
+          gasto_mes_actual: 0,
+          pagina: 1,
+          por_pagina: 12,
+          total_paginas: 0
+        });
       })
     );
   }
@@ -510,7 +707,7 @@ export class MachineService {
     };
 
     return this.http.post<{ id: number; maquina_id: number; message: string }>(
-      `${this.apiUrl}/api/machines/${machineId}/maintenances`, 
+      `${this.apiUrl}/api/machines/${machineId}/maintenances`,
       payload
     ).pipe(
       map((response) => ({

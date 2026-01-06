@@ -1,14 +1,13 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, Subject, EMPTY, throwError } from 'rxjs';
-import { catchError, map, filter, tap, debounceTime, shareReplay } from 'rxjs/operators';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { Observable, of, EMPTY, throwError, firstValueFrom } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Alert, DailyRecord, FinancialSummary, DashboardResponse } from '../models/dashboard.models';
 import { DailyRecordService } from './daily-record.service';
 import type { DailyRecord as UnifiedDailyRecord } from '../models/daily-record.models';
 import { environment } from '../../../environments/environment.development';
 import { AuthService } from './auth.service';
-import { Router } from '@angular/router';
 
 /**
  * Servicio para el Dashboard
@@ -21,56 +20,35 @@ export class DashboardService {
   private http = inject(HttpClient);
   private dailyRecordService = inject(DailyRecordService);
   private authService = inject(AuthService);
-  private router = inject(Router);
   private apiUrl = environment.apiBaseUrl;
-  
+
   // ========== Signals para estado reactivo (nuevo endpoint /api/dashboard/overview) ==========
   private _dashboardData = signal<DashboardResponse | null>(null);
   public readonly dashboardData = this._dashboardData.asReadonly();
-  
-  // Signal para estado de conexión WebSocket
+
+  // Signal para registros diarios con timestamps
+  private _dailyRecords = signal<DailyRecord[]>([]);
+  public readonly dailyRecords = this._dailyRecords.asReadonly();
+
+  // Track de IDs con valores actualizados (para value flash animation)
+  private _updatedValueIds = signal<Set<number>>(new Set());
+  public readonly updatedValueIds = this._updatedValueIds.asReadonly();
+
+  // Signal para estado de conexión Realtime
   private _isConnected = signal<boolean>(false);
   public readonly isConnected = this._isConnected.asReadonly();
-  
+
   // Signal para errores de conexión
   private _connectionError = signal<string | null>(null);
   public readonly connectionError = this._connectionError.asReadonly();
-  
-  // WebSocket connection
-  private socket$: WebSocketSubject<any> | null = null;
-  private socketSubscription: any = null;
-  
+
+  // Supabase Realtime channel
+  private realtimeChannel: RealtimeChannel | null = null;
+
   // Caché simple en memoria (para métodos legacy)
-  private alertsCache: { data: Alert[]; timestamp: number } | null = null;
   private financialSummaryCache: Map<string, { data: FinancialSummary; timestamp: number }> = new Map();
   private dailyRecordsCache: Map<string, { data: DailyRecord[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-
-  /**
-   * Obtener alertas del dashboard
-   * Endpoint: GET /api/dashboard/alerts (según PDF)
-   */
-  getAlerts(): Observable<Alert[]> {
-    // Verificar caché
-    if (this.alertsCache && Date.now() - this.alertsCache.timestamp < this.CACHE_TTL) {
-      return of(this.alertsCache.data);
-    }
-    
-    return this.http.get<Alert[]>(`${this.apiUrl}/dashboard/alerts`)
-      .pipe(
-        map(alerts => {
-          // Guardar en caché
-          this.alertsCache = { data: alerts, timestamp: Date.now() };
-          return alerts;
-        }),
-        catchError(() => {
-          // Mock temporal - en producción vendría del endpoint
-          const alerts: Alert[] = [];
-          this.alertsCache = { data: alerts, timestamp: Date.now() };
-          return of(alerts);
-        })
-      );
-  }
 
   /**
    * Obtener resumen financiero
@@ -78,17 +56,17 @@ export class DashboardService {
    */
   getFinancialSummary(mes: number, anio: number): Observable<FinancialSummary> {
     const cacheKey = `${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.financialSummaryCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
-    
+
     return this.http.get<FinancialSummary>(`${this.apiUrl}/dashboard/financial-summary`, { params })
       .pipe(
         map(summary => {
@@ -122,7 +100,7 @@ export class DashboardService {
       .set('mes', mes.toString())
       .set('anio', anio.toString())
       .set('metrica', metric === 'Ganancia Neta' ? 'ganancia_neta' : 'ingreso_total');
-    
+
     return this.http.get<any[]>(`${this.apiUrl}/dashboard/financial-by-machine`, { params })
       .pipe(
         catchError(() => {
@@ -144,13 +122,13 @@ export class DashboardService {
    */
   getDailyRecords(fecha?: string): Observable<DailyRecord[]> {
     const cacheKey = fecha || 'all';
-    
+
     // Verificar caché
     const cached = this.dailyRecordsCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     return this.dailyRecordService.getDailyRecords({ fecha }).pipe(
       map(response => {
         // Mapear desde el modelo unificado al formato simplificado del dashboard
@@ -173,17 +151,16 @@ export class DashboardService {
       })
     );
   }
-  
+
   /**
    * Invalidar caché (útil cuando se actualizan datos)
    */
   clearCache(): void {
-    this.alertsCache = null;
     this.financialSummaryCache.clear();
     this.dailyRecordsCache.clear();
   }
 
-  // ========== Nuevos métodos para WebSocket y endpoint /api/dashboard/overview ==========
+  // ========== Nuevos métodos para Realtime y endpoint /api/dashboard/overview ==========
 
   /**
    * Obtiene los datos del dashboard del día actual desde el endpoint /api/dashboard/overview
@@ -200,6 +177,13 @@ export class DashboardService {
       )
       .subscribe({
         next: (data) => {
+          // Debug: Verificar qué datos estamos recibiendo del backend
+          console.log('📊 Dashboard Data recibido:', {
+            kpis: data?.kpis,
+            ganancia_neta: data?.kpis?.ganancia_neta,
+            recaudacion_total: data?.kpis?.recaudacion_total,
+            tipo_ganancia_neta: typeof data?.kpis?.ganancia_neta
+          });
           this._dashboardData.set(data);
           this._connectionError.set(null);
         },
@@ -211,117 +195,141 @@ export class DashboardService {
   }
 
   /**
-   * Conecta al WebSocket para recibir notificaciones de actualización
-   * Implementa el patrón "Signal-Triggered Refetch"
+   * Obtiene los registros diarios del día actual desde el endpoint /api/dashboard/daily-records
+   * Este método actualiza el Signal dailyRecords y detecta nuevos registros para animaciones
    */
-  connectToUpdates(): void {
-    // Si ya hay una conexión activa, no crear otra
-    if (this.socket$ && this._isConnected()) {
-      console.log('WebSocket ya está conectado');
-      return;
-    }
-
-    const token = this.authService.token;
-    if (!token) {
-      console.error('No hay token disponible para conectar WebSocket');
-      this._connectionError.set('No hay sesión activa');
-      return;
-    }
-
-    // Construir URL WebSocket
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = this.apiUrl.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}//${wsHost}/api/dashboard/ws?token=${encodeURIComponent(token)}`;
-
+  private async fetchDailyRecords(): Promise<void> {
     try {
-      // Crear conexión WebSocket
-      this.socket$ = webSocket({
-        url: wsUrl,
-        openObserver: {
-          next: () => {
-            console.log('WebSocket conectado');
-            this._isConnected.set(true);
-            this._connectionError.set(null);
-          }
-        },
-        closeObserver: {
-          next: (event: CloseEvent) => {
-            console.log('WebSocket cerrado', event.code, event.reason);
-            this._isConnected.set(false);
-            
-            // Si el cierre es por error de autenticación (código 1008), redirigir al login
-            if (event.code === 1008) {
-              this._connectionError.set('Sesión expirada. Redirigiendo al login...');
-              setTimeout(() => {
-                this.authService.logout().catch(() => {
-                  this.router.navigateByUrl('/login');
-                });
-              }, 1000);
-            } else if (event.code !== 1000) {
-              // Cierre inesperado (no es normal), intentar reconectar después de un delay
-              this._connectionError.set('Conexión perdida. Reintentando...');
-              setTimeout(() => {
-                if (!this._isConnected()) {
-                  this.connectToUpdates();
-                }
-              }, 3000);
-            }
-          }
-        }
-      });
+      const response = await firstValueFrom(
+        this.http.get<{ total: number; items: any[] }>(
+          `${this.apiUrl}/api/dashboard/daily-records`
+        )
+      );
 
-      // Suscribirse a mensajes del WebSocket
-      this.socketSubscription = this.socket$.pipe(
-        // Filtrar solo mensajes de tipo dashboard_refresh
-        filter((msg: any) => msg && msg.type === 'dashboard_refresh'),
-        // Debounce para evitar múltiples peticiones HTTP simultáneas
-        debounceTime(500),
-        // Disparar refetch cuando se recibe el mensaje
-        tap(() => {
-          console.log('⚡ Actualización recibida, recargando datos del dashboard...');
-          this.fetchOverview();
-        }),
-        shareReplay(1)
-      ).subscribe({
-        next: () => {
-          // El tap ya maneja la lógica
-        },
-        error: (error) => {
-          console.error('Error en WebSocket:', error);
-          this._isConnected.set(false);
-          // El closeObserver ya maneja la reconexión, aquí solo registramos el error
-        }
-      });
+      const records: DailyRecord[] = response.items.map(item => ({
+        id: item.registro_id?.toString() || item.chofer?.id?.toString() || '',
+        machineId: item.maquina?.numero_interno?.toString() || item.maquina?.id?.toString() || 'N/A',
+        machineIdNum: item.maquina?.id,
+        driver: item.chofer?.nombre?.trim() || 'Sin asignar',
+        driverId: item.chofer?.id,
+        date: item.fecha,
+        status: item.estado?.toUpperCase() || 'EN_ESPERA',
+        recaudacion: item.monto_recaudado,
+        puedeVerDetalle: item.puede_ver_detalle ?? false
+      }));
 
-      // Cargar datos iniciales
-      this.fetchOverview();
+      // Detectar valores actualizados (recaudación cambió)
+      const updatedValueIds = new Set<number>();
+      const previousRecords = this._dailyRecords();
+
+      if (previousRecords.length > 0) {
+        records.forEach(record => {
+          const prevRecord = previousRecords.find(r => r.id === record.id);
+          if (prevRecord && prevRecord.recaudacion !== record.recaudacion) {
+            const id = parseInt(record.id);
+            if (!isNaN(id)) updatedValueIds.add(id);
+          }
+        });
+      }
+
+      this._dailyRecords.set(records);
+      this._updatedValueIds.set(updatedValueIds);
+
+      // Limpiar IDs actualizados después de 3 segundos (para la animación)
+      if (updatedValueIds.size > 0) {
+        setTimeout(() => {
+          this._updatedValueIds.set(new Set());
+        }, 3000);
+      }
     } catch (error) {
-      console.error('Error al crear conexión WebSocket:', error);
-      this._connectionError.set('Error al conectar con el servidor');
-      this._isConnected.set(false);
+      console.error('Error cargando registros diarios:', error);
     }
   }
 
   /**
-   * Desconecta el WebSocket y limpia recursos
+   * Conecta a Supabase Realtime para recibir notificaciones de actualización
+   * Implementa el patrón "Signal-Triggered Refetch" usando postgres_changes."
+   */
+  connectToUpdates(): void {
+    const user = this.authService.currentUser();
+
+    // Solo administradores pueden iniciar la suscripción Realtime
+    if (!user || user.role !== 'admin') {
+      this._isConnected.set(false);
+      this._connectionError.set('Solo administradores pueden recibir actualizaciones en tiempo real');
+      return;
+    }
+    
+    // Evitar suscripciones duplicadas, pero siempre recargar datos al entrar
+    if (this.realtimeChannel) {
+      console.log('Suscripción Realtime ya está activa, recargando datos...');
+      // Aunque la suscripción ya esté activa, recargar los datos al volver a la página
+      this.fetchOverview();
+      this.fetchDailyRecords();
+      return;
+    }
+
+    const supabase = this.authService.supabase;
+
+    const channel = supabase
+      .channel('dashboard-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'registros_diarios' },
+        (payload) => {
+          console.log('📦 Cambio en registros_diarios:', payload);
+
+          this.fetchOverview();
+          this.fetchDailyRecords();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'alertas' },
+        (payload) => {
+          console.log('🚨 Cambio en alertas:', payload);
+
+          // Refrescar overview que incluye los KPIs de alertas
+          this.fetchOverview();
+        }
+      )
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          this._isConnected.set(true);
+          this._connectionError.set(null);
+          console.log('Suscripción a Realtime establecida');
+        }
+
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this._isConnected.set(false);
+          this._connectionError.set('Error en la suscripción Realtime');
+        }
+
+        if (status === 'CLOSED') {
+          this._isConnected.set(false);
+        }
+      });
+
+    this.realtimeChannel = channel;
+
+    // Cargar datos iniciales
+    this.fetchOverview();
+    this.fetchDailyRecords();
+  }
+
+  /**
+   * Desconecta el canal Realtime y limpia recursos
    */
   disconnect(): void {
-    if (this.socketSubscription) {
-      this.socketSubscription.unsubscribe();
-      this.socketSubscription = null;
+    if (this.realtimeChannel) {
+      this.realtimeChannel.unsubscribe().catch((error) => {
+        console.warn('Error al cerrar Realtime:', error);
+      });
+      this.realtimeChannel = null;
     }
-    
-    if (this.socket$) {
-      try {
-        this.socket$.complete();
-      } catch (error) {
-        console.warn('Error al cerrar WebSocket:', error);
-      }
-      this.socket$ = null;
-    }
-    
+
     this._isConnected.set(false);
-    console.log('WebSocket desconectado');
+    console.log('Suscripción Realtime desconectada');
   }
 
   /**

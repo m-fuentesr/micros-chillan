@@ -1,5 +1,6 @@
 ﻿from fastapi import APIRouter, Depends, status, Query
 from typing import List
+from datetime import date
 from app.utils.auth import get_current_user, require_admin
 from app.core.pagination import PaginatedResponse
 from app.schemas.user import UserInDB
@@ -100,6 +101,19 @@ async def create_daily_record_admin(
     )
 
 
+@router.get("/check-duplicate")
+async def check_duplicate_record(
+    maquina_id: int = Query(...),
+    fecha: date = Query(...),
+    current_user: UserInDB = Depends(get_current_user)
+):
+    """
+    Verifica si ya existe un registro para una máquina en una fecha específica.
+    Útil para validación previa en el frontend (TC-181).
+    """
+    return await daily_record_service.check_duplicate_record(maquina_id, fecha)
+
+
 # --------------------------------------------------
 # Rutas dinámicas (Admin)
 # --------------------------------------------------
@@ -156,6 +170,23 @@ async def resolve_incident(
     require_admin(current_user)
     
     return await daily_record_service.resolve_incident(
+        record_id=record_id,
+        current_user=current_user,
+    )
+
+
+@router.delete("/{record_id}", status_code=status.HTTP_200_OK)
+async def delete_daily_record(
+    record_id: int,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Elimina un registro diario y su auditoría asociada.
+    Solo disponible para administradores.
+    """
+    require_admin(current_user)
+    
+    return await daily_record_service.delete_daily_record(
         record_id=record_id,
         current_user=current_user,
     )

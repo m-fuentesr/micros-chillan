@@ -1,18 +1,101 @@
 ﻿from fastapi import HTTPException
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime, timezone
 from typing import Optional
+import logging
 from app.core.pagination import PaginatedResponse
 from app.db.supabase_client import supabase
+from app.utils.dates import get_today_in_chile
 from app.schemas.daily_record import (
     DailyRecordCreate,
     DailyRecordCreateAdmin,
     DailyRecordListFilters,
     DailyRecordUpdate
 )
-from app.core.realtime import dashboard_realtime
 from app.services import alert_service
+from app.services.alert_service import SEVERIDAD_CRITICA, SEVERIDAD_ADVERTENCIA, SEVERIDAD_INFO
 from app.schemas.user import UserInDB
 from app.utils.helpers import normalize_value
+
+# Logger para el servicio de registros diarios
+logger = logging.getLogger(__name__)
+
+def _resolve_auditoria_actor_id(current_user: UserInDB) -> int:
+    """
+    Obtiene el ID del actor_auditoria asociado al usuario autenticado.
+
+    - Choferes: prioriza coincidencia por usuario_id y chofer_id, luego cae a chofer_id.
+    - Administradores: coincide por usuario_id.
+    """
+    if current_user.chofer_id:
+        primary = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "chofer")
+            .eq("chofer_id", current_user.chofer_id)
+            .eq("usuario_id", current_user.id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(primary, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {primary.error}")
+
+        if primary.data:
+            return primary.data[0]["id"]
+
+        fallback = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "chofer")
+            .eq("chofer_id", current_user.chofer_id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(fallback, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {fallback.error}")
+
+        data = fallback.data
+    else:
+        admin_res = (
+            supabase.table("actor_auditoria")
+            .select("id")
+            .eq("tipo_actor", "admin")
+            .eq("usuario_id", current_user.id)
+            .limit(1)
+            .execute()
+        )
+
+        if getattr(admin_res, "error", None):
+            raise HTTPException(400, f"Error resolviendo actor de auditoría: {admin_res.error}")
+
+        data = admin_res.data
+
+    if data:
+        return data[0]["id"]
+
+    raise HTTPException(
+        status_code=500,
+        detail="No se encontró actor de auditoría para el usuario actual",
+    )
+
+def _format_timestamp(timestamp) -> Optional[str]:
+    """
+    Formatea un timestamp a string ISO para serialización JSON.
+    Maneja datetime objects, strings y None.
+    """
+    if timestamp is None:
+        return None
+    if isinstance(timestamp, str):
+        return timestamp
+    if isinstance(timestamp, datetime):
+        # Asegurar que el datetime tenga timezone info
+        if timestamp.tzinfo is None:
+            # Si no tiene timezone, asumir UTC
+            timestamp = timestamp.replace(tzinfo=timezone.utc)
+        return timestamp.isoformat()
+    # Intentar convertir a string
+    return str(timestamp)
 
 
 def _map_motivo_inactividad_to_enum(motivo: str) -> str:
@@ -69,6 +152,20 @@ def _map_motivo_inactividad_to_enum(motivo: str) -> str:
     return motivo
 
 
+def _sanitize_observations(observaciones: Optional[str]) -> Optional[str]:
+    """
+    Sanitiza las observaciones para prevenir ataques XSS.
+    Escapa caracteres HTML especiales convirtiéndolos a entidades HTML.
+    """
+    if observaciones is None:
+        return None
+    
+    import html
+    # Escapar caracteres HTML especiales (<, >, &, ", ')
+    sanitized = html.escape(observaciones, quote=True)
+    return sanitized
+
+
 async def _create_daily_record_core(
     *,
     chofer_id: int,
@@ -84,24 +181,133 @@ async def _create_daily_record_core(
     imagen_comprobante_diesel_url: Optional[str],
     observaciones: Optional[str],
     incidente_critico: bool,
-    creado_por_usuario_id: int,
+    actor_id: int,
     tipo_creador: str,  # "worker" | "admin"
 ):
     # --------------------------------------------------
-    # 1. Validar duplicado por chofer + fecha
+    # 0. Observaciones ya vienen sanitizadas del schema de Pydantic
+    # No es necesario sanitizar nuevamente aquí para evitar doble escape
+    # --------------------------------------------------
+    # Las observaciones ya fueron sanitizadas en el schema de Pydantic
+    # (DailyRecordCreate, DailyRecordCreateAdmin, DailyRecordUpdate)
+    observaciones_sanitizadas = observaciones
+    motivo_no_trabajado_otro_sanitizado = motivo_no_trabajado_otro
+
+    # --------------------------------------------------
+    # 1. Validar duplicado por chofer + fecha (TC-182)
     # --------------------------------------------------
     existing = (
         supabase.table("registros_diarios")
-        .select("id")
+        .select("id, maquina_id")
         .eq("chofer_id", chofer_id)
         .eq("fecha", fecha.isoformat())
         .execute()
     )
 
     if existing.data:
+        # Obtener información de la máquina del registro existente
+        registro_existente = existing.data[0]
+        maquina_existente_id = registro_existente.get("maquina_id")
+        
+        maquina_res = (
+            supabase.table("maquinas")
+            .select("numero_interno, marca")
+            .eq("id", maquina_existente_id)
+            .single()
+            .execute()
+        )
+        
+        maquina_info = "otra máquina"
+        if maquina_res.data:
+            numero = maquina_res.data.get("numero_interno", "")
+            marca = maquina_res.data.get("marca", "")
+            if numero:
+                maquina_info = f"la máquina {numero}"
+            elif marca:
+                maquina_info = f"la máquina {marca}"
+        
+        # Obtener nombre del chofer para el mensaje
+        chofer_res = (
+            supabase.table("choferes")
+            .select("primer_nombre, apellido_paterno")
+            .eq("id", chofer_id)
+            .single()
+            .execute()
+        )
+        
+        chofer_nombre = "este chofer"
+        if chofer_res.data:
+            p_nombre = chofer_res.data.get("primer_nombre", "")
+            a_paterno = chofer_res.data.get("apellido_paterno", "")
+            chofer_nombre = f"{p_nombre} {a_paterno}".strip() or "este chofer"
+        
         raise HTTPException(
             status_code=400,
-            detail="Ya existe un registro diario para este chofer y fecha"
+            detail=f"{chofer_nombre} ya tiene un registro para {maquina_info} en esta fecha. Un chofer no puede manejar dos autos el mismo día."
+        )
+
+    # --------------------------------------------------
+    # 1b. Validar duplicado por máquina + fecha (TC-181)
+    # --------------------------------------------------
+    existing_maquina = (
+        supabase.table("registros_diarios")
+        .select("id, chofer_id")
+        .eq("maquina_id", maquina_id)
+        .eq("fecha", fecha.isoformat())
+        .execute()
+    )
+
+    if existing_maquina.data:
+        # Obtener información del chofer del registro existente para el mensaje
+        registro_existente = existing_maquina.data[0]
+        chofer_existente_id = registro_existente.get("chofer_id")
+        
+        chofer_existente_res = (
+            supabase.table("choferes")
+            .select("primer_nombre, apellido_paterno")
+            .eq("id", chofer_existente_id)
+            .single()
+            .execute()
+        )
+        
+        chofer_existente_nombre = "el chofer asignado"
+        if chofer_existente_res.data:
+            p_nombre = chofer_existente_res.data.get("primer_nombre", "")
+            a_paterno = chofer_existente_res.data.get("apellido_paterno", "")
+            chofer_existente_nombre = f"{p_nombre} {a_paterno}".strip() or "el chofer asignado"
+        
+        # Obtener información de la máquina para el mensaje
+        maquina_res = (
+            supabase.table("maquinas")
+            .select("numero_interno, marca")
+            .eq("id", maquina_id)
+            .single()
+            .execute()
+        )
+        
+        maquina_info = "esta máquina"
+        if maquina_res.data:
+            numero = maquina_res.data.get("numero_interno", "")
+            marca = maquina_res.data.get("marca", "")
+            if numero:
+                maquina_info = f"la máquina {numero}"
+            elif marca:
+                maquina_info = f"la máquina {marca}"
+        
+        raise HTTPException(
+            status_code=400,
+            detail=f"Ya existe un registro para {maquina_info} en esta fecha (asignado a {chofer_existente_nombre}). No se puede facturar dos veces el mismo día/turno."
+        )
+
+    # --------------------------------------------------
+    # 1c. Advertencia para registros con fecha futura y recaudación (TC-183)
+    # --------------------------------------------------
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
+    if fecha > hoy and not es_dia_no_trabajado and monto_recaudado and monto_recaudado > 0:
+        # Solo log de advertencia, no bloquea la creación
+        logger.warning(
+            f"Registro con recaudación futura creado: chofer_id={chofer_id}, "
+            f"maquina_id={maquina_id}, fecha={fecha}, monto_recaudado={monto_recaudado}"
         )
 
     # --------------------------------------------------
@@ -152,13 +358,13 @@ async def _create_daily_record_core(
             "estado": "no_trabajado",
             "es_dia_no_trabajado": True,
             "motivo_no_trabajado": motivo_enum,
-            "motivo_no_trabajado_otro": motivo_no_trabajado_otro,
+            "motivo_no_trabajado_otro": motivo_no_trabajado_otro_sanitizado,
             "monto_recaudado": 0,
             "litros_diesel": 0,
             "costo_total_diesel": 0,
             "porcentaje_aplicado": porcentaje,
             "monto_porcentaje_chofer": 0,
-            "observaciones": observaciones,
+            "observaciones": observaciones_sanitizadas,
             "imagen_url": imagen_url,
             "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
         }
@@ -189,7 +395,7 @@ async def _create_daily_record_core(
             "costo_total_diesel": costo_total_diesel,
             "porcentaje_aplicado": porcentaje,
             "monto_porcentaje_chofer": monto_pago,
-            "observaciones": observaciones,
+            "observaciones": observaciones_sanitizadas,
             "imagen_url": imagen_url,
             "imagen_comprobante_diesel_url": imagen_comprobante_diesel_url,
         }
@@ -213,23 +419,27 @@ async def _create_daily_record_core(
         "campo": "registro",
         "valor_anterior": "-",
         "valor_nuevo": (
-            "Creado por trabajador"
+            "Creado por el trabajador"
             if tipo_creador == "worker"
             else "Creado por administrador"
         ),
-        "modificado_por": creado_por_usuario_id,
-        "comentario": observaciones,
+        "actor_id": actor_id,
+        "comentario": observaciones_sanitizadas,
     }).execute()
 
-    # ✅ 6. LÓGICA DE ALERTAS: REGISTRO NORMAL vs INCIDENTE
+    # ✅ 6. LÓGICA DE ALERTAS: REGISTRO NORMAL vs INCIDENTE (TC-29, TC-30)
     # -------------------------------------------------------
+    # TC-30: Fallo silencioso - El registro ya está guardado (línea 242),
+    # por lo que si falla la alerta, el error se captura silenciosamente
+    # y el registro se retorna exitosamente. El fallo del sistema de
+    # notificaciones no debe impedir que el chofer registre su trabajo.
     # Solo generamos alerta si fue creado por el chofer (worker)
     if tipo_creador == "worker":
         try:
             if incidente_critico:
-                # --- CASO 1: INCIDENTE CRÍTICO (ROJO) ---
-                # Preparamos el detalle de la observación
-                detalle = f": {observaciones}" if observaciones else ""
+                # --- CASO 1: INCIDENTE CRÍTICO (ROJO) - TC-29 ---
+                # Preparamos el detalle de la observación (ya sanitizado)
+                detalle = f": {observaciones_sanitizadas}" if observaciones_sanitizadas else ""
                 
                 # Cortamos si es muy largo para no romper la UI de la alerta
                 if len(detalle) > 60:
@@ -237,7 +447,7 @@ async def _create_daily_record_core(
 
                 alert_payload = {
                     "mensaje": f"⚠️ Incidente reportado por {nombre_chofer}{detalle}",
-                    "severidad": "critica",          # ROJO en el panel
+                    "severidad": SEVERIDAD_CRITICA,  # ROJO en el panel (TC-29)
                     "tipo": "incidente_critico",     # Usamos el ENUM existente
                     "origen_tipo": "registro_diario",
                     "origen_id": registro["id"]
@@ -247,22 +457,29 @@ async def _create_daily_record_core(
                 # --- CASO 2: REGISTRO NORMAL (INFORMATIVO) ---
                 alert_payload = {
                     "mensaje": f"Nuevo registro diario de {nombre_chofer}",
-                    "severidad": "informativa",      # AZUL/GRIS en el panel
+                    "severidad": SEVERIDAD_INFO,     # AZUL/GRIS en el panel
                     "tipo": "registro_diario",       # Tipo estándar
                     "origen_tipo": "registro_diario",
                     "origen_id": registro["id"]
                 }
 
-            # Llamada al servicio de alertas
+            # Llamada al servicio de alertas (TC-30: fallo silencioso)
             await alert_service.crear_alerta(**alert_payload)
+            logger.info(
+                f"Alerta creada exitosamente para registro diario ID {registro['id']} "
+                f"(tipo: {alert_payload['tipo']}, severidad: {alert_payload['severidad']})"
+            )
             
         except Exception as e:
-            # No detenemos el proceso si falla la alerta, solo lo logueamos
-            print(f"⚠️ Error enviando alerta de registro: {e}")
-
-    if fecha == date.today():
-        await dashboard_realtime.broadcast_refresh()
-    # -------------------------------------------------------
+            # TC-30: No detenemos el proceso si falla la alerta
+            # El registro ya está guardado (línea 242), solo logueamos el error
+            # El registro se retorna exitosamente a pesar del fallo de la alerta
+            logger.warning(
+                f"Error enviando alerta de registro (TC-30 - Fallo silencioso): "
+                f"Registro ID {registro.get('id', 'N/A')} guardado exitosamente, "
+                f"pero falló la creación de alerta. Error: {str(e)}",
+                exc_info=True
+            )
 
     return registro
 
@@ -288,7 +505,7 @@ async def create_daily_record(
         imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
         observaciones=payload.observaciones,
         incidente_critico=payload.incidente_critico,
-        creado_por_usuario_id=current_user.id,
+        actor_id=_resolve_auditoria_actor_id(current_user),
         tipo_creador="worker",
     )
 
@@ -311,7 +528,7 @@ async def create_daily_record_admin(
         imagen_comprobante_diesel_url=payload.imagen_comprobante_diesel_url,
         observaciones=payload.observaciones,
         incidente_critico=payload.incidente_critico,
-        creado_por_usuario_id=current_user.id,
+        actor_id=_resolve_auditoria_actor_id(current_user),
         tipo_creador="admin",
     )
 
@@ -322,7 +539,7 @@ async def get_driver_history(current_user: UserInDB, rango: str):
     if not chofer_id:
         raise HTTPException(status_code=400, detail="Usuario sin la asignacion de chofer")
     
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_inicio = None
     fecha_fin = hoy
 
@@ -370,7 +587,7 @@ async def get_today_record_status(current_user: UserInDB):
     if not chofer_id:
         raise HTTPException(status_code=400, detail="El usuario no es un chofer válido.")
     
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_busqueda = hoy.isoformat()
     
     try:
@@ -407,9 +624,43 @@ async def get_today_record_status(current_user: UserInDB):
         }
 
 
+async def check_duplicate_record(maquina_id: int, fecha: date):
+    """
+    Verifica si ya existe un registro para una máquina en una fecha específica.
+    Útil para validación previa en el frontend (TC-181).
+    """
+    from app.db.supabase_client import supabase
+    
+    res = (
+        supabase.table("registros_diarios")
+        .select("id, chofer_id, choferes:choferes(primer_nombre, apellido_paterno)")
+        .eq("maquina_id", maquina_id)
+        .eq("fecha", fecha.isoformat())
+        .limit(1)
+        .execute()
+    )
+    
+    if res.data and len(res.data) > 0:
+        registro = res.data[0]
+        chofer = registro.get("choferes", {})
+        chofer_nombre = f"{chofer.get('primer_nombre', '')} {chofer.get('apellido_paterno', '')}".strip() or "otro chofer"
+        
+        return {
+            "exists": True,
+            "chofer_nombre": chofer_nombre,
+            "message": f"Ya existe un registro para esta máquina en esta fecha (asignado a {chofer_nombre})"
+        }
+    
+    return {
+        "exists": False,
+        "chofer_nombre": None,
+        "message": "No existe registro duplicado"
+    }
+
+
 async def get_daily_records_summary():
 
-    hoy = date.today()
+    hoy = get_today_in_chile()  # Usar fecha de Chile para comparación correcta
     fecha_inicio = date(hoy.year, hoy.month, 1)
     fecha_inicio_iso = fecha_inicio.isoformat()
     fecha_fin_iso = hoy.isoformat()
@@ -422,6 +673,7 @@ async def get_daily_records_summary():
         .select("monto_recaudado", count="exact")
         .gte("fecha", fecha_inicio_iso)
         .lte("fecha", fecha_fin_iso)
+        .eq("es_dia_no_trabajado", False)  # Excluir días no trabajados de la recaudación
         .execute()
     )
 
@@ -481,7 +733,7 @@ async def list_daily_records_for_admin(
     base_query = (
         supabase.table("registros_diarios")
         .select(
-            "id, fecha, monto_recaudado, costo_total_diesel, estado, observaciones, "
+            "id, fecha, monto_recaudado, costo_total_diesel, monto_porcentaje_chofer,estado, observaciones, "
             "choferes(id, primer_nombre, apellido_paterno), "
             "maquinas(id, numero_interno)",
             count="exact"
@@ -504,18 +756,35 @@ async def list_daily_records_for_admin(
     if filters.fecha_fin:
         base_query = base_query.lte("fecha", filters.fecha_fin.isoformat())
 
-    # Primero obtenemos TOTAL
+    # Primero obtenemos TOTAL filtrado
     count_res = base_query.execute()
     if getattr(count_res, "error", None):
         raise HTTPException(400, f"Error listando registros diarios: {count_res.error}")
 
     total = count_res.count or 0
 
+    # Obtener total global (sin filtros) para el badge
+    total_global_query = (
+        supabase.table("registros_diarios")
+        .select("id", count="exact")
+    )
+    if filters.chofer_id:
+        total_global_query = total_global_query.eq("chofer_id", filters.chofer_id)
+    if filters.maquina_id is not None:
+        total_global_query = total_global_query.eq("maquina_id", filters.maquina_id)
+    
+    total_global_res = total_global_query.execute()
+    total_global = total_global_res.count if hasattr(total_global_res, 'count') and total_global_res.count is not None else 0
+
     # Ahora hacemos la query paginada
     start = (filters.page - 1) * filters.per_page
     end = start + filters.per_page - 1
 
-    paginated_query = base_query.order(sort_field, desc=sort_desc).range(start, end)
+    paginated_query = (
+        base_query.order(sort_field, desc=sort_desc)
+        .order("created_at", desc=sort_desc)
+        .range(start, end)
+    )
     res = paginated_query.execute()
 
     if getattr(res, "error", None):
@@ -529,7 +798,8 @@ async def list_daily_records_for_admin(
         nombre_chofer = f"{chofer_raw.get('primer_nombre', '')} {chofer_raw.get('apellido_paterno', '')}".strip()
         monto = row.get("monto_recaudado", 0)
         diesel = row.get("costo_total_diesel") or 0
-        neto = monto - diesel
+        pago_chofer = row.get("monto_porcentaje_chofer") or 0
+        neto = monto - diesel - pago_chofer
 
         items.append(
             {
@@ -545,38 +815,88 @@ async def list_daily_records_for_admin(
                 },
                 "monto_recaudado": monto,
                 "diesel": diesel,
+                "pago_chofer": pago_chofer,
                 "neto": neto,
                 "estado": row.get("estado", ""),
                 "tiene_observaciones": bool(row.get("observaciones"))
             }
         )
 
-    return PaginatedResponse(
+    # Retornar diccionario con total_registros_global además de PaginatedResponse
+    response = PaginatedResponse(
         total=total,
         page=filters.page,
         per_page=filters.per_page,
         items=items
     )
+    
+    # Convertir a dict y agregar total_registros_global
+    response_dict = response.model_dump()
+    response_dict["total_registros_global"] = total_global
+    
+    return response_dict
 
 
 async def get_daily_record_detail(record_id: int):
     
-    registro = (
-        supabase.table("registros_diarios")
-        .select("""
-            id, fecha, estado,
-            monto_recaudado, litros_diesel, costo_total_diesel,
-            porcentaje_aplicado, monto_porcentaje_chofer,
-            observaciones,
-            es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
-            imagen_url, imagen_comprobante_diesel_url,
-            choferes(id, primer_nombre, apellido_paterno),
-            maquinas(id, numero_interno)
-        """)
-        .eq("id", record_id)
-        .single()
-        .execute()
-    )
+    # Intentar obtener los campos de timestamp de imágenes si existen
+    # Si no existen, usar created_at/updated_at como fallback
+    from postgrest.exceptions import APIError
+    
+    try:
+        registro = (
+            supabase.table("registros_diarios")
+            .select("""
+                id, fecha, estado,
+                monto_recaudado, litros_diesel, costo_total_diesel,
+                porcentaje_aplicado, monto_porcentaje_chofer,
+                observaciones,
+                es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                imagen_url, imagen_comprobante_diesel_url,
+                imagen_url_updated_at, imagen_comprobante_diesel_url_updated_at,
+                created_at, updated_at,
+                choferes(id, primer_nombre, apellido_paterno),
+                maquinas(id, numero_interno)
+            """)
+            .eq("id", record_id)
+            .single()
+            .execute()
+        )
+    except APIError as e:
+        # Si el registro no existe (error PGRST116: 0 rows)
+        if 'PGRST116' in str(e) or '0 rows' in str(e).lower() or 'result contains 0 rows' in str(e).lower():
+            raise HTTPException(status_code=404, detail=f"Registro diario con ID {record_id} no encontrado")
+        
+        # Si los campos de timestamp no existen (error 42703), hacer SELECT sin ellos
+        # Esto puede pasar si la migración aún no se ha ejecutado
+        if '42703' in str(e) or 'does not exist' in str(e).lower():
+            try:
+                registro = (
+                    supabase.table("registros_diarios")
+                    .select("""
+                        id, fecha, estado,
+                        monto_recaudado, litros_diesel, costo_total_diesel,
+                        porcentaje_aplicado, monto_porcentaje_chofer,
+                        observaciones,
+                        es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                        imagen_url, imagen_comprobante_diesel_url,
+                        created_at, updated_at,
+                        choferes(id, primer_nombre, apellido_paterno),
+                        maquinas(id, numero_interno)
+                    """)
+                    .eq("id", record_id)
+                    .single()
+                    .execute()
+                )
+            except APIError as e2:
+                # Si aún así no existe el registro
+                if 'PGRST116' in str(e2) or '0 rows' in str(e2).lower() or 'result contains 0 rows' in str(e2).lower():
+                    raise HTTPException(status_code=404, detail=f"Registro diario con ID {record_id} no encontrado")
+                # Si es otro error, relanzarlo
+                raise
+        else:
+            # Si es otro error, relanzarlo
+            raise
 
     if not registro.data:
         raise HTTPException(status_code=404, detail="Registro diario no encontrado")
@@ -606,6 +926,7 @@ async def get_daily_record_detail(record_id: int):
             "litros_diesel": row["litros_diesel"],
             "costo_total_diesel": row["costo_total_diesel"],
             "pago_calculado_actual": row["monto_porcentaje_chofer"],
+            "neto": (row["monto_recaudado"] or 0) - (row["costo_total_diesel"] or 0) - (row["monto_porcentaje_chofer"] or 0),
         },
 
         "estado_operativo": {
@@ -619,8 +940,10 @@ async def get_daily_record_detail(record_id: int):
         "incidente_critico": row["estado"] == "incidente_reportado",
 
         "imagenes": {
-            "registro": row["imagen_url"],
-            "diesel": row["imagen_comprobante_diesel_url"],
+            "registro": row.get("imagen_url"),
+            "diesel": row.get("imagen_comprobante_diesel_url"),
+            "registro_updated_at": _format_timestamp(row.get("imagen_url_updated_at") or row.get("updated_at") or row.get("created_at")),
+            "diesel_updated_at": _format_timestamp(row.get("imagen_comprobante_diesel_url_updated_at") or row.get("updated_at") or row.get("created_at")),
         },
     }
 
@@ -634,7 +957,7 @@ async def get_daily_record_history(record_id: int):
         supabase.table("registros_diarios_auditoria")
         .select(
             "id, version, campo, valor_anterior, valor_nuevo, fecha_modificacion, "
-            "usuarios(nombre, apellido)"
+            "actor_auditoria(nombre_completo, rol_nombre, tipo_actor)"
         )
         .eq("registro_diario_id", record_id)
         .order("version", desc=True)
@@ -652,16 +975,19 @@ async def get_daily_record_history(record_id: int):
         version = row["version"]
 
         if version not in history:
-            usuario = row.get("usuarios") or {}
-            nombre_usuario = (
-                f"{usuario.get('nombre', '')} {usuario.get('apellido', '')}".strip()
-            )
+            actor = row.get("actor_auditoria") or {}
+            nombre_actor = actor.get("nombre_completo") or "Sistema"
 
             history[version] = {
                 "id": row["id"],
                 "fecha_cambio": row["fecha_modificacion"],
-                "usuario_responsable": nombre_usuario or "Sistema",
-                "tipo_cambio": "Edición",
+                "usuario_responsable": nombre_actor,
+                "actor": {
+                    "nombre_completo": actor.get("nombre_completo"),
+                    "rol": actor.get("rol_nombre"),
+                    "tipo_actor": actor.get("tipo_actor"),
+                },
+                "tipo_cambio": "Creación" if version == 1 else "Edición",
                 "detalles": [],
             }
 
@@ -727,6 +1053,7 @@ async def update_daily_record(
         raise HTTPException(status_code=404, detail="Registro diario no encontrado")
 
     original = record_res.data
+    actor_id = _resolve_auditoria_actor_id(current_user)
 
     updates = {}
     auditoria = []
@@ -806,26 +1133,89 @@ async def update_daily_record(
         if payload.costo_total_diesel is not None:
             updates["costo_total_diesel"] = payload.costo_total_diesel
 
-        if payload.motivo_no_trabajado is not None:
-            updates["motivo_no_trabajado"] = payload.motivo_no_trabajado
+        # Nota: motivo_no_trabajado y motivo_no_trabajado_otro ya se establecieron como None
+        # en la línea 1125-1126 cuando es_dia_no_trabajado = False.
+        # No deben sobrescribirse con valores del payload.
 
     # Campo común (ambos casos)
     if payload.observaciones is not None:
+        # Las observaciones ya vienen sanitizadas del schema DailyRecordUpdate
         updates["observaciones"] = payload.observaciones
+
+    # Actualizar URLs de imágenes si se proporcionan
+    # También actualizar los timestamps de cuando se subieron las imágenes
+    # Nota: Los campos imagen_url_updated_at e imagen_comprobante_diesel_url_updated_at
+    # deben existir en la tabla registros_diarios. Si no existen, se debe crear una migración.
+    if payload.imagen_url is not None:
+        updates["imagen_url"] = payload.imagen_url
+        # Actualizar timestamp solo si la URL realmente cambió
+        # Guardar en UTC para mantener consistencia
+        if original.get("imagen_url") != payload.imagen_url:
+            updates["imagen_url_updated_at"] = datetime.now(timezone.utc).isoformat()
+    
+    if payload.imagen_comprobante_diesel_url is not None:
+        updates["imagen_comprobante_diesel_url"] = payload.imagen_comprobante_diesel_url
+        # Actualizar timestamp solo si la URL realmente cambió
+        # Guardar en UTC para mantener consistencia
+        if original.get("imagen_comprobante_diesel_url") != payload.imagen_comprobante_diesel_url:
+            updates["imagen_comprobante_diesel_url_updated_at"] = datetime.now(timezone.utc).isoformat()
 
     # ----------------------------------------
     # 4. Auditoría campo a campo
     # ----------------------------------------
+    # Campos que no deben aparecer en la auditoría (son técnicos o redundantes)
+    campos_excluidos_auditoria = {
+        'imagen_url_updated_at',
+        'imagen_comprobante_diesel_url_updated_at',
+        'updated_at'  # Ya se maneja automáticamente
+    }
+    
+    # Mapeo de nombres de campos técnicos a nombres amigables
+    nombres_amigables = {
+        'imagen_url': 'Comprobante del Registro Diario',
+        'imagen_comprobante_diesel_url': 'Comprobante Diésel',
+        'monto_recaudado': 'Monto Recaudado',
+        'litros_diesel': 'Litros de Diésel',
+        'costo_total_diesel': 'Costo de Diésel',
+        'observaciones': 'Observaciones',
+        'es_dia_no_trabajado': 'Día No Trabajado',
+        'motivo_no_trabajado': 'Motivo de Inactividad',
+        'motivo_no_trabajado_otro': 'Motivo de Inactividad (Otro)',
+        'incidente_critico': 'Incidente Crítico',
+        'estado': 'Estado'
+    }
+    
+    def formatear_valor_imagen(valor):
+        """Formatea URLs de imágenes para mostrar solo que cambió, no la URL completa"""
+        if valor and isinstance(valor, str) and ('http' in valor or 'supabase' in valor.lower()):
+            return 'Imagen actualizada'
+        return valor
+    
     for campo, nuevo_valor in updates.items():
+        # Saltar campos excluidos
+        if campo in campos_excluidos_auditoria:
+            continue
+            
         valor_anterior = original.get(campo)
         if normalize_value(valor_anterior) != normalize_value(nuevo_valor):
+            # Obtener nombre amigable del campo
+            nombre_campo = nombres_amigables.get(campo, campo.replace('_', ' ').title())
+            
+            # Formatear valores para imágenes
+            if campo in ('imagen_url', 'imagen_comprobante_diesel_url'):
+                valor_anterior_str = 'Sin imagen' if not valor_anterior else formatear_valor_imagen(valor_anterior)
+                valor_nuevo_str = 'Sin imagen' if not nuevo_valor else formatear_valor_imagen(nuevo_valor)
+            else:
+                valor_anterior_str = str(valor_anterior) if valor_anterior is not None else '-'
+                valor_nuevo_str = str(nuevo_valor) if nuevo_valor is not None else '-'
+            
             auditoria.append({
                 "registro_diario_id": record_id,
                 "version": next_version,
-                "campo": campo,
-                "valor_anterior": str(valor_anterior),
-                "valor_nuevo": str(nuevo_valor),
-                "modificado_por": current_user.id,
+                "campo": nombre_campo,  # Usar nombre amigable
+                "valor_anterior": valor_anterior_str,
+                "valor_nuevo": valor_nuevo_str,
+                "actor_id": actor_id,
                 "comentario": payload.observaciones,
             })
 
@@ -845,14 +1235,172 @@ async def update_daily_record(
     # ----------------------------------------
     # 6. Insertar auditoría
     # ----------------------------------------
+    
+    # ----------------------------------------
+    # 6.1. Auditoría específica para Incidente Crítico (TC-204)
+    # ----------------------------------------
+    # Detectar cambios en el estado que impliquen activación/desactivación de incidente crítico
+    estado_anterior = original.get("estado")
+    estado_nuevo = updates.get("estado") if "estado" in updates else estado_anterior
+    
+    # Verificar si cambió el estado relacionado con incidente crítico
+    incidente_anterior = estado_anterior == "incidente_reportado"
+    incidente_nuevo = estado_nuevo == "incidente_reportado"
+    
+    if incidente_anterior != incidente_nuevo:
+        # Agregar entrada de auditoría específica para el cambio de incidente crítico
+        if incidente_nuevo:
+            # Se activó el incidente crítico
+            auditoria.append({
+                "registro_diario_id": record_id,
+                "version": next_version,
+                "campo": "Incidente Crítico",
+                "valor_anterior": "Desactivado",
+                "valor_nuevo": "Activado",
+                "actor_id": actor_id,
+                "comentario": payload.observaciones,
+            })
+        else:
+            # Se desactivó el incidente crítico
+            auditoria.append({
+                "registro_diario_id": record_id,
+                "version": next_version,
+                "campo": "Incidente Crítico",
+                "valor_anterior": "Activado",
+                "valor_nuevo": "Desactivado",
+                "actor_id": actor_id,
+                "comentario": payload.observaciones,
+            })
+    
     if auditoria:
         supabase.table("registros_diarios_auditoria").insert(auditoria).execute()
 
     updated = {**original, **updates}
     campos_modificados = [a["campo"] for a in auditoria]
 
-    if updated.get("fecha") == date.today().isoformat():
-        await dashboard_realtime.broadcast_refresh()
+    # ----------------------------------------
+    # 7. Crear alerta retroactiva si se marcó como incidente crítico (TC-198)
+    # ----------------------------------------
+    estado_anterior = original.get("estado")
+    estado_nuevo = updated.get("estado")
+    
+    # Verificar si cambió de estado normal a incidente_reportado
+    if estado_anterior != "incidente_reportado" and estado_nuevo == "incidente_reportado":
+        try:
+            # Obtener información del chofer para el mensaje de la alerta
+            chofer_res = (
+                supabase.table("choferes")
+                .select("primer_nombre, apellido_paterno")
+                .eq("id", original["chofer_id"])
+                .single()
+                .execute()
+            )
+            
+            # Construir nombre del chofer (igual que en _create_daily_record_core)
+            nombre_chofer = "Chofer"
+            if chofer_res.data:
+                p_nombre = chofer_res.data.get("primer_nombre", "")
+                a_paterno = chofer_res.data.get("apellido_paterno", "")
+                nombre_chofer = f"{p_nombre} {a_paterno}".strip() or "Chofer"
+            
+            # Preparar detalle de observación (ya sanitizado en el schema)
+            observaciones_sanitizadas = updated.get("observaciones") or ""
+            detalle = f": {observaciones_sanitizadas}" if observaciones_sanitizadas else ""
+            
+            # Cortar si es muy largo para no romper la UI de la alerta
+            if len(detalle) > 60:
+                detalle = detalle[:57] + "..."
+            
+            # Verificar si ya existe una alerta activa para este registro
+            # Si existe, la actualizamos; si no, creamos una nueva
+            alerta_existente_res = (
+                supabase.table("alertas")
+                .select("id")
+                .eq("origen_tipo", "registro_diario")
+                .eq("origen_id", record_id)
+                .eq("estado", "activa")
+                .maybe_single()
+                .execute()
+            )
+            
+            mensaje_alerta = f"⚠️ Incidente reportado por {nombre_chofer}{detalle}"
+            
+            # Verificar si existe una alerta (manejar caso cuando maybe_single retorna None)
+            alerta_existente = None
+            if alerta_existente_res and hasattr(alerta_existente_res, 'data') and alerta_existente_res.data:
+                alerta_existente = alerta_existente_res.data
+            
+            if alerta_existente and alerta_existente.get("id"):
+                # Actualizar alerta existente
+                alerta_id = alerta_existente.get("id")
+                supabase.table("alertas").update({
+                    "mensaje": mensaje_alerta,
+                    "severidad": SEVERIDAD_CRITICA,
+                    "tipo": "incidente_critico",
+                    "created_at": datetime.now(timezone.utc).isoformat()  # Actualizar fecha para que aparezca como nueva
+                }).eq("id", alerta_id).execute()
+                
+                logger.info(
+                    f"Alerta retroactiva actualizada para registro diario ID {record_id} "
+                    f"(alerta ID: {alerta_id})"
+                )
+            else:
+                # Crear nueva alerta
+                alert_payload = {
+                    "mensaje": mensaje_alerta,
+                    "severidad": SEVERIDAD_CRITICA,  # ROJO en el panel
+                    "tipo": "incidente_critico",     # Usamos el ENUM existente
+                    "origen_tipo": "registro_diario",
+                    "origen_id": record_id
+                }
+                
+                await alert_service.crear_alerta(**alert_payload)
+                logger.info(
+                    f"Alerta retroactiva creada para registro diario ID {record_id} "
+                    f"(tipo: {alert_payload['tipo']}, severidad: {alert_payload['severidad']})"
+                )
+            
+        except Exception as e:
+            # TC-30: Fallo silencioso - no detener el proceso si falla la alerta
+            # El registro ya está actualizado, solo logueamos el error
+            logger.warning(
+                f"Error creando/actualizando alerta retroactiva para registro diario ID {record_id} "
+                f"(TC-198 - Fallo silencioso): Registro actualizado exitosamente, "
+                f"pero falló la creación/actualización de alerta. Error: {str(e)}",
+                exc_info=True
+            )
+
+    # ----------------------------------------
+    # 8. Resolver alerta si se desmarcó como incidente crítico (TC-203)
+    # ----------------------------------------
+    # Verificar si cambió de incidente_reportado a completo (se desmarcó incidente crítico)
+    if estado_anterior == "incidente_reportado" and estado_nuevo == "completo":
+        try:
+            # Buscar alertas activas vinculadas a este registro y resolverlas
+            supabase.table("alertas")\
+                .update({
+                    "estado": "resuelta",
+                    "fecha_resuelta": datetime.now(timezone.utc).isoformat()
+                })\
+                .eq("origen_id", record_id)\
+                .eq("origen_tipo", "registro_diario")\
+                .eq("estado", "activa")\
+                .execute()
+            
+            logger.info(
+                f"Alerta resuelta para registro diario ID {record_id} "
+                f"(TC-203: Incidente desactivado)"
+            )
+            
+        except Exception as e:
+            # TC-30: Fallo silencioso - no detener el proceso si falla la resolución de alerta
+            # El registro ya está actualizado, solo logueamos el error
+            logger.warning(
+                f"Error resolviendo alerta para registro diario ID {record_id} "
+                f"(TC-203 - Fallo silencioso): Registro actualizado exitosamente, "
+                f"pero falló la resolución de alerta. Error: {str(e)}",
+                exc_info=True
+            )
 
     return {
         "message": "Registro diario actualizado correctamente",
@@ -862,7 +1410,7 @@ async def update_daily_record(
             "estado": updated["estado"],
             "monto_recaudado": updated["monto_recaudado"],
             "costo_total_diesel": updated["costo_total_diesel"],
-            "neto": updated["monto_recaudado"] - (updated["costo_total_diesel"] or 0),
+            "neto": (updated["monto_recaudado"] or 0) - (updated["costo_total_diesel"] or 0) - (updated["monto_porcentaje_chofer"] or 0),
             "incidente_critico": updated["estado"] == "incidente_reportado",
             "es_dia_no_trabajado": updated["es_dia_no_trabajado"],
         },
@@ -871,6 +1419,289 @@ async def update_daily_record(
             "campos_modificados": campos_modificados
         }
     }
+
+
+async def delete_daily_record(
+    record_id: int,
+    current_user: UserInDB,
+):
+    """
+    Elimina un registro diario y su auditoría asociada.
+    Recalcula automáticamente los pagos semanales confirmados afectados.
+    """
+    from app.services import accounting_service
+    from datetime import datetime
+    
+    # 1. Verificar que el registro existe
+    record_res = (
+        supabase.table("registros_diarios")
+        .select("id, fecha, chofer_id, maquina_id, monto_recaudado")
+        .eq("id", record_id)
+        .single()
+        .execute()
+    )
+    
+    if not record_res.data:
+        raise HTTPException(status_code=404, detail="Registro diario no encontrado")
+    
+    record = record_res.data
+    fecha_record = date.fromisoformat(record["fecha"])
+    chofer_id = record["chofer_id"]
+    mes = fecha_record.month
+    anio = fecha_record.year
+    
+    # 2. Calcular qué semana del mes corresponde a esta fecha
+    semana = _calculate_week_number_for_date(fecha_record, mes, anio)
+    
+    # 3. Eliminar auditoría asociada primero (si hay FK, podría hacerlo en cascada)
+    supabase.table("registros_diarios_auditoria").delete().eq("registro_diario_id", record_id).execute()
+    
+    # 4. Eliminar el registro
+    delete_res = (
+        supabase.table("registros_diarios")
+        .delete()
+        .eq("id", record_id)
+        .execute()
+    )
+    
+    if getattr(delete_res, "error", None):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error eliminando registro: {delete_res.error}"
+        )
+    
+    if not delete_res.data:
+        raise HTTPException(status_code=404, detail="Registro diario no encontrado")
+    
+    # 5. Recalcular pagos semanales confirmados afectados
+    try:
+        await _recalculate_weekly_payments_for_period(chofer_id, mes, anio, semana)
+        logger.info(
+            f"Pagos semanales recalculados después de eliminar registro {record_id} "
+            f"(chofer_id={chofer_id}, mes={mes}, anio={anio}, semana={semana})"
+        )
+    except Exception as e:
+        # No fallar la eliminación si el recálculo falla, solo loguear
+        logger.error(
+            f"Error recalculando pagos semanales después de eliminar registro {record_id}: {e}",
+            exc_info=True
+        )
+    
+    # 6. Recalcular liquidación mensual si existe
+    try:
+        await _recalculate_monthly_liquidation(chofer_id, mes, anio)
+        logger.info(
+            f"Liquidación mensual recalculada después de eliminar registro {record_id} "
+            f"(chofer_id={chofer_id}, mes={mes}, anio={anio})"
+        )
+    except Exception as e:
+        # No fallar la eliminación si el recálculo falla, solo loguear
+        logger.error(
+            f"Error recalculando liquidación mensual después de eliminar registro {record_id}: {e}",
+            exc_info=True
+        )
+    
+    return {
+        "message": "Registro diario eliminado correctamente",
+        "deleted_id": record_id,
+        "fecha": record["fecha"],
+        "recalculated_payments": {
+            "chofer_id": chofer_id,
+            "mes": mes,
+            "anio": anio,
+            "semana": semana
+        }
+    }
+
+
+def _calculate_week_number_for_date(fecha: date, mes: int, anio: int) -> int:
+    """
+    Calcula el número de semana del mes para una fecha dada.
+    """
+    import calendar
+    
+    # Obtener el primer día del mes
+    fecha_inicio_mes = date(anio, mes, 1)
+    fecha_fin_mes = date(anio, mes, calendar.monthrange(anio, mes)[1])
+    
+    # Contar semanas desde el inicio del mes
+    semana = 1
+    fecha_actual = fecha_inicio_mes
+    
+    while fecha_actual <= fecha_fin_mes:
+        # Calcular fin de esta semana (Próximo Domingo o Fin de Mes)
+        days_to_sunday = 6 - fecha_actual.weekday()
+        proximo_domingo = fecha_actual + timedelta(days=days_to_sunday)
+        fin_semana_actual = min(proximo_domingo, fecha_fin_mes)
+        
+        # ¿La fecha está en esta semana?
+        if fecha_inicio_mes <= fecha <= fin_semana_actual:
+            return semana
+        
+        # Avanzar a la siguiente semana
+        fecha_actual = fin_semana_actual + timedelta(days=1)
+        semana += 1
+    
+    # Si no se encontró, retornar la última semana
+    return semana - 1
+
+
+async def _recalculate_weekly_payments_for_period(chofer_id: int, mes: int, anio: int, semana: int):
+    """
+    Recalcula los pagos semanales confirmados para un chofer en un período específico.
+    Si hay un pago confirmado, lo actualiza con los nuevos valores calculados desde registros_diarios.
+    """
+    from app.services import accounting_service
+    
+    # Obtener la lista de pagos recalculada (esto consulta registros_diarios en tiempo real)
+    pagos_recalculados = await accounting_service.get_weekly_payments_list(mes, anio, semana)
+    
+    # Buscar el pago del chofer específico
+    pago_chofer = None
+    for pago in pagos_recalculados:
+        if pago["chofer_id"] == chofer_id:
+            pago_chofer = pago
+            break
+    
+    if not pago_chofer:
+        # No hay pago para este chofer en esta semana, no hay nada que recalcular
+        return
+    
+    # Si el pago está confirmado (tiene id_pago), actualizarlo
+    if pago_chofer.get("id_pago"):
+        # Actualizar el pago confirmado con los nuevos valores
+        update_data = {
+            "base_ganado": pago_chofer["base_ganado"],
+            "ajuste_garantizado": pago_chofer["ajuste_garantizado_calculado"],
+            "total_pagado": pago_chofer["total_a_pagar"]
+        }
+        
+        update_res = (
+            supabase.table("pagos_semanales")
+            .update(update_data)
+            .eq("id", pago_chofer["id_pago"])
+            .execute()
+        )
+        
+        if getattr(update_res, "error", None):
+            logger.warning(
+                f"Error actualizando pago semanal {pago_chofer['id_pago']} "
+                f"después de eliminar registro: {update_res.error}"
+            )
+        else:
+            logger.info(
+                f"Pago semanal {pago_chofer['id_pago']} recalculado: "
+                f"base_ganado={pago_chofer['base_ganado']}, "
+                f"total_pagado={pago_chofer['total_a_pagar']}"
+            )
+    
+    # También recalcular pagos de otras semanas del mismo mes si es necesario
+    # (por ejemplo, si es la última semana, los acumulados pueden cambiar)
+    # Nota: Por ahora solo recalculamos la semana afectada directamente.
+    # Si es necesario recalcular otras semanas, se puede hacer aquí en el futuro.
+
+
+async def _recalculate_monthly_liquidation(chofer_id: int, mes: int, anio: int):
+    """
+    Recalcula la liquidación mensual de un chofer basándose en los pagos semanales del mes.
+    Si existe una liquidación para ese mes, la actualiza con los nuevos valores.
+    """
+    import calendar
+    from app.services.accounting_service import count_weeks_in_month
+    
+    # 1. Obtener todos los pagos semanales del mes para este chofer
+    res_pagos = (
+        supabase.table("pagos_semanales")
+        .select("*")
+        .eq("chofer_id", chofer_id)
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    
+    if getattr(res_pagos, "error", None):
+        logger.warning(f"Error obteniendo pagos semanales para recalcular liquidación: {res_pagos.error}")
+        return
+    
+    pagos = res_pagos.data or []
+    
+    # 2. Calcular totales desde los pagos semanales
+    total_porcentaje_ganado = sum((p.get("base_ganado") or 0) for p in pagos)
+    total_ajuste_garantizado = sum((p.get("ajuste_garantizado") or 0) for p in pagos)
+    total_pagado = sum((p.get("total_pagado") or 0) for p in pagos)
+    
+    # 3. Obtener sueldo mínimo vigente
+    cfg_res = (
+        supabase.table("configuracion_general")
+        .select("sueldo_minimo")
+        .single()
+        .execute()
+    )
+    
+    sueldo_minimo = None
+    if cfg_res.data:
+        sueldo_minimo = cfg_res.data.get("sueldo_minimo")
+    
+    if sueldo_minimo is None:
+        logger.warning("No se pudo obtener sueldo mínimo para recalcular liquidación")
+        return
+    
+    # 4. Calcular monto faltante (si el total ganado es menor al mínimo)
+    monto_faltante = max(0, sueldo_minimo - total_porcentaje_ganado) if total_porcentaje_ganado < sueldo_minimo else 0
+    
+    # 5. Buscar si existe una liquidación para este chofer, mes y año
+    res_liq = (
+        supabase.table("liquidaciones")
+        .select("id")
+        .eq("chofer_id", chofer_id)
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .execute()
+    )
+    
+    if getattr(res_liq, "error", None):
+        logger.warning(f"Error buscando liquidación: {res_liq.error}")
+        return
+    
+    # 6. Actualizar o crear la liquidación
+    liquidacion_data = {
+        "chofer_id": chofer_id,
+        "mes": mes,
+        "anio": anio,
+        "porcentaje_ganado": total_porcentaje_ganado,
+        "monto_faltante": monto_faltante,
+        "sueldo_minimo": sueldo_minimo,
+        "total_final": total_pagado
+    }
+    
+    if res_liq.data and len(res_liq.data) > 0:
+        # Actualizar liquidación existente
+        liquidacion_id = res_liq.data[0]["id"]
+        update_res = (
+            supabase.table("liquidaciones")
+            .update(liquidacion_data)
+            .eq("id", liquidacion_id)
+            .execute()
+        )
+        
+        if getattr(update_res, "error", None):
+            logger.warning(
+                f"Error actualizando liquidación {liquidacion_id} "
+                f"después de eliminar registro: {update_res.error}"
+            )
+        else:
+            logger.info(
+                f"Liquidación mensual {liquidacion_id} recalculada: "
+                f"porcentaje_ganado={total_porcentaje_ganado}, "
+                f"total_final={total_pagado}"
+            )
+    else:
+        # No existe liquidación, no la creamos automáticamente
+        # (probablemente se crea manualmente o mediante otro proceso)
+        logger.debug(
+            f"No existe liquidación para chofer_id={chofer_id}, mes={mes}, anio={anio}. "
+            f"No se creará automáticamente."
+        )
 
 
 async def resolve_incident(
@@ -905,6 +1736,8 @@ async def resolve_incident(
             status_code=400,
             detail=f"El registro no está en estado de incidente. Estado actual: {original['estado']}"
         )
+
+    actor_id = _resolve_auditoria_actor_id(current_user)
 
     # ----------------------------------------
     # 3. Obtener versión para auditoría
@@ -947,19 +1780,36 @@ async def resolve_incident(
         "campo": "estado",
         "valor_anterior": "incidente_reportado",
         "valor_nuevo": "completo",
-        "modificado_por": current_user.id,
+        "actor_id": actor_id,
         "comentario": "Incidente marcado como resuelto",
     }
 
     supabase.table("registros_diarios_auditoria").insert(auditoria).execute()
 
+    # ----------------------------------------
+    # 6.RESOLVER ALERTA ASOCIADA
+    # ----------------------------------------
+    # Buscamos alertas activas vinculadas a este registro y las cerramos.
+    try:
+        # IMPORTANTE: Asumo que el 'origen_tipo' cuando se crea la alerta es "registro_diario".
+        # Si usaste otro nombre al crear la alerta, cámbialo aquí.
+        supabase.table("alertas")\
+            .update({"estado": "resuelta",
+                     "fecha_resuelta": datetime.now().isoformat()})\
+            .eq("origen_id", record_id)\
+            .eq("origen_tipo", "registro_diario")\
+            .execute()
+            
+        print(f"✅ Alerta asociada al registro {record_id} marcada como resuelta.")
+        
+    except Exception as e:
+        # Solo imprimimos el error para no fallar toda la operación si algo pasa con las alertas
+        print(f"⚠️ Advertencia: No se pudo cerrar la alerta asociada: {e}")
     # TODO: Aquí se agregará lógica para alertas/notificaciones cuando se resuelva un incidente
     # Ejemplo: enviar notificación al chofer, registrar en sistema de alertas, etc.
 
     # ----------------------------------------
-    # 6. Retornar registro actualizado usando get_daily_record_detail
+    # 7. Retornar registro actualizado usando get_daily_record_detail
     # ----------------------------------------
-    if original.get("fecha") == date.today().isoformat():
-        await dashboard_realtime.broadcast_refresh()
 
     return await get_daily_record_detail(record_id)

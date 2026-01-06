@@ -1,23 +1,18 @@
 import { Component, ChangeDetectionStrategy, input, output, computed, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { DailyRecord } from '../../models/dashboard.models';
-import { BusIcon } from '../../components/bus-icon/bus-icon';
-import { DriverIcon } from '../../components/driver-icon/driver-icon';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-daily-records-table',
-  imports: [RouterLink, BusIcon, DriverIcon],
+  imports: [RouterLink, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200/60 rounded-3xl overflow-hidden animate-scale-up">
-      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/60">
+      <div class="card-header p-4 sm:p-6 lg:p-8 border-b border-base-200/60 bg-gradient-to-br from-primary/5 via-base-100 to-base-200/30">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div class="flex items-start gap-3">
             <div class="rounded-xl bg-primary/10 text-primary w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center ring-1 ring-primary/10 shadow-sm">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-6 h-6 sm:w-7 sm:h-7">
-                <path d="M7 4a2 2 0 0 1 2-2h1.172a2 2 0 0 1 1.414.586l.828.828H15a2 2 0 0 1 2 2v1h-2V5H9v14h6v-2h2v1a2 2 0 0 1-2 2h-3.586a2 2 0 0 1-1.414-.586l-.828-.828H9a2 2 0 0 1-2-2V4Z"/>
-                <path d="M16 10.5a1 1 0 0 1 1-1h4.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Zm0 3.5a1 1 0 0 1 1-1h4.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Zm0 3a1 1 0 0 1 1-1h2.25a.75.75 0 0 1 0 1.5H17a1 1 0 0 1-1-1Z"/>
-                <path d="M4.03 13.97a.75.75 0 0 1 1.06 0L6.5 15.38l2.41-2.41a.75.75 0 0 1 1.06 1.06l-2.94 2.94a.75.75 0 0 1-1.06 0l-1.94-1.94a.75.75 0 0 1 0-1.06Zm0-6a.75.75 0 0 1 1.06 0L6.5 9.38l2.41-2.41a.75.75 0 1 1 1.06 1.06l-2.94 2.94a.75.75 0 0 1-1.06 0L4.03 9.03a.75.75 0 0 1 0-1.06Z"/>
-              </svg>
+              <ui-icon name="ClipboardList" size="lg" />
             </div>
             <div class="space-y-1">
               <h2 class="text-xl sm:text-2xl font-bold text-base-content leading-tight">Registros Diarios</h2>
@@ -36,7 +31,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
         <div class="block xl:hidden space-y-4">
           @for (record of filteredRecords(); track record.id; let i = $index) {
             <div 
-              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-3xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
+              class="card bg-base-100 shadow-sm border border-base-200/70 rounded-2xl hover:shadow-md transition-all duration-200 group animate-card-enter cursor-pointer"
               [class.border-l-4]="record.status === 'PENDIENTE_TRABAJADOR' || record.status === 'INCIDENTE_REPORTADO'"
               [class.border-warning]="record.status === 'PENDIENTE_TRABAJADOR'"
               [class.border-error]="record.status === 'INCIDENTE_REPORTADO'"
@@ -58,8 +53,10 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                       [class.bg-gradient-to-br]="record.status !== 'INCIDENTE_REPORTADO'"
                       [class.from-primary/20]="record.status !== 'INCIDENTE_REPORTADO'"
                       [class.to-primary/10]="record.status !== 'INCIDENTE_REPORTADO'">
-                      <app-bus-icon 
-                        [class]="record.status === 'INCIDENTE_REPORTADO' ? 'w-7 h-7 text-error' : 'w-7 h-7 text-primary'" />
+                      <ui-icon 
+                        name="BusFront" 
+                        size="lg" 
+                        [class]="record.status === 'INCIDENTE_REPORTADO' ? 'text-error' : 'text-primary'" />
                     </div>
                   </div>
 
@@ -73,10 +70,15 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                         <div class="flex items-center gap-2 mt-1.5">
                           <div class="avatar placeholder shrink-0">
                             <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                              <app-driver-icon class="w-full h-full" />
+                              <ui-icon name="IdCard" size="sm" />
                             </div>
                           </div>
-                          <span class="text-sm text-base-content/70 truncate tooltip" [attr.data-tip]="record.driver">
+                          <span 
+                            class="text-sm truncate tooltip" 
+                            [class.text-base-content/70]="record.driver !== 'Sin asignar'"
+                            [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                            [class.italic]="record.driver === 'Sin asignar'"
+                            [attr.data-tip]="record.driver">
                             {{ record.driver }}
                           </span>
                         </div>
@@ -93,13 +95,19 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                           }
                           @case ('INCIDENTE_REPORTADO') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
-                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                              <ui-icon name="OctagonAlert" size="xs" class="mr-1" />
                               Incidente
                             </div>
                           }
                           @case ('COMPLETO') {
                             <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success border border-success/10">
                               Completo
+                            </div>
+                          }
+                          @case ('EN_ESPERA') {
+                            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                              <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                              En espera
                             </div>
                           }
                           @case ('NO_TRABAJADO') {
@@ -113,8 +121,9 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                             </div>
                           }
                           @default {
-                            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
-                              No Trabajado
+                            <div class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                              <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                              En espera
                             </div>
                           }
                         }
@@ -136,7 +145,9 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-1">Recaudación</div>
                     <div class="font-mono font-bold text-base-content tabular-nums text-sm">
                       @if (record.recaudacion) {
-                        {{ formatCurrency(record.recaudacion) }}
+                        <span [class.animate-value-flash]="isValueUpdated()(record.id)">
+                          {{ formatCurrency(record.recaudacion) }}
+                        </span>
                       } @else {
                         <span class="text-base-content/50 font-normal">N/A</span>
                       }
@@ -146,15 +157,22 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                 
                 <!-- Botón de Acción -->
                 <div class="mt-2" (click)="$event.stopPropagation()">
-                  <a 
-                    [routerLink]="['/registro-diario', record.id]"
-                    class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                      <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                      <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                    </svg>
-                    Ver detalle
-                  </a>
+                  @if (record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA') {
+                    <a 
+                      [routerLink]="['/registro-diario', record.id]"
+                      class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1.5 font-normal">
+                      <ui-icon name="Eye" size="sm" />
+                      Ver detalle
+                    </a>
+                  } @else {
+                    <button 
+                      disabled
+                      class="btn btn-xs h-9 w-full rounded-lg btn-ghost text-base-content/30 cursor-not-allowed opacity-50 transition-all duration-200 gap-1.5 font-normal"
+                      title="No hay registro disponible aún">
+                      <ui-icon name="AlertCircle" size="sm" />
+                      Sin registro
+                    </button>
+                  }
                 </div>
               </div>
             </div>
@@ -199,8 +217,10 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                           [class.bg-gradient-to-br]="record.status !== 'INCIDENTE_REPORTADO'"
                           [class.from-primary/20]="record.status !== 'INCIDENTE_REPORTADO'"
                           [class.to-primary/10]="record.status !== 'INCIDENTE_REPORTADO'">
-                          <app-bus-icon
-                            [class]="record.status === 'INCIDENTE_REPORTADO' ? 'w-5 h-5 xl:w-6 xl:h-6 text-error' : 'w-5 h-5 xl:w-6 xl:h-6 text-primary'" />
+                          <ui-icon
+                            name="BusFront" 
+                            size="md" 
+                            [class]="record.status === 'INCIDENTE_REPORTADO' ? 'text-error' : 'text-primary'" />
                         </div>
                       </div>
                       <div class="flex flex-col min-w-0">
@@ -213,10 +233,17 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                     <div class="flex items-center gap-2">
                       <div class="avatar placeholder shrink-0">
                         <div class="bg-gradient-to-br from-primary/20 to-primary/10 w-6 h-6 rounded-full text-primary flex items-center justify-center border border-base-200 p-0.5">
-                          <app-driver-icon class="w-full h-full" />
+                          <ui-icon name="IdCard" size="sm" />
                         </div>
                       </div>
-                      <span class="font-medium text-base-content/80 truncate tooltip" [attr.data-tip]="record.driver">{{ record.driver }}</span>
+                      <span 
+                        class="font-medium truncate tooltip" 
+                        [class.text-base-content/80]="record.driver !== 'Sin asignar'"
+                        [class.text-base-content/40]="record.driver === 'Sin asignar'"
+                        [class.italic]="record.driver === 'Sin asignar'"
+                        [attr.data-tip]="record.driver">
+                        {{ record.driver }}
+                      </span>
                     </div>
                   </td>
                   <td class="text-center font-mono text-xs text-base-content/60 whitespace-nowrap">{{ formatDate(record.date) }}</td>
@@ -231,7 +258,7 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                       }
                       @case ('INCIDENTE_REPORTADO') {
                         <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-error/10 text-error border border-error/10">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 mr-1"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                          <ui-icon name="OctagonAlert" size="xs" class="mr-1" />
                           <span class="hidden 2xl:inline">Incidente</span>
                           <span class="2xl:hidden">Inc.</span>
                         </div>
@@ -242,44 +269,72 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
                           <span class="2xl:hidden">OK</span>
                         </div>
                       }
+                      @case ('EN_ESPERA') {
+                        <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                          <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                          <span class="hidden 2xl:inline">En espera</span>
+                          <span class="2xl:hidden">Espera</span>
+                        </div>
+                      }
                       @case ('NO_TRABAJADO') {
                         <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
                           <span class="hidden 2xl:inline">No Trabajado</span>
-                          <span class="2xl:hidden">N/A</span>
+                          <span class="2xl:hidden">No Trabajado</span>
                         </div>
                       }
                       @case ('DIA_NO_TRABAJADO') {
                         <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
                           <span class="hidden 2xl:inline">No Trabajado</span>
-                          <span class="2xl:hidden">N/A</span>
+                          <span class="2xl:hidden">No Trabajado</span>
                         </div>
                       }
                       @default {
-                        <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-base-200/50 text-base-content/60 border border-base-200">
-                          <span class="hidden 2xl:inline">No Trabajado</span>
-                          <span class="2xl:hidden">N/A</span>
+                        <div class="inline-flex items-center px-2 xl:px-2.5 py-0.5 rounded-full text-xs font-medium bg-info/10 text-info border border-info/10">
+                          <span class="w-1.5 h-1.5 rounded-full bg-info mr-1.5"></span>
+                          <span class="hidden 2xl:inline">En espera</span>
+                          <span class="2xl:hidden">Espera</span>
                         </div>
                       }
                     }
                   </td>
                   <td class="text-right font-mono font-bold text-base-content tabular-nums text-xs xl:text-sm whitespace-nowrap">
                     @if (record.recaudacion) {
-                      {{ formatCurrency(record.recaudacion) }}
+                      <span [class.animate-value-flash]="isValueUpdated()(record.id)">
+                        {{ formatCurrency(record.recaudacion) }}
+                      </span>
                     } @else {
                       <span class="text-base-content/50">N/A</span>
                     }
                   </td>
                   <td class="pr-4 xl:pr-6 text-right" (click)="$event.stopPropagation()">
-                  <a 
-                    [routerLink]="['/registro-diario', record.id]"
-                    class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
-                    [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5">
-                        <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                        <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                      </svg>
-                      <span class="hidden 2xl:inline">Ver detalle</span>
-                  </a>
+                    <div class="relative flex items-center justify-end min-h-[32px]">
+                      <!-- Placeholder (se oculta al hover) -->
+                      <div class="action-placeholder text-base-content/40 text-xs">
+                        ···
+                      </div>
+                      
+                      <!-- Acción real (aparece al hover) -->
+                      <div class="absolute right-0 action-hover-reveal">
+                        @if (record.puedeVerDetalle && record.id && record.status !== 'EN_ESPERA') {
+                          <a 
+                            [routerLink]="['/registro-diario', record.id]"
+                            class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/60 hover:text-primary hover:bg-base-200 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
+                            [attr.aria-label]="'Ver detalle del registro de ' + record.driver">
+                              <ui-icon name="Eye" size="sm" />
+                              <span class="hidden 2xl:inline">Ver detalle</span>
+                          </a>
+                        } @else {
+                          <button 
+                            disabled
+                            class="btn btn-xs h-8 px-2 xl:px-3 rounded-lg btn-ghost text-base-content/30 cursor-not-allowed opacity-50 transition-all duration-200 gap-1 xl:gap-1.5 font-normal"
+                            [attr.aria-label]="'No hay registro disponible para ' + record.driver"
+                            title="No hay registro disponible aún">
+                              <ui-icon name="AlertCircle" size="sm" />
+                              <span class="hidden 2xl:inline">Sin registro</span>
+                          </button>
+                        }
+                      </div>
+                    </div>
                   </td>
                 </tr>
               } @empty {
@@ -295,7 +350,64 @@ import { DriverIcon } from '../../components/driver-icon/driver-icon';
       </div>
     </div>
   `,
-  styles: [],
+  styles: [`
+    /* 💰 VALUE FLASH: Cuando la recaudación cambia */
+    @keyframes value-flash {
+      0% {
+        background-color: hsl(var(--su) / 0.4);
+        transform: scale(1.08);
+        box-shadow: 0 0 0 0 hsl(var(--su) / 0.6);
+      }
+      50% {
+        background-color: hsl(var(--su) / 0.5);
+        box-shadow: 0 0 0 8px hsl(var(--su) / 0);
+      }
+      100% {
+        background-color: transparent;
+        transform: scale(1);
+        box-shadow: 0 0 0 0 hsl(var(--su) / 0);
+      }
+    }
+    
+    .animate-value-flash {
+      animation: value-flash 800ms ease-out;
+      border-radius: 6px;
+      padding: 4px 8px;
+      display: inline-block;
+    }
+    
+    /* 👁️ HOVER REVEAL: Acciones aparecen al hover */
+    .action-hover-reveal {
+      opacity: 0;
+      transform: translateX(8px);
+      transition: opacity 200ms ease-out, transform 200ms ease-out;
+    }
+    
+    .group:hover .action-hover-reveal {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    
+    .action-placeholder {
+      opacity: 1;
+      transition: opacity 200ms ease-out;
+    }
+    
+    .group:hover .action-placeholder {
+      opacity: 0;
+    }
+    
+    @media (prefers-reduced-motion: reduce) {
+      .animate-value-flash {
+        animation: none;
+        background-color: hsl(var(--su) / 0.1);
+      }
+      .action-hover-reveal {
+        opacity: 1;
+        transform: none;
+      }
+    }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DailyRecordsTable {
@@ -304,6 +416,15 @@ export class DailyRecordsTable {
   records = input.required<DailyRecord[]>();
   showOnlyPending = input(false);
   toggleFilter = output<void>();
+  
+  // IDs de registros con valores actualizados para animación
+  updatedValueIds = input<Set<number>>(new Set());
+  
+  // Computed para verificar si un valor fue actualizado
+  isValueUpdated = computed(() => (recordId: string) => {
+    const id = parseInt(recordId);
+    return !isNaN(id) && this.updatedValueIds().has(id);
+  });
 
   summary = computed(() => {
     const recs = this.records();

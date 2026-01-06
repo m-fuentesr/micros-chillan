@@ -3,13 +3,15 @@
 
 /**
  * Estados posibles de un registro diario
+ * Incluye EN_ESPERA para registros que aún no han sido creados
  */
 export type DailyRecordStatus = 
   | 'PENDIENTE_TRABAJADOR' 
   | 'INCIDENTE_REPORTADO' 
   | 'COMPLETO' 
   | 'NO_TRABAJADO' 
-  | 'DIA_NO_TRABAJADO';
+  | 'DIA_NO_TRABAJADO'
+  | 'EN_ESPERA';
 
 /**
  * Motivos de inactividad cuando el día no fue trabajado
@@ -32,6 +34,8 @@ export interface DailyRecordHistoryItem {
   accion: string;
   timestamp: string; // ISO date string
   cambios?: string;
+  rol?: string; // Rol del usuario responsable
+  tipoActor?: string; // Tipo de actor: 'admin' | 'chofer'
   detalles?: Record<string, { anterior?: any; nuevo?: any }>;
 }
 
@@ -74,6 +78,8 @@ export interface DailyRecord {
   // Información financiera
   recaudado: number;
   costo_diesel: number;
+  pago_chofer?: number;
+  neto?: number;
   litros_diesel?: number;
   
   // Estado de operación
@@ -216,6 +222,7 @@ export interface DailyRecordsKPIs {
 export interface DailyRecordsResponse {
   datos: DailyRecord[];
   total: number;
+  total_registros_global?: number;
   pagina: number;
   por_pagina: number;
   total_paginas: number;

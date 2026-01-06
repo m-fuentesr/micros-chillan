@@ -1,13 +1,23 @@
-import { Component, ChangeDetectionStrategy, inject, effect, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  effect,
+  ViewChild,
+  ElementRef,
+  AfterViewInit,
+  signal
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MaintenanceFormModalService } from '../../services/maintenance-form-modal.service';
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-maintenance-form-modal',
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, UiIconComponent],
   template: `
-    <dialog 
+    <dialog
       #dialogRef
       [class.modal-open]="modalService.isVisible()"
       class="modal"
@@ -15,74 +25,96 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
       <div class="modal-box max-w-2xl">
         <div class="flex items-center gap-3 mb-6 pb-4 border-b border-base-200">
           <div class="p-2 bg-primary/10 rounded-lg text-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6">
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
+            <ui-icon name="CirclePlus" size="md" />
           </div>
           <div>
             <h3 class="font-bold text-xl text-base-content">Registrar Compra de Repuesto</h3>
-            <p class="text-xs text-base-content/60">Completa los datos para registrar un nuevo gasto de mantenimiento</p>
+            <p class="text-xs text-base-content/60">
+              Completa los datos para registrar un nuevo gasto de mantenimiento
+            </p>
           </div>
         </div>
-        
+
         <form (ngSubmit)="onSubmit($event)" #form="ngForm">
           <div class="space-y-5">
+
             <!-- Ítem/Repuesto -->
             <div class="form-control">
               <label class="label">
                 <span class="label-text font-semibold">
-                  Ítem/Repuesto 
-                  <span class="text-error">*</span>
+                  Ítem/Repuesto <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
+
               <select
                 class="select select-bordered w-full"
-                [ngModel]="modalService.formData().item"
-                (ngModelChange)="updateField('item', $event)"
-                name="item"
-                required>
-                <option value="">Seleccione un ítem</option>
+                [ngModel]="getSelectValue()"
+                (ngModelChange)="onItemChange($event)"
+                [name]="showCustomItem() ? 'item_select' : 'item'"
+                [required]="!showCustomItem()">
+                <option value="">-- Seleccione un ítem --</option>
                 @for (item of modalService.availableItems(); track item) {
                   <option [value]="item">{{ item }}</option>
                 }
+                <option value="__OTRO__">Otro (especificar)</option>
               </select>
-              <label class="label">
-                <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                  Ingrese el nombre del repuesto o ítem comprado
-                </span>
-              </label>
+
+              @if (showCustomItem()) {
+                <div class="mt-3">
+                  <input
+                    type="text"
+                    class="input input-bordered w-full"
+                    [ngModel]="modalService.formData().item"
+                    (ngModelChange)="updateField('item', $event)"
+                    name="item"
+                    placeholder="Ej: Batería, Radiador, Amortiguadores, etc."
+                    required>
+                  <label class="label">
+                    <span class="label-text-alt text-base-content/50">
+                      <ui-icon name="Info" size="xs" class="inline mr-1" />
+                      Especifique el nombre del ítem o repuesto
+                    </span>
+                  </label>
+                </div>
+              } @else {
+                <label class="label">
+                  <span class="label-text-alt text-base-content/50 hidden sm:block">
+                    <ui-icon name="Info" size="xs" class="inline mr-1" />
+                    Seleccione un ítem de la lista o elija "Otro" para especificar
+                  </span>
+                </label>
+              }
             </div>
 
             <!-- Costo -->
             <div class="form-control">
               <label class="label">
                 <span class="label-text font-semibold">
-                  Costo ($) 
-                  <span class="text-error">*</span>
+                  Costo ($) <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
-              <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-base-content/50 font-mono">$</span>
-                <input
-                  type="number"
-                  class="input input-bordered w-full pl-8 font-mono"
-                  [ngModel]="modalService.formData().costo"
-                  (ngModelChange)="updateCosto($event)"
-                  name="costo"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  required>
-              </div>
+
+              <input
+                type="text"
+                inputmode="numeric"
+                class="input input-bordered w-full font-mono placeholder-gray-400"
+                [value]="formattedCosto()"
+                (input)="onCostoFormattedInput($event)"
+                name="costo"
+                placeholder="Ej: $40.000"
+                maxlength="10"
+                required>
+
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                  Ingrese el costo en pesos chilenos
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
+                  El monto se formatea automáticamente en pesos chilenos
                 </span>
               </label>
             </div>
@@ -91,24 +123,28 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
             <div class="form-control">
               <label class="label">
                 <span class="label-text font-semibold">
-                  Nº Factura/Boleta 
-                  <span class="text-error">*</span>
+                  Nº Factura/Boleta <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
+
               <input
                 type="text"
-                class="input input-bordered w-full font-mono"
+                class="input input-bordered w-full font-mono placeholder-gray-400"
                 [ngModel]="modalService.formData().numero_factura"
-                (ngModelChange)="updateField('numero_factura', $event)"
+                (input)="onFacturaInput($event)"
                 name="numero_factura"
                 placeholder="Ej: 001-00001234"
+                maxlength="20"
+                pattern="[0-9\\-]+"
                 required>
+
               <label class="label">
                 <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                  Número de factura o boleta para trazabilidad contable/SII
+                  <ui-icon name="Info" size="xs" class="inline mr-1" />
+                  Solo números y guion (-). Máximo 20 caracteres
                 </span>
               </label>
             </div>
@@ -118,33 +154,29 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
               <label class="label">
                 <span class="label-text font-semibold">Categoría</span>
               </label>
+
               <select
                 class="select select-bordered w-full"
                 [ngModel]="modalService.formData().categoria"
                 (ngModelChange)="updateField('categoria', $event)"
                 name="categoria">
-                <option value="">Seleccione una categoría (opcional)</option>
+                <option value="">-- Seleccione una categoría (opcional) --</option>
                 <option value="preventivo">Preventivo</option>
                 <option value="correctivo">Correctivo</option>
               </select>
-              <label class="label">
-                <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                  Tipo de mantenimiento (opcional pero recomendado)
-                </span>
-              </label>
             </div>
 
-            <!-- Fecha de Compra -->
+            <!-- Fecha -->
             <div class="form-control">
               <label class="label">
                 <span class="label-text font-semibold">
-                  Fecha de Compra 
-                  <span class="text-error">*</span>
+                  Fecha de Compra <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
+
               <input
                 type="date"
                 class="input input-bordered w-full"
@@ -152,59 +184,43 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
                 (ngModelChange)="updateField('fecha', $event)"
                 name="fecha"
                 required>
-              <label class="label">
-                <span class="label-text-alt text-base-content/50 hidden sm:block">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 inline mr-1">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                  </svg>
-                  Fecha en que se realizó la compra
-                </span>
-              </label>
             </div>
           </div>
 
-          <!-- Acciones del Modal -->
           <div class="modal-action mt-6 pt-6 border-t border-base-200">
-            <button 
-              type="button" 
+            <button
+              type="button"
               class="btn btn-ghost gap-2"
               (click)="modalService.cancel()">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
-              </svg>
+              <ui-icon name="X" size="sm" />
               Cancelar
             </button>
-            <button 
-              type="submit" 
+
+            <button
+              type="submit"
               class="btn btn-primary gap-2 shadow-lg shadow-primary/20"
               [disabled]="!form.valid">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-              </svg>
+              <ui-icon name="Check" size="sm" />
               Guardar Registro
             </button>
           </div>
         </form>
       </div>
+
       <form method="dialog" class="modal-backdrop" (click)="modalService.cancel()">
         <button>close</button>
       </form>
     </dialog>
   `,
   styles: [`
-    /* Asegurar que el modal esté fijo en el viewport */
     dialog.modal {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       width: 100vw;
       height: 100vh;
       z-index: 9999;
     }
 
-    /* Backdrop invisible */
     .modal-backdrop {
       background: transparent;
     }
@@ -213,32 +229,82 @@ import { MaintenanceFormModalService } from '../../services/maintenance-form-mod
 })
 export class MaintenanceFormModalComponent implements AfterViewInit {
   modalService = inject(MaintenanceFormModalService);
-  
-  @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
+
+  @ViewChild('dialogRef', { static: false })
+  dialogRef!: ElementRef<HTMLDialogElement>;
+
+  showCustomItem = signal(false);
+
+  private clpFormatter = new Intl.NumberFormat('es-CL', {
+    style: 'currency',
+    currency: 'CLP',
+    maximumFractionDigits: 0
+  });
 
   ngAfterViewInit(): void {
-    // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
     effect(() => {
-      const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
-      if (dialog) {
-        if (isVisible) {
-          dialog.showModal();
-        } else {
-          dialog.close();
-        }
+      if (!dialog) return;
+
+      if (this.modalService.isVisible()) {
+        dialog.showModal();
+      } else {
+        dialog.close();
+        this.showCustomItem.set(false);
       }
     });
   }
 
-  updateField(field: 'item' | 'costo' | 'numero_factura' | 'categoria' | 'fecha', value: any): void {
+  formattedCosto(): string {
+    const costo = this.modalService.formData().costo;
+    return costo == null ? '' : this.clpFormatter.format(costo);
+  }
+
+  onCostoFormattedInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let numeric = input.value.replace(/[^0-9]/g, '');
+
+    if (!numeric) {
+      this.modalService.updateFormData({ costo: null });
+      input.value = '';
+      return;
+    }
+
+    let value = Number(numeric);
+    if (value > 9_999_999) value = 9_999_999;
+
+    this.modalService.updateFormData({ costo: value });
+    input.value = this.clpFormatter.format(value);
+  }
+
+  getSelectValue(): string {
+    const item = this.modalService.formData().item;
+    const available = this.modalService.availableItems();
+    return item && !available.includes(item) ? '__OTRO__' : item || '';
+  }
+
+  onItemChange(value: string): void {
+    if (value === '__OTRO__') {
+      this.showCustomItem.set(true);
+      this.updateField('item', '');
+    } else {
+      this.showCustomItem.set(false);
+      this.updateField('item', value);
+    }
+  }
+
+  updateField(
+    field: 'item' | 'costo' | 'numero_factura' | 'categoria' | 'fecha',
+    value: any
+  ): void {
     this.modalService.updateFormData({ [field]: value });
   }
 
-  updateCosto(value: string | number | null): void {
-    const numValue = value === '' || value === null ? null : Number(value);
-    this.modalService.updateFormData({ costo: numValue });
+  onFacturaInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    let clean = input.value.replace(/[^0-9\-]/g, '').slice(0, 20);
+    input.value = clean;
+    this.updateField('numero_factura', clean);
   }
 
   onSubmit(event: Event): void {
@@ -246,4 +312,3 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
     this.modalService.save();
   }
 }
-

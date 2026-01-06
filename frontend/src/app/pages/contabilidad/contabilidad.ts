@@ -6,7 +6,9 @@ import { WeeklySummaryTable } from '../../shared/accounting/weekly-summary-table
 import { LiquidationTable } from '../../shared/accounting/liquidation-table/liquidation-table';
 import { LiquidationTableSkeleton } from '../../shared/accounting/liquidation-table-skeleton/liquidation-table-skeleton';
 import { LiquidationHistory } from '../../shared/accounting/liquidation-history/liquidation-history';
-import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation, LiquidationDriver } from '../../shared/models/accounting.models';
+import { LedgerTable } from '../../shared/accounting/ledger-table/ledger-table';
+import { LedgerTableSkeleton } from '../../shared/accounting/ledger-table-skeleton/ledger-table-skeleton';
+import { AccountingTab, AccountingSummary, DailyProfitabilityData, WeeklySummary, LiquidationPeriod, ClosedLiquidation, LiquidationDriver, LedgerSummary } from '../../shared/models/accounting.models';
 import { PaymentConfirmFormData } from '../../shared/services/payment-confirm-modal.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of } from 'rxjs';
@@ -15,10 +17,13 @@ import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loadin
 import { LoadingStateService } from '../../shared/services/loading-state.service';
 import { PaymentConfirmModalService } from '../../shared/services/payment-confirm-modal.service';
 import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-contabilidad',
-  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LoadingSkeleton],
+  imports: [AccountingKPIs, AccountingChart, WeeklySummaryTable, LiquidationTable, LiquidationTableSkeleton, LiquidationHistory, LedgerTable, LedgerTableSkeleton, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -45,10 +50,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'summary'"
               [class.text-primary-content]="activeTab() === 'summary'"
               (click)="setActiveTab('summary')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6Z" />
-                <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0 0 13.5 3v7.5Z" />
-              </svg>
+              <ui-icon name="ChartNoAxesCombined" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Resumen</span>
             </button>
 
@@ -59,9 +61,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'weekly'"
               [class.text-primary-content]="activeTab() === 'weekly'"
               (click)="setActiveTab('weekly')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
-              </svg>
+              <ui-icon name="Calendar" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Semanal</span>
             </button>
 
@@ -72,9 +72,7 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'payroll'"
               [class.text-primary-content]="activeTab() === 'payroll'"
               (click)="setActiveTab('payroll')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0 1 15.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 0 1 3 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 0 0-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 0 1-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 0 0 3 15h-.75M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm3 0h.008v.008H18V10.5Zm-12 0h.008v.008H6V10.5Z" />
-              </svg>
+              <ui-icon name="HandCoins" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Liquidación</span>
             </button>
 
@@ -85,19 +83,28 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
               [class.bg-primary]="activeTab() === 'history'"
               [class.text-primary-content]="activeTab() === 'history'"
               (click)="setActiveTab('history')">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 shrink-0">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-              </svg>
+              <ui-icon name="Clock" size="xs" class="shrink-0" />
               <span class="text-xs sm:text-sm">Historial Liquidaciones</span>
+            </button>
+
+            <button
+              type="button"
+              class="tab h-11 px-4 sm:px-5 font-semibold transition-all rounded-lg flex items-center gap-2 whitespace-nowrap"
+              [class.tab-active]="activeTab() === 'ledger'"
+              [class.bg-primary]="activeTab() === 'ledger'"
+              [class.text-primary-content]="activeTab() === 'ledger'"
+              (click)="setActiveTab('ledger')">
+              <ui-icon name="Wallet" size="xs" class="shrink-0" />
+              <span class="text-xs sm:text-sm">Cuentas Corrientes</span>
             </button>
           </div>
         </div>
 
         <!-- Filtros Globales (solo para Resumen General y Resumen Semanal) -->
         @if (activeTab() === 'summary' || activeTab() === 'weekly') {
-          <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
-              <div class="relative w-full">
+          <div class="flex flex-row items-center gap-2 w-full lg:w-auto">
+            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+              <div class="relative w-full min-w-0">
                 <select 
                   class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedMonth()" 
@@ -107,17 +114,15 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
 
               <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
 
-              <div class="relative w-full">
+              <div class="relative w-full min-w-0">
                 <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
                   [value]="selectedYear()" 
                   (change)="onYearChange($event)">
                   @for (year of years(); track year.value) {
@@ -125,16 +130,12 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   }
                 </select>
                 <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                  </svg>
+                  <ui-icon name="ChevronDown" size="xs" />
                 </div>
               </div>
             </div>
-            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0" (click)="applyFilters()" title="Actualizar">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
-              </svg>
+            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
+              <ui-icon name="RefreshCw" size="xs" />
             </button>
           </div>
         }
@@ -148,13 +149,10 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
             <div class="space-y-8 animate-tab-panel">
               <!-- KPIs: Skeleton o datos reales -->
               @if (summaryLoadingState.showSkeleton() && summaryLoadingState.isLoading()) {
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 skeleton-container">
-                  @for (i of [1,2,3,4]; track i) {
-                    <app-loading-skeleton 
-                      type="kpi" 
-                      [isExiting]="summaryLoadingState.isSkeletonExiting()" />
-                  }
-                </div>
+                <!-- 🎭 GhostWire Skeleton: Mapeo exacto de AccountingKPIs -->
+                <app-loading-skeleton 
+                  type="accounting-kpis" 
+                  [isExiting]="summaryLoadingState.isSkeletonExiting()" />
               } @else {
                 @if (summary()) {
                   <app-accounting-kpis [summary]="summary()!" />
@@ -172,12 +170,10 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
           <!-- Tab: Resumen Semanal -->
           @if (activeTab() === 'weekly') {
             @if (weeklyLoadingState.showSkeleton() && weeklyLoadingState.isLoading()) {
-              <div class="skeleton-container">
-                <app-loading-skeleton 
-                  type="table" 
-                  [count]="5"
-                  [isExiting]="weeklyLoadingState.isSkeletonExiting()" />
-              </div>
+              <!-- 🎭 GhostWire Skeleton: WeeklySummaryTable - Replica exacta del componente real -->
+              <app-loading-skeleton 
+                type="weekly-summary" 
+                [isExiting]="weeklyLoadingState.isSkeletonExiting()" />
             } @else if (weeklySummaries().length > 0) {
               <div class="animate-tab-panel tab-panel-scroll">
                 <app-weekly-summary-table 
@@ -196,19 +192,6 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
             } @else if (payrollLoadingState.showSkeleton() && payrollLoadingState.isLoading() && liquidation()) {
               <!-- Skeleton personalizado cuando hay datos antiguos pero se están recargando -->
               <app-liquidation-table-skeleton [isExiting]="payrollLoadingState.isSkeletonExiting()" />
-            } @else if (payrollError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar liquidación</h3>
-                    <p class="text-sm text-error/70 mb-4">{{ payrollError() }}</p>
-                    <button class="btn btn-sm btn-error" (click)="loadLiquidation()">Reintentar</button>
-                  </div>
-                </div>
-              </div>
             } @else if (liquidation()) {
               <div class="animate-tab-panel tab-panel-scroll data-transition entered">
                 <app-liquidation-table
@@ -217,20 +200,21 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
                   [selectedWeek]="selectedWeek()"
                   [payrollPeriod]="payrollPeriod()"
                   [isLoading]="payrollLoadingState.isLoading()"
+                  [isWeekEnabled]="isWeekEnabled()"
+                  [verifyingChoferId]="verifyingChoferId()"
                   (weekChange)="onWeekChange($event)"
                   (payrollPeriodChange)="onPayrollPeriodChange($event)"
                   (missingAmountChange)="onMissingAmountChange($event)"
                   (aplicarGarantizadoChange)="onAplicarGarantizadoChange($event)"
                   (confirmPayment)="onConfirmPayment($event)"
+                  (undoPayment)="onUndoPayment($event)"
                   (closePeriod)="onClosePeriod()" />
               </div>
             } @else {
               <!-- Solo mostrar "No hay datos" si NO está cargando -->
               <div class="card bg-base-100 border border-base-200 rounded-3xl p-6">
                 <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-base-content/40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
+                  <ui-icon name="FileText" size="lg" class="text-base-content/40" />
                   <div>
                     <h3 class="text-lg font-semibold text-base-content mb-2">No hay datos de liquidación</h3>
                     <p class="text-sm text-base-content/70 mb-4">No se encontraron datos para la semana seleccionada.</p>
@@ -243,22 +227,79 @@ import { AlertModalService } from '../../shared/services/alert-modal.service';
 
           <!-- Tab: Historial de Liquidaciones -->
           @if (activeTab() === 'history') {
-            @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
-              <div class="skeleton-container">
+            <div class="animate-tab-panel">
+              @if (historyLoadingState.showSkeleton() && historyLoadingState.isLoading()) {
+                <!-- 🎭 GhostWire Skeleton: LiquidationHistory - Replica exacta del componente real -->
                 <app-loading-skeleton 
-                  type="table" 
-                  [count]="5"
+                  type="liquidation-history" 
                   [isExiting]="historyLoadingState.isSkeletonExiting()" />
-              </div>
-            } @else if (liquidationHistory().length > 0) {
-              <div class="animate-tab-panel tab-panel-scroll">
-                <app-liquidation-history [liquidations]="liquidationHistory()" />
-              </div>
-            }
+              } @else {
+                <app-liquidation-history 
+                  [liquidations]="liquidationHistory()"
+                  [totalGlobal]="historyTotalGlobal()"
+                  [isLoading]="historyLoadingState.isLoading()"
+                  [filters]="{
+                    fecha_desde: historyFilters().fecha_desde || null,
+                    fecha_hasta: historyFilters().fecha_hasta || null
+                  }"
+                  (filterChange)="onHistoryFilterChange($event)"
+                />
+                
+                <!-- Paginación -->
+                @if (historyTotalPages() > 1 && !historyLoadingState.isLoading()) {
+                  <div class="flex justify-center mt-6">
+                    <div class="join">
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === 1"
+                        (click)="onHistoryPageChange(historyCurrentPage() - 1)">
+                        «
+                      </button>
+                      @for (page of getHistoryPages(); track page) {
+                        <button
+                          type="button"
+                          class="btn btn-sm join-item"
+                          [class.btn-active]="page === historyCurrentPage()"
+                          (click)="onHistoryPageChange(page)">
+                          {{ page }}
+                        </button>
+                      }
+                      <button
+                        type="button"
+                        class="btn btn-sm join-item"
+                        [disabled]="historyCurrentPage() === historyTotalPages()"
+                        (click)="onHistoryPageChange(historyCurrentPage() + 1)">
+                        »
+                      </button>
+                    </div>
+                  </div>
+                }
+              }
+            </div>
+          }
+
+          <!-- Tab: Cuentas Corrientes Choferes -->
+          @if (activeTab() === 'ledger') {
+            <div class="animate-tab-panel">
+              @if (ledgerLoadingState.isLoading() && ledgerSummaries().length === 0) {
+                <!-- Mostrar skeleton si está cargando Y no hay datos -->
+                <app-ledger-table-skeleton 
+                  [isExiting]="ledgerLoadingState.isSkeletonExiting()" />
+              } @else {
+                <app-ledger-table
+                  [summaries]="ledgerSummaries()"
+                  [isLoading]="ledgerLoadingState.isLoading()"
+                  (refreshRequested)="loadLedgerSummary()"
+ />
+              }
+            </div>
           }
         </div>
       </div>
     </div>
+
+    <!-- Modal de Movimiento del Ledger -->
   `,
   styles: [`
     /* Ocultar scrollbar pero mantener funcionalidad de scroll */
@@ -354,6 +395,8 @@ export class Contabilidad implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private paymentModalService = inject(PaymentConfirmModalService);
   private alertModalService = inject(AlertModalService);
+  private confirmModalService = inject(ConfirmModalService);
+  private globalErrorService = inject(GlobalErrorService);
 
 
   activeTab = signal<AccountingTab>('summary');
@@ -375,9 +418,13 @@ export class Contabilidad implements OnInit {
   weeklyLoadingState = this.loadingStateService.createLoadingState();
   payrollLoadingState = this.loadingStateService.createLoadingState();
   historyLoadingState = this.loadingStateService.createLoadingState();
+  ledgerLoadingState = this.loadingStateService.createLoadingState();
   
   // Signals para manejar errores de liquidación
   payrollError = signal<string | null>(null);
+  
+  // Signal para rastrear qué chofer se está verificando
+  verifyingChoferId = signal<number | null>(null);
 
   // Datos
   summaryData = signal<AccountingSummary | null>(null);
@@ -385,6 +432,20 @@ export class Contabilidad implements OnInit {
   weeklySummaries = signal<WeeklySummary[]>([]);
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
+  ledgerSummaries = signal<LedgerSummary[]>([]);
+  
+  // Signals para el drawer de historial del chofer
+  
+  // Signals para historial con paginación y filtros
+  historyFilters = signal<{ 
+    fecha_desde?: string | null; 
+    fecha_hasta?: string | null; 
+  }>({});
+  historyTotal = signal<number>(0);
+  historyTotalGlobal = signal<number>(0);
+  historyCurrentPage = signal<number>(1);
+  historyTotalPages = signal<number>(0);
+  historyPerPage = 10;
 
 
   // Selector de semana para liquidación
@@ -397,18 +458,9 @@ export class Contabilidad implements OnInit {
   availableWeeks = computed(() => {
     const { mes, anio } = this.payrollDate();
     
-    // Si es mes anterior, siempre mostrar 4 semanas
-    if (this.payrollPeriod() === 'previous') {
-      return [1, 2, 3, 4];
-    }
-    
-    // Para mes actual, calcular según el mes
-    const daysInMonth = new Date(anio, mes, 0).getDate();
-    const firstDay = new Date(anio, mes - 1, 1).getDay(); // 0 = domingo, 1 = lunes, etc.
-    
-    // Calcular cuántas semanas tiene el mes
-    const weeks = Math.ceil((daysInMonth + firstDay) / 7);
-    return Array.from({ length: weeks }, (_, i) => i + 1);
+    // Usar la misma función que el backend para calcular semanas correctamente
+    const totalSemanas = this.accountingService.countWeeksInMonth(mes, anio);
+    return Array.from({ length: totalSemanas }, (_, i) => i + 1);
   });
 
   payrollDate = computed(() => {
@@ -423,6 +475,63 @@ export class Contabilidad implements OnInit {
     const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
     const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
     return { mes: prevMonth, anio: prevYear };
+  });
+
+  // Función para calcular la semana actual del mes
+  private getCurrentWeekInMonth(mes: number, anio: number): number {
+    const today = new Date();
+    const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    
+    // Si no es el mes actual, retornar un número alto para que todas las semanas estén habilitadas
+    if (mes !== today.getMonth() + 1 || anio !== today.getFullYear()) {
+      return 999; // Número alto para que todas las semanas estén habilitadas
+    }
+    
+    // Calcular en qué semana estamos usando la misma lógica que el backend
+    const fechaInicioMes = new Date(anio, mes - 1, 1);
+    const ultimoDiaMes = new Date(anio, mes, 0).getDate();
+    const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
+    
+    let fechaActual = new Date(fechaInicioMes);
+    let semanaActual = 1;
+    
+    while (fechaActual <= fechaFinMes && fechaActual <= todayDate) {
+      const diaSemanaJS = fechaActual.getDay();
+      const diaSemanaPython = diaSemanaJS === 0 ? 6 : diaSemanaJS - 1;
+      const diasHastaDomingo = 6 - diaSemanaPython;
+      const proximoDomingo = new Date(fechaActual);
+      proximoDomingo.setDate(fechaActual.getDate() + diasHastaDomingo);
+      const finSemana = proximoDomingo > fechaFinMes ? fechaFinMes : proximoDomingo;
+      
+      // Si hoy está en esta semana, retornar el número de semana
+      if (todayDate >= fechaActual && todayDate <= finSemana) {
+        return semanaActual;
+      }
+      
+      // Avanzar a la siguiente semana
+      fechaActual = new Date(finSemana);
+      fechaActual.setDate(finSemana.getDate() + 1);
+      semanaActual++;
+    }
+    
+    // Si no encontramos la semana, retornar la última calculada
+    return semanaActual;
+  }
+
+  // Computed para determinar si una semana está habilitada
+  isWeekEnabled = computed(() => {
+    const { mes, anio } = this.payrollDate();
+    const currentWeek = this.getCurrentWeekInMonth(mes, anio);
+    
+    return (week: number) => {
+      // Si es mes anterior, todas las semanas están habilitadas
+      if (this.payrollPeriod() === 'previous') {
+        return true;
+      }
+      
+      // Si es mes actual, solo habilitar semanas hasta la semana actual
+      return week <= currentWeek;
+    };
   });
 
   // Computed signals para meses y años con validación de fechas futuras
@@ -502,6 +611,11 @@ export class Contabilidad implements OnInit {
   liquidationHistory = computed(() => this.liquidationHistoryData());
 
   ngOnInit(): void {
+    // Inicializar estado de carga del ledger si no hay datos
+    if (this.ledgerSummaries().length === 0) {
+      this.ledgerLoadingState.setLoading(true);
+    }
+    
     this.loadSummary();
     this.loadDailyData();
     this.loadWeeklySummaries();
@@ -510,7 +624,26 @@ export class Contabilidad implements OnInit {
   }
 
   setActiveTab(tab: AccountingTab): void {
+    // Establecer estado de carga ANTES de cambiar el tab para evitar flash de contenido
+    if (tab === 'ledger') {
+      // Si no hay datos cargados, establecer loading inmediatamente
+      if (this.ledgerSummaries().length === 0) {
+        this.ledgerLoadingState.setLoading(true);
+        // Usar setTimeout para asegurar que el estado se establece antes del cambio de tab
+        setTimeout(() => {
+          this.activeTab.set(tab);
+          this.loadLedgerSummary();
+        }, 0);
+        return;
+      }
+    }
+    
     this.activeTab.set(tab);
+    
+    // Cargar datos del ledger cuando se activa el tab
+    if (tab === 'ledger') {
+      this.loadLedgerSummary();
+    }
   }
 
   // Métodos para manejar cambios con validación
@@ -581,28 +714,16 @@ export class Contabilidad implements OnInit {
       .pipe(
         catchError((error) => {
           console.error('Error en loadSummary:', error);
-          // Mostrar mensaje de error al usuario
-          if (error?.status === 401) {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Error de Autenticación',
-              message: 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.',
-              buttonText: 'Entendido'
-            });
-          } else if (error?.status === 403) {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Acceso Denegado',
-              message: 'No tienes permisos para acceder a esta información.',
-              buttonText: 'Entendido'
-            });
+          // Mostrar error global en lugar de error local
+          if (error?.status === 401 || error?.status === 403) {
+            // Errores de autenticación/autorización se manejan con el interceptor
+            return of(null);
           } else {
-            this.alertModalService.show({
-              type: 'error',
-              title: 'Error al Cargar Datos',
-              message: error?.error?.detail || error?.message || 'No se pudieron cargar los datos del resumen. Verifica tu conexión e intenta nuevamente.',
-              buttonText: 'Entendido'
-            });
+            // Error general - mostrar error global
+            this.globalErrorService.showError(
+              'No se pudieron cargar los datos financieros desde el servidor.',
+              'Error al cargar finanzas'
+            );
           }
           return of(null);
         })
@@ -692,8 +813,12 @@ export class Contabilidad implements OnInit {
         },
         error: (error: any) => {
           this.liquidationData.set(null);
-          const errorMessage = error?.error?.detail || error?.message || 'No se pudieron cargar los datos de liquidación.';
-          this.payrollError.set(errorMessage);
+          // Mostrar error global en lugar de error local
+          this.globalErrorService.showError(
+            'No se pudieron cargar los datos de liquidación desde el servidor.',
+            'Error al cargar liquidación'
+          );
+          this.payrollError.set(null); // Ya no se usa, pero mantener por compatibilidad
           this.payrollLoadingState.setDataLoaded();
         }
       });
@@ -701,12 +826,98 @@ export class Contabilidad implements OnInit {
 
   loadLiquidationHistory(): void {
     this.historyLoadingState.setLoading(true);
-    this.accountingService.getLiquidationHistory()
-      .pipe(catchError(() => of([])))
-      .subscribe((history: ClosedLiquidation[]) => {
-        this.liquidationHistoryData.set(history);
+    const filters = this.historyFilters();
+    const currentPage = this.historyCurrentPage();
+    
+    // Convertir fechas a mes (las fechas vienen como YYYY-MM-DD)
+    let mes_desde: number | undefined;
+    let mes_hasta: number | undefined;
+    
+    if (filters.fecha_desde) {
+      const parts = filters.fecha_desde.split('-');
+      if (parts.length === 3) {
+        mes_desde = parseInt(parts[1], 10);
+      }
+    }
+    
+    if (filters.fecha_hasta) {
+      const parts = filters.fecha_hasta.split('-');
+      if (parts.length === 3) {
+        mes_hasta = parseInt(parts[1], 10);
+      }
+    }
+    
+    this.accountingService.getLiquidationHistory({
+      mes_desde: mes_desde,
+      mes_hasta: mes_hasta,
+      page: currentPage,
+      per_page: this.historyPerPage
+    }).subscribe({
+      next: (response) => {
+        this.liquidationHistoryData.set(response.items);
+        this.historyTotal.set(response.total);
+        this.historyTotalGlobal.set(response.total_global);
+        this.historyTotalPages.set(response.total_pages);
         this.historyLoadingState.setDataLoaded();
-      });
+      },
+      error: (error) => {
+        console.error('Error cargando historial:', error);
+        this.liquidationHistoryData.set([]);
+        this.historyTotal.set(0);
+        this.historyTotalGlobal.set(0);
+        this.historyTotalPages.set(0);
+        this.historyLoadingState.setDataLoaded();
+      }
+    });
+  }
+
+  onHistoryFilterChange(filters: Record<string, any>): void {
+    // Si el objeto está vacío, limpiar todos los filtros
+    if (Object.keys(filters).length === 0) {
+      this.historyFilters.set({});
+      this.historyCurrentPage.set(1);
+      this.loadLiquidationHistory();
+      return;
+    }
+    
+    const processedFilters: { 
+      fecha_desde?: string | null; 
+      fecha_hasta?: string | null; 
+    } = {
+      fecha_desde: filters['fecha_desde'] || null,
+      fecha_hasta: filters['fecha_hasta'] || null
+    };
+    
+    this.historyFilters.set(processedFilters);
+    this.historyCurrentPage.set(1);
+    this.loadLiquidationHistory();
+  }
+
+  onHistoryPageChange(page: number): void {
+    this.historyCurrentPage.set(page);
+    this.loadLiquidationHistory();
+  }
+
+  getHistoryPages(): number[] {
+    const totalPages = this.historyTotalPages();
+    if (totalPages <= 1) return [];
+    const pages: number[] = [];
+    const current = this.historyCurrentPage();
+    const total = totalPages;
+    
+    // Mostrar máximo 7 páginas
+    let start = Math.max(1, current - 3);
+    let end = Math.min(total, start + 6);
+    
+    if (end - start < 6) {
+      start = Math.max(1, end - 6);
+    }
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
   }
 
 
@@ -755,10 +966,16 @@ export class Contabilidad implements OnInit {
 
   private recalculatePagoFinal(chofer: LiquidationDriver, esUltimaSemana: boolean): void {
     if (esUltimaSemana && chofer.aplicar_garantizado) {
-      const acumulado = chofer.acumulado_mensual || chofer.total_ganado;
-      if (acumulado < chofer.minimo_garantizado) {
+      // El acumulado_mensual contiene solo las semanas anteriores (sin la semana actual)
+      // Para calcular el total proyectado, sumamos: acumulado_mensual + total_ganado
+      const acumuladoAnterior = chofer.acumulado_mensual ?? 0;
+      const totalProyectado = acumuladoAnterior + chofer.total_ganado;
+      
+      if (totalProyectado < chofer.minimo_garantizado) {
+        // El pago final es: base de la semana + bono manual
         chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
       } else {
+        // Si ya alcanza el mínimo, solo se paga lo ganado
         chofer.pago_final = chofer.total_ganado;
       }
     } else {
@@ -776,12 +993,60 @@ export class Contabilidad implements OnInit {
     const { mes, anio } = this.payrollDate();
     const semana = this.selectedWeek();
 
+    // ✅ VALIDACIÓN: Verificar semanas anteriores sin pagar (solo para mes actual)
+    const today = new Date();
+    const esMesActual = mes === today.getMonth() + 1 && anio === today.getFullYear();
+    
+    if (esMesActual && semana > 1 && this.payrollPeriod() === 'current') {
+      // Establecer el signal de verificación
+      this.verifyingChoferId.set(event.choferId);
+      
+      // Verificar si hay semanas anteriores sin pagar
+      this.accountingService.checkUnpaidPreviousWeeks(event.choferId, mes, anio, semana).subscribe({
+        next: (semanasSinPagar) => {
+          // Limpiar el signal de verificación
+          this.verifyingChoferId.set(null);
+          
+          if (semanasSinPagar.length > 0) {
+            // Mostrar modal de advertencia
+            const semanasTexto = semanasSinPagar.length === 1 
+              ? `la Semana ${semanasSinPagar[0]}` 
+              : `las Semanas ${semanasSinPagar.join(', ')}`;
+            
+            this.alertModalService.show({
+              type: 'warning',
+              title: 'Semanas Anteriores Sin Pagar',
+              message: `No se puede pagar la Semana ${semana} de ${chofer.chofer_nombre} sin haber pagado primero ${semanasTexto}. Por favor, pague las semanas anteriores antes de continuar.`,
+              buttonText: 'Entendido'
+            });
+            return; // No abrir el modal de confirmación
+          }
+          
+          // Si todas las semanas anteriores están pagadas, proceder normalmente
+          this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+        },
+        error: (error) => {
+          // Limpiar el signal de verificación en caso de error
+          this.verifyingChoferId.set(null);
+          console.error('Error al verificar semanas anteriores:', error);
+          // En caso de error, permitir continuar (no bloquear)
+          this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+        }
+      });
+    } else {
+      // Para meses anteriores o primera semana, proceder normalmente
+      this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
+    }
+  }
+
+  // Método privado para abrir el modal de confirmación y procesar el pago
+  private openPaymentModal(chofer: LiquidationDriver, mes: number, anio: number, semana: number, choferId: number): void {
     // Abrir el modal de confirmación
     this.paymentModalService.open(chofer, mes, anio, semana).then((formData: PaymentConfirmFormData | null) => {
       if (formData) {
         // Llamar al servicio para confirmar el pago
         this.accountingService.confirmWeeklyPayment(
-          event.choferId,
+          choferId,
           mes,
           anio,
           semana,
@@ -817,8 +1082,9 @@ export class Contabilidad implements OnInit {
             // Cerrar el modal de confirmación
             this.paymentModalService.finishSubmission();
             
-            // Invalidar el caché de la liquidación para forzar la recarga
-            this.accountingService.invalidateLiquidationCache(semana, mes, anio);
+            // Invalidar el caché de TODAS las semanas del mes
+            // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
+            this.accountingService.invalidateAllWeeksInMonth(mes, anio);
             
             // Mostrar modal de éxito
             this.alertModalService.show({
@@ -836,8 +1102,95 @@ export class Contabilidad implements OnInit {
     });
   }
 
-  onClosePeriod(): void {
+  async onUndoPayment(event: { choferId: number }): Promise<void> {
+    const liquidation = this.liquidation();
+    if (!liquidation) return;
+
+    // Verificar si el mes está cerrado administrativamente
+    if (liquidation.mes_cerrado_administrativamente) {
+      this.alertModalService.show({
+        type: 'error',
+        title: 'Período Cerrado',
+        message: 'No se puede deshacer un pago de un período que ha sido cerrado administrativamente.',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    const chofer = liquidation.choferes.find(c => c.chofer_id === event.choferId);
+    if (!chofer) return;
+
     const { mes, anio } = this.payrollDate();
+    const semana = this.selectedWeek();
+
+    // Mostrar modal de confirmación
+    const confirmed = await this.confirmModalService.open({
+      title: 'Deshacer Pago',
+      message: `¿Está seguro de que desea deshacer el pago de ${chofer.chofer_nombre} para la Semana ${semana}? Esta acción volverá el estado a 'pendiente'.`,
+      confirmText: 'Deshacer',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-error'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Llamar al servicio para deshacer el pago
+    this.accountingService.undoPayment(event.choferId, mes, anio, semana)
+      .pipe(
+        catchError((error) => {
+          console.error('Error al deshacer pago:', error);
+          
+          // Mostrar modal de error
+          const errorMessage = error?.error?.detail || error?.message || 'No se pudo deshacer el pago. Por favor, intenta nuevamente.';
+          this.alertModalService.show({
+            type: 'error',
+            title: 'Error al Deshacer Pago',
+            message: errorMessage,
+            buttonText: 'Entendido'
+          });
+          
+          return of(null);
+        })
+      )
+      .subscribe((response: any) => {
+        if (response) {
+          // Invalidar el caché de TODAS las semanas del mes
+          // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
+          this.accountingService.invalidateAllWeeksInMonth(mes, anio);
+          
+          // Mostrar modal de éxito
+          this.alertModalService.show({
+            type: 'success',
+            title: 'Pago Deshecho',
+            message: `El pago de ${chofer.chofer_nombre} ha sido deshecho correctamente. El estado ha vuelto a 'pendiente'.`,
+            buttonText: 'Entendido'
+          });
+          
+          // Recargar la liquidación para actualizar el estado
+          this.loadLiquidation();
+        }
+      });
+  }
+
+  async onClosePeriod(): Promise<void> {
+    const { mes, anio } = this.payrollDate();
+    
+    // Mostrar modal de confirmación
+    const confirmed = await this.confirmModalService.open({
+      title: 'Finalizar Mes',
+      message: `¿Está seguro de que desea finalizar y cerrar el mes de ${this.getMonthName(mes)} ${anio}? Esta acción es irreversible y registrará el cierre administrativo del período.`,
+      confirmText: 'Finalizar',
+      cancelText: 'Cancelar',
+      confirmButtonClass: 'btn-primary'
+    });
+
+    if (!confirmed) {
+      return;
+    }
+
+    // Llamar al servicio para cerrar el período
     this.accountingService.closePeriod(mes, anio)
       .pipe(
         catchError((error) => {
@@ -855,17 +1208,20 @@ export class Contabilidad implements OnInit {
           return of(null);
         })
       )
-      .subscribe((response: void | null) => {
-        if (response !== null) {
-          // Mostrar modal de éxito
+      .subscribe((response: any) => {
+        if (response) {
+          // Invalidar caché de todas las semanas del mes para reflejar el cierre
+          this.accountingService.invalidateAllWeeksInMonth(mes, anio);
+          
+          // Mostrar modal de éxito con el mensaje del backend
           this.alertModalService.show({
             type: 'success',
             title: 'Período Cerrado',
-            message: `El período de ${this.getMonthName(mes)} ${anio} ha sido cerrado y finalizado exitosamente.`,
+            message: response.message || `El período de ${this.getMonthName(mes)} ${anio} ha sido cerrado y finalizado exitosamente.`,
             buttonText: 'Entendido'
           });
           
-          // Recargar liquidación
+          // Recargar liquidación para actualizar el estado (mostrará el mensaje de período cerrado)
           this.loadLiquidation();
         }
       });
@@ -876,4 +1232,30 @@ export class Contabilidad implements OnInit {
                    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return meses[mes - 1] || '';
   }
+
+  // =================================================================
+  // MÉTODOS PARA CUENTAS CORRIENTES (LEDGER)
+  // =================================================================
+
+  loadLedgerSummary(): void {
+    this.ledgerLoadingState.setLoading(true);
+    
+    this.accountingService.getLedgerSummary().subscribe({
+      next: (data) => {
+        this.ledgerSummaries.set(data);
+        this.ledgerLoadingState.setDataLoaded();
+      },
+      error: (error) => {
+        console.error('Error al cargar resumen de cuentas corrientes:', error);
+        this.ledgerLoadingState.setDataLoaded();
+        this.alertModalService.show({
+          type: 'error',
+          title: 'Error al cargar cuentas corrientes',
+          message: error?.error?.detail || error?.message || 'No se pudieron cargar las cuentas corrientes. Intenta nuevamente.',
+          buttonText: 'Entendido'
+        });
+      }
+    });
+  }
+
 }

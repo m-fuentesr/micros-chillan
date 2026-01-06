@@ -8,7 +8,13 @@ export interface Driver {
   correo: string;
   porcentaje_pago: number;
   fecha_venc_licencia: string;
+  fecha_contrato?: string;
   alerta_licencia: boolean;
+  licencia_estado?: {
+    estado: 'ok' | 'warning' | 'danger';
+    dias_restantes: number;
+    fecha_vencimiento: string;
+  };
   estado: 'activo' | 'inactivo' | 'eliminado';
   maquina_actual?: {
     id: number;
@@ -52,8 +58,12 @@ export interface DriverDailyRecord {
   estado: 'completo' | 'pendiente_trabajador' | 'incidente_reportado' | 'no_trabajado'; // Mapeo de DailyRecordStatus
   recaudado: number;
   diesel: number; // Alias de costo_diesel para compatibilidad
+  pago_chofer: number;
+  neto?: number;
   observaciones?: string | null; // Texto opcional mostrado en historial
   tiene_observaciones: boolean; // Booleano que indica si tiene observaciones
+  maquina_id?: number; // ID de la máquina
+  maquina_identificador?: string; // Identificador de la máquina (ej: "Máquina 05")
 }
 
 export interface DriverLiquidation {
@@ -65,6 +75,18 @@ export interface DriverLiquidation {
   metodo_pago?: 'transferencia' | 'efectivo' | null;
   codigo_transferencia?: string | null;
   estado_pago: 'pendiente' | 'pagado';
+}
+
+export interface DriverDeletedListItem {
+  id: number;
+  nombre_completo: string;
+  rut: string;
+  telefono: string;
+}
+
+export interface DriverReintegrateRequest {
+  correo_electronico: string;
+  maquina_asignada?: number | null;
 }
 
 export type DriverViewMode = 'cards' | 'table';

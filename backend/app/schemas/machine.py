@@ -1,6 +1,7 @@
 ﻿from typing import Literal, Optional
 from pydantic import BaseModel, Field
 from datetime import date
+from app.core.pagination import PaginationParams
 
 
 class MachineSelect(BaseModel): # Para vista de choferes (selector)
@@ -53,12 +54,6 @@ class MachineCreate(BaseModel):
     documentos: MachineCreateDocuments
     
 
-class MachineDetailDocuments(BaseModel):
-    fecha_venc_revision_tecnica: date
-    fecha_venc_permiso_circulacion: date
-    fecha_venc_seguro_obligatorio: date
-
-
 class MachineDetail(BaseModel):
     id: int
     numero_interno: int
@@ -69,7 +64,7 @@ class MachineDetail(BaseModel):
 
     chofer_actual_id: Optional[int]
 
-    documentos: MachineDetailDocuments
+    documentos: dict[str, DocumentoMaquina]
 
 
 class MachineUpdateDocuments(BaseModel):
@@ -96,3 +91,19 @@ class MachineAssignmentItem(BaseModel):
     fecha_fin: Optional[str]  # ISO date string o None
     estado: str  # "Activa" o "Cerrada"
     dias_asignado: int
+
+
+class MachineAssignmentFilters(PaginationParams):
+    filtro: Optional[Literal["todas", "actual", "cerradas"]] = "todas"
+
+
+class MachineListFilters(PaginationParams):
+    estado: Optional[str] = None
+    search: Optional[str] = None
+    documento_estado: Optional[Literal["vencidos", "por_vencer", "al_dia"]] = None
+
+
+class MachineDocumentAlerts(BaseModel):
+    vencidos: int
+    por_vencer: int
+    al_dia: int

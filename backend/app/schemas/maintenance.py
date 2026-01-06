@@ -1,6 +1,8 @@
 ﻿from pydantic import BaseModel, Field, field_validator
 from datetime import date
 from typing import List, Optional
+from app.core.pagination import PaginatedResponse
+import html
 
 
 class MaintenanceRecord(BaseModel):
@@ -13,9 +15,14 @@ class MaintenanceRecord(BaseModel):
 
 
 class MaintenanceListResponse(BaseModel):
-    total_registros: int
+    total_registros: int  # Total filtrado (para paginación)
+    total_registros_global: int  # Total sin filtros (para badge)
     gasto_mes_actual: float
     items: List[MaintenanceRecord]
+    # Campos de paginación
+    pagina: int
+    por_pagina: int
+    total_paginas: int
 
 
 class MaintenanceCreate(BaseModel):
@@ -26,6 +33,14 @@ class MaintenanceCreate(BaseModel):
     numero_documento: str
     categoria: Optional[str] = None  # preventivo / correctivo / null
     fecha_compra: date
+
+    @field_validator('numero_documento')
+    @classmethod
+    def sanitize_numero_documento(cls, v: str) -> str:
+        """Sanitiza el número de documento para prevenir XSS"""
+        if not v:
+            return v
+        return html.escape(v, quote=True)
 
     @field_validator("categoria")
     def normalize_categoria(cls, v):
@@ -54,5 +69,8 @@ class MaintenanceCreate(BaseModel):
         if rep_id is None and not v:
             raise ValueError("Debe seleccionar un ítem o escribir uno personalizado.")
         
-        return v
+        # Sanitizar el texto ingresado por el usuario para prevenir XSS
+        if v is None:
+            return None
+        return html.escape(v, quote=True)
 

@@ -1,18 +1,18 @@
 import { Component, ChangeDetectionStrategy, input, computed, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Alert } from '../../models/dashboard.models';
+import { getTodayInChile, getYesterdayInChile, getDateInChileTime, getDaysDifferenceInChile } from '../../utils/date.utils';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-alert-list',
-  imports: [RouterLink],
+  imports: [RouterLink, UiIconComponent],
   template: `
     <div class="card bg-white shadow-xl border border-zinc-200 flex flex-col overflow-hidden rounded-3xl h-[424px] animate-scale-up">
       <div class="px-5 py-4 border-b border-zinc-100 flex items-center justify-between bg-white/80 backdrop-blur-md z-20 sticky top-0">
         <div class="flex items-center gap-3">
           <div class="relative flex h-10 w-10 items-center justify-center rounded-xl bg-red-50 text-red-500 ring-1 ring-inset ring-red-100">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
-              <path fill-rule="evenodd" d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9zm4.502 8.9a2.25 2.25 0 104.496 0 25.057 25.057 0 01-4.496 0z" clip-rule="evenodd" />
-            </svg>
+            <ui-icon name="Siren" size="md" />
             <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
               <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
               <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500 ring-2 ring-white"></span>
@@ -44,11 +44,15 @@ import { Alert } from '../../models/dashboard.models';
             type="button"
             (click)="onDeleteAllAlerts()"
             aria-label="Marcar todas las alertas como leídas">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+            <ui-icon name="X" size="sm" />
           </button>
-          <button class="btn btn-square btn-ghost btn-xs text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100" type="button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          </button>
+          <a
+            routerLink="/configuracion"
+            class="btn btn-square btn-ghost btn-xs text-zinc-300 hover:text-zinc-600 hover:bg-zinc-100 tooltip tooltip-left"
+            data-tip="Configuración"
+            aria-label="Ir a configuración">
+            <ui-icon name="Settings" size="sm" />
+          </a>
         </div>
       </div>
 
@@ -57,9 +61,7 @@ import { Alert } from '../../models/dashboard.models';
           <div class="flex flex-col gap-4 p-6 animate-fade-in rounded-3xl border border-zinc-100 bg-white/80 backdrop-blur-md text-left shadow-[0_20px_50px_-28px_rgba(0,0,0,0.25)]">
             <div class="flex items-center gap-3">
               <div class="h-11 w-11 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center ring-1 ring-inset ring-emerald-100">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-5 w-5">
-                  <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 10-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
-                </svg>
+                <ui-icon name="CheckCircle2" size="lg" />
               </div>
               <div>
                 <div class="text-base font-semibold text-zinc-900">Todo al día</div>
@@ -107,13 +109,13 @@ import { Alert } from '../../models/dashboard.models';
                       [class.text-emerald-600]="alert.severity === 'success'"
                       [class.ring-emerald-100/50]="alert.severity === 'success'">
                       @if (alert.severity === 'critical') {
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <ui-icon name="OctagonAlert" size="sm" />
                       } @else if (alert.severity === 'warning') {
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
+                        <ui-icon name="TriangleAlert" size="sm" />
                       } @else if (alert.severity === 'info') {
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        <ui-icon name="Info" size="sm" />
                       } @else {
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+                        <ui-icon name="CheckCircle2" size="sm" />
                       }
                     </div>
 
@@ -161,15 +163,15 @@ import { Alert } from '../../models/dashboard.models';
                           [class.btn-success]="alert.severity === 'success'">
                           {{ alert.actionLabel }}
                         </a>
-                        <button
-                          class="btn btn-xs btn-square btn-ghost text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
-                          type="button"
-                          (click)="onDeleteAlert(alert.id)"
-                          aria-label="Eliminar alerta">
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>
-                          </svg>
-                        </button>
+                        @if (alert.severity !== 'critical') {
+                          <button
+                            class="btn btn-xs btn-square btn-ghost text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+                            type="button"
+                            (click)="onDeleteAlert(alert.id)"
+                            aria-label="Eliminar alerta">
+                            <ui-icon name="X" size="xs" />
+                          </button>
+                        }
                       </div>
                     </div>
                   </div>
@@ -231,13 +233,33 @@ export class AlertList {
   });
 
   // Agrupar alertas por recencia (Hoy, Ayer, resto por fecha)
+  // Las alertas críticas siempre aparecen primero, independientemente de la fecha
   groupedAlerts = computed(() => {
-    const now = new Date();
-    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const startOfYesterday = new Date(startOfToday);
-    startOfYesterday.setDate(startOfYesterday.getDate() - 1);
+    // Usar fechas en zona horaria de Chile
+    const todayParts = getTodayInChile();
+    const yesterdayParts = getYesterdayInChile();
+    const startOfToday = new Date(Date.UTC(todayParts.year, todayParts.month - 1, todayParts.day));
+    const startOfYesterday = new Date(Date.UTC(yesterdayParts.year, yesterdayParts.month - 1, yesterdayParts.day));
 
+    // Prioridad de severidad: critical primero, luego warning, luego info, luego success
+    const severityPriority: Record<string, number> = {
+      'critical': 0,
+      'warning': 1,
+      'info': 2,
+      'success': 3
+    };
+
+    // Ordenar primero por severidad (críticas primero), luego por fecha (más recientes primero)
     const sortedAlerts = [...this.activeAlerts()].sort((a, b) => {
+      const aPriority = severityPriority[a.severity] ?? 99;
+      const bPriority = severityPriority[b.severity] ?? 99;
+      
+      // Si tienen diferente severidad, ordenar por prioridad
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Si tienen la misma severidad, ordenar por fecha (más recientes primero)
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
       return bTime - aTime;
@@ -255,41 +277,67 @@ export class AlertList {
         continue;
       }
 
-      const alertDate = new Date(alert.date);
-      if (alertDate >= startOfToday) {
+      // Convertir fecha de alerta a zona horaria de Chile para comparación
+      const alertDateChile = getDateInChileTime(alert.date);
+      
+      // Comparar solo la parte de la fecha (sin hora)
+      if (alertDateChile.getTime() === startOfToday.getTime()) {
         today.push(alert);
         continue;
       }
 
-      if (alertDate >= startOfYesterday) {
+      if (alertDateChile.getTime() === startOfYesterday.getTime()) {
         yesterday.push(alert);
         continue;
       }
 
-      const dateKey = this.getDateKey(alertDate);
+      const dateKey = this.getDateKey(alertDateChile);
       if (!olderByDay.has(dateKey)) {
-        olderByDay.set(dateKey, { date: alertDate, alerts: [] });
+        olderByDay.set(dateKey, { date: alertDateChile, alerts: [] });
       }
       olderByDay.get(dateKey)!.alerts.push(alert);
     }
+
+    // Función para ordenar alertas dentro de un grupo por severidad y luego por fecha
+    const sortAlertsInGroup = (alerts: Alert[]): Alert[] => {
+      const severityPriority: Record<string, number> = {
+        'critical': 0,
+        'warning': 1,
+        'info': 2,
+        'success': 3
+      };
+      
+      return [...alerts].sort((a, b) => {
+        const aPriority = severityPriority[a.severity] ?? 99;
+        const bPriority = severityPriority[b.severity] ?? 99;
+        
+        if (aPriority !== bPriority) {
+          return aPriority - bPriority;
+        }
+        
+        const aTime = a.date ? new Date(a.date).getTime() : 0;
+        const bTime = b.date ? new Date(b.date).getTime() : 0;
+        return bTime - aTime;
+      });
+    };
 
     const groups: { key: string; label: string; alerts: Alert[]; index: number }[] = [];
     let index = 0;
 
     if (today.length) {
-      groups.push({ key: 'today', label: this.formatGroupLabel(startOfToday, 'Hoy'), alerts: today, index });
+      groups.push({ key: 'today', label: this.formatGroupLabel(startOfToday, 'Hoy'), alerts: sortAlertsInGroup(today), index });
       index += 1;
     }
 
     if (yesterday.length) {
-      groups.push({ key: 'yesterday', label: this.formatGroupLabel(startOfYesterday, 'Ayer'), alerts: yesterday, index });
+      groups.push({ key: 'yesterday', label: this.formatGroupLabel(startOfYesterday, 'Ayer'), alerts: sortAlertsInGroup(yesterday), index });
       index += 1;
     }
 
     const orderedOlder = Array.from(olderByDay.values()).sort((a, b) => b.date.getTime() - a.date.getTime());
     for (const entry of orderedOlder) {
       const label = entry.date.getTime() === 0 ? 'Sin fecha' : this.formatGroupLabel(entry.date);
-      groups.push({ key: `day-${label}`, label, alerts: entry.alerts, index });
+      groups.push({ key: `day-${label}`, label, alerts: sortAlertsInGroup(entry.alerts), index });
       index += 1;
     }
 
@@ -306,18 +354,40 @@ export class AlertList {
 
   formatRelativeTime(date: string): string {
     try {
-      const alertDate = new Date(date);
+      if (!date) {
+        return '';
+      }
+      
+      // Parsear la fecha preservando la hora
+      let alertDate: Date;
+      let dateStr = date.trim();
+      // Si no tiene timezone, asumir UTC
+      if (!dateStr.includes('Z') && !dateStr.match(/[+-]\d{2}:\d{2}$/)) {
+        dateStr = dateStr + 'Z';
+      }
+      alertDate = new Date(dateStr);
+      
+      if (isNaN(alertDate.getTime())) {
+        return '';
+      }
+      
+      // Obtener la fecha/hora actual
       const now = new Date();
+      
+      // Calcular diferencia en milisegundos directamente
+      // (ambas fechas están en UTC internamente, la diferencia es correcta)
       const diffMs = now.getTime() - alertDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
+      
+      // Para días, usar la función que compara solo fechas (sin horas)
+      const diffDays = getDaysDifferenceInChile(date);
 
       if (diffMins < 1) {
         return 'Ahora';
       } else if (diffMins < 60) {
         return `Hace ${diffMins}m`;
-      } else if (diffHours < 24) {
+      } else if (diffHours < 24 && diffDays === 0) {
         return `Hace ${diffHours}h`;
       } else if (diffDays === 1) {
         return 'Ayer';
@@ -326,6 +396,7 @@ export class AlertList {
       }
 
       return alertDate.toLocaleDateString('es-CL', {
+        timeZone: 'America/Santiago',
         month: 'short',
         day: 'numeric',
         hour: '2-digit',

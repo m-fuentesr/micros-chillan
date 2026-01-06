@@ -15,12 +15,16 @@ class Settings(BaseSettings):
     - SUPABASE_JWT_SECRET: Secreto JWT para validación local de tokens
       Obtener desde: Dashboard de Supabase → Settings → API → JWT Secret
     - POSTGRES_URL: URL de conexión a PostgreSQL
+    
+    Variables opcionales:
+    - FRONTEND_URL: URL base del frontend (por defecto: http://localhost:4200)
     """
     SUPABASE_URL: str
     SUPABASE_ANON_KEY: str
     SUPABASE_SERVICE_KEY: str
     SUPABASE_JWT_SECRET: str
     POSTGRES_URL: str
+    FRONTEND_URL: str = "https://gestordeflotas.autoescuelachillan.cl"
     
     class Config:
         env_file = ".env"

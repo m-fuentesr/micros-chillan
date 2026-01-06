@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, signal, computed, OnInit, OnDestroy, inject, effect, untracked } from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { MachineService } from '../../shared/services/machine.service';
@@ -10,11 +10,14 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { catchError, of, map } from 'rxjs';
 import { calculateMachineDocumentStatus } from '../../shared/utils/document.utils';
 import { LoadingSkeleton } from '../../shared/components/loading-skeleton/loading-skeleton';
+import { LoadingSpinner } from '../../shared/components/loading-spinner/loading-spinner';
 import { LoadingStateService } from '../../shared/services/loading-state.service';
+import { GlobalErrorService } from '../../shared/services/global-error.service';
+import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.component';
 
 @Component({
   selector: 'app-maquinas',
-  imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton],
+  imports: [MachineKPIs, MachineList, RouterLink, LoadingSkeleton, UiIconComponent],
   template: `
     <div class="space-y-6">
       <!-- Hero Section Premium -->
@@ -29,9 +32,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
             </p>
           </div>
           <a routerLink="/maquinas/nueva" class="w-full sm:w-auto flex items-center justify-center gap-2 bg-primary hover:bg-primary-focus text-primary-content px-4 py-2.5 rounded-lg shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all active:scale-95 text-sm font-medium shrink-0">
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
-            </svg>
+            <ui-icon name="CirclePlus" size="sm" />
             <span class="sm:hidden">Registrar</span>
             <span class="hidden sm:inline">Registrar Máquina</span>
           </a>
@@ -41,33 +42,10 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
       <!-- KPIs -->
       <div class="pl-3 md:pl-4">
         @if (kpisLoadingState.isLoading() && !sequentialState.kpisError()) {
-          <!-- Skeleton simplificado - se muestra cuando isLoading es true -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-            @for (i of [1,2,3,4]; track i) {
-              <app-loading-skeleton 
-                type="kpi" 
-                [isExiting]="kpisLoadingState.isSkeletonExiting()" />
-            }
-          </div>
-        } @else if (sequentialState.kpisError()) {
-          <div class="card bg-error/10 border border-error/20 rounded-3xl p-4 mb-4">
-            <div class="flex items-center gap-3">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <p class="text-sm font-semibold text-error">Error al cargar KPIs</p>
-                <p class="text-xs text-error/70">Mostrando datos calculados localmente</p>
-              </div>
-            </div>
-          </div>
-          <div 
-            [class.opacity-0]="!sequentialState.canShowKPIs()" 
-            [class.animate-fade-in]="sequentialState.canShowKPIs()" 
-            [style.transition]="sequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-            [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-            <app-machine-kpis [kpis]="kpis()" />
-          </div>
+          <!-- Skeleton responsive - replica exacta de las KPI cards -->
+          <app-loading-skeleton 
+            type="responsive-kpis" 
+            [isExiting]="kpisLoadingState.isSkeletonExiting()" />
         } @else {
           <div 
             [class.opacity-0]="!sequentialState.canShowKPIs()" 
@@ -89,21 +67,6 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
               type="machine-list" 
               [count]="6"
               [isExiting]="machinesLoadingState.isSkeletonExiting()" />
-          } @else if (sequentialState.contentError()) {
-            <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-              <div class="flex flex-col items-center gap-4 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <div>
-                  <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
-                  <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
-                  <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                    Reintentar
-                  </button>
-                </div>
-              </div>
-            </div>
           } @else {
             <!-- Mantener skeleton visible hasta que canShowContent sea true -->
             <app-loading-skeleton 
@@ -118,22 +81,7 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
             [style.transition]="sequentialState.canShowContent() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
             [style.transform]="sequentialState.canShowContent() ? 'translateY(0)' : 'translateY(12px)'"
             [style.opacity]="sequentialState.canShowContent() ? '1' : '0'">
-            @if (sequentialState.contentError()) {
-              <div class="card bg-error/10 border border-error/20 rounded-3xl p-6">
-                <div class="flex flex-col items-center gap-4 text-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <div>
-                    <h3 class="text-lg font-semibold text-error mb-2">Error al cargar máquinas</h3>
-                    <p class="text-sm text-error/70 mb-4">No se pudieron cargar las máquinas desde el servidor.</p>
-                    <button (click)="retryLoad()" class="btn btn-sm btn-error">
-                      Reintentar
-                    </button>
-                  </div>
-                </div>
-              </div>
-            } @else {
+            @if (!sequentialState.contentError()) {
               <app-machine-list
                 [machines]="machines()"
                 [viewMode]="viewMode()"
@@ -141,9 +89,41 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
                 [documentFilter]="documentFilter()"
                 [docStatusMap]="docStatusMap()"
                 [alerts]="documentAlerts()"
+                [isLoading]="isLoadingPage()"
+                [totalOperativas]="kpis().operativas"
                 (viewModeChange)="onViewModeChange($event)"
                 (filterChange)="onFilterChange($event)"
                 (documentFilterChange)="onDocumentFilterChange($event)" />
+              
+              <!-- Paginación -->
+              @if (totalMachines() > 0) {
+                <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+                  <span>Mostrando {{ startRecord() }}-{{ endRecord() }} de {{ totalMachines() }} máquinas</span>
+                  <div class="join">
+                    <button 
+                      (click)="goToPreviousPage()" 
+                      [disabled]="currentPage() === 1 || isLoadingPage()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="currentPage() === 1 || isLoadingPage()">
+                      «
+                    </button>
+                    @for (page of pages(); track page) {
+                      <button 
+                        (click)="goToPage(page)" 
+                        [disabled]="isLoadingPage()" 
+                        [class.btn-active]="page === currentPage()" 
+                        class="join-item btn btn-sm px-4">{{ page }}</button>
+                    }
+                    <button 
+                      (click)="goToNextPage()" 
+                      [disabled]="currentPage() === totalPages() || isLoadingPage()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="currentPage() === totalPages() || isLoadingPage()">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
             }
           </div>
         }
@@ -170,12 +150,32 @@ import { LoadingStateService } from '../../shared/services/loading-state.service
 export class Maquinas implements OnInit, OnDestroy {
   private machineService = inject(MachineService);
   private loadingStateService = inject(LoadingStateService);
+  private globalErrorService = inject(GlobalErrorService);
   private router = inject(Router);
   private navigationSubscription?: Subscription;
 
   viewMode = signal<ViewMode>('cards');
   statusFilter = signal<StatusFilter>('all');
   documentFilter = signal<DocumentFilter>('all');
+  
+  // Paginación
+  currentPage = signal(1);
+  itemsPerPage = 12;
+  isLoadingPage = signal(false); // Indicador de carga para cambios de página
+  private isLoadingMachines = false; // Flag para evitar múltiples peticiones simultáneas
+  private machinesResponse = signal<{
+    datos: Machine[];
+    total: number;
+    pagina: number;
+    por_pagina: number;
+    total_paginas: number;
+  }>({
+    datos: [],
+    total: 0,
+    pagina: 1,
+    por_pagina: 12,
+    total_paginas: 0
+  });
   
   // Estados de carga simplificados (siguiendo patrón de driver-detail)
   kpisLoadingState = this.loadingStateService.createLoadingState();
@@ -204,28 +204,119 @@ export class Maquinas implements OnInit, OnDestroy {
     this.machinesLoadingState.setLoading(true);
   }
 
-  // Cargar máquinas con manejo de errores
-  machinesData = toSignal(
-    this.machineService.getMachines().pipe(
+  // Cargar máquinas con paginación
+  private loadMachines(): void {
+    // Evitar múltiples peticiones simultáneas
+    if (this.isLoadingMachines) {
+      return;
+    }
+    
+    this.isLoadingMachines = true;
+    
+    // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
+    const isFirstLoad = this.currentPage() === 1 && this.machinesResponse().datos.length === 0;
+    if (isFirstLoad) {
+      this.machinesLoadingState.setLoading(true);
+    } else {
+      this.isLoadingPage.set(true);
+    }
+    
+    const filters: {
+      estado?: string;
+      search?: string;
+      documento_estado?: 'vencidos' | 'por_vencer' | 'al_dia';
+      page: number;
+      per_page: number;
+    } = {
+      page: this.currentPage(),
+      per_page: this.itemsPerPage
+    };
+    
+    // Aplicar filtros
+    if (this.statusFilter() !== 'all') {
+      const estadoMap: Record<StatusFilter, string> = {
+        'Operativa': 'operativa',
+        'En Taller': 'en_taller',
+        'Inactiva': 'inactiva',
+        'all': ''
+      };
+      filters.estado = estadoMap[this.statusFilter()];
+    }
+    
+    // Aplicar filtro de documentos
+    if (this.documentFilter() !== 'all') {
+      filters.documento_estado = this.documentFilter() as 'vencidos' | 'por_vencer' | 'al_dia';
+    }
+    
+    console.log('Cargando máquinas con filtros:', filters);
+    this.machineService.getMachines(filters).pipe(
       catchError((error) => {
         console.error('Error cargando máquinas:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.machinesResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar las máquinas desde el servidor.',
+            'Error al cargar máquinas'
+          );
+        }
         this.sequentialState.setContentReady(true); // Marcar error
-        setTimeout(() => {
-          this.machinesLoadingState.setDataLoaded();
-        }, 100);
-        return of<Machine[]>([]);
+        this.machinesLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingMachines = false;
+        return of({
+          datos: [],
+          total: 0,
+          pagina: 1,
+          por_pagina: 12,
+          total_paginas: 0
+        });
       })
-    ),
-    { initialValue: [] }
-  );
+    ).subscribe({
+      next: (response) => {
+        console.log('Máquinas recibidas:', response);
+        this.machinesResponse.set(response);
+        this.machinesLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingMachines = false;
+        if (!this.sequentialState.contentError()) {
+          setTimeout(() => {
+            this.sequentialState.setContentReady(false);
+          }, 50);
+        }
+      },
+      error: (error) => {
+        console.error('Error cargando máquinas:', error);
+        // Mostrar error global en lugar de error local
+        const isFirstLoad = this.currentPage() === 1 && this.machinesResponse().datos.length === 0;
+        if (isFirstLoad) {
+          this.globalErrorService.showError(
+            'No se pudieron cargar las máquinas desde el servidor.',
+            'Error al cargar máquinas'
+          );
+        }
+        this.sequentialState.setContentReady(true);
+        this.machinesLoadingState.setDataLoaded();
+        this.isLoadingPage.set(false);
+        this.isLoadingMachines = false;
+      }
+    });
+  }
 
-  machines = computed(() => this.machinesData() ?? []);
+  machines = computed(() => this.machinesResponse().datos);
+  totalMachines = computed(() => this.machinesResponse().total);
+  totalPages = computed(() => this.machinesResponse().total_paginas);
 
   // Cargar KPIs con manejo de errores
   kpisData = toSignal(
     this.machineService.getKPIs().pipe(
       catchError((error) => {
         console.error('Error cargando KPIs:', error);
+        // Mostrar error global en lugar de error local
+        this.globalErrorService.showError(
+          'No se pudieron cargar los datos desde el servidor.',
+          'Error al cargar máquinas'
+        );
         this.sequentialState.setKPIsReady(true); // Marcar error
         setTimeout(() => {
           this.kpisLoadingState.setDataLoaded();
@@ -245,9 +336,11 @@ export class Maquinas implements OnInit, OnDestroy {
     return kpisData ?? { operativas: 0, en_taller: 0, inactivas: 0, documentos_por_vencer: 0 };
   });
 
-  // Effects simplificados (siguiendo patrón de driver-detail)
-  // Directos y sin delays artificiales - más simple y confiable
-  private machinesEffect = effect(() => {
+  // Effect deshabilitado - las funciones de filtros y paginación manejan la recarga explícitamente
+  // Esto evita dobles llamadas y problemas de timing
+  
+  // Effect para actualizar estado de carga
+  private machinesLoadingEffect = effect(() => {
     const machines = this.machines();
     const isLoading = this.machinesLoadingState.isLoading();
     
@@ -340,60 +433,50 @@ export class Maquinas implements OnInit, OnDestroy {
   // });
   // ============================================
 
-  // Función para reintentar carga
+  // Función para reintentar carga (ya no se usa, pero se mantiene por compatibilidad)
   retryLoad(): void {
-    this.sequentialState.resetErrors();
-    this.sequentialState.reset();
-    this.machinesLoadingState.setLoading(true);
-    
-    // Recargar máquinas
-    this.machinesData = toSignal(
-      this.machineService.getMachines().pipe(
-        catchError((error) => {
-          console.error('Error cargando máquinas:', error);
-          this.sequentialState.setContentReady(true);
-          setTimeout(() => {
-            this.machinesLoadingState.setDataLoaded();
-          }, 100);
-          return of<Machine[]>([]);
-        })
-      ),
-      { initialValue: [] }
-    );
+    // Limpiar error global y recargar página
+    this.globalErrorService.clearError();
+    this.globalErrorService.reloadPage();
   }
 
-  // Calcular alertas de documentación desde todas las máquinas (no filtradas)
-  documentAlerts = computed(() => {
-    const machines = this.machines();
-    const docStatusMap = this.docStatusMap();
-    let vencidos = 0;
-    let por_vencer = 0;
-    let al_dia = 0;
+  // Cargar alertas de documentación desde el backend (sin filtro de documentos)
+  private documentAlertsResponse = signal<MachineDocumentAlerts>({
+    vencidos: 0,
+    por_vencer: 0,
+    al_dia: 0
+  });
 
-    machines.forEach(machine => {
-      const docStatus = docStatusMap.get(machine.id);
-      if (!docStatus) return;
-
-      const docs = [
-        docStatus.revision_tecnica,
-        docStatus.permiso_circulacion,
-        docStatus.seguro_obligatorio
-      ].filter(Boolean) as DocumentStatus[];
-
-      if (docs.length === 0) return;
-
-      // Una máquina cuenta como vencida si tiene al menos un documento vencido
-      if (docs.some(doc => doc.estado === 'error')) {
-        vencidos++;
-      } else if (docs.some(doc => doc.estado === 'warning')) {
-        por_vencer++;
-      } else if (docs.every(doc => doc.estado === 'ok')) {
-        al_dia++;
+  // Cargar alertas de documentación
+  private loadDocumentAlerts(): void {
+    const filters: {
+      estado?: string;
+    } = {};
+    
+    // Aplicar solo el filtro de estado operativo (no el de documentos)
+    if (this.statusFilter() !== 'all') {
+      const estadoMap: Record<StatusFilter, string> = {
+        'Operativa': 'operativa',
+        'En Taller': 'en_taller',
+        'Inactiva': 'inactiva',
+        'all': ''
+      };
+      filters.estado = estadoMap[this.statusFilter()];
+    }
+    
+    this.machineService.getDocumentAlerts(filters).pipe(
+      catchError((error) => {
+        console.error('Error cargando alertas de documentos:', error);
+        return of({ vencidos: 0, por_vencer: 0, al_dia: 0 });
+      })
+    ).subscribe({
+      next: (alerts) => {
+        this.documentAlertsResponse.set(alerts);
       }
     });
+  }
 
-    return { vencidos, por_vencer, al_dia };
-  });
+  documentAlerts = computed(() => this.documentAlertsResponse());
 
   // Mapa de estados de documentos
   docStatusMap = computed(() => {
@@ -403,7 +486,11 @@ export class Maquinas implements OnInit, OnDestroy {
       seguro_obligatorio?: DocumentStatus;
     }>();
     this.machines().forEach(machine => {
-      map.set(machine.id, calculateMachineDocumentStatus(machine));
+      if (machine.documentos_estado) {
+        map.set(machine.id, machine.documentos_estado);
+      } else {
+        map.set(machine.id, calculateMachineDocumentStatus(machine));
+      }
     });
     return map;
   });
@@ -412,6 +499,11 @@ export class Maquinas implements OnInit, OnDestroy {
   private isFirstLoad = true;
 
   ngOnInit(): void {
+    // Cargar máquinas inicialmente
+    this.loadMachines();
+    // Cargar alertas de documentos inicialmente
+    this.loadDocumentAlerts();
+    
     // Suscribirse a eventos de navegación para resetear estados cuando se vuelve a la página
     this.navigationSubscription = this.router.events
       .pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd))
@@ -481,10 +573,78 @@ export class Maquinas implements OnInit, OnDestroy {
 
   onFilterChange(filter: StatusFilter): void {
     this.statusFilter.set(filter);
+    this.currentPage.set(1); // Resetear a página 1 cuando cambian los filtros
+    // Recargar explícitamente los datos
+    untracked(() => {
+      this.loadMachines();
+      this.loadDocumentAlerts(); // Recargar alertas cuando cambia el filtro de estado
+    });
   }
 
   onDocumentFilterChange(filter: DocumentFilter): void {
     this.documentFilter.set(filter);
+    this.currentPage.set(1); // Resetear a página 1 cuando cambian los filtros
+    // Recargar explícitamente los datos
+    untracked(() => {
+      this.loadMachines();
+    });
+  }
+  
+  // Funciones de paginación
+  pages = computed(() => {
+    const total = this.totalPages();
+    const current = this.currentPage();
+    const pages: number[] = [];
+    
+    for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  });
+  
+  startRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    return (page - 1) * pageSize + 1;
+  });
+  
+  endRecord = computed(() => {
+    const page = this.currentPage();
+    const pageSize = this.itemsPerPage;
+    const total = this.totalMachines();
+    return Math.min(page * pageSize, total);
+  });
+  
+  goToPreviousPage(): void {
+    if (this.currentPage() > 1) {
+      this.currentPage.update(p => p - 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadMachines();
+      });
+    }
+  }
+  
+  goToNextPage(): void {
+    if (this.currentPage() < this.totalPages()) {
+      this.currentPage.update(p => p + 1);
+      // Asegurar que se carguen los registros de la nueva página
+      untracked(() => {
+        this.loadMachines();
+      });
+    }
+  }
+  
+  goToPage(page: number): void {
+    if (page === this.currentPage()) {
+      return;
+    }
+    this.currentPage.set(page);
+    // Asegurar que se carguen los registros de la nueva página
+    untracked(() => {
+      this.loadMachines();
+    });
   }
 
 }

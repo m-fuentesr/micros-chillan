@@ -3,11 +3,13 @@ import { CommonModule } from '@angular/common';
 import { WeeklySummary, WeeklyDriverBreakdown } from '../../models/accounting.models';
 import { AccountingService } from '../../services/accounting.service';
 import { KpiCard } from '../../components/kpi-card/kpi-card';
+import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+import { getDatePartsInChile } from '../../utils/date.utils';
 
 @Component({
   selector: 'app-weekly-summary-table',
   standalone: true,
-  imports: [CommonModule, KpiCard],
+  imports: [CommonModule, KpiCard, UiIconComponent],
   template: `
     <div class="card bg-base-100 shadow-xl border border-base-200">
       <div class="card-body p-4 sm:p-6">
@@ -39,9 +41,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [responsive]="true"
             badgeText="Volumen real"
             [animationDelay]="0">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3.293 9.707a1 1 0 010-1.414l6-6a1 1 0 011.414 0l6 6a1 1 0 01-1.414 1.414L11 5.414V17a1 1 0 11-2 0V5.414L4.707 9.707a1 1 0 01-1.414 0z" />
-            </svg>
+            <span icon><ui-icon name="Wallet" size="sm" /></span>
           </app-kpi-card>
 
           <!-- KPI: Pago Choferes -->
@@ -54,9 +54,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [responsive]="true"
             badgeText="Por procesar"
             [animationDelay]="1">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-            </svg>
+            <span icon><ui-icon name="Users" size="sm" /></span>
           </app-kpi-card>
 
           <!-- KPI: Gastos Operacionales -->
@@ -69,9 +67,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [responsive]="true"
             badgeText="Impacto margen"
             [animationDelay]="2">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.45-.412-1.725a1 1 0 00-1.457-.899c-1.252.81-1.272 2.596-.546 4.717.37.957.983 1.93 1.745 2.825A9 9 0 0010 18a9 9 0 006.326-15.485c-.328-.15-.698-.277-1.09-.38l-1.434-.374a1.001 1.001 0 00-1.407 1.192z" />
-            </svg>
+            <span icon><ui-icon name="TriangleAlert" size="sm" /></span>
           </app-kpi-card>
 
           <!-- KPI: Promedio Semanal -->
@@ -84,9 +80,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             [responsive]="true"
             badgeText="Ritmo actual"
             [animationDelay]="3">
-            <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 11.586 15.293 7.293A1 1 0 0115.586 7H12z" />
-            </svg>
+            <span icon><ui-icon name="TrendingUp" size="sm" /></span>
           </app-kpi-card>
         </div>
 
@@ -96,12 +90,11 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
             <thead class="bg-base-100 border-b border-base-200">
               <tr>
                 <th class="pl-6 w-48 text-base-content/70 text-xs font-bold uppercase tracking-wider">Semana</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Recaudado</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Combustible</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Mant.</th>
-                <th class="text-left text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Egresos</th>
-                <th class="text-left pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums">Ganancia Neta</th>
-                <th class="w-10"></th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[140px]">Recaudado</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[120px]">Combustible</th>
+                <th class="text-right text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[120px]">Egresos</th>
+                <th class="text-right pr-12 text-base-content/70 text-xs font-bold uppercase tracking-wider font-mono tabular-nums min-w-[140px]">Ganancia Neta</th>
+                <th class="w-10 pr-6"></th>
               </tr>
             </thead>
             <tbody>
@@ -121,20 +114,22 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   
                   <td class="text-right tabular-nums font-medium text-sm">{{ summary.total_recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                  <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.gasto_mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
                   <td class="text-right tabular-nums text-base-content/60 text-sm">{{ summary.total_egresos | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                  <td class="text-right tabular-nums font-bold text-success pr-12 text-sm">{{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                  <td class="text-right tabular-nums font-bold pr-12 text-sm" [class.text-success]="summary.ganancia_neta >= 0" [class.text-error]="summary.ganancia_neta < 0">
+                    {{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
+                  </td>
                   <td class="pr-6 text-right">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                      [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                    </svg>
+                    <ui-icon 
+                      name="ChevronDown" 
+                      size="sm" 
+                      class="transition-transform duration-300 text-base-content/40"
+                      [class.rotate-180]="expandedWeeks().has(summary.semana)" />
                   </td>
                 </tr>
 
                 <!-- Fila detalle semana (siempre presente, con animación de altura) -->
                 <tr>
-                  <td colspan="7" class="p-0 border-b border-base-200">
+                  <td colspan="6" class="p-0 border-b border-base-200">
                     <div class="collapse-anim" [class.collapse-expanded]="expandedWeeks().has(summary.semana)">
                       <div class="bg-base-200/30 flex shadow-inner motion-panel" [attr.id]="'week-detail-' + summary.semana">
                         <div class="w-1 bg-primary self-stretch shrink-0"></div>
@@ -143,19 +138,18 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                             <table class="table table-sm w-full">
                               <thead class="bg-base-100 border-b border-base-200">
                                 <tr>
-                                  <th class="pl-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Chofer</th>
-                                  <th class="text-center py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Días</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Recaudado</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Combustible</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Mantenimiento</th>
-                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Pago Chofer</th>
-                                  <th class="text-right pr-4 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70">Contribución</th>
+                                  <th class="pl-6 w-48 text-xs font-bold uppercase tracking-widest text-base-content/70">Chofer</th>
+                                  <th class="text-center py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 min-w-[80px]">Días</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[140px]">Recaudado</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[120px]">Combustible</th>
+                                  <th class="text-right py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
+                                  <th class="text-right pr-12 py-3 text-xs font-bold uppercase tracking-widest text-base-content/70 font-mono tabular-nums min-w-[140px]">Contribución</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 @if (isLoadingWeek(summary.semana)) {
                                   <tr>
-                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                    <td colspan="6" class="text-center py-8 text-base-content/50">
                                       <div class="flex items-center justify-center gap-2">
                                         <span class="loading loading-spinner loading-sm"></span>
                                         <span>Cargando detalles...</span>
@@ -164,37 +158,28 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                                   </tr>
                                 } @else if (summary.choferes.length === 0) {
                                   <tr>
-                                    <td colspan="7" class="text-center py-8 text-base-content/50">
+                                    <td colspan="6" class="text-center py-8 text-base-content/50">
                                       No hay datos de choferes para esta semana
                                     </td>
                                   </tr>
                                 } @else {
                                   @for (chofer of summary.choferes; track chofer.chofer_id) {
                                   <tr class="hover:bg-base-50 border-b border-base-100 last:border-none">
-                                    <td class="font-bold pl-4 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
-                                    <td class="text-center"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
-                                    <td class="text-right tabular-nums text-xs font-medium">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
-                                    <td class="text-right">
-                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
+                                    <td class="font-bold pl-6 text-base-content py-3">{{ chofer.chofer_nombre }}</td>
+                                    <td class="text-center py-3"><div class="badge badge-sm badge-ghost tabular-nums">{{ chofer.dias_trabajados }}d</div></td>
+                                    <td class="text-right tabular-nums text-xs font-medium py-3">{{ chofer.recaudado | currency:'CLP':'symbol-narrow':'1.0-0' }}</td>
+                                    <td class="text-right py-3">
+                                      <div class="inline-block text-right px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
                                         -{{ chofer.diesel | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </div>
                                     </td>
-                                    <td class="text-right">
-                                      @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
-                                        <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-error/10 text-error text-xs tabular-nums tracking-tight font-bold">
-                                          -{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}
-                                        </div>
-                                      } @else {
-                                        <span class="text-base-content/30 text-xs">—</span>
-                                      }
-                                    </td>
-                                    <td class="text-right">
-                                      <div class="inline-block text-right w-20 px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs tabular-nums tracking-tight font-bold">
+                                    <td class="text-right py-3">
+                                      <div class="inline-block text-right px-1.5 py-0.5 rounded bg-warning/10 text-warning text-xs tabular-nums tracking-tight font-bold">
                                         -{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </div>
                                     </td>
-                                    <td class="text-right pr-4">
-                                      <span class="tabular-nums tracking-tight font-bold text-success text-sm">
+                                    <td class="text-right pr-12 py-3">
+                                      <span class="tabular-nums tracking-tight font-bold text-sm" [class.text-success]="chofer.ganancia_neta >= 0" [class.text-error]="chofer.ganancia_neta < 0">
                                         {{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
                                       </span>
                                     </td>
@@ -231,17 +216,18 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                   </div>
                   <div>
                     <div class="text-xs text-base-content/50 font-medium">{{ formatDateRange(summary.fecha_inicio, summary.fecha_fin) }}</div>
-                    <div class="font-bold text-success text-lg tabular-nums tracking-tight">
+                    <div class="font-bold text-lg tabular-nums tracking-tight" [class.text-success]="summary.ganancia_neta >= 0" [class.text-error]="summary.ganancia_neta < 0">
                       {{ summary.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}
                     </div>
                   </div>
                 </div>
                 
                 <div class="btn btn-circle btn-ghost btn-xs">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transition-transform duration-300 text-base-content/40" 
-                    [class.rotate-180]="expandedWeeks().has(summary.semana)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                  </svg>
+                  <ui-icon 
+                    name="ChevronDown" 
+                    size="sm" 
+                    class="transition-transform duration-300 text-base-content/40"
+                    [class.rotate-180]="expandedWeeks().has(summary.semana)" />
                 </div>
               </div>
 
@@ -293,13 +279,7 @@ import { KpiCard } from '../../components/kpi-card/kpi-card';
                           <span class="whitespace-normal">Pago:</span>
                           <span class="tabular-nums tracking-tight text-right break-words">-{{ chofer.pago_chofer | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                         </div>
-                        @if (chofer.mantenimiento && chofer.mantenimiento > 0) {
-                          <div class="flex justify-between items-center gap-2 text-error/70 sm:col-span-2">
-                            <span class="whitespace-normal">Mantenimiento:</span>
-                            <span class="tabular-nums tracking-tight text-right break-words">-{{ chofer.mantenimiento | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
-                          </div>
-                        }
-                        <div class="flex justify-between items-center gap-2 text-success font-bold sm:col-span-2">
+                        <div class="flex justify-between items-center gap-2 font-bold sm:col-span-2" [class.text-success]="chofer.ganancia_neta >= 0" [class.text-error]="chofer.ganancia_neta < 0">
                           <span class="whitespace-normal">Neto:</span>
                           <span class="tabular-nums tracking-tight text-right break-words">{{ chofer.ganancia_neta | currency:'CLP':'symbol-narrow':'1.0-0' }}</span>
                         </div>
@@ -390,8 +370,15 @@ export class WeeklySummaryTable {
 
   totalPagos = computed(() => 
     this.summariesWithDrivers().reduce((acc, s) => {
-      const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
-      return acc + pagoChoferes;
+      // Si los choferes están cargados, usar la suma individual (más preciso)
+      // Si no, usar el total del resumen semanal
+      if (s.choferes && s.choferes.length > 0) {
+        const pagoChoferes = s.choferes.reduce((sum, c) => sum + c.pago_chofer, 0);
+        return acc + pagoChoferes;
+      } else {
+        // Usar el total del resumen semanal cuando los choferes no están cargados
+        return acc + (s.total_pago_choferes || 0);
+      }
     }, 0)
   );
 
@@ -476,13 +463,12 @@ export class WeeklySummaryTable {
 
   formatDateRange(start: string, end: string): string {
     try {
-      const startDate = new Date(start);
-      const endDate = new Date(end);
-      const startDay = startDate.getDate();
-      const endDay = endDate.getDate();
-      const monthNames = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
-      const month = monthNames[startDate.getMonth()];
-      return `${startDay}-${endDay} ${month}`;
+      // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
+      const startParts = getDatePartsInChile(start);
+      const endParts = getDatePartsInChile(end);
+      const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+      const month = monthNames[startParts.month - 1];
+      return `${startParts.day}-${endParts.day} ${month}`;
     } catch {
       return `${start} - ${end}`;
     }

@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, computed, OnInit, inject, effect } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { DriverService } from '../../../shared/services/driver.service';
 import { MachineService } from '../../../shared/services/machine.service';
@@ -8,25 +9,27 @@ import { DailyRecordService } from '../../../shared/services/daily-record.servic
 import { AccountingService } from '../../../shared/services/accounting.service';
 import type { DailyRecord, DailyRecordStatus } from '../../../shared/models/daily-record.models';
 import { Driver, DriverDailyRecord, DriverLiquidation } from '../../../shared/models/driver.models';
+import type { MachineSelect } from '../../../shared/models/machine.models';
 import { catchError, of, switchMap, combineLatest } from 'rxjs';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs/operators';
-import { calculateLicenseStatus } from '../../../shared/utils/license.utils';
+import { calculateLicenseStatus, formatLicenseExpiredText, formatLicenseWarningText } from '../../../shared/utils/license.utils';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { AlertModalService } from '../../../shared/services/alert-modal.service';
-import { BusIcon } from '../../../shared/components/bus-icon/bus-icon';
-import { DriverIcon } from '../../../shared/components/driver-icon/driver-icon';
+import { GlobalErrorService } from '../../../shared/services/global-error.service';
+import { UiIconComponent } from '../../../shared/components/ui-icon/ui-icon.component';
 import { SearchFilters, FilterField } from '../../../shared/components/search-filters/search-filters';
+import { LoadingSpinner } from '../../../shared/components/loading-spinner/loading-spinner';
 
 @Component({
   selector: 'app-driver-detail',
-  imports: [CommonModule, RouterLink, FormsModule, BusIcon, DriverIcon, SearchFilters],
+  imports: [CommonModule, RouterLink, FormsModule, UiIconComponent, SearchFilters, LoadingSpinner],
   template: `
     <div class="space-y-6 lg:space-y-8">
       @if (driver()) {
       <!-- Hero Section Premium -->
-      <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
+      <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-3xl p-6 md:p-8 lg:p-10 mb-6 animate-fade-in-down">
           <div class="flex flex-col gap-6">
             <!-- Header con Botón Volver -->
         <div class="relative">
@@ -45,9 +48,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
             class="absolute top-0 right-0 sm:relative sm:top-auto sm:right-auto btn btn-ghost btn-sm gap-2 hover:bg-base-200/50 transition-all shrink-0 z-10"
             aria-label="Volver a la lista de choferes"
             (click)="onBack()">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-            </svg>
+            <ui-icon name="ChevronLeft" size="sm" />
             <span class="hidden sm:inline">Volver</span>
           </button>
       </div>
@@ -57,8 +58,8 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
               <!-- Información del chofer -->
               <div class="flex flex-wrap items-center gap-3 flex-1 min-w-0">
                 <div class="flex items-center gap-3 shrink-0">
-                  <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
-                    <app-driver-icon class="w-6 h-6" />
+                  <div class="w-12 h-12 rounded-xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <ui-icon name="IdCard" size="md" />
                   </div>
                   <div class="min-w-0">
                     <h2 class="text-xl md:text-2xl font-bold text-base-content">
@@ -89,19 +90,14 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     type="button"
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 1 0 1.5.06l.3-7.5Z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Eliminar</span>
                   </button>
                   <button
                     type="button"
                     class="btn-action-edit group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="toggleEditGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                      <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                    </svg>
+                    <ui-icon name="Pencil" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Editar</span>
                   </button>
                 } @else {
@@ -115,9 +111,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     type="button"
                     class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
                     (click)="onSaveGeneral()">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 sm:w-4 sm:h-4 transition-transform group-hover:scale-110 shrink-0">
-                      <path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clip-rule="evenodd" />
-                    </svg>
+                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
                     <span class="whitespace-nowrap">Guardar</span>
                   </button>
                 }
@@ -173,9 +167,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
               <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-3xl h-full animate-card-stagger" [style.animation-delay]="'0ms'">
               <div class="card-body p-6">
                 <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                  <ui-icon name="User" size="sm" class="text-primary" />
                   Información Personal
                 </h3>
 
@@ -323,28 +315,51 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     </div>
                   </div>
 
-                  <div class="bg-base-200/50 p-4 rounded-xl border border-base-200">
-                    <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
-                      Porcentaje de Pago
-                    </span>
-                    @if (isEditingGeneral()) {
-                      <div class="flex items-center gap-2 mt-1">
+                  <div class="grid grid-cols-2 gap-4">
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Porcentaje de Pago
+                      </span>
+                      @if (isEditingGeneral()) {
+                        <div class="flex items-center gap-2 mt-1">
+                          <input
+                            type="number"
+                            class="input input-sm w-full"
+                            [value]="editPorcentajePago()"
+                            [class.input-error]="!!porcentajePagoError()"
+                            (input)="onPorcentajePagoChange($any($event.target).value)"
+                            placeholder="0"
+                            min="0"
+                            max="100"
+                            step="0.5">
+                          <span class="text-sm font-bold">%</span>
+                        </div>
+                        @if (porcentajePagoError()) {
+                          <p class="text-xs text-error mt-1">{{ porcentajePagoError() }}</p>
+                        }
+                      } @else {
+                        <div class="font-bold text-lg text-primary">
+                          {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
+                        </div>
+                      }
+                    </div>
+
+                    <div class="bg-base-200/50 p-3 rounded-3xl border border-base-200">
+                      <span class="text-xs font-bold text-base-content/40 uppercase tracking-widest block mb-1">
+                        Fecha de Contrato
+                      </span>
+                      @if (isEditingGeneral()) {
                         <input
-                          type="number"
-                          class="input input-sm w-full"
-                          [value]="editPorcentajePago()"
-                          (input)="onPorcentajePagoChange($any($event.target).value)"
-                          placeholder="0"
-                          min="0"
-                          max="100"
-                          step="0.5">
-                        <span class="text-sm font-bold">%</span>
-                      </div>
-                    } @else {
-                      <div class="font-bold text-lg text-primary">
-                        {{ formatPorcentajeForDisplay(driver()!.porcentaje_pago) }}%
-                      </div>
-                    }
+                          type="date"
+                          class="input input-sm w-full mt-1"
+                          [value]="editFechaContrato()"
+                          (input)="editFechaContrato.set($any($event.target).value)">
+                      } @else {
+                        <div class="font-semibold text-base-content">
+                          {{ driver()!.fecha_contrato ? formatDate(driver()!.fecha_contrato || null) : '— Sin fecha —' }}
+                        </div>
+                      }
+                    </div>
                   </div>
                 </div>
               </div>
@@ -356,9 +371,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl">
               <div class="card-header px-6 py-4 border-b border-base-200 flex justify-between items-center bg-base-50 rounded-t-2xl">
                 <h3 class="font-bold text-lg flex items-center gap-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-primary" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zm3 2.75A.75.75 0 015.75 8h1.5a.75.75 0 01.75.75v2.5a.75.75 0 01-.75.75h-1.5A.75.75 0 015 11.25v-2.5zm7-1.5A.75.75 0 0112.75 7h2.5a.75.75 0 01.75.75v4.5a.75.75 0 01-.75.75h-2.5a.75.75 0 01-.75-.75v-4.5z" clip-rule="evenodd" />
-                  </svg>
+                  <ui-icon name="IdCard" size="sm" class="text-primary" />
                   Licencia de Conducir
                 </h3>
               </div>
@@ -382,9 +395,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     [class.bg-success/5]="licenseStatus().estado === 'ok'"
                     [class.text-success]="licenseStatus().estado === 'ok'"
                     [class.border-success/20]="licenseStatus().estado === 'ok'">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                    </svg>
+                    <ui-icon name="IdCard" size="sm" />
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex justify-between items-start">
@@ -422,12 +433,12 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
 
             <!-- Máquina Asignada -->
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
-              <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+              <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
 
               <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                 @if (driver()!.maquina_actual) {
-                  <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
-                    <app-bus-icon class="w-8 h-8" />
+                  <div class="w-16 h-16 rounded-2xl bg-linear-to-br from-primary/10 to-primary/5 border border-primary/10 flex items-center justify-center text-primary mb-4">
+                    <ui-icon name="BusFront" size="lg" />
                   </div>
 
                   <h4 class="text-xl font-bold text-base-content">
@@ -470,7 +481,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   <div class="w-full mt-auto"></div>
                 } @else {
                   <div class="w-16 h-16 rounded-2xl bg-base-200 flex items-center justify-center text-primary mb-4">
-                    <app-bus-icon class="w-8 h-8" />
+                    <ui-icon name="BusFront" size="lg" />
                   </div>
                   <h4 class="text-lg font-bold text-base-content/70">
                     Sin Asignar
@@ -509,7 +520,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                   } @else {
                     <button
                       class="btn btn-primary w-full shadow-lg shadow-primary/20"
-                      [routerLink]="['/choferes', driver()?.id, 'editar']">
+                      (click)="startMachineAssignment()">
                       Asignar Máquina
                     </button>
                   }
@@ -540,23 +551,64 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     <div class="flex items-center gap-3 shrink-0">
                       <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
                         <span class="w-2 h-2 rounded-full bg-primary"></span>
-                        {{ filteredRecords().length }} {{ filteredRecords().length === 1 ? 'registro' : 'registros' }}
+                        {{ recordsTotalGlobal() }} {{ recordsTotalGlobal() === 1 ? 'registro' : 'registros' }}
                 </span>
               </div>
             </div>
                 </div>
 
                 <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
-                  <!-- Filtros usando componente reutilizable -->
-                  <app-search-filters
-                    [fields]="filterFields()"
-                    [filters]="recordFilters()"
-                    [columns]="3"
-                    (filterChange)="onRecordFilterChange($event)" />
+                  <!-- Filtros: mobile en panel plegable, desktop siempre visible -->
+                  <div class="md:hidden mb-4">
+                    <div class="sticky top-2 z-20">
+                      <button
+                        type="button"
+                        class="btn btn-sm w-full justify-between rounded-lg border border-base-200 bg-base-100 shadow-sm min-h-11"
+                        (click)="toggleFiltersMobile()"
+                        [attr.aria-expanded]="showFiltersMobile()">
+                        <div class="flex items-center gap-2">
+                          <span class="w-1 h-4 rounded-full bg-primary"></span>
+                          <span class="text-xs font-semibold uppercase tracking-wider">Filtros</span>
+                        </div>
+                        <ui-icon name="ChevronDown" size="sm" [class]="'transition-transform duration-200' + (showFiltersMobile() ? ' rotate-180' : '')" />
+                      </button>
+                    </div>
+                    @if (showFiltersMobile()) {
+                      <div class="mt-3 bg-base-50/70 rounded-3xl border border-base-200/70 shadow-sm" (click)="$event.stopPropagation()">
+                        <app-search-filters
+                          [fields]="filterFields()"
+                          [filters]="recordFilters()"
+                          [columns]="1"
+                          (filterChange)="onRecordFilterChange($event)" />
+                        <!-- Botón para cerrar el panel manualmente -->
+                        <div class="p-4 pt-0 border-t border-base-200/50">
+                          <button
+                            type="button"
+                            class="btn btn-sm btn-primary w-full"
+                            (click)="showFiltersMobile.set(false)">
+                            Aplicar Filtros
+                          </button>
+                        </div>
+                      </div>
+                    }
+                  </div>
+
+                  <div class="hidden md:block">
+                    <app-search-filters
+                      [fields]="filterFields()"
+                      [filters]="recordFilters()"
+                      [columns]="3"
+                      (filterChange)="onRecordFilterChange($event)" />
+                  </div>
 
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
-                    @for (record of filteredRecords(); track record.id; let i = $index) {
+                @if (recordsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando registros..." />
+                  </div>
+                } @else {
+                  @for (record of dailyRecords(); track record.id; let i = $index) {
                   <div 
                     class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                     [style.animation-delay.ms]="i * 50"
@@ -566,9 +618,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                            <ui-icon name="Calendar" size="sm" />
                           </div>
                           <div>
                             <h3 class="font-bold text-base text-base-content">{{ formatDate(record.fecha) }}</h3>
@@ -589,6 +639,21 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                           <!-- Divider -->
                           <div class="divider my-2 opacity-30"></div>
 
+                          <!-- Máquina -->
+                          @if (record.maquina_id && record.maquina_identificador) {
+                            <div class="mb-3">
+                              <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Máquina</div>
+                              <div class="flex items-center gap-2 cursor-pointer group" (click)="onViewMachineDetail(record.maquina_id, $event)">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
+                                  <ui-icon name="BusFront" size="xs" class="text-primary" />
+                                </div>
+                                <span class="font-bold text-base-content group-hover:text-primary transition-colors">
+                                  {{ record.maquina_identificador }}
+                                </span>
+                              </div>
+                            </div>
+                          }
+
                           <!-- Información Financiera -->
                       <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -603,69 +668,82 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             {{ formatCurrency(record.diesel) }}
                           </div>
                         </div>
+                        <div>
+                          <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Pago Chofer</div>
+                          <div class="font-bold text-base tabular-nums text-error">
+                            {{ formatCurrency(record.pago_chofer) }}
+                          </div>
+                        </div>
+                        <div>
+                          <div class="text-xs font-bold text-base-content/50 uppercase tracking-wider mb-1">Neto</div>
+                          <div class="font-bold text-base tabular-nums text-base-content">
+                            {{ formatCurrency(getNeto(record)) }}
+                          </div>
+                        </div>
                       </div>
 
                           <!-- Observaciones -->
-                      @if (record.tiene_observaciones) {
-                        <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
-                          <div class="flex items-start gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-info shrink-0 mt-0.5">
-                              <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                            </svg>
-                            <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
-                          </div>
-                        </div>
-                      }
+                          @if (record.tiene_observaciones) {
+                            <div class="mt-3 p-2 bg-info/10 rounded border border-info/20">
+                              <div class="flex items-start gap-2">
+                                <ui-icon name="Info" size="xs" class="text-info shrink-0 mt-0.5" />
+                                <p class="text-xs text-base-content/70 flex-1">Este registro tiene observaciones</p>
+                              </div>
+                            </div>
+                          }
 
                           <!-- Botón de Acción -->
                       <div class="mt-4">
                         <a 
                           [routerLink]="['/registro-diario', record.id]"
                           class="btn btn-sm w-full btn-outline gap-2 hover:btn-primary transition-all">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4">
-                            <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                            <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                          </svg>
+                          <ui-icon name="Eye" size="xs" />
                           Ver Detalle
                         </a>
                       </div>
                     </div>
                   </div>
-                } @empty {
-                      <div class="py-16 sm:py-20">
-                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
-                          </div>
-                          <div class="space-y-2">
-                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
-                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                              Ajusta los filtros para ver más resultados.
-                            </p>
-                          </div>
+                  } @empty {
+                    <div class="py-16 sm:py-20">
+                      <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                          <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
                         </div>
-                  </div>
+                        <div class="space-y-2">
+                          <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
+                          <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                            Ajusta los filtros para ver más resultados.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                    <table class="table w-full table-min-height">
-                  <thead class="bg-base-50 border-b border-base-200">
-                    <tr>
-                      <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
-                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                          <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[80px]">OBS.</th>
-                      <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                        @for (record of filteredRecords(); track record.id; let i = $index) {
+                @if (recordsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando registros..." />
+                  </div>
+                } @else {
+                  <table class="table w-full table-min-height">
+                    <thead class="bg-base-50 border-b border-base-200">
+                      <tr>
+                        <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Fecha</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[150px]">Máquina</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Recaudado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Diésel</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Pago Chofer</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[120px]">Neto</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                        <th class="py-4 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-20">OBS.</th>
+                        <th class="py-4 pr-6 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (record of dailyRecords(); track record.id; let i = $index) {
                       <tr 
                             class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter cursor-pointer"
                         [style.animation-delay.ms]="i * 30"
@@ -675,9 +753,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         <td class="pl-6 py-4">
                               <div class="flex items-center gap-3">
                                 <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                              </svg>
+                              <ui-icon name="Calendar" size="xs" />
                             </div>
                             <div>
                                   <div class="font-bold text-base-content">{{ formatDate(record.fecha) }}</div>
@@ -686,16 +762,35 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                           </div>
                         </td>
                             
+                        <td class="text-center py-4" (click)="$event.stopPropagation()">
+                          @if (record.maquina_id && record.maquina_identificador) {
+                            <div class="flex items-center justify-center gap-2 cursor-pointer group" (click)="onViewMachineDetail(record.maquina_id, $event)">
+                              <div class="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center border border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/30 transition-colors">
+                                <ui-icon name="BusFront" size="xs" class="text-primary" />
+                              </div>
+                              <span class="font-bold text-base-content group-hover:text-primary transition-colors tooltip" [attr.data-tip]="record.maquina_identificador">
+                                {{ record.maquina_identificador }}
+                              </span>
+                            </div>
+                          } @else {
+                            <span class="text-base-content/30 italic">—</span>
+                          }
+                        </td>
+                            
                             <td class="text-right py-4 font-mono font-bold text-success tabular-nums text-sm">
                               {{ formatCurrency(record.recaudado) }}
                             </td>
-                            
+
                             <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
                               {{ formatCurrency(record.diesel) }}
                             </td>
-                            
+
+                            <td class="text-right py-4 font-mono font-bold text-error tabular-nums text-sm">
+                              {{ formatCurrency(record.pago_chofer) }}
+                            </td>
+
                             <td class="text-right py-4 font-mono font-bold text-base-content tabular-nums text-sm">
-                              {{ formatCurrency(record.recaudado - record.diesel) }}
+                              {{ formatCurrency(getNeto(record)) }}
                             </td>
                             
                         <td class="text-center py-4">
@@ -711,19 +806,15 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             
                             <td class="text-center py-4" (click)="$event.stopPropagation()">
                               <div class="flex items-center justify-center">
-                            @if (record.tiene_observaciones) {
+                                @if (record.tiene_observaciones) {
                                   <div class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 hover:bg-primary/20 transition-colors cursor-pointer group">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-primary group-hover:scale-110 transition-transform">
-                                      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                    </svg>
+                                    <ui-icon name="Info" size="xs" class="text-primary group-hover:scale-110 transition-transform" />
                                   </div>
                                 } @else {
                                   <div class="w-8 h-8 rounded-full bg-base-200/50 flex items-center justify-center border border-base-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 text-base-content/30">
-                                  <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z" clip-rule="evenodd" />
-                                </svg>
-                              </div>
-                            }
+                                    <ui-icon name="Info" size="xs" class="text-base-content/30" />
+                                  </div>
+                                }
                               </div>
                             </td>
                             
@@ -731,22 +822,17 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                             <a 
                               [routerLink]="['/registro-diario', record.id]"
                                 class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-base-content/70 hover:text-primary bg-base-100 hover:bg-primary/5 border border-base-200 hover:border-primary/30 transition-all duration-200 group">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-4 h-4 group-hover:scale-110 transition-transform">
-                                <path d="M10 12.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" />
-                                <path fill-rule="evenodd" d="M.664 10.59a1.651 1.651 0 010-1.186A10.004 10.004 0 0110 3c4.257 0 7.893 2.66 9.336 6.41.147.381.146.804 0 1.186A10.004 10.004 0 0110 17c-4.257 0-7.893-2.66-9.336-6.41zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                              </svg>
+                                <ui-icon name="Eye" size="xs" class="group-hover:scale-110 transition-transform" />
                                 <span>Ver</span>
                             </a>
                         </td>
                       </tr>
                     } @empty {
                       <tr>
-                            <td colspan="7" class="py-16 sm:py-20">
+                            <td colspan="8" class="py-16 sm:py-20">
                               <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
                                 <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                                  </svg>
+                                  <ui-icon name="Calendar" size="lg" class="text-base-content/40" />
                                 </div>
                                 <div class="space-y-2">
                                   <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay registros que coincidan con los filtros</h3>
@@ -758,18 +844,49 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         </td>
                       </tr>
                     }
-                        <!-- Filas vacías para mantener altura mínima en desktop -->
-                        @if (filteredRecords().length > 0 && filteredRecords().length < 5) {
-                          @for (i of getEmptyRows(); track i) {
-                            <tr class="empty-row-spacer">
-                              <td colspan="7" class="h-20"></td>
-                            </tr>
-                          }
-                    }
-                  </tbody>
-                </table>
-                  </div>
+                      <!-- Filas vacías para mantener altura mínima en desktop -->
+                      @if (dailyRecords().length > 0 && dailyRecords().length < 5) {
+                        @for (i of getEmptyRows(); track i) {
+                          <tr class="empty-row-spacer">
+                            <td colspan="8" class="h-20"></td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                }
               </div>
+
+              <!-- Paginación -->
+              @if (recordsTotalPages() > 0 && !recordsLoading()) {
+                <div class="p-4 border-t border-base-200 flex items-center justify-between text-xs text-base-content/60">
+                  <span>Mostrando {{ getStartRecord() }}-{{ getEndRecord() }} de {{ recordsTotal() }} registros</span>
+                  <div class="join">
+                    <button 
+                      (click)="onRecordsPageChange(recordsCurrentPage() - 1)" 
+                      [disabled]="recordsCurrentPage() === 1 || recordsLoading()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="recordsCurrentPage() === 1 || recordsLoading()">
+                      «
+                    </button>
+                    @for (page of getRecordsPages(); track page) {
+                      <button 
+                        (click)="onRecordsPageChange(page)" 
+                        [disabled]="recordsLoading()" 
+                        [class.btn-active]="page === recordsCurrentPage()" 
+                        class="join-item btn btn-sm px-4">{{ page }}</button>
+                    }
+                    <button 
+                      (click)="onRecordsPageChange(recordsCurrentPage() + 1)" 
+                      [disabled]="recordsCurrentPage() === recordsTotalPages() || recordsLoading()" 
+                      class="join-item btn btn-sm px-3" 
+                      [class.btn-disabled]="recordsCurrentPage() === recordsTotalPages() || recordsLoading()">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
+                </div>
             </div>
           </div>
         }
@@ -794,16 +911,60 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                     <div class="flex items-center gap-3 shrink-0">
                       <span class="inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">
                         <span class="w-2 h-2 rounded-full bg-primary"></span>
-                  {{ liquidations().length }} {{ liquidations().length === 1 ? 'liquidación' : 'liquidaciones' }}
+                  {{ liquidationsTotalGlobal() }} {{ liquidationsTotalGlobal() === 1 ? 'liquidación' : 'liquidaciones' }}
                 </span>
               </div>
             </div>
                 </div>
 
-                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6">
+                <div class="card-body p-1 sm:p-6 lg:p-8 pt-2 sm:pt-4 lg:pt-6 pb-12 sm:pb-16 lg:pb-20">
+                  <!-- Filtros -->
+                  <div class="mb-6">
+                    <app-search-filters
+                      [fields]="[
+                        {
+                          key: 'fecha_desde',
+                          label: 'Período Desde',
+                          type: 'date',
+                          placeholder: 'Seleccionar mes',
+                          monthOnly: true
+                        },
+                        {
+                          key: 'fecha_hasta',
+                          label: 'Período Hasta',
+                          type: 'date',
+                          placeholder: 'Seleccionar mes',
+                          monthOnly: true
+                        },
+                        {
+                          key: 'estado',
+                          label: 'Estado',
+                          type: 'select',
+                          options: [
+                            { value: 'all', label: 'Todos' },
+                            { value: 'pagado', label: 'Pagado' },
+                            { value: 'pendiente', label: 'Pendiente' }
+                          ]
+                        }
+                      ]"
+                      [columns]="3"
+                      [filters]="{
+                        fecha_desde: liquidationFilters().fecha_desde || null,
+                        fecha_hasta: liquidationFilters().fecha_hasta || null,
+                        estado: liquidationFilters().estado || 'all'
+                      }"
+                      (filterChange)="onLiquidationFilterChange($event)"
+                    />
+                  </div>
+
               <!-- Vista Móvil: Cards -->
               <div class="block xl:hidden space-y-4">
-                @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
+                @if (liquidationsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                  </div>
+                } @else {
+                  @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
                   <div 
                     class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all duration-200 group animate-card-enter"
                     [style.animation-delay.ms]="i * 50"
@@ -813,9 +974,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       <div class="flex items-start justify-between gap-4 mb-4">
                         <div class="flex items-center gap-3">
                           <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-5 h-5">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                            </svg>
+                            <ui-icon name="Calendar" size="sm" />
                           </div>
                           <div>
                             <h3 class="font-bold text-base text-base-content">Período {{ liquidation.fecha }}</h3>
@@ -873,41 +1032,45 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                       </div>
                     </div>
                   </div>
-                } @empty {
-                      <div class="py-16 sm:py-20">
-                        <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                          <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                            </svg>
-                          </div>
-                          <div class="space-y-2">
-                            <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
-                            <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                              El chofer aún no tiene liquidaciones registradas.
-                            </p>
-                          </div>
+                  } @empty {
+                    <div class="py-16 sm:py-20">
+                      <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                        <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                          <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                         </div>
-                  </div>
+                        <div class="space-y-2">
+                          <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                          <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                            El chofer aún no tiene liquidaciones registradas.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  }
                 }
               </div>
 
               <!-- Vista Desktop: Tabla -->
               <div class="hidden xl:block overflow-hidden rounded-xl border border-base-200">
-                    <table class="table w-full table-min-height">
-                  <thead class="bg-base-50 border-b border-base-200">
-                    <tr>
-                          <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Período</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Total Ganado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Mínimo Garantizado</th>
-                      <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Pago Final</th>
-                      <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Método</th>
-                          <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Código/Ref.</th>
-                      <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
+                @if (liquidationsLoading()) {
+                  <div class="flex justify-center items-center py-12">
+                    <app-loading-spinner size="md" text="Cargando liquidaciones..." />
+                  </div>
+                } @else {
+                  <table class="table w-full table-min-height">
+                    <thead class="bg-base-50 border-b border-base-200">
+                      <tr>
+                        <th class="pl-6 py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Período</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Total Ganado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Mínimo Garantizado</th>
+                        <th class="py-4 text-right text-xs font-bold uppercase tracking-widest text-base-content/60 font-mono tabular-nums min-w-[140px]">Pago Final</th>
+                        <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[120px]">Método</th>
+                        <th class="py-4 text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[140px]">Código/Ref.</th>
+                        <th class="py-4 pr-6 text-center text-xs font-bold uppercase tracking-widest text-base-content/60 min-w-[100px]">Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (liquidation of liquidations(); track liquidation.id; let i = $index) {
                       <tr 
                         class="group hover:bg-base-50 transition-colors border-b border-base-100 last:border-none animate-table-row-enter"
                         [style.animation-delay.ms]="i * 30"
@@ -915,9 +1078,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                         <td class="pl-6 py-4">
                               <div class="flex items-center gap-3">
                                 <div class="bg-primary/10 p-2 rounded-lg text-primary shrink-0">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-                              </svg>
+                              <ui-icon name="Calendar" size="xs" />
                             </div>
                             <div>
                                   <div class="font-bold text-base-content">{{ liquidation.fecha }}</div>
@@ -953,36 +1114,66 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
                           </div>
                         </td>
                       </tr>
-                    } @empty {
-                      <tr>
-                            <td colspan="7" class="py-16 sm:py-20">
-                              <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
-                                <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
-                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 sm:w-10 sm:h-10 text-base-content/40">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5z" />
-                                  </svg>
-                                </div>
-                                <div class="space-y-2">
-                                  <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
-                                  <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
-                                    El chofer aún no tiene liquidaciones registradas.
-                                  </p>
-                                </div>
+                      } @empty {
+                        <tr>
+                          <td colspan="7" class="py-16 sm:py-20">
+                            <div class="flex flex-col items-center justify-center gap-4 max-w-md mx-auto text-center">
+                              <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-base-200/60 flex items-center justify-center">
+                                <ui-icon name="HandCoins" size="lg" class="text-base-content/40" />
                               </div>
-                        </td>
-                      </tr>
-                    }
-                        <!-- Filas vacías para mantener altura mínima en desktop -->
-                        @if (liquidations().length > 0 && liquidations().length < 5) {
-                          @for (i of getEmptyLiquidationRows(); track i) {
-                            <tr class="empty-row-spacer">
-                              <td colspan="7" class="h-20"></td>
-                            </tr>
-                          }
-                    }
-                  </tbody>
-                </table>
+                              <div class="space-y-2">
+                                <h3 class="text-lg sm:text-xl font-semibold text-base-content">No hay liquidaciones disponibles</h3>
+                                <p class="text-sm sm:text-base text-base-content/60 leading-relaxed">
+                                  El chofer aún no tiene liquidaciones registradas.
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      }
+                      <!-- Filas vacías para mantener altura mínima en desktop -->
+                      @if (liquidations().length > 0 && liquidations().length < 5) {
+                        @for (i of getEmptyLiquidationRows(); track i) {
+                          <tr class="empty-row-spacer">
+                            <td colspan="7" class="h-20"></td>
+                          </tr>
+                        }
+                      }
+                    </tbody>
+                  </table>
+                }
+              </div>
+
+              <!-- Paginación -->
+              @if (liquidationsTotalPages() > 1 && !liquidationsLoading()) {
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div class="text-sm text-base-content/60">
+                    Mostrando {{ getStartLiquidationRecord() }} - {{ getEndLiquidationRecord() }} de {{ liquidationsTotal() }} liquidaciones
                   </div>
+                  <div class="join">
+                    <button
+                      class="join-item btn btn-sm btn-outline"
+                      [disabled]="liquidationsCurrentPage() === 1"
+                      (click)="onLiquidationPageChange(liquidationsCurrentPage() - 1)">
+                      «
+                    </button>
+                    @for (page of getLiquidationPages(); track page) {
+                      <button
+                        class="join-item btn btn-sm"
+                        [class.btn-active]="page === liquidationsCurrentPage()"
+                        (click)="onLiquidationPageChange(page)">
+                        {{ page }}
+                      </button>
+                    }
+                    <button
+                      class="join-item btn btn-sm btn-outline"
+                      [disabled]="liquidationsCurrentPage() === liquidationsTotalPages()"
+                      (click)="onLiquidationPageChange(liquidationsCurrentPage() + 1)">
+                      »
+                    </button>
+                  </div>
+                </div>
+              }
               </div>
             </div>
           </div>
@@ -994,7 +1185,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
           <!-- Se muestra siempre que isLoading() es true, incluso antes del umbral de 200ms -->
           <div class="space-y-6 lg:space-y-8 animate-fade-in">
             <!-- Hero Section Skeleton -->
-            <div class="hero-section bg-gradient-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
+            <div class="hero-section bg-linear-to-br from-primary/5 via-base-100 to-base-200/50 rounded-2xl p-6 md:p-8 lg:p-10 mb-6">
               <div class="flex flex-col gap-6">
                 <!-- Header con Botón Volver -->
                 <div class="relative">
@@ -1101,7 +1292,7 @@ import { SearchFilters, FilterField } from '../../../shared/components/search-fi
 
                 <!-- Máquina Asignada Skeleton -->
                 <div class="card bg-base-100 shadow-lg border border-base-200/50 rounded-2xl overflow-hidden">
-                  <div class="h-24 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent"></div>
+                  <div class="h-24 bg-linear-to-br from-primary/20 via-primary/5 to-transparent"></div>
                   <div class="card-body p-6 pt-0 -mt-12 text-center flex flex-col items-center">
                     <div class="w-16 h-16 skeleton-shimmer rounded-2xl mb-4"></div>
                     <div class="h-6 w-32 skeleton-shimmer rounded mb-2"></div>
@@ -1377,13 +1568,15 @@ export class DriverDetail implements OnInit {
   private loadingStateService = inject(LoadingStateService);
   private confirmModalService = inject(ConfirmModalService);
   private alertModalService = inject(AlertModalService);
-  
+  private globalErrorService = inject(GlobalErrorService);
+
   // Estado de carga con umbral de 200ms
   driverLoadingState = this.loadingStateService.createLoadingState();
 
   isEditingGeneral = signal(false);
   activeTab = signal<'general' | 'records' | 'liquidations'>('general');
-  
+  showFiltersMobile = signal(false);
+
   // Valores editables temporales
   editNombre = signal<string>('');
   editSegundoNombre = signal<string>('');
@@ -1395,7 +1588,22 @@ export class DriverDetail implements OnInit {
   editEstado = signal<'activo' | 'inactivo'>('activo');
   editPorcentajePago = signal<number>(0);
   editFechaVencLicencia = signal<string>('');
+  editFechaContrato = signal<string>('');
   editMaquinaId = signal<number | null>(null);
+
+  porcentajePagoError = computed(() => {
+    const value = this.editPorcentajePago();
+
+    if (Number.isNaN(value)) {
+      return 'Ingresa un porcentaje válido entre 0 y 100.';
+    }
+
+    if (value < 0 || value > 100) {
+      return 'El porcentaje de pago debe estar entre 0% y 100%.';
+    }
+
+    return '';
+  });
 
   // Signal para el valor del select de máquina (para evitar problemas con el binding)
   maquinaSelectValue = signal<string>('');
@@ -1408,18 +1616,18 @@ export class DriverDetail implements OnInit {
       if (editId !== null && editId !== undefined) {
         return String(editId);
       }
-      
+
       // Si no hay editMaquinaId, verificar maquinaSelectValue (puede haber sido cambiado por el usuario)
       const selectValue = this.maquinaSelectValue();
       if (selectValue !== '') {
         return selectValue;
       }
-      
+
       // Si no hay valor en ninguno, usar el valor del chofer como fallback
       const maquinaId = this.driver()?.maquina_actual?.id;
       return maquinaId ? String(maquinaId) : '';
     }
-    
+
     // Si no estamos en modo edición, usar el valor del chofer
     const maquinaId = this.driver()?.maquina_actual?.id;
     return maquinaId ? String(maquinaId) : '';
@@ -1449,7 +1657,15 @@ export class DriverDetail implements OnInit {
           return of<Driver | null>(null);
         }
         return this.driverService.getDriverById(id).pipe(
-          catchError(() => of<Driver | null>(null))
+          catchError((error) => {
+            console.error('Error cargando chofer:', error);
+            // Mostrar error global
+            this.globalErrorService.showError(
+              'No se pudo cargar la información del chofer desde el servidor.',
+              'Error al cargar chofer'
+            );
+            return of<Driver | null>(null);
+          })
         );
       })
     ),
@@ -1469,12 +1685,45 @@ export class DriverDetail implements OnInit {
         texto: ''
       };
     }
-    return calculateLicenseStatus(d.fecha_venc_licencia, 30);
+    // Usar estado provisto por backend si existe
+    if (d.licencia_estado) {
+      const estado = d.licencia_estado.estado;
+      const dias = d.licencia_estado.dias_restantes;
+      const fecha = d.licencia_estado.fecha_vencimiento || d.fecha_venc_licencia || null;
+
+      if (estado === 'danger') {
+        return {
+          fecha,
+          estado: 'error' as const,
+          dias_restantes: dias,
+          texto: formatLicenseExpiredText(dias)
+        };
+      }
+
+      if (estado === 'warning') {
+        return {
+          fecha,
+          estado: 'warning' as const,
+          dias_restantes: dias,
+          texto: formatLicenseWarningText(dias)
+        };
+      }
+
+      return {
+        fecha,
+        estado: 'ok' as const,
+        dias_restantes: dias,
+        texto: 'Al día'
+      };
+    }
+
+    // Fallback a cálculo local con umbral por defecto (30) solo si no viene estado
+    return calculateLicenseStatus(d.fecha_venc_licencia);
   });
 
-  // Cargar máquinas para el select
+  // Cargar máquinas activas sin chofer para el select de edición
   maquinasData = toSignal(
-    this.machineService.getMachines().pipe(
+    this.machineService.getActiveMachinesWithoutDriver().pipe(
       catchError(() => of([]))
     ),
     { initialValue: [] }
@@ -1482,25 +1731,44 @@ export class DriverDetail implements OnInit {
 
   maquinas = computed(() => {
     const machines = this.maquinasData() ?? [];
-    return machines.map(m => ({
+    const currentMaquina = this.driver()?.maquina_actual;
+
+    const mapped = machines.map((m: MachineSelect) => ({
       id: m.id,
-      identificador: `MÁQUINA ${m.numero || m.id}`
+      identificador: m.display_name ?? `MÁQUINA ${m.numero_interno || m.id}`
     }));
+
+    if (!currentMaquina?.id) {
+      return mapped;
+    }
+
+    const alreadyIncluded = mapped.some(m => m.id === currentMaquina.id);
+    if (alreadyIncluded) {
+      return mapped;
+    }
+
+    // Incluir la máquina actual para no perder la selección aunque no esté disponible en el endpoint
+    const currentMaquinaOption = {
+      id: currentMaquina.id,
+      identificador: currentMaquina.identificador ?? `MÁQUINA ${currentMaquina.id}`
+    };
+
+    return [currentMaquinaOption, ...mapped];
   });
 
   // Máquinas ordenadas: la asignada primero, luego las demás
   maquinasSelectOrdered = computed(() => {
     const maquinas = this.maquinas();
     const currentMaquinaId = this.driver()?.maquina_actual?.id;
-    
+
     if (!currentMaquinaId) {
       return maquinas;
     }
-    
+
     // Separar la máquina asignada del resto
-    const assignedMaquina = maquinas.find(m => m.id === currentMaquinaId);
-    const otherMaquinas = maquinas.filter(m => m.id !== currentMaquinaId);
-    
+    const assignedMaquina = maquinas.find((m: { id: number }) => m.id === currentMaquinaId);
+    const otherMaquinas = maquinas.filter((m: { id: number }) => m.id !== currentMaquinaId);
+
     // Retornar la asignada primero, luego las demás
     return assignedMaquina ? [assignedMaquina, ...otherMaquinas] : maquinas;
   });
@@ -1510,46 +1778,15 @@ export class DriverDetail implements OnInit {
   recordFilters = signal<{ desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({
     orden: 'mas_reciente'
   });
-  
-  // Registros filtrados
-  filteredRecords = computed(() => {
-    let filtered = [...this.dailyRecords()];
-    const filters = this.recordFilters();
 
-    // Filtrar por fecha desde
-    if (filters.desde) {
-      const desde = new Date(filters.desde);
-      desde.setHours(0, 0, 0, 0);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        fecha.setHours(0, 0, 0, 0);
-        return fecha >= desde;
-      });
-    }
+  // Paginación y estado
+  recordsTotal = signal<number>(0);
+  recordsTotalGlobal = signal<number>(0);
+  recordsCurrentPage = signal<number>(1);
+  recordsTotalPages = signal<number>(0);
+  recordsLoading = signal<boolean>(false);
+  recordsPerPage = 10;
 
-    // Filtrar por fecha hasta
-    if (filters.hasta) {
-      const hasta = new Date(filters.hasta);
-      hasta.setHours(23, 59, 59, 999);
-      filtered = filtered.filter(r => {
-        const fecha = new Date(r.fecha);
-        fecha.setHours(0, 0, 0, 0);
-        return fecha <= hasta;
-      });
-    }
-
-    // Ordenar
-    const orden = filters.orden || 'mas_reciente';
-    if (orden === 'mas_antiguo') {
-      filtered.sort((a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime());
-    } else {
-      // Por defecto: más reciente primero
-      filtered.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime());
-    }
-
-    return filtered;
-  });
-  
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
     return [
@@ -1579,7 +1816,7 @@ export class DriverDetail implements OnInit {
       }
     ];
   });
-  
+
   onRecordFilterChange(newFilters: Record<string, any>): void {
     const filters: { desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
       desde: newFilters['desde'] || null,
@@ -1587,13 +1824,21 @@ export class DriverDetail implements OnInit {
       orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
     };
     this.recordFilters.set(filters);
-    
+
+    // Resetear a página 1 cuando cambian los filtros
+    this.recordsCurrentPage.set(1);
+
     // Recargar datos del backend con los nuevos filtros
     this.loadDailyRecords();
   }
-  
+
+  onRecordsPageChange(page: number): void {
+    this.recordsCurrentPage.set(page);
+    this.loadDailyRecords();
+  }
+
   getEmptyRows(): number[] {
-    const count = this.filteredRecords().length;
+    const count = this.dailyRecords().length;
     if (count === 0) return [];
     const needed = 5 - count;
     return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
@@ -1606,9 +1851,51 @@ export class DriverDetail implements OnInit {
     return needed > 0 ? Array.from({ length: needed }, (_, i) => i) : [];
   }
 
+  getRecordsPages(): number[] {
+    const total = this.recordsTotalPages();
+    const current = this.recordsCurrentPage();
+    const pages: number[] = [];
+
+    // Mostrar máximo 5 páginas
+    const maxPages = 5;
+    let start = Math.max(1, current - Math.floor(maxPages / 2));
+    let end = Math.min(total, start + maxPages - 1);
+
+    if (end - start < maxPages - 1) {
+      start = Math.max(1, end - maxPages + 1);
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  }
+
+  getStartRecord(): number {
+    return ((this.recordsCurrentPage() - 1) * this.recordsPerPage) + 1;
+  }
+
+  getEndRecord(): number {
+    const page = this.recordsCurrentPage();
+    const total = this.recordsTotal();
+    return Math.min(page * this.recordsPerPage, total);
+  }
+
   // Liquidaciones
   liquidations = signal<DriverLiquidation[]>([]);
-  
+  liquidationFilters = signal<{
+    fecha_desde?: string | null;
+    fecha_hasta?: string | null;
+    estado?: 'all' | 'pagado' | 'pendiente'
+  }>({});
+  liquidationsTotal = signal<number>(0);
+  liquidationsTotalGlobal = signal<number>(0);
+  liquidationsCurrentPage = signal<number>(1);
+  liquidationsTotalPages = signal<number>(0);
+  liquidationsLoading = signal<boolean>(false);
+  liquidationsPerPage = 10;
+
   // Rastrear qué tabs han sido cargados
   loadedTabs = signal<Set<string>>(new Set(['general']));
 
@@ -1626,49 +1913,49 @@ export class DriverDetail implements OnInit {
     // para que el skeleton pueda mostrarse antes de que el efecto detecte el driver
     this.driverLoadingState.setLoading(true);
   }
-    
-    // Efecto para cargar datos cuando el chofer cambia
-  private driverDataEffect = effect(() => {
-      const driver = this.driver();
-      const driverId = this.driverId();
-      
-      if (!driverId) {
-        this.router.navigate(['/choferes']);
-        return;
-      }
 
-      if (driver) {
-        // Cargar registros diarios del chofer
-        this.loadDailyRecords();
-        
-        // Cargar liquidaciones
-        this.loadLiquidations();
-      }
-    });
+  // Efecto para cargar datos cuando el chofer cambia
+  private driverDataEffect = effect(() => {
+    const driver = this.driver();
+    const driverId = this.driverId();
+
+    if (!driverId) {
+      this.router.navigate(['/choferes']);
+      return;
+    }
+
+    if (driver) {
+      // Cargar registros diarios del chofer
+      this.loadDailyRecords();
+
+      // Cargar liquidaciones
+      this.loadLiquidations();
+    }
+  });
+
+  startMachineAssignment(): void {
+    if (!this.isEditingGeneral()) {
+      this.toggleEditGeneral();
+    } else {
+      this.activeTab.set('general');
+    }
+  }
 
   toggleEditGeneral(): void {
     const isEditing = !this.isEditingGeneral();
-    
+
     if (isEditing) {
       // Cambiar a la tab 'general' antes de activar el modo edición
       this.activeTab.set('general');
-      
+
       // Inicializar valores editables con los valores actuales
       const d = this.driver();
       if (d) {
         // Si no hay campos individuales, intentar extraer del nombre_completo
-        if (!d.nombre && d.nombre_completo) {
-          const parts = d.nombre_completo.trim().split(/\s+/);
-          this.editNombre.set(parts[0] || '');
-          this.editSegundoNombre.set(parts[1] || '');
-          this.editApellido.set(parts[2] || '');
-          this.editSegundoApellido.set(parts[3] || '');
-        } else {
-          this.editNombre.set(d.nombre || '');
-          this.editSegundoNombre.set(d.segundo_nombre || '');
-          this.editApellido.set(d.apellido || '');
-          this.editSegundoApellido.set(d.segundo_apellido || '');
-        }
+        this.editNombre.set(d.nombre || '');
+        this.editSegundoNombre.set(d.segundo_nombre || '');
+        this.editApellido.set(d.apellido || '');
+        this.editSegundoApellido.set(d.segundo_apellido || '');
         this.editRut.set(d.rut || '');
         this.editTelefono.set(d.telefono || '');
         this.editCorreo.set(d.correo || '');
@@ -1678,6 +1965,7 @@ export class DriverDetail implements OnInit {
         // Convertir de decimal (0.3) a porcentaje (30) para mostrar en el input
         this.editPorcentajePago.set(this.convertDecimalToPorcentaje(d.porcentaje_pago || 0));
         this.editFechaVencLicencia.set(d.fecha_venc_licencia || '');
+        this.editFechaContrato.set(d.fecha_contrato || '');
         const maquinaId = d.maquina_actual?.id || null;
         this.editMaquinaId.set(maquinaId);
         // Actualizar también el valor del select - asegurarse de que sea string
@@ -1689,7 +1977,7 @@ export class DriverDetail implements OnInit {
       this.maquinaSelectValue.set('');
       this.editMaquinaId.set(null);
     }
-    
+
     this.isEditingGeneral.set(isEditing);
   }
 
@@ -1703,6 +1991,16 @@ export class DriverDetail implements OnInit {
         title: 'Campos incompletos',
         message: 'Por favor, completa todos los campos requeridos antes de guardar.',
         type: 'warning',
+        buttonText: 'Entendido'
+      });
+      return;
+    }
+
+    if (this.porcentajePagoError()) {
+      this.alertModalService.show({
+        title: 'Porcentaje inválido',
+        message: this.porcentajePagoError(),
+        type: 'error',
         buttonText: 'Entendido'
       });
       return;
@@ -1738,6 +2036,7 @@ export class DriverDetail implements OnInit {
       // Convertir de porcentaje (30) a decimal (0.3) para guardar en el backend
       porcentaje_pago: this.convertPorcentajeToDecimal(this.editPorcentajePago()),
       fecha_venc_licencia: fechaVencLicencia.toISOString().split('T')[0], // Formato YYYY-MM-DD
+      fecha_contrato: this.editFechaContrato() || null,
       maquina_id: this.editMaquinaId()
     };
 
@@ -1760,9 +2059,20 @@ export class DriverDetail implements OnInit {
           // Forzar recarga de datos incrementando el refreshTrigger
           this.refreshTrigger.set(this.refreshTrigger() + 1);
           this.isEditingGeneral.set(false);
+          const successMessages = ['La información del chofer ha sido actualizada correctamente.'];
+
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const isInactive = (updatedDriver.estado || this.editEstado()) === 'inactivo';
+          const licenseIsNowValid = fechaVencLicencia >= today;
+
+          if (isInactive && licenseIsNowValid) {
+            successMessages.push('La licencia ya está vigente; considera cambiar el estado del chofer a "Activo" para habilitarlo nuevamente.');
+          }
+
           this.alertModalService.show({
             title: 'Cambios Guardados',
-            message: 'La información del chofer ha sido actualizada correctamente.',
+            message: successMessages.join('\n'),
             type: 'success',
             buttonText: 'Entendido'
           });
@@ -1770,20 +2080,24 @@ export class DriverDetail implements OnInit {
       });
   }
 
+  toggleFiltersMobile(): void {
+    this.showFiltersMobile.update(open => !open);
+  }
+
   setActiveTab(tab: 'general' | 'records' | 'liquidations'): void {
     // No permitir cambiar de tab si se está editando
     if (this.isEditingGeneral()) {
       return;
     }
-    
+
     this.activeTab.set(tab);
-    
+
     // Cargar datos solo si el tab no ha sido cargado antes
     const loaded = this.loadedTabs();
     if (!loaded.has(tab)) {
       loaded.add(tab);
       this.loadedTabs.set(new Set(loaded));
-      
+
       // Cargar datos según el tab
       switch (tab) {
         case 'records':
@@ -1821,12 +2135,17 @@ export class DriverDetail implements OnInit {
 
     this.driverService.deleteDriver(driverId)
       .pipe(
-        catchError((error) => {
+        catchError((error: HttpErrorResponse | any) => {
           console.error('Error al eliminar chofer:', error);
-          const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
+          const isNetworkError = error instanceof HttpErrorResponse && error.status === 0;
+          const detailMessage = error?.error?.detail || error?.error?.message || error?.message;
+          const friendlyMessage = isNetworkError
+            ? 'No se pudo contactar al servidor. Verifica tu conexión e intenta nuevamente.'
+            : detailMessage || 'Ocurrió un error inesperado al eliminar el chofer.';
+
           this.alertModalService.show({
             title: 'Error al Eliminar',
-            message: `Hubo un error al eliminar el chofer: ${errorMessage}. Por favor, intenta nuevamente.`,
+            message: `Hubo un error al eliminar el chofer: ${friendlyMessage}`,
             type: 'error',
             buttonText: 'Entendido'
           });
@@ -1854,8 +2173,8 @@ export class DriverDetail implements OnInit {
     if (!date) return 'Sin fecha';
     const d = this.parseLocalDate(date);
     if (!d) return date;
-    return d.toLocaleDateString('es-CL', { 
-      day: '2-digit', 
+    return d.toLocaleDateString('es-CL', {
+      day: '2-digit',
       month: 'short',
       year: 'numeric'
     });
@@ -1865,9 +2184,9 @@ export class DriverDetail implements OnInit {
     if (!date) return '';
     const d = this.parseLocalDate(date);
     if (!d) return '';
-    return d.toLocaleDateString('es-CL', { 
+    return d.toLocaleDateString('es-CL', {
       weekday: 'short',
-      day: '2-digit', 
+      day: '2-digit',
       month: 'short'
     });
   }
@@ -1879,6 +2198,13 @@ export class DriverDetail implements OnInit {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0
     }).format(value).replace('CLP', '$');
+  }
+
+  getNeto(record: DriverDailyRecord): number {
+    if (typeof record.neto === 'number') {
+      return record.neto;
+    }
+    return (record.recaudado || 0) - (record.diesel || 0) - (record.pago_chofer || 0);
   }
 
   formatEstado(estado: string): string {
@@ -1894,6 +2220,12 @@ export class DriverDetail implements OnInit {
   onViewRecordDetail(record: DriverDailyRecord): void {
     // Navegar al detalle del registro
     this.router.navigate(['/registro-diario', record.id]);
+  }
+
+  onViewMachineDetail(machineId: number | undefined, event: Event): void {
+    if (!machineId) return;
+    event.stopPropagation();
+    this.router.navigate(['/maquinas', machineId]);
   }
 
   private parseLocalDate(value: string | null): Date | null {
@@ -1912,18 +2244,21 @@ export class DriverDetail implements OnInit {
     if (!driverId) return;
 
     const filters = this.recordFilters();
-    
+    const currentPage = this.recordsCurrentPage();
+
+    this.recordsLoading.set(true);
+
     this.dailyRecordService.getDailyRecords({
       chofer_id: driverId,
       desde: filters.desde || undefined,
       hasta: filters.hasta || undefined,
       orden: filters.orden === 'mas_antiguo' ? 'mas_antiguo' : 'mas_reciente',
-      pagina: 1,
-      por_pagina: 100 // Obtener todos los registros del chofer
+      pagina: currentPage,
+      por_pagina: this.recordsPerPage
     }).subscribe({
       next: (response) => {
         const records = response.datos || [];
-        
+
         // Mapear DailyRecord a DriverDailyRecord
         const driverRecords: DriverDailyRecord[] = records.map((record: DailyRecord) => {
           // Mapear estado
@@ -1952,17 +2287,27 @@ export class DriverDetail implements OnInit {
             estado,
             recaudado: record.recaudado || 0,
             diesel: record.costo_diesel || 0,
-            tiene_observaciones: record.tiene_observaciones || false
+            pago_chofer: record.pago_chofer || 0,
+            neto: record.neto,
+            tiene_observaciones: record.tiene_observaciones || false,
+            maquina_id: record.maquina_id,
+            maquina_identificador: record.maquina_identificador || `Máquina ${record.maquina_id || 'N/A'}`
           };
         });
 
-        // No ordenar aquí, el orden lo maneja filteredRecords según los filtros
-        // (aunque el backend ya ordena, filteredRecords puede aplicar ordenamiento adicional si es necesario)
         this.dailyRecords.set(driverRecords);
+        this.recordsTotal.set(response.total);
+        this.recordsTotalGlobal.set(response.total_registros_global ?? response.total);
+        this.recordsTotalPages.set(response.total_paginas);
+        this.recordsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar registros diarios:', error);
         this.dailyRecords.set([]);
+        this.recordsTotal.set(0);
+        this.recordsTotalGlobal.set(0);
+        this.recordsTotalPages.set(0);
+        this.recordsLoading.set(false);
       }
     });
   }
@@ -1971,83 +2316,114 @@ export class DriverDetail implements OnInit {
     const driverId = this.driverId();
     if (!driverId) return;
 
-    // Obtener liquidaciones del chofer
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentYear = today.getFullYear();
+    const filters = this.liquidationFilters();
+    const currentPage = this.liquidationsCurrentPage();
 
-    this.accountingService.getLiquidation(currentMonth, currentYear).subscribe({
-      next: (liquidation) => {
-        const liquidations: DriverLiquidation[] = [];
+    this.liquidationsLoading.set(true);
 
-        // Buscar el chofer en la liquidación
-        const driverLiquidation = liquidation.choferes.find(c => c.chofer_id === driverId);
-        
-        if (driverLiquidation) {
-          liquidations.push({
-            id: driverLiquidation.chofer_id,
-            fecha: `${String(currentMonth).padStart(2, '0')}/${currentYear}`,
-            total_ganado: driverLiquidation.total_ganado,
-            minimo_garantizado: driverLiquidation.minimo_garantizado || 0,
-            pago_final: driverLiquidation.pago_final,
-            metodo_pago: driverLiquidation.metodo_pago || 'transferencia',
-            codigo_transferencia: driverLiquidation.codigo_transferencia || null,
-            estado_pago: driverLiquidation.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
-          });
-        }
+    // Convertir fechas a mes/año para el backend
+    // Las liquidaciones son mensuales, así que solo necesitamos mes y año
+    let mes_desde: number | undefined;
+    let anio_desde: number | undefined;
+    let mes_hasta: number | undefined;
+    let anio_hasta: number | undefined;
 
-        // Obtener historial de liquidaciones
-        this.accountingService.getLiquidationHistory().subscribe({
-          next: (history) => {
-            // Filtrar liquidaciones del chofer
-            history.forEach((item) => {
-              // Buscar en semanas primero (nueva estructura), luego en choferes (legacy)
-              let driverItem = null;
-              
-              if (item.semanas && item.semanas.length > 0) {
-                // Buscar en la última semana (donde se aplica el garantizado)
-                const lastWeek = item.semanas.find(w => w.es_ultima_semana) || item.semanas[item.semanas.length - 1];
-                driverItem = lastWeek.choferes.find(c => c.chofer_id === driverId);
-              } else if (item.choferes) {
-                // Fallback a estructura legacy
-                driverItem = item.choferes.find(c => c.chofer_id === driverId);
-              }
-              
-              if (driverItem) {
-                liquidations.push({
-                  id: driverItem.chofer_id,
-                  fecha: `${String(item.mes).padStart(2, '0')}/${item.anio}`,
-                  total_ganado: driverItem.total_ganado,
-                  minimo_garantizado: driverItem.minimo_garantizado || 0,
-                  pago_final: driverItem.pago_final,
-                  metodo_pago: driverItem.metodo_pago || 'transferencia',
-                  codigo_transferencia: driverItem.codigo_transferencia || null,
-                  estado_pago: driverItem.estado_pago === 'pagado' ? 'pagado' : 'pendiente'
-                });
-              }
-            });
+    if (filters.fecha_desde) {
+      // Parsear fecha en formato YYYY-MM-DD de forma segura
+      const parts = filters.fecha_desde.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        // Crear fecha directamente sin problemas de zona horaria
+        mes_desde = month; // Ya viene como 1-12 del formato YYYY-MM-DD
+        anio_desde = year;
+      }
+    }
 
-            // Ordenar por fecha (más reciente primero)
-            liquidations.sort((a, b) => {
-              const [monthA, yearA] = a.fecha.split('/').map(Number);
-              const [monthB, yearB] = b.fecha.split('/').map(Number);
-              if (yearA !== yearB) return yearB - yearA;
-              return monthB - monthA;
-            });
+    if (filters.fecha_hasta) {
+      // Parsear fecha en formato YYYY-MM-DD de forma segura
+      const parts = filters.fecha_hasta.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0], 10);
+        const month = parseInt(parts[1], 10);
+        // Crear fecha directamente sin problemas de zona horaria
+        mes_hasta = month; // Ya viene como 1-12 del formato YYYY-MM-DD
+        anio_hasta = year;
+      }
+    }
 
-            this.liquidations.set(liquidations);
-          },
-          error: (error) => {
-            console.error('Error al cargar historial de liquidaciones:', error);
-            this.liquidations.set(liquidations);
-          }
-        });
+    this.driverService.getDriverLiquidations(driverId, {
+      mes_desde: mes_desde,
+      anio_desde: anio_desde,
+      mes_hasta: mes_hasta,
+      anio_hasta: anio_hasta,
+      estado_pago: filters.estado && filters.estado !== 'all' ? filters.estado : undefined,
+      page: currentPage,
+      per_page: this.liquidationsPerPage
+    }).subscribe({
+      next: (response) => {
+        this.liquidations.set(response.items);
+        this.liquidationsTotal.set(response.total);
+        this.liquidationsTotalGlobal.set(response.total_global);
+        this.liquidationsTotalPages.set(Math.ceil(response.total / response.per_page));
+        this.liquidationsLoading.set(false);
       },
       error: (error) => {
         console.error('Error al cargar liquidaciones:', error);
         this.liquidations.set([]);
+        this.liquidationsTotal.set(0);
+        this.liquidationsTotalGlobal.set(0);
+        this.liquidationsTotalPages.set(0);
+        this.liquidationsLoading.set(false);
       }
     });
+  }
+
+  onLiquidationFilterChange(filters: Record<string, any>): void {
+    // Si el objeto está vacío, limpiar todos los filtros
+    if (Object.keys(filters).length === 0) {
+      this.liquidationFilters.set({});
+      this.liquidationsCurrentPage.set(1);
+      this.loadLiquidations();
+      return;
+    }
+
+    // Procesar filtros: las fechas vienen como strings en formato YYYY-MM-DD
+    const processedFilters: {
+      fecha_desde?: string | null;
+      fecha_hasta?: string | null;
+      estado?: 'all' | 'pagado' | 'pendiente'
+    } = {
+      fecha_desde: filters['fecha_desde'] || null,
+      fecha_hasta: filters['fecha_hasta'] || null,
+      estado: filters['estado'] || 'all'
+    };
+
+    this.liquidationFilters.set(processedFilters);
+    this.liquidationsCurrentPage.set(1);
+    this.loadLiquidations();
+  }
+
+  onLiquidationPageChange(page: number): void {
+    this.liquidationsCurrentPage.set(page);
+    this.loadLiquidations();
+  }
+
+  getLiquidationPages(): number[] {
+    const totalPages = this.liquidationsTotalPages();
+    if (totalPages <= 1) return [];
+    return Array.from({ length: totalPages }, (_, i) => i + 1);
+  }
+
+  getStartLiquidationRecord(): number {
+    const page = this.liquidationsCurrentPage();
+    return (page - 1) * this.liquidationsPerPage + 1;
+  }
+
+  getEndLiquidationRecord(): number {
+    const page = this.liquidationsCurrentPage();
+    const total = this.liquidationsTotal();
+    return Math.min(page * this.liquidationsPerPage, total);
   }
 
   onBack(): void {
@@ -2078,8 +2454,10 @@ export class DriverDetail implements OnInit {
 
   // Métodos auxiliares para conversiones en plantillas
   onPorcentajePagoChange(value: string): void {
-    const numValue = value ? parseFloat(value) : 0;
-    this.editPorcentajePago.set(isNaN(numValue) ? 0 : numValue);
+    const trimmedValue = value?.toString().trim();
+    const numValue = trimmedValue === '' || trimmedValue === undefined ? Number.NaN : parseFloat(trimmedValue);
+
+    this.editPorcentajePago.set(numValue);
   }
 
   onMaquinaIdChange(value: string): void {

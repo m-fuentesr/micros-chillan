@@ -1,5 +1,6 @@
 ﻿from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
+from datetime import date
 
 class PeriodoInfo(BaseModel):
     mes: int
@@ -40,3 +41,25 @@ class DailyProfitabilityData(BaseModel):
     ingresos: int
     egresos: int
     ganancia: int
+
+class MovementCreate(BaseModel):
+    chofer_id: int
+    tipo: str  # "CARGO" o "ABONO"
+    monto: int
+    descripcion: str
+    fecha_movimiento: Optional[date] = None
+
+class MovementResponse(BaseModel):
+    id: int
+    tipo: str
+    monto: int
+    descripcion: str
+    fecha_movimiento: date
+    created_at: str
+
+class LedgerSummary(BaseModel):
+    chofer_id: int
+    nombre_completo: str
+    saldo_actual: int
+    estado_cuenta: str  # "DEUDOR", "AL_DIA", "A_FAVOR"
+    ultimo_movimiento: Optional[str] = None # Fecha en string

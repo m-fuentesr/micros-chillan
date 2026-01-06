@@ -15,6 +15,8 @@ export interface MachineDailyRecord {
   chofer_id: number;
   recaudado: number;
   diesel: number; // Alias de costo_diesel para compatibilidad
+  pago_chofer: number;
+  neto?: number;
   observaciones?: string | null;
   estado: DailyRecordStatus;
 }
@@ -36,6 +38,8 @@ export interface MachineDailyRecordFilters {
   desde?: string | null;
   hasta?: string | null;
   orden?: 'mas_reciente' | 'mas_antiguo';
+  pagina?: number;
+  por_pagina?: number;
 }
 
 export interface MaintenanceRecord {

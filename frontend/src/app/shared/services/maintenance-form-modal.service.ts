@@ -1,4 +1,5 @@
 import { Injectable, signal } from '@angular/core';
+import { getTodayStringInChile } from '../utils/date.utils';
 import { MaintenanceRecord } from '../models/machine-detail.models';
 
 export interface MaintenanceFormData {
@@ -35,7 +36,8 @@ export class MaintenanceFormModalService {
    */
   open(machineId: number, availableItems: string[] = []): Promise<MaintenanceRecord | null> {
     return new Promise((resolve) => {
-      const today = new Date().toISOString().split('T')[0];
+      // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
+      const today = getTodayStringInChile();
       this._machineId.set(machineId);
       this._availableItems.set(availableItems);
       this._formData.set({
@@ -102,7 +104,8 @@ export class MaintenanceFormModalService {
 
   private close(): void {
     this._isVisible.set(false);
-    const today = new Date().toISOString().split('T')[0];
+    // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
+    const today = getTodayStringInChile();
     this._formData.set({
       item: '',
       costo: null,
