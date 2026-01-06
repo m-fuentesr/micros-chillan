@@ -23,9 +23,10 @@ import { ConfirmModalService } from '../../services/confirm-modal.service';
               <h3 class="font-bold text-2xl text-base-content mb-2 leading-tight">
                 {{ modalService.config()!.title }}
               </h3>
-              <p class="text-sm text-base-content/70 leading-relaxed">
-                {{ modalService.config()!.message }}
-              </p>
+              <div 
+                [innerHTML]="modalService.config()!.message"
+                class="text-sm text-base-content/70 leading-relaxed">
+              </div>
             }
           </div>
         </div>
@@ -81,7 +82,7 @@ export class ConfirmModalComponent implements AfterViewInit {
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
+
       if (dialog) {
         if (isVisible) {
           dialog.showModal();

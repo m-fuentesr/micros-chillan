@@ -331,6 +331,7 @@ async def list_drivers(filters):
             "telefono": c["telefono"],
             "correo_electronico": c["usuarios"]["correo"],
             "estado": c["estado"],
+            "porcentaje_pago": c["porcentaje_pago"],
             "maquina_actual": asign_map.get(cid),
             "licencia_estado": {
                 "fecha_vencimiento": fv,

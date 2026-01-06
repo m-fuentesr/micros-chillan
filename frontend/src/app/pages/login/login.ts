@@ -110,7 +110,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
           <div class="text-left mb-8 space-y-2 border-l-4 border-l-primary pl-4 animate-entrance-fade-up delay-mobile-500 delay-200">
             <p class="text-xs uppercase tracking-[0.35em] text-base-content/50 font-bold">Acceso corporativo</p>
             <h1 class="text-2xl lg:text-4xl font-bold text-base-content">Iniciar sesión</h1>
-            <p class="text-base-content/60 text-sm italic">Ingresa tu RUT o correo corporativo.</p>
+            <p class="text-base-content/60 text-sm italic">Ingresa tu correo corporativo.</p>
           </div>
 
           <form

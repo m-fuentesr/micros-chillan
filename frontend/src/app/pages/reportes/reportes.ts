@@ -1596,38 +1596,38 @@ export class Reportes implements OnInit {
   private globalErrorService = inject(GlobalErrorService);
   private cdr = inject(ChangeDetectorRef);
   private router = inject(Router);
-  
+
   // Inicializar con valores del mes y año actual calculados una sola vez
   private static getInitialMonth(): number {
     return new Date().getMonth() + 1;
   }
-  
+
   private static getInitialYear(): number {
     return new Date().getFullYear();
   }
-  
+
   selectedMonth = signal<number>(Reportes.getInitialMonth());
   selectedYear = signal<number>(Reportes.getInitialYear());
   activeTab = signal<string>('profit');
-  
+
   // Estados de carga con umbral de 200ms
   profitLoadingState = this.loadingStateService.createLoadingState();
   revenueLoadingState = this.loadingStateService.createLoadingState();
   driverLoadingState = this.loadingStateService.createLoadingState();
-  
+
   // Estados de carga secuencial coordinado para cada tab (para animaciones suaves)
   profitSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   revenueSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   driverSequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
@@ -1656,7 +1656,7 @@ export class Reportes implements OnInit {
     const currentMonth = now.getMonth() + 1; // 1-12
     const currentYear = now.getFullYear();
     const selectedYearValue = this.selectedYear();
-    
+
     const monthNames = [
       { value: 1, label: 'Enero' },
       { value: 2, label: 'Febrero' },
@@ -1671,7 +1671,7 @@ export class Reportes implements OnInit {
       { value: 11, label: 'Noviembre' },
       { value: 12, label: 'Diciembre' }
     ];
-    
+
     // Si el año seleccionado es el actual, solo mostrar meses hasta el mes actual
     if (selectedYearValue === currentYear) {
       return monthNames.map(month => ({
@@ -1679,7 +1679,7 @@ export class Reportes implements OnInit {
         disabled: month.value > currentMonth
       }));
     }
-    
+
     // Si el año seleccionado es futuro, deshabilitar todos los meses
     if (selectedYearValue > currentYear) {
       return monthNames.map(month => ({
@@ -1687,7 +1687,7 @@ export class Reportes implements OnInit {
         disabled: true
       }));
     }
-    
+
     // Si el año es pasado, todos los meses están disponibles
     return monthNames.map(month => ({
       ...month,
@@ -1712,9 +1712,9 @@ export class Reportes implements OnInit {
 
   // Convertir período seleccionado a mes/año
   private getPeriodFilters = computed(() => {
-    return { 
-      mes: this.selectedMonth(), 
-      anio: this.selectedYear() 
+    return {
+      mes: this.selectedMonth(),
+      anio: this.selectedYear()
     };
   });
 
@@ -1722,12 +1722,12 @@ export class Reportes implements OnInit {
   onMonthChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newMonth = Number(target.value);
-    
+
     // Validar que no sea un mes futuro
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+
     if (this.selectedYear() === currentYear && newMonth > currentMonth) {
       // Si intenta seleccionar un mes futuro, mantener el mes actual
       this.selectedMonth.set(currentMonth);
@@ -1737,7 +1737,7 @@ export class Reportes implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedMonth.set(newMonth);
     // Activar estados de carga inmediatamente
     this.profitLoadingState.setLoading(true);
@@ -1748,10 +1748,10 @@ export class Reportes implements OnInit {
   onYearChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newYear = Number(target.value);
-    
+
     // Validar que no sea un año futuro
     const currentYear = new Date().getFullYear();
-    
+
     if (newYear > currentYear) {
       // Si intenta seleccionar un año futuro, mantener el año actual
       this.selectedYear.set(currentYear);
@@ -1761,9 +1761,9 @@ export class Reportes implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedYear.set(newYear);
-    
+
     // Si el año cambió y ahora es el año actual, ajustar el mes si es necesario
     if (newYear === currentYear) {
       const currentMonth = new Date().getMonth() + 1;
@@ -1771,7 +1771,7 @@ export class Reportes implements OnInit {
         this.selectedMonth.set(currentMonth);
       }
     }
-    
+
     // Activar estados de carga inmediatamente
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
@@ -1780,17 +1780,17 @@ export class Reportes implements OnInit {
 
   // Cargar datos del servicio usando los endpoints del backend (reactivo al cambio de período)
   private periodFilters$ = toObservable(this.getPeriodFilters);
-  
+
   // Flags para rastrear si ya recibimos una respuesta del servidor (no el valor inicial)
   private profitDataReceivedSignal = signal(false);
   private revenueDataReceivedSignal = signal(false);
   private driverDataReceivedSignal = signal(false);
-  
+
   // Computed públicos para acceso desde el template
   profitDataReceived = computed(() => this.profitDataReceivedSignal());
   revenueDataReceived = computed(() => this.revenueDataReceivedSignal());
   driverDataReceived = computed(() => this.driverDataReceivedSignal());
-  
+
   private machineProfitabilityResponse = toSignal(
     this.periodFilters$.pipe(
       switchMap(filters => {
@@ -1878,18 +1878,18 @@ export class Reportes implements OnInit {
     // Observar cambios en mes y año
     const month = this.selectedMonth();
     const year = this.selectedYear();
-    
+
     // Evitar reset en la primera carga (solo cuando realmente cambia el período)
     if (this.isFirstPeriodChange) {
       this.isFirstPeriodChange = false;
       return;
     }
-    
+
     // Resetear flags de datos recibidos cuando cambia el período
     this.profitDataReceivedSignal.set(false);
     this.revenueDataReceivedSignal.set(false);
     this.driverDataReceivedSignal.set(false);
-    
+
     // Cuando cambia el período, reiniciar estados de carga
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
@@ -1906,7 +1906,7 @@ export class Reportes implements OnInit {
     const response = this.machineProfitabilityResponse();
     const isLoading = this.profitLoadingState.isLoading();
     const dataReceived = this.profitDataReceivedSignal();
-    
+
     // Solo procesar si está cargando y ya recibimos datos del servidor (no el valor inicial)
     if (isLoading && dataReceived && Array.isArray(response)) {
       // Pequeño delay para asegurar que la UI se actualice
@@ -1924,7 +1924,7 @@ export class Reportes implements OnInit {
     const response = this.grossIncomeRankingResponse();
     const isLoading = this.revenueLoadingState.isLoading();
     const dataReceived = this.revenueDataReceivedSignal();
-    
+
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {
       setTimeout(() => {
@@ -1941,7 +1941,7 @@ export class Reportes implements OnInit {
     const response = this.driverProfitabilityResponse();
     const isLoading = this.driverLoadingState.isLoading();
     const dataReceived = this.driverDataReceivedSignal();
-    
+
     // Solo procesar si está cargando y ya recibimos datos del servidor
     if (isLoading && dataReceived && Array.isArray(response)) {
       setTimeout(() => {
@@ -1958,7 +1958,7 @@ export class Reportes implements OnInit {
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+
     // Establecer valores si no coinciden con los actuales
     if (this.selectedMonth() !== currentMonth) {
       this.selectedMonth.set(currentMonth);
@@ -1966,15 +1966,15 @@ export class Reportes implements OnInit {
     if (this.selectedYear() !== currentYear) {
       this.selectedYear.set(currentYear);
     }
-    
+
     // Forzar detección de cambios para asegurar que los selectores se actualicen
     this.cdr.detectChanges();
-    
+
     // Iniciar estados de carga
     this.profitLoadingState.setLoading(true);
     this.revenueLoadingState.setLoading(true);
     this.driverLoadingState.setLoading(true);
-    
+
     // Timeout de seguridad: si después de 5 segundos no hay respuesta, marcar como cargado
     setTimeout(() => {
       if (this.profitLoadingState.isLoading()) {
@@ -1993,7 +1993,7 @@ export class Reportes implements OnInit {
         this.driverSequentialState.setContentReady(false);
       }
     }, 5000);
-    
+
     // Los datos se cargan automáticamente con toSignal y switchMap
     // Se recargan automáticamente cuando cambia el mes o año
     // Los effects detectarán cuando estén listos y llamarán a setDataLoaded()
@@ -2031,12 +2031,12 @@ export class Reportes implements OnInit {
         // Convertir a string si es número, o usar directamente si es string
         numeroInterno = String(item.numero_interno).trim();
       }
-      
+
       // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
-      const machineLabel = numeroInterno 
-        ? `Máquina ${numeroInterno}` 
+      const machineLabel = numeroInterno
+        ? `Máquina ${numeroInterno}`
         : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
-      
+
       return {
         rank: index + 1,
         // Para gráfico: usar solo "Máquina (numero_interno)" o identificador completo
@@ -2128,12 +2128,12 @@ export class Reportes implements OnInit {
         // Convertir a string si es número, o usar directamente si es string
         numeroInterno = String(item.numero_interno).trim();
       }
-      
+
       // SIEMPRE usar numero_interno cuando esté disponible, nunca maquina_id
-      const machineLabel = numeroInterno 
-        ? `Máquina ${numeroInterno}` 
+      const machineLabel = numeroInterno
+        ? `Máquina ${numeroInterno}`
         : (item.patente ? `Máquina (${item.patente})` : item.identificador || `Máquina ${String(item.maquina_id).padStart(2, '0')}`);
-      
+
       return {
         machine: machineLabel,
         machineLabel: machineLabel,
@@ -2151,7 +2151,7 @@ export class Reportes implements OnInit {
     const term = this.revenueSearch().trim().toLowerCase();
     const data = [...this.revenueRankingData()];
     if (!term) return data;
-    return data.filter(item => 
+    return data.filter(item =>
       item.machineLabel.toLowerCase().includes(term) ||
       (item.patente && item.patente.toLowerCase().includes(term))
     );
@@ -2252,9 +2252,12 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -2411,9 +2414,12 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -2539,9 +2545,12 @@ export class Reportes implements OnInit {
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
           maxTicksLimit: 6,
-          callback: function(value) {
+          callback: function (value) {
             const num = value as number;
-            return '$' + (num / 1000000).toFixed(0) + 'M';
+            const absNum = Math.abs(num);
+            if (absNum >= 1000000) return '$' + (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+            if (absNum >= 1000) return '$' + (num / 1000).toFixed(0) + 'K';
+            return '$' + num;
           },
           font: {
             size: 11
@@ -2627,7 +2636,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return '$' + (value as number).toLocaleString('es-CL');
           },
           font: {
@@ -2722,7 +2731,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return value + ' Lts';
           },
           font: {
@@ -2862,7 +2871,7 @@ export class Reportes implements OnInit {
         },
         ticks: {
           color: 'rgba(0, 0, 0, 0.7)',
-          callback: function(value) {
+          callback: function (value) {
             return '$' + (value as number).toLocaleString('es-CL');
           },
           font: {

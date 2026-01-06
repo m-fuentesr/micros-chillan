@@ -398,16 +398,17 @@ export class CentroAyuda implements OnInit, OnDestroy {
       id: 'contabilidad',
       title: 'Finanzas y Nómina',
       icon: 'contabilidad',
-      description: 'Todo lo relacionado con ingresos, gastos y liquidaciones.',
-      context: 'Organizado en pestañas: Resumen general, Semanal, Liquidación de choferes e Historial.',
+      description: 'Control financiero integral: desde el registro diario hasta la liquidación final.',
+      context: 'Este módulo es el corazón financiero. Centraliza ingresos, valida gastos y automatiza el cálculo de nómina compleja.',
       highlights: [
-        { title: 'Tabs intuitivas', body: 'Cada pestaña tiene un propósito claro y puedes alternar sin perder los filtros seleccionados.' },
-        { title: 'Botón Confirmar', body: 'Cuando un chofer tiene pago pendiente verás el botón "Confirmar" en modo outline (ligero).' }
+        { title: 'Ciclo de Liquidación Semanal', body: 'El sistema consolida los registros diarios automáticamente. Tu rol cambia de "calcular" a "validar y confirmar", reduciendo errores humanos en los pagos.' },
+        { title: 'Garantía de Sueldo Mínimo', body: 'Al final del mes, el sistema audita automáticamente si un conductor cumplió el sueldo base. Si no, calcula y sugiere el bono de ajuste necesario (Top-up) para cumplir la normativa.' },
+        { title: 'Cierre Contable Mensual', body: 'Al finalizar el período, utiliza la función de "Cierre Administrativo" para bloquear ediciones y generar los reportes históricos inmutables.' }
       ],
       list: [
-        'Resumen general: revisa los KPIs y el gráfico de tendencia antes de tomar decisiones.',
-        'Liquidación: edita montos faltantes y confirma pagos.',
-        'Historial de cierres: cada período cerrado aparece como “recibo” con la información clave y acciones de exportación.'
+        '<strong>Flujo de Trabajo:</strong> Revisa el "Resumen Semanal" cada lunes. Si los números cuadran, procede a la pestaña "Liquidación" para emitir pagos.',
+        '<strong>Confirmación de Pagos:</strong> El estado "Confirmado" es un paso intermedio vital. Úsalo cuando ya emitiste la transferencia bancaria pero el chofer aún no acusa recibo.',
+        'Las cuentas corrientes (Ledger) permiten gestionar préstamos y anticipos que se descuentan o abonan fuera del flujo operativo normal.'
       ]
     },
     {
@@ -428,17 +429,19 @@ export class CentroAyuda implements OnInit, OnDestroy {
     },
     {
       id: 'configuracion',
-      title: 'Configuración',
+      title: 'Configuracion',
       icon: 'configuracion',
-      description: 'Personaliza la plataforma según tu empresa.',
+      description: 'Panel de control para parámetros globales del sistema.',
+      context: 'Los cambios realizados aquí son críticos y afectan a toda la operación. Se recomienda cautela y verificación antes de guardar.',
       highlights: [
-        { title: 'Perfil de la compañía', body: 'Actualiza nombre, logo y datos de contacto que aparecerán en el encabezado y reportes.' },
-        { title: 'Alertas y notificaciones', body: 'Enciende o apaga recordatorios de documentos, mantenimientos o avisos contables.' }
+        { title: 'Actualización Inteligente de Porcentajes', body: 'Al modificar la comisión global, el sistema detecta automáticamente qué conductores tienen tasas personalizadas y las protege. Solo se actualizarán los conductores "Adheridos" (sincronizados con el valor anterior).' },
+        { title: 'Gestión de Nivel de Servicio', body: 'Configura los umbrales de alerta para documentación y licencias. Ajustar estos días permite ser más proactivo ante vencimientos.' },
+        { title: 'Reintegración de Personal', body: 'Utiliza el módulo de "Choferes Eliminados" para recuperar historial y evitar la duplicidad de registros al recontratar.' }
       ],
       list: [
-        'Solo los administradores pueden modificar esta sección.',
-        'Los cambios se aplican inmediatamente y afectan a todos los usuarios.',
-        'Revisa esta sección al menos una vez al trimestre para asegurarte de que los datos estén actualizados.'
+        '<strong>Validación de Impacto:</strong> Antes de aplicar un cambio masivo en porcentajes, revisa la vista detallada para confirmar exactamente a quiénes afectará.',
+        '<strong>Sueldo Mínimo Garantizado:</strong> Este valor impacta retroactivamente en liquidaciones abiertas. Úsalo para cumplir con normativas laborales.',
+        'Solo perfiles Administrador tienen acceso a este módulo para garantizar la integridad de los datos financieros.'
       ]
     }
   ]);

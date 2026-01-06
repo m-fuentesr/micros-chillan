@@ -140,14 +140,87 @@ import { firstValueFrom } from 'rxjs';
                   </div>
                 </div>
 
-                <!-- Alert Badge -->
-                <div class="alert bg-amber-50/60 border-amber-200/50 text-amber-900/70 shadow-sm rounded-2xl py-3">
-                  <ui-icon name="AlertTriangle" size="sm" class="shrink-0 text-amber-600/70" />
-                  <div class="text-xs">
-                    <p class="font-semibold text-amber-900/80">Cambio masivo automático</p>
-                    <p class="opacity-80 text-amber-800/70">Actualiza el porcentaje de <strong>todos los choferes</strong> al guardar</p>
+                <!-- Smart Update Info Badge -->
+                <div class="flex items-center justify-between gap-4">
+                  <div class="flex-1">
+                    @if (loadingDrivers()) {
+                       <div class="flex items-center gap-2 text-xs text-base-content/50">
+                          <span class="loading loading-spinner loading-xs"></span>
+                          Calculando impacto...
+                       </div>
+                    } @else {
+                        <div class="flex items-center gap-2 text-xs">
+                          <span class="badge badge-sm badge-success/10 text-success border-success/20 font-bold">
+                             {{ smartUpdateStats().linked.length }}
+                          </span>
+                          <span class="text-base-content/60">Adheridos al global</span>
+                          
+                          <span class="w-px h-3 bg-base-content/20 mx-1"></span>
+
+                          <span class="badge badge-sm badge-ghost font-bold text-base-content/60">
+                             {{ smartUpdateStats().custom.length }}
+                          </span>
+                          <span class="text-base-content/60">Personalizados</span>
+                        </div>
+                    }
                   </div>
+                  
+                  <button 
+                    class="btn btn-sm btn-ghost gap-2 text-primary"
+                    (click)="expandedPercentageCard.set(!expandedPercentageCard())">
+                    {{ expandedPercentageCard() ? 'Ocultar Detalle' : 'Ver Detalle' }}
+                    <ui-icon [name]="expandedPercentageCard() ? 'ChevronUp' : 'ChevronDown'" size="xs" />
+                  </button>
                 </div>
+
+                <!-- Expanded View: Lists -->
+                @if (expandedPercentageCard()) {
+                  <div class="mt-4 pt-4 border-t border-base-200 animate-fade-in space-y-4">
+                    <p class="text-sm text-base-content/70">
+                      Al cambiar el porcentaje global, <strong>solo se actualizarán los choferes adheridos</strong>.
+                      Los choferes con porcentajes personalizados mantendrán sus valores actuales.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Adheridos Column -->
+                        <div class="bg-success/5 rounded-xl p-4 border border-success/10">
+                            <h4 class="text-xs font-bold text-success uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <ui-icon name="Link" size="xs"/> Adheridos ({{ smartUpdateStats().linked.length }})
+                            </h4>
+                            <div class="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                                @for (driver of smartUpdateStats().linked; track driver.id) {
+                                  <div class="text-xs text-base-content/80 flex justify-between">
+                                    <span class="truncate">{{ driver.nombre_completo }}</span>
+                                    <!-- Mostrar el porcentaje PROYECTADO (el del slider) para visualizar el cambio -->
+                                    <span class="font-mono font-bold text-primary">{{ formData()!.porcentaje_display }}%</span>
+                                  </div>
+                                }
+                                @if (smartUpdateStats().linked.length === 0) {
+                                  <div class="text-xs text-base-content/40 italic">Ningún chofer adherido</div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Custom Column -->
+                        <div class="bg-base-200/50 rounded-xl p-4 border border-base-300/50">
+                            <h4 class="text-xs font-bold text-base-content/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                <ui-icon name="Lock" size="xs"/> Personalizados ({{ smartUpdateStats().custom.length }})
+                            </h4>
+                            <div class="max-h-40 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                                @for (driver of smartUpdateStats().custom; track driver.id) {
+                                  <div class="text-xs text-base-content/80 flex justify-between">
+                                    <span class="truncate">{{ driver.nombre_completo }}</span>
+                                    <span class="font-mono font-bold text-warning/80">{{ Math.round(driver.porcentaje_pago * 100) }}%</span>
+                                  </div>
+                                }
+                                @if (smartUpdateStats().custom.length === 0) {
+                                  <div class="text-xs text-base-content/40 italic">Ningún chofer personalizado</div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                  </div>
+                }
               </div>
             </div>
 
@@ -605,6 +678,48 @@ export class Configuracion implements OnInit {
   // Valores originales para detectar cambios
   private originalData: GeneralSettings | null = null;
 
+  // Estado de choferes para Smart Update
+  readonly driversList = signal<any[]>([]);
+  readonly loadingDrivers = signal(false);
+  readonly expandedPercentageCard = signal(false);
+
+  // Computados para Smart Update
+  readonly smartUpdateStats = computed(() => {
+    const drivers = this.driversList();
+    const originalSettings = this.originalData;
+    const currentForm = this.formData();
+
+    if (!drivers.length || !originalSettings || !currentForm) {
+      return { linked: [], custom: [], willUpdateCount: 0, wontUpdateCount: 0 };
+    }
+
+    // Porcentaje original en base 100 para comparar con lo que tienen los choferes (que suele guardarse en decimal 0-1)
+    // OJO: El backend guarda decimal (0.1) pero a veces el frontend recibe 0.1.
+    // En `DriverService` mapeamos `porcentaje_pago` directo del backend.
+
+    // Convertir el default original a decimal (ej 0.1)
+    const originalDefaultDecimal = originalSettings.porcentaje_default;
+
+    const linked: any[] = [];
+    const custom: any[] = [];
+
+    drivers.forEach(d => {
+      // Comparar con cierta tolerancia por flotantes
+      if (Math.abs(d.porcentaje_pago - (originalDefaultDecimal || 0)) < 0.0001) {
+        linked.push(d);
+      } else {
+        custom.push(d);
+      }
+    });
+
+    return {
+      linked,
+      custom,
+      willUpdateCount: linked.length,
+      wontUpdateCount: custom.length
+    };
+  });
+
   // Estado de choferes eliminados
   readonly deletedDrivers = signal<DriverDeletedListItem[]>([]);
   readonly loadingDeletedDrivers = signal(false);
@@ -612,7 +727,7 @@ export class Configuracion implements OnInit {
   readonly availableMachines = signal<MachineSelect[]>([]);
   readonly loadingMachines = signal(false);
   readonly isReintegrating = signal(false);
-  
+
   readonly MAX_SUELDO_MINIMO = 9_999_999;
 
   readonly reintegrateForm = signal<DriverReintegrateRequest>({
@@ -625,15 +740,34 @@ export class Configuracion implements OnInit {
   }>({});
 
   async ngOnInit() {
-    await this.loadSettings();
-    await this.loadDeletedDrivers();
+    await Promise.all([
+      this.loadSettings(),
+      this.loadDrivers(), // Cargar choferes para smart update
+      this.loadDeletedDrivers()
+    ]);
+  }
+
+  async loadDrivers() {
+    this.loadingDrivers.set(true);
+    try {
+      // Pedimos una página grande para tener todos los choferes y calcular bien el impacto.
+      // Lo ideal sería un endpoint solo de IDs y porcentajes, pero esto funciona.
+      const response = await firstValueFrom(
+        this.driverService.getDrivers({ page: 1, per_page: 200, estado: 'todos' })
+      );
+      this.driversList.set(response.datos);
+    } catch (error) {
+      console.error('Error cargando choferes:', error);
+    } finally {
+      this.loadingDrivers.set(false);
+    }
   }
 
   async loadSettings() {
     try {
       const settings = await this.settingsService.getSettings();
       this.originalData = { ...settings };
-      
+
       // Convertir formato decimal a display (0-1 -> 0-100)
       // Usar Math.round para asegurar que siempre sea un entero
       const porcentajeDisplay = this.settingsService.toPercentageDisplay(settings.porcentaje_default);
@@ -709,12 +843,18 @@ export class Configuracion implements OnInit {
     ) !== form.porcentaje_display;
 
     if (percentageChanged) {
+      const stats = this.smartUpdateStats();
       const confirmed = await this.confirmModalService.open({
-        title: '¿Actualizar porcentaje de todos los choferes?',
-        message: `Esta acción cambiará el porcentaje de pago de TODOS los choferes activos e inactivos al ${form.porcentaje_display}%. ¿Deseas continuar?`,
-        confirmText: 'Sí, actualizar',
+        title: 'Actualización Inteligente de Porcentajes',
+        message: `Estás cambiando el porcentaje global al <strong>${form.porcentaje_display}%</strong>.<br><br>
+        <ul class="text-left list-disc list-inside space-y-1">
+           <li>✅ <strong>${stats.willUpdateCount} ${stats.willUpdateCount === 1 ? 'chofer' : 'choferes'}</strong> (adheridos) serán actualizados.</li>
+           <li>🔒 <strong>${stats.wontUpdateCount} ${stats.wontUpdateCount === 1 ? 'chofer' : 'choferes'}</strong> (con tasa personalizada) <strong>NO</strong> serán modificados.</li>
+        </ul>
+        <br>¿Deseas aplicar estos cambios?`,
+        confirmText: 'Sí, aplicar cambios',
         cancelText: 'Cancelar',
-        confirmButtonClass: 'btn-warning'
+        confirmButtonClass: 'btn-primary'
       });
 
       if (!confirmed) return;
@@ -724,19 +864,19 @@ export class Configuracion implements OnInit {
     try {
       // Construir objeto de actualización
       const updates: UpdateSettingsRequest = {};
-      
+
       if (percentageChanged) {
         updates.porcentaje_default = this.settingsService.toPercentageDecimal(form.porcentaje_display);
       }
-      
+
       if (this.originalData!.sueldo_minimo !== form.sueldo_minimo) {
         updates.sueldo_minimo = form.sueldo_minimo;
       }
-      
+
       if (this.originalData!.dias_alerta_licencia_por_vencer !== form.dias_alerta_licencia_por_vencer) {
         updates.dias_alerta_licencia_por_vencer = form.dias_alerta_licencia_por_vencer;
       }
-      
+
       if (this.originalData!.dias_alerta_documento_por_vencer !== form.dias_alerta_documento_por_vencer) {
         updates.dias_alerta_documento_por_vencer = form.dias_alerta_documento_por_vencer;
       }
@@ -758,9 +898,27 @@ export class Configuracion implements OnInit {
         dias_alerta_documento_por_vencer: currentFormData.dias_alerta_documento_por_vencer
       });
 
+      // Optimistic Update: Actualizar localmente los choferes adheridos
+      // para evitar el "flicker" donde se van a "Personalizados" porque
+      // originalData cambió pero los choferes todavía tienen el porcentaje viejo.
+      if (percentageChanged) {
+        const newDecimal = this.settingsService.toPercentageDecimal(currentFormData.porcentaje_display);
+        const oldDecimal = this.originalData!.porcentaje_default;
+
+        this.driversList.update(drivers =>
+          drivers.map(d => {
+            // Si el chofer coincidía con el viejo default, ahora tiene el nuevo
+            if (Math.abs(d.porcentaje_pago - oldDecimal) < 0.0001) {
+              return { ...d, porcentaje_pago: newDecimal };
+            }
+            return d;
+          })
+        );
+      }
+
       // Actualizar originalData con los nuevos valores guardados
       this.originalData = {
-        porcentaje_default: percentageChanged 
+        porcentaje_default: percentageChanged
           ? this.settingsService.toPercentageDecimal(currentFormData.porcentaje_display)
           : this.originalData!.porcentaje_default,
         sueldo_minimo: currentFormData.sueldo_minimo,
@@ -787,6 +945,11 @@ export class Configuracion implements OnInit {
         successMessage += '\n\n' + details.join('\n');
       }
 
+      // Recargar choferes si cambió el porcentaje para actualizar las listas de "Adheridos"
+      if (percentageChanged) {
+        await this.loadDrivers();
+      }
+
       this.alertModalService.show({
         title: 'Configuración guardada',
         message: successMessage,
@@ -796,9 +959,9 @@ export class Configuracion implements OnInit {
 
     } catch (error: any) {
       console.error('Error guardando configuración:', error);
-      
+
       const errorMessage = error?.error?.detail || error?.message || 'Error desconocido';
-      
+
       this.alertModalService.show({
         title: 'Error al guardar',
         message: `No se pudo guardar la configuración: ${errorMessage}`,
@@ -812,7 +975,7 @@ export class Configuracion implements OnInit {
 
   onReset() {
     if (!this.originalData) return;
-    
+
     // Restaurar valores originales
     this.formData.set({
       porcentaje_display: this.settingsService.toPercentageDisplay(this.originalData.porcentaje_default),
@@ -872,7 +1035,7 @@ export class Configuracion implements OnInit {
   onDriverSelect(event: Event) {
     const select = event.target as HTMLSelectElement;
     const driverId = select.value ? parseInt(select.value, 10) : null;
-    
+
     if (driverId) {
       this.selectedDriverId.set(driverId);
       this.reintegrateForm.set({
@@ -976,9 +1139,9 @@ export class Configuracion implements OnInit {
 
     } catch (error: any) {
       console.error('Error reintegrando chofer:', error);
-      
+
       const errorMessage = error?.error?.detail || error?.message || 'Error desconocido al reintegrar el chofer';
-      
+
       this.alertModalService.show({
         title: 'Error al reintegrar',
         message: errorMessage,
