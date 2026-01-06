@@ -37,7 +37,9 @@ import os
 # CORS para permitir llamadas desde Angular
 origins = [
     "http://localhost:4200",
-    "https://gestordeflotas.autoescuelachillan.cl"
+    "https://gestordeflotas.autoescuelachillan.cl",
+    "capacitor://localhost",
+    "http://localhost",
 ]
 
 frontend_url = os.getenv("FRONTEND_URL")
