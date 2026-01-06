@@ -246,7 +246,7 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
     maximumFractionDigits: 0
   });
 
-  ngAfterViewInit(): void {
+  constructor() {
     effect(() => {
       const dialog = this.dialogRef?.nativeElement;
       if (!dialog) return;
@@ -258,6 +258,13 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
         this.showCustomItem.set(false);
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Verificación manual inicial por si el effect corrió antes de que la vista estuviera lista
+    if (this.modalService.isVisible() && this.dialogRef?.nativeElement) {
+      this.dialogRef.nativeElement.showModal();
+    }
   }
 
   formattedCosto(): string {

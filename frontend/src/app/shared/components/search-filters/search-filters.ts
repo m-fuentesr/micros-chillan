@@ -1,6 +1,7 @@
-import { Component, ChangeDetectionStrategy, input, output, computed, signal, OnDestroy, ChangeDetectorRef, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, computed, signal, OnDestroy, ChangeDetectorRef, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { DatePicker } from '../date-picker/date-picker';
 import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
@@ -52,7 +53,7 @@ export interface FilterField {
                 <label class="label py-1.5">
                   <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
                     @if (field.icon) {
-                      <span [innerHTML]="field.icon" class="w-3.5 h-3.5 text-primary"></span>
+                      <span [innerHTML]="getSafeHtml(field.icon!)" class="w-3.5 h-3.5 text-primary"></span>
                     }
                     {{ field.label }}
                   </span>
@@ -86,7 +87,7 @@ export interface FilterField {
                 <label class="label py-1.5">
                   <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
                     @if (field.icon) {
-                      <span [innerHTML]="field.icon" class="w-3.5 h-3.5 text-primary"></span>
+                      <span [innerHTML]="getSafeHtml(field.icon!)" class="w-3.5 h-3.5 text-primary"></span>
                     }
                     {{ field.label }}
                   </span>
@@ -105,7 +106,7 @@ export interface FilterField {
                 <label class="label py-1.5">
                   <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
                     @if (field.icon) {
-                      <span [innerHTML]="field.icon" class="w-3.5 h-3.5 text-primary"></span>
+                      <span [innerHTML]="getSafeHtml(field.icon!)" class="w-3.5 h-3.5 text-primary"></span>
                     }
                     {{ field.label }}
                   </span>
@@ -124,7 +125,7 @@ export interface FilterField {
                 <label class="label py-1.5">
                   <span class="label-text text-xs font-semibold text-base-content/60 uppercase tracking-wider flex items-center gap-2">
                     @if (field.icon) {
-                      <span [innerHTML]="field.icon" class="w-3.5 h-3.5 text-primary"></span>
+                      <span [innerHTML]="getSafeHtml(field.icon!)" class="w-3.5 h-3.5 text-primary"></span>
                     }
                     {{ field.label }}
                   </span>
@@ -169,6 +170,8 @@ export class SearchFilters implements OnDestroy {
 
   filterChange = output<Record<string, any>>();
 
+  sanitizer = inject(DomSanitizer);
+
   constructor() {
     // Forzar detección de cambios cuando cambian los filtros
     effect(() => {
@@ -180,6 +183,10 @@ export class SearchFilters implements OnDestroy {
 
   ngOnDestroy(): void {
     // Cleanup si es necesario
+  }
+
+  getSafeHtml(html: string): SafeHtml {
+    return this.sanitizer.bypassSecurityTrustHtml(html);
   }
 
   gridClasses = computed(() => {
@@ -209,7 +216,7 @@ export class SearchFilters implements OnDestroy {
     if (value === null || value === undefined || value === '') {
       return null;
     }
-    
+
     // Buscar la opción que coincida con el valor
     if (options) {
       const matchingOption = options.find(opt => {
@@ -218,12 +225,12 @@ export class SearchFilters implements OnDestroy {
         const filterValue = String(value);
         return optValue === filterValue;
       });
-      
+
       if (matchingOption) {
         return matchingOption.value;
       }
     }
-    
+
     // Si no se encuentra, retornar el valor original
     return value;
   }

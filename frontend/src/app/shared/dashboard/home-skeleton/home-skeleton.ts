@@ -475,25 +475,7 @@ import { CommonModule } from '@angular/common';
       }
     }
 
-    /* 
-     * Dark mode: Contraste adaptativo
-     * Reduce opacidad para evitar "flashbang" blanco en modo oscuro
-     */
-    @media (prefers-color-scheme: dark) {
-      .skeleton-shimmer {
-        /* En modo oscuro, usar colores más claros y visibles */
-        background: linear-gradient(
-          90deg,
-          #4a4a4a 0%,
-          #5a5a5a 25%,
-          #6a6a6a 50%,
-          #5a5a5a 75%,
-          #4a4a4a 100%
-        );
-      }
 
-      /* Efecto shimmer deshabilitado en modo oscuro */
-    }
 
     /* 
      * Barras del gráfico skeleton
@@ -563,11 +545,11 @@ export class HomeSkeleton {
     const outerHeights = [92, 78, 98, 65, 88, 72, 85, 95];
     // La ganancia neta siempre es menor que el ingreso bruto
     const innerHeights = [68, 58, 75, 48, 65, 54, 62, 72];
-    
-    const percentage = type === 'outer' 
-      ? (outerHeights[index - 1] || 85) 
+
+    const percentage = type === 'outer'
+      ? (outerHeights[index - 1] || 85)
       : (innerHeights[index - 1] || 60);
-    
+
     const height = Math.round((this.BASE_HEIGHT * percentage) / 100);
     // Asegurar altura mínima de 40px para que siempre sea visible
     return Math.max(height, type === 'outer' ? 90 : 50);

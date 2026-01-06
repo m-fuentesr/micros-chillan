@@ -192,10 +192,16 @@ import { getDatePartsInChile } from '../../utils/date.utils';
         
         <div class="bg-base-50 px-4 sm:px-6 py-3 sm:py-4 border-b border-base-200 flex justify-between items-center">
           <div class="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-base-content/50">Comprobante de Nómina - {{ liquidation.periodo }}</div>
-          <button class="btn btn-xs btn-ghost gap-1 text-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
+          <button class="btn btn-xs btn-ghost gap-1 text-primary" 
+                  (click)="downloadPdf(liquidation)" 
+                  [disabled]="isDownloadingPDF(liquidation.id)">
+            @if (isDownloadingPDF(liquidation.id)) {
+              <span class="loading loading-spinner loading-xs"></span>
+            } @else {
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+            }
             PDF
           </button>
         </div>
@@ -337,9 +343,6 @@ import { getDatePartsInChile } from '../../utils/date.utils';
           </div>
         </div>
         
-        <div class="bg-base-50/50 p-3 text-center border-t border-base-100 text-[10px] text-base-content/40 uppercase tracking-widest">
-          Cerrado por: {{ liquidation.cerrado_por }}
-        </div>
       </div>
     </ng-template>
   `,
@@ -419,26 +422,26 @@ export class LiquidationHistory {
   filters = input<{ fecha_desde?: string | null; fecha_hasta?: string | null }>({});
   filterChange = output<Record<string, any>>();
   private accountingService = inject(AccountingService);
-  
+
   filterFields = computed<FilterField[]>(() => [
     { key: 'fecha_desde', label: 'Mes Desde', type: 'date', monthOnly: true },
     { key: 'fecha_hasta', label: 'Mes Hasta', type: 'date', monthOnly: true }
   ]);
-  
+
   onFilterChange(filters: Record<string, any>): void {
     this.filterChange.emit(filters);
   }
-  
+
   /**
    * Cache de detalles cargados para evitar recargas innecesarias
    */
   private loadedDetails = signal<Map<number, ClosedLiquidation>>(new Map());
-  
+
   /**
    * Estados de carga por período
    */
   private loadingDetails = signal<Set<number>>(new Set());
-  
+
   /**
    * Permite múltiples períodos abiertos en paralelo para comparar cierres.
    */
@@ -455,7 +458,7 @@ export class LiquidationHistory {
   getLiquidationWithDetails(id: number): ClosedLiquidation | null {
     const loaded = this.loadedDetails().get(id);
     if (loaded) return loaded;
-    
+
     // Buscar en la lista original
     return this.liquidations().find(l => l.id === id) || null;
   }
@@ -569,11 +572,11 @@ export class LiquidationHistory {
       // Usar utilidades de fecha para manejar correctamente la zona horaria de Chile
       const startParts = getDatePartsInChile(start);
       const endParts = getDatePartsInChile(end);
-      
+
       const monthNames = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
       const startMonth = monthNames[startParts.month - 1];
       const endMonth = monthNames[endParts.month - 1];
-      
+
       const startStr = `${startParts.day}-${startMonth}`;
       const endStr = `${endParts.day} ${endMonth} ${endParts.year}`;
       return `${startStr} - ${endStr}`;
@@ -631,6 +634,52 @@ export class LiquidationHistory {
     const choferes = this.getChoferes(liquidation);
     if (choferes.length === 0) return 0;
     return liquidation.total_pagado / choferes.length;
+  }
+
+  /**
+   * Estado de descarga de PDFs
+   */
+  downloadingPdfIds = signal<Set<number>>(new Set());
+
+  isDownloadingPDF(id: number): boolean {
+    return this.downloadingPdfIds().has(id);
+  }
+
+  downloadPdf(liquidation: ClosedLiquidation): void {
+    if (this.isDownloadingPDF(liquidation.id)) return;
+
+    this.downloadingPdfIds.update(set => {
+      const newSet = new Set(set);
+      newSet.add(liquidation.id);
+      return newSet;
+    });
+
+    this.accountingService.exportSettlementHistory(liquidation.mes, liquidation.anio)
+      .subscribe({
+        next: (blob) => {
+          const url = window.URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          // Nombre del archivo: Comprobante_Nomina_Mes_Anio.pdf
+          link.download = `Nomina_${liquidation.mes}_${liquidation.anio}.pdf`;
+          link.click();
+          window.URL.revokeObjectURL(url);
+
+          this.downloadingPdfIds.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(liquidation.id);
+            return newSet;
+          });
+        },
+        error: (error) => {
+          console.error('Error descargando PDF:', error);
+          this.downloadingPdfIds.update(set => {
+            const newSet = new Set(set);
+            newSet.delete(liquidation.id);
+            return newSet;
+          });
+        }
+      });
   }
 
   formatCurrency(value: number): string {

@@ -59,7 +59,7 @@ import { filter, map, startWith } from 'rxjs';
             <!-- Error global dentro del main - sidebar sigue visible -->
             <app-global-error-display></app-global-error-display>
           } @else {
-            <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
+            <div class="px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
               <app-route-transition-outlet></app-route-transition-outlet>
             </div>
           }
@@ -125,7 +125,7 @@ import { filter, map, startWith } from 'rxjs';
       /* Asegurar que no haya margen o padding adicional en el contenido */
       .mobile-pt-adjust > div {
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        /* padding-top eliminado para permitir espaciado */
       }
       /* Eliminar cualquier espacio adicional del route-transition-outlet */
       .mobile-pt-adjust app-route-transition-outlet,

@@ -222,12 +222,11 @@ export class PaymentConfirmModalComponent implements AfterViewInit {
   modalService = inject(PaymentConfirmModalService);
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
-  ngAfterViewInit(): void {
-    // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
+  constructor() {
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
+
       if (dialog) {
         if (isVisible) {
           dialog.showModal();
@@ -236,6 +235,12 @@ export class PaymentConfirmModalComponent implements AfterViewInit {
         }
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    if (this.modalService.isVisible() && this.dialogRef?.nativeElement) {
+      this.dialogRef.nativeElement.showModal();
+    }
   }
 
   updateField(field: keyof PaymentConfirmFormData, value: any): void {
@@ -269,8 +274,8 @@ export class PaymentConfirmModalComponent implements AfterViewInit {
   }
 
   getMonthName(mes: number): string {
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return meses[mes - 1] || '';
   }
 }

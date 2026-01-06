@@ -772,7 +772,7 @@ import { CommonModule } from '@angular/common';
             <!-- Body skeleton -->
             <div class="card-body">
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                @for (i of rows(); track i) {
+                @for (i of rows(); track $index) {
                   <div class="card bg-base-100 shadow-sm border border-base-200">
                     <div class="card-body p-5">
                       <div class="h-6 w-3/4 skeleton-shimmer rounded mb-4"></div>
@@ -904,12 +904,12 @@ export class LoadingSkeleton implements OnInit {
    * @default false
    */
   isExiting = input<boolean>(false);
-  
+
   /**
    * Indica si el skeleton ya ha entrado (para controlar la animación de entrada)
    */
   private hasEntered = signal<boolean>(false);
-  
+
   /**
    * Determina si debe mostrarse la animación de entrada
    * NO puede escribir a signals, solo leer
@@ -938,7 +938,7 @@ export class LoadingSkeleton implements OnInit {
   ngOnInit(): void {
     // Resetear hasEntered cuando el componente se inicializa para asegurar que la animación se muestre
     this.hasEntered.set(false);
-    
+
     // Usar un pequeño timeout para marcar que ha entrado después de que se renderice
     // Esto permite que la animación de entrada se muestre una vez
     setTimeout(() => {

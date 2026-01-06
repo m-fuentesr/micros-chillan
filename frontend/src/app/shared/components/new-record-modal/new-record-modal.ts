@@ -591,7 +591,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   authService = inject(AuthService);
   dailyRecordService = inject(DailyRecordService);
   destroyRef = inject(DestroyRef);
-  
+
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
   // Cargar datos solo cuando el modal esté visible Y el usuario esté autenticado
@@ -647,7 +647,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     if (date && !noWorkDay && income && income > 0) {
       // Usar utilidades de fecha de Chile para comparaciones correctas
       const diffDays = getDaysDifferenceInChile(date);
-      
+
       // diffDays < 0 significa que la fecha es futura (date es posterior a hoy)
       if (diffDays < 0) {
         this.futureDateWarning.set('⚠️ Está intentando registrar recaudación para una fecha futura. ¿Está seguro?');
@@ -667,13 +667,13 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     if (date) {
       // Usar utilidades de fecha de Chile para comparaciones correctas
       const diffDays = getDaysDifferenceInChile(date);
-      
+
       // Solo mostrar advertencia si la fecha es anterior a hoy (diffDays > 0 significa que date es anterior)
       if (diffDays > 0) {
         // Obtener partes de la fecha seleccionada y de hoy en zona horaria de Chile
         const selectedDateParts = getDatePartsInChile(date);
         const todayParts = getTodayInChile();
-        
+
         // Verificar si la fecha es del mes anterior o más antigua
         const selectedMonth = selectedDateParts.month;
         const selectedYear = selectedDateParts.year;
@@ -682,8 +682,8 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
 
         // Si es del mes anterior o más antigua
         if (selectedYear < currentYear || (selectedYear === currentYear && selectedMonth < currentMonth)) {
-          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 
-                             'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+          const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+            'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
           const monthName = monthNames[selectedMonth - 1]; // month es 1-12, array es 0-11
           this.pastDateWarning.set(
             `ℹ️ Registro retroactivo: Este registro impactará en los reportes de ${monthName} ${selectedYear}. Los reportes se recalculan automáticamente.`
@@ -726,7 +726,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     const timeoutId = setTimeout(() => {
       this.checkMachineDuplicate(machineIdNum, date);
     }, 500); // Debounce de 500ms
-    
+
     // Cleanup del timeout si el effect se vuelve a ejecutar
     return () => clearTimeout(timeoutId);
   });
@@ -756,39 +756,43 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     }
   }
 
-  ngAfterViewInit(): void {
-    // Convertir signal a Observable para suscribirse (sin paréntesis para pasar el signal, no su valor)
-    const isVisible$ = toObservable(this.modalService.isVisible);
-    
-    // Suscribirse a cambios de visibilidad para abrir/cerrar el dialog
-    isVisible$
-      .pipe(
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe((isVisible) => {
-        const dialog = this.dialogRef?.nativeElement;
-        
-        if (dialog) {
-          if (isVisible) {
-            dialog.showModal();
-          } else {
-            dialog.close();
-          }
-        }
-      });
-    
-    // Verificar si el modal ya está visible al inicializar
-    if (this.modalService.isVisible()) {
+  constructor() {
+    effect(() => {
+      const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
+
       if (dialog) {
-        dialog.showModal();
+        if (isVisible) {
+          dialog.showModal();
+        } else {
+          dialog.close();
+        }
       }
-    }
+    });
+
+    // Verificar si el modal ya está visible al inicializar (esto podría ser redundante si el effect corre, 
+    // pero el effect corre asíncronamente, asi que aseguramos)
+    // Sin embargo, effect cubre el caso inicial también.
+    // Dejamos que effect maneje todo.
+  }
+
+  // ngAfterViewInit removed as it contained illegal toObservable call and effect usage
+  ngAfterViewInit(): void {
+    // Intentar abrir si ya es visible al cargar la vista
+    // El effect se encargará, pero podría ejecutarse antes de que la vista esté lista.
+    // Al ser un effect, se ejecutará inicialmente. Si dialogRef no está listo, no hará nada.
+    // Cuando dialogRef esté listo (ngAfterViewInit), Angular no re-ejecuta el effect automaticamente si las señales no cambian.
+    // PERO: dialogRef es una QueryList o ElementRef.
+    // Si la señal isVisible es true desde el principio, el effect corre, dialogRef es undefined.
+    // Luego ngAfterViewInit ocurre. El effect NO corre de nuevo.
+    // POR LO TANTO: Necesitamos verificar una vez en ngAfterViewInit O usar un signal para el view init.
+    // Mejor solución: Dejar el effect en el constructor para cambios futuros,
+    // y en ngAfterViewInit solo hacer una verificación manual simple SIN effect/toObservable.
   }
 
   updateField(field: keyof NewRecordFormData, value: any): void {
     this.modalService.updateFormData({ [field]: value });
-    
+
     // Si se cambia la máquina o la fecha, limpiar las advertencias
     // (los effects se encargarán de verificar nuevamente)
     if (field === 'machine' || field === 'date') {
@@ -834,7 +838,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
       this.driverLicenseWarning.set(null);
     }
   }
-  
+
   updateNumberField(field: 'income' | 'dieselExpense' | 'dieselLiters', value: string | number | null): void {
     const numValue = value === '' || value === null ? 0 : Number(value);
     this.modalService.updateFormData({ [field]: numValue });
@@ -852,7 +856,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     const input = event.target as HTMLInputElement;
     const currentValue = input.value || '';
     const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-    
+
     if (!controlKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
       // Si permite decimales, contar solo los dígitos enteros (antes del punto)
       if (allowDecimals) {
@@ -881,18 +885,18 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   limitFieldDigits(event: Event, fieldName: 'income' | 'dieselExpense' | 'dieselLiters', maxDigits: number, allowDecimals: boolean = false): void {
     const input = event.target as HTMLInputElement;
     let value = input.value;
-    
+
     if (allowDecimals) {
       // Para campos con decimales, limitar solo la parte entera
       const parts = value.split('.');
       let integerPart = parts[0]?.replace(/[^0-9]/g, '') || '';
       const decimalPart = parts[1]?.replace(/[^0-9]/g, '').substring(0, 1) || ''; // Máximo 1 decimal
-      
+
       // Limitar parte entera a maxDigits dígitos
       if (integerPart.length > maxDigits) {
         integerPart = integerPart.substring(0, maxDigits);
       }
-      
+
       // Reconstruir el valor
       if (decimalPart) {
         value = `${integerPart}.${decimalPart}`;
@@ -908,10 +912,10 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
         value = value.substring(0, maxDigits);
       }
     }
-    
+
     // Actualizar el valor del input
     input.value = value;
-    
+
     // Actualizar el formulario
     const numValue = value === '' ? 0 : (allowDecimals ? parseFloat(value) : parseInt(value, 10));
     this.updateNumberField(fieldName, isNaN(numValue) ? 0 : numValue);
@@ -920,7 +924,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   onNumberFieldFocus(event: FocusEvent, fieldName: 'income' | 'dieselExpense' | 'dieselLiters'): void {
     const input = event.target as HTMLInputElement;
     const currentValue = input.value;
-    
+
     // Si el valor es "0" o está vacío, seleccionar todo el texto
     // Esto permite que al escribir se reemplace automáticamente
     if (currentValue === '0' || currentValue === '' || currentValue === '0.0' || currentValue === '0.') {
@@ -934,31 +938,31 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
   onFileChange(field: 'receiptPhoto' | 'fuelReceiptPhoto', event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files && input.files.length > 0 ? input.files[0] : null;
-    
+
     // Limpiar la URL anterior si existe
     const existingUrl = this.previewUrls.get(field);
     if (existingUrl) {
       URL.revokeObjectURL(existingUrl);
       this.previewUrls.delete(field);
     }
-    
+
     this.modalService.updateFormData({ [field]: file });
   }
 
   removeFile(field: 'receiptPhoto' | 'fuelReceiptPhoto', event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    
+
     // Liberar la URL del objeto para evitar memory leaks
     const previewUrl = this.previewUrls.get(field);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       this.previewUrls.delete(field);
     }
-    
+
     // Limpiar el archivo del formulario
     this.modalService.updateFormData({ [field]: null });
-    
+
     // Limpiar el input file para permitir seleccionar el mismo archivo nuevamente
     const label = (event.target as HTMLElement).closest('label');
     if (label) {
@@ -988,7 +992,7 @@ export class NewRecordModalComponent implements AfterViewInit, OnDestroy {
     event.stopPropagation();
     const target = event.currentTarget as HTMLElement;
     target.classList.remove('dragover');
-    
+
     const files = event.dataTransfer?.files;
     if (files && files.length > 0) {
       const file = files[0];

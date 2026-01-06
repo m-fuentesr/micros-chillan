@@ -195,10 +195,16 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto" 
+                          (click)="exportProfitabilityReport()" 
+                          [disabled]="isExportingProfit()">
+                    @if (isExportingProfit()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                    }
                     Exportar
                   </button>
                 </div>
@@ -644,10 +650,16 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto" 
+                          (click)="exportRevenueReport()" 
+                          [disabled]="isExportingRevenue()">
+                    @if (isExportingRevenue()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                    }
                     Exportar
                   </button>
                 </div>
@@ -1077,10 +1089,16 @@ interface DriverProfit {
                       </div>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                    </svg>
+                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto" 
+                          (click)="exportDriverReport()" 
+                          [disabled]="isExportingDriver()">
+                    @if (isExportingDriver()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    } @else {
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                      </svg>
+                    }
                     Exportar
                   </button>
                 </div>
@@ -2895,6 +2913,80 @@ export class Reportes implements OnInit {
       }
     }
   };
+
+  // =================================================================
+  // EXPORTACIÓN DE REPORTES
+  // =================================================================
+
+  // Estados de exportación
+  isExportingProfit = signal(false);
+  isExportingRevenue = signal(false);
+  isExportingDriver = signal(false);
+
+  exportProfitabilityReport() {
+    if (this.isExportingProfit()) return;
+    this.isExportingProfit.set(true);
+
+    this.reportsService.exportMachineProfitability(this.selectedMonth(), this.selectedYear(), 'pdf')
+      .subscribe({
+        next: (blob) => {
+          this.downloadBlob(blob, `Rentabilidad_Maquinas_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          this.isExportingProfit.set(false);
+        },
+        error: (err) => {
+          console.error('Error exporting profit report', err);
+          this.globalErrorService.showError('Error al exportar reporte de rentabilidad', 'Error Exportación');
+          this.isExportingProfit.set(false);
+        }
+      });
+  }
+
+  exportRevenueReport() {
+    if (this.isExportingRevenue()) return;
+    this.isExportingRevenue.set(true);
+
+    this.reportsService.exportGrossIncomeRanking(this.selectedMonth(), this.selectedYear(), 'pdf')
+      .subscribe({
+        next: (blob) => {
+          this.downloadBlob(blob, `Ranking_Ingresos_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          this.isExportingRevenue.set(false);
+        },
+        error: (err) => {
+          console.error('Error exporting revenue report', err);
+          this.globalErrorService.showError('Error al exportar ranking de ingresos', 'Error Exportación');
+          this.isExportingRevenue.set(false);
+        }
+      });
+  }
+
+  exportDriverReport() {
+    if (this.isExportingDriver()) return;
+    this.isExportingDriver.set(true);
+
+    this.reportsService.exportDriverProfitability(this.selectedMonth(), this.selectedYear(), 'pdf')
+      .subscribe({
+        next: (blob) => {
+          this.downloadBlob(blob, `Rentabilidad_Choferes_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          this.isExportingDriver.set(false);
+        },
+        error: (err) => {
+          console.error('Error exporting driver report', err);
+          this.globalErrorService.showError('Error al exportar reporte de choferes', 'Error Exportación');
+          this.isExportingDriver.set(false);
+        }
+      });
+  }
+
+  private downloadBlob(blob: Blob, filename: string) {
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+
 
   onViewMachineDetail(machineId: number, event: Event): void {
     event.stopPropagation();

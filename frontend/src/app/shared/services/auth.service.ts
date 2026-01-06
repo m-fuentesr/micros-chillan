@@ -59,14 +59,8 @@ export class AuthService {
 
   constructor() {
     // Configurar el cliente de Supabase
-    // Nota: El error NavigatorLockAcquireTimeoutError no es crítico.
-    // Ocurre cuando Supabase intenta usar LockManager para sincronizar entre pestañas
-    // pero otra pestaña ya tiene el lock. La sincronización seguirá funcionando
-    // a través de eventos de storage.
     this.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
-        // Usar localStorage para mejor sincronización entre pestañas
-        // Esto permite que múltiples pestañas compartan la sesión sin necesidad de locks
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         autoRefreshToken: true,
         persistSession: true,
@@ -74,129 +68,103 @@ export class AuthService {
       },
     });
 
-    // Manejar errores de LockManager silenciosamente (no críticos)
-    if (typeof window !== 'undefined') {
-      const originalErrorHandler = window.onerror;
-      window.onerror = (message, source, lineno, colno, error) => {
-        // Ignorar errores de NavigatorLockAcquireTimeoutError
-        if (error?.name === 'NavigatorLockAcquireTimeoutError' || 
-            (typeof message === 'string' && message.includes('NavigatorLockAcquireTimeoutError'))) {
-          // Este error no es crítico - Supabase seguirá funcionando correctamente
-          return true; // Prevenir que el error se propague
-        }
-        // Llamar al handler original para otros errores
-        if (originalErrorHandler) {
-          return originalErrorHandler(message, source, lineno, colno, error);
-        }
-        return false;
-      };
-
-      // También manejar errores no capturados
-      window.addEventListener('unhandledrejection', (event) => {
-        if (event.reason?.name === 'NavigatorLockAcquireTimeoutError' ||
-            (typeof event.reason === 'string' && event.reason.includes('NavigatorLockAcquireTimeoutError'))) {
-          event.preventDefault(); // Prevenir que aparezca en la consola
-        }
-      });
-    }
-
     this.supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
-      // ===============================
-      // Recovery flow
-      // ===============================
-      if (event === 'PASSWORD_RECOVERY') {
-        console.log('PASSWORD_RECOVERY detectado');
+        // ===============================
+        // Recovery flow
+        // ===============================
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('PASSWORD_RECOVERY detectado');
 
-        this._isRecovering.set(true);
+          this._isRecovering.set(true);
 
-        // Cortar cualquier flujo previo
-        this.isManualLogin = false;
-        this.isSyncing = false;
+          // Cortar cualquier flujo previo
+          this.isManualLogin = false;
+          this.isSyncing = false;
 
-        // Limpiar estado local (muy importante)
-        this._currentUser.set(null);
-        sessionStorage.removeItem(this.tokenStorageKey);
-        sessionStorage.removeItem(this.userStorageKey);
+          // Limpiar estado local (muy importante)
+          this._currentUser.set(null);
+          sessionStorage.removeItem(this.tokenStorageKey);
+          sessionStorage.removeItem(this.userStorageKey);
 
-        // NO persistir token
-        // NO llamar syncDomainUser
-        // NO dejar pasar guards
+          // NO persistir token
+          // NO llamar syncDomainUser
+          // NO dejar pasar guards
 
-        await this.router.navigateByUrl('/restablecer-clave', {
-          replaceUrl: true,
-        });
+          await this.router.navigateByUrl('/restablecer-clave', {
+            replaceUrl: true,
+          });
 
-        return; // No continuar
-      }
+          return; // No continuar
+        }
 
-      // Evitar logs excesivos en producción
-      if (event !== 'TOKEN_REFRESHED') {
-        console.log('Auth event:', event, session);
-      }
+        // Evitar logs excesivos en producción
+        if (event !== 'TOKEN_REFRESHED') {
+          console.log('Auth event:', event, session);
+        }
 
-      switch (event) {
-        case 'TOKEN_REFRESHED':
-          // Cuando el token se refresca, actualizar y sincronizar con el backend
-          if (session?.access_token) {
-            this.persistToken(session.access_token);
-            // Sincronizar con el backend para asegurar que el nuevo token es válido
-            if (!this.isSyncing) {
-              await this.syncDomainUser().catch((err) => {
-                // Si falla la sincronización con el nuevo token, limpiar sesión
-                console.error('Error al sincronizar después de refresh:', err);
-                this.clearSession();
-                if (!this.router.url.startsWith('/login')) {
-                  this.router.navigate(['/login']);
-                }
-              });
+        switch (event) {
+          case 'TOKEN_REFRESHED':
+            // Cuando el token se refresca, actualizar y sincronizar con el backend
+            if (session?.access_token) {
+              this.persistToken(session.access_token);
+              // Sincronizar con el backend para asegurar que el nuevo token es válido
+              if (!this.isSyncing) {
+                await this.syncDomainUser().catch((err) => {
+                  // Si falla la sincronización con el nuevo token, limpiar sesión
+                  console.error('Error al sincronizar después de refresh:', err);
+                  this.clearSession();
+                  if (!this.router.url.startsWith('/login')) {
+                    this.router.navigate(['/login']);
+                  }
+                });
+              }
             }
-          }
-          break;
-
-        case 'SIGNED_IN':
-          if (session?.access_token) {
-            this.persistToken(session.access_token);
-            // Solo sincronizar si no estamos ya sincronizando y no es un login manual
-            // (el login manual manejará la sincronización)
-            if (!this.isSyncing && !this.isManualLogin) {
-              await this.syncDomainUser();
-            } else if (this.isManualLogin) {
-              // Si es login manual, esperar un momento para que el token se propague
-              // y luego sincronizar
-              setTimeout(async () => {
-                this.isManualLogin = false;
-                if (!this.isSyncing) {
-                  await this.syncDomainUser();
-                }
-              }, 100);
-            }
-          }
-          break;
-
-        case 'SIGNED_OUT':
-          this.clearSession();
-          if (this.skipSignOutRedirect) {
-            this.skipSignOutRedirect = false;
             break;
-          }
-          // Solo navegar si no estamos ya en login
-          if (!this.router.url.startsWith('/login')) {
-            await this.router.navigate(['/login']);
-          }
-          break;
 
-        case 'USER_UPDATED':
-          // Solo sincronizar si no estamos ya sincronizando
-          if (!this.isSyncing) {
-            await this.syncDomainUser();
-          }
-          break;
+          case 'SIGNED_IN':
+            if (session?.access_token) {
+              this.persistToken(session.access_token);
+              // Solo sincronizar si no estamos ya sincronizando y no es un login manual
+              // (el login manual manejará la sincronización)
+              if (!this.isSyncing && !this.isManualLogin) {
+                await this.syncDomainUser();
+              } else if (this.isManualLogin) {
+                // Si es login manual, esperar un momento para que el token se propague
+                // y luego sincronizar
+                setTimeout(async () => {
+                  this.isManualLogin = false;
+                  if (!this.isSyncing) {
+                    await this.syncDomainUser();
+                  }
+                }, 100);
+              }
+            }
+            break;
 
-        default:
-          break;
-      }
-    });
+          case 'SIGNED_OUT':
+            this.clearSession();
+            if (this.skipSignOutRedirect) {
+              this.skipSignOutRedirect = false;
+              break;
+            }
+            // Solo navegar si no estamos ya en login
+            if (!this.router.url.startsWith('/login')) {
+              await this.router.navigate(['/login']);
+            }
+            break;
+
+          case 'USER_UPDATED':
+            // Solo sincronizar si no estamos ya sincronizando
+            if (!this.isSyncing) {
+              await this.syncDomainUser();
+            }
+            break;
+
+          default:
+            break;
+        }
+      });
 
     // Solo intentar restaurar sesión una vez
     if (!this.isInitialized) {
@@ -207,7 +175,7 @@ export class AuthService {
           this._isInitializing.set(false);
         }
       }, 5000);
-      
+
       this.tryRestoreSession().then((remainingDelay) => {
         clearTimeout(timeoutId);
         // Si la verificación fue muy rápida, esperar el tiempo restante
@@ -246,90 +214,90 @@ export class AuthService {
 
       if (error || !data.session) {
         this.isManualLogin = false;
-        
+
         // Analizar el tipo de error de Supabase para dar mensajes más específicos
         // IMPORTANTE: Verificar errores de email PRIMERO antes que errores de contraseña
         if (error) {
           const errorMessage = error.message?.toLowerCase() || '';
           const errorStatus = error.status || 0;
-          
+
           // PRIORIDAD 1: Errores de red/conexión (PRIMERO antes de analizar contenido)
           if (errorMessage.includes('failed to fetch') ||
-              errorMessage.includes('network error') ||
-              errorMessage.includes('networkerror') ||
-              errorMessage.includes('fetch failed') ||
-              errorMessage.includes('network') || 
-              errorMessage.includes('timeout') ||
-              errorMessage.includes('connection') ||
-              error.message === 'Failed to fetch') {
+            errorMessage.includes('network error') ||
+            errorMessage.includes('networkerror') ||
+            errorMessage.includes('fetch failed') ||
+            errorMessage.includes('network') ||
+            errorMessage.includes('timeout') ||
+            errorMessage.includes('connection') ||
+            error.message === 'Failed to fetch') {
             throw new Error('NETWORK_ERROR');
           }
-          
+
           // PRIORIDAD 2: Errores de servidor
           if (errorMessage.includes('server error') ||
-              errorMessage.includes('internal server error') ||
-              errorMessage.includes('service unavailable')) {
+            errorMessage.includes('internal server error') ||
+            errorMessage.includes('service unavailable')) {
             throw new Error('NETWORK_ERROR');
           }
-          
+
           // PRIORIDAD 3: Email no encontrado o formato inválido
-          if (errorMessage.includes('email') && 
-              (errorMessage.includes('not found') || 
-               errorMessage.includes('does not exist') ||
-               errorMessage.includes('user not found') ||
-               errorMessage.includes('no user found'))) {
+          if (errorMessage.includes('email') &&
+            (errorMessage.includes('not found') ||
+              errorMessage.includes('does not exist') ||
+              errorMessage.includes('user not found') ||
+              errorMessage.includes('no user found'))) {
             throw new Error('EMAIL_NOT_FOUND');
           }
-          
+
           // PRIORIDAD 4: Email no confirmado
-          if (errorMessage.includes('email not confirmed') || 
-              errorMessage.includes('not confirmed') ||
-              errorMessage.includes('email_not_confirmed')) {
+          if (errorMessage.includes('email not confirmed') ||
+            errorMessage.includes('not confirmed') ||
+            errorMessage.includes('email_not_confirmed')) {
             throw new Error('EMAIL_NOT_CONFIRMED');
           }
-          
+
           // PRIORIDAD 5: Si el mensaje menciona específicamente "email" sin mencionar "password",
           // es más probable que sea un problema de email
-          if (errorMessage.includes('email') && 
-              !errorMessage.includes('password') &&
-              (errorStatus === 400 || errorStatus === 404)) {
+          if (errorMessage.includes('email') &&
+            !errorMessage.includes('password') &&
+            (errorStatus === 400 || errorStatus === 404)) {
             throw new Error('EMAIL_NOT_FOUND');
           }
-          
+
           // PRIORIDAD 6: Demasiados intentos
-          if (errorMessage.includes('too many requests') || 
-              errorMessage.includes('rate limit') ||
-              errorMessage.includes('rate_limit_exceeded')) {
+          if (errorMessage.includes('too many requests') ||
+            errorMessage.includes('rate limit') ||
+            errorMessage.includes('rate_limit_exceeded')) {
             throw new Error('TOO_MANY_ATTEMPTS');
           }
-          
+
           // PRIORIDAD 7: Usuario deshabilitado
-          if (errorMessage.includes('disabled') || 
-              errorMessage.includes('banned') ||
-              errorMessage.includes('user is disabled')) {
+          if (errorMessage.includes('disabled') ||
+            errorMessage.includes('banned') ||
+            errorMessage.includes('user is disabled')) {
             throw new Error('USER_DISABLED');
           }
-          
+
           // PRIORIDAD 8: Contraseña incorrecta - Solo si NO es un error de email
           // Supabase generalmente devuelve "Invalid login credentials" para ambos casos,
           // pero si menciona específicamente "password", es más probable que sea contraseña
           if (errorMessage.includes('invalid password') ||
-              errorMessage.includes('wrong password') ||
-              (errorMessage.includes('password') && 
-               !errorMessage.includes('email') &&
-               errorStatus === 400)) {
+            errorMessage.includes('wrong password') ||
+            (errorMessage.includes('password') &&
+              !errorMessage.includes('email') &&
+              errorStatus === 400)) {
             throw new Error('INVALID_PASSWORD');
           }
-          
+
           // PRIORIDAD 9: Si el error es 400 y menciona credenciales pero NO menciona email,
           // probablemente es contraseña incorrecta (el email existe pero la contraseña no)
-          if (errorStatus === 400 && 
-              errorMessage.includes('credentials') &&
-              !errorMessage.includes('email')) {
+          if (errorStatus === 400 &&
+            errorMessage.includes('credentials') &&
+            !errorMessage.includes('email')) {
             throw new Error('INVALID_PASSWORD');
           }
         }
-        
+
         // Error genérico como fallback
         throw new Error('INVALID_CREDENTIALS');
       }
@@ -340,7 +308,7 @@ export class AuthService {
       // Esperar un momento para que el evento SIGNED_IN se procese
       // y luego sincronizar con el backend
       await new Promise(resolve => setTimeout(resolve, 150));
-      
+
       // Sincronizar con el backend (el evento SIGNED_IN ya actualizó el token)
       // syncDomainUser tiene retry automático para errores 401, así que esperamos
       // un poco más después de la sincronización para dar tiempo a los retries
@@ -391,14 +359,14 @@ export class AuthService {
       // después de la animación de transición
     } catch (error: any) {
       this.isManualLogin = false;
-      
+
       // Detectar errores de red a nivel de JavaScript/fetch que no fueron capturados por Supabase
       if (error?.message === 'Failed to fetch' ||
-          error?.message?.includes('NetworkError') ||
-          error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+        error?.message?.includes('NetworkError') ||
+        error?.name === 'TypeError' && error?.message?.includes('fetch')) {
         throw new Error('NETWORK_ERROR');
       }
-      
+
       // Re-lanzar el error si ya está categorizado
       throw error;
     } finally {
@@ -430,36 +398,36 @@ export class AuthService {
       // Si hay un error, verificar si es un error de red
       if (result.error) {
         const errorMessage = result.error.message?.toLowerCase() || '';
-        
+
         // Detectar errores de red/conexión
         if (errorMessage.includes('failed to fetch') ||
-            errorMessage.includes('network error') ||
-            errorMessage.includes('networkerror') ||
-            errorMessage.includes('fetch failed') ||
-            result.error.message === 'Failed to fetch') {
+          errorMessage.includes('network error') ||
+          errorMessage.includes('networkerror') ||
+          errorMessage.includes('fetch failed') ||
+          result.error.message === 'Failed to fetch') {
           throw new Error('NETWORK_ERROR');
         }
-        
+
         // Detectar errores de servidor
         if (errorMessage.includes('server error') ||
-            errorMessage.includes('internal server error') ||
-            errorMessage.includes('service unavailable')) {
+          errorMessage.includes('internal server error') ||
+          errorMessage.includes('service unavailable')) {
           throw new Error('SERVER_ERROR');
         }
-        
+
         // Detectar si el email no existe
         if (errorMessage.includes('user not found') ||
-            errorMessage.includes('email not found') ||
-            errorMessage.includes('no user found')) {
+          errorMessage.includes('email not found') ||
+          errorMessage.includes('no user found')) {
           throw new Error('EMAIL_NOT_FOUND');
         }
-        
+
         // Detectar si el email no está confirmado
         if (errorMessage.includes('email not confirmed') ||
-            errorMessage.includes('not confirmed')) {
+          errorMessage.includes('not confirmed')) {
           throw new Error('EMAIL_NOT_CONFIRMED');
         }
-        
+
         // Otros errores de Supabase
         throw new Error(result.error.message || 'UNKNOWN_ERROR');
       }
@@ -468,20 +436,20 @@ export class AuthService {
     } catch (error: any) {
       // Si es un error de red que no fue capturado por Supabase
       if (error?.message === 'Failed to fetch' ||
-          error?.message?.includes('NetworkError') ||
-          error?.name === 'TypeError' && error?.message?.includes('fetch')) {
+        error?.message?.includes('NetworkError') ||
+        error?.name === 'TypeError' && error?.message?.includes('fetch')) {
         throw new Error('NETWORK_ERROR');
       }
-      
+
       // Si ya es un error que lanzamos nosotros, re-lanzarlo
       if (error?.message === 'NETWORK_ERROR' ||
-          error?.message === 'SERVER_ERROR' ||
-          error?.message === 'EMAIL_NOT_FOUND' ||
-          error?.message === 'EMAIL_NOT_CONFIRMED' ||
-          error?.message === 'UNKNOWN_ERROR') {
+        error?.message === 'SERVER_ERROR' ||
+        error?.message === 'EMAIL_NOT_FOUND' ||
+        error?.message === 'EMAIL_NOT_CONFIRMED' ||
+        error?.message === 'UNKNOWN_ERROR') {
         throw error;
       }
-      
+
       // Error desconocido
       throw new Error(error?.message || 'UNKNOWN_ERROR');
     }
@@ -601,13 +569,13 @@ export class AuthService {
         // Si llegamos aquí, el token es inválido y no se pudo refrescar
         // Limpiar inmediatamente el estado local (signal)
         this._currentUser.set(null);
-        
+
         // Limpiar storage
         if (typeof window !== 'undefined') {
           sessionStorage.removeItem(this.tokenStorageKey);
           sessionStorage.removeItem(this.userStorageKey);
         }
-        
+
         // Cerrar sesión en Supabase también para evitar loops
         try {
           await this.supabase.auth.signOut();
@@ -615,7 +583,7 @@ export class AuthService {
           // Ignorar errores al cerrar sesión en Supabase
           console.debug('Error al cerrar sesión en Supabase:', signOutError);
         }
-        
+
         // Forzar navegación al login si no estamos ya ahí
         const currentUrl = this.router.url;
         if (!currentUrl.startsWith('/login') && !currentUrl.startsWith('/recuperar-clave')) {
@@ -623,7 +591,7 @@ export class AuthService {
           await this.router.navigateByUrl('/login', { skipLocationChange: false });
         }
       }
-      
+
       // Solo lanzar error si no fue un retry exitoso
       throw new Error('No se pudo validar la sesión con el servidor.');
     } finally {
@@ -634,7 +602,7 @@ export class AuthService {
   private async tryRestoreSession(): Promise<number> {
     const startTime = Date.now();
     const MIN_DISPLAY_TIME = 400; // 400ms mínimo para mostrar el spinner y evitar flashes
-    
+
     try {
       const { data, error } = await this.supabase.auth.getSession();
 
@@ -652,7 +620,7 @@ export class AuthService {
         // Decodificar el token JWT para verificar expiración (sin verificar firma)
         const payload = JSON.parse(atob(token.split('.')[1]));
         const now = Math.floor(Date.now() / 1000);
-        
+
         // Si el token está expirado, limpiar sesión
         if (payload.exp && payload.exp < now) {
           console.log('Token expirado, limpiando sesión');
@@ -688,7 +656,7 @@ export class AuthService {
       console.error('Error al restaurar sesión:', error);
       this.clearSession();
     }
-    
+
     // Calcular tiempo transcurrido y retornar el delay restante necesario
     // Esto se ejecuta después del try-catch, antes de retornar
     const elapsed = Date.now() - startTime;
@@ -715,10 +683,10 @@ export class AuthService {
       // Pequeño delay para que el spinner aparezca suavemente
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     // Primero limpiar el estado local para evitar que otras pestañas restauren la sesión
     this.clearSession();
-    
+
     // Luego cerrar sesión en Supabase y esperar a que se complete
     // Esto asegura que localStorage de Supabase también se limpie
     try {
@@ -728,10 +696,10 @@ export class AuthService {
       console.error('Error al cerrar sesión en Supabase:', error);
       this.forceClearSupabaseStorage();
     }
-    
+
     // Asegurar que localStorage de Supabase esté limpio
     this.forceClearSupabaseStorage();
-    
+
     if (showSpinner) {
       // Esperar un poco para que la animación de salida se complete
       await new Promise(resolve => setTimeout(resolve, 400));
@@ -806,7 +774,7 @@ export class AuthService {
    */
   private forceClearSupabaseStorage(): void {
     if (typeof window === 'undefined') return;
-    
+
     try {
       // Limpiar todas las claves relacionadas con Supabase en localStorage
       const keysToRemove: string[] = [];

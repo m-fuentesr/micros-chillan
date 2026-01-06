@@ -489,27 +489,12 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     return `scale(${zoom}) translate3d(${x}px, ${y}px, 0)`;
   });
 
-  ngAfterViewInit(): void {
-    const dialog = this.dialogRef?.nativeElement;
-    
-    if (dialog) {
-      // Escuchar el evento close del dialog para limpiar el atributo closing
-      dialog.addEventListener('close', () => {
-        dialog.removeAttribute('closing');
-      });
-
-      // Escuchar el evento cancel del dialog (cuando se presiona ESC)
-      dialog.addEventListener('cancel', (e) => {
-        e.preventDefault();
-        this.modalService.close();
-      });
-    }
-
+  constructor() {
     // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
+
       if (dialog) {
         if (isVisible) {
           // Remover atributo closing si existe
@@ -555,16 +540,16 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         // Verificar si la imagen está en caché del navegador
         // Si la imagen ya se mostró en el detalle, debería estar en caché
         const img = new Image();
-        
+
         // Configurar handlers
         img.onload = () => {
           // Si onload se dispara, la imagen está lista (puede ser inmediato si está en caché)
           this.imageLoadingState.set('loaded');
           this.imageError.set(null);
         };
-        
+
         img.src = config.url;
-        
+
         // Verificar si ya está completa (en caché) - esto puede ser inmediato
         // Si está en caché, img.complete será true inmediatamente después de asignar src
         // Usar un pequeño delay para permitir que el navegador actualice img.complete
@@ -577,7 +562,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
           // El evento load se disparará cuando se cargue (o inmediatamente si está en caché)
           this.imageLoadingState.set('loading');
           this.imageError.set(null);
-          
+
           // Verificar nuevamente después de un pequeño delay
           // Esto captura casos donde img.complete se actualiza después de asignar src
           setTimeout(() => {
@@ -589,6 +574,31 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         }
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    const dialog = this.dialogRef?.nativeElement;
+
+    if (dialog) {
+      // Escuchar el evento close del dialog para limpiar el atributo closing
+      dialog.addEventListener('close', () => {
+        dialog.removeAttribute('closing');
+      });
+
+      // Escuchar el evento cancel del dialog (cuando se presiona ESC)
+      dialog.addEventListener('cancel', (e) => {
+        e.preventDefault();
+        this.modalService.close();
+      });
+
+      // Manual check for initial visibility
+      if (this.modalService.isVisible()) {
+        dialog.removeAttribute('closing');
+        dialog.showModal();
+        this.resetZoom();
+        this.resetImageLoadingState();
+      }
+    }
   }
 
   @HostListener('document:keydown.escape', ['$event'])
@@ -604,20 +614,20 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     if (this.isMouseDragging && this.zoomLevel() > 1) {
       event.preventDefault();
       event.stopPropagation();
-      
+
       // Calcular distancia movida para detectar si es arrastre
       const deltaX = Math.abs(event.clientX - this.mouseDownX);
       const deltaY = Math.abs(event.clientY - this.mouseDownY);
-      
+
       // Si se movió más de 3px, es un arrastre
       if (deltaX > 3 || deltaY > 3) {
         this.wasDragging = true;
       }
-      
+
       // Calcular nueva posición inmediatamente
       const newX = event.clientX - this.startX;
       const newY = event.clientY - this.startY;
-      
+
       // Aplicar movimiento usando signals para que el computed se actualice
       this.currentX.set(newX);
       this.currentY.set(newY);
@@ -654,7 +664,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   onImageClick(event: MouseEvent): void {
     // Prevenir que el click cierre el modal
     event.stopPropagation();
-    
+
     // En desktop
     if (window.innerWidth > 768) {
       // No hacer zoom si estamos arrastrando
@@ -665,25 +675,25 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         }, 200);
         return;
       }
-      
+
       const image = this.imageRef?.nativeElement;
       if (!image) return;
-      
+
       const currentTime = new Date().getTime();
       const clickLength = currentTime - this.lastClick;
       const deltaX = Math.abs(event.clientX - this.lastClickX);
       const deltaY = Math.abs(event.clientY - this.lastClickY);
-      
+
       // Detectar doble click (dentro de 300ms y en la misma área)
       if (clickLength < 300 && clickLength > 0 && deltaX < 10 && deltaY < 10) {
         // Doble click detectado
         const rect = image.getBoundingClientRect();
         const relativeX = (event.clientX - rect.left) / rect.width;
         const relativeY = (event.clientY - rect.top) / rect.height;
-        
+
         // Establecer origen de transformación en el punto del click
         this.transformOrigin.set(`${relativeX * 100}% ${relativeY * 100}%`);
-        
+
         if (this.zoomLevel() === 1) {
           // Si NO está en zoom: hacer zoom in
           this.baseImageWidth = rect.width;
@@ -702,7 +712,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         this.lastClick = 0;
         return;
       }
-      
+
       // Click simple - no hacer nada (solo el doble click hace zoom)
       // Guardar información del click para detectar doble click
       this.lastClick = currentTime;
@@ -755,15 +765,15 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     if (this.isDragging && event.touches.length === 1 && this.zoomLevel() > 1) {
       event.preventDefault();
       const touch = event.touches[0];
-      
+
       // Calcular nueva posición
       const newX = touch.clientX - this.startX;
       const newY = touch.clientY - this.startY;
-      
+
       // Aplicar movimiento directamente primero
       this.currentX.set(newX);
       this.currentY.set(newY);
-      
+
       // Luego aplicar límites si tenemos las dimensiones base
       if (this.baseImageWidth > 0 && this.baseImageHeight > 0) {
         const image = this.imageRef?.nativeElement;
@@ -772,11 +782,11 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
           if (container) {
             const containerRect = container.getBoundingClientRect();
             const zoom = this.zoomLevel();
-            
+
             // Calcular dimensiones escaladas
             const scaledWidth = this.baseImageWidth * zoom;
             const scaledHeight = this.baseImageHeight * zoom;
-            
+
             // Calcular límites
             if (scaledWidth > containerRect.width) {
               const maxX = (scaledWidth - containerRect.width) / 2;
@@ -784,7 +794,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
             } else {
               this.currentX.set(0);
             }
-            
+
             if (scaledHeight > containerRect.height) {
               const maxY = (scaledHeight - containerRect.height) / 2;
               this.currentY.set(Math.max(-maxY, Math.min(maxY, this.currentY())));
@@ -807,37 +817,37 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   onWheel(event: WheelEvent): void {
     // Solo en desktop
     if (window.innerWidth <= 768) return;
-    
+
     // Prevenir scroll de la página
     event.preventDefault();
     event.stopPropagation();
-    
+
     const image = this.imageRef?.nativeElement;
     if (!image) return;
-    
+
     // Guardar dimensiones base si no están guardadas y estamos en zoom 1
     if (this.zoomLevel() === 1 && (this.baseImageWidth === 0 || this.baseImageHeight === 0)) {
       const rect = image.getBoundingClientRect();
       this.baseImageWidth = rect.width;
       this.baseImageHeight = rect.height;
     }
-    
+
     // Calcular punto del mouse relativo a la imagen
     const rect = image.getBoundingClientRect();
     const relativeX = (event.clientX - rect.left) / rect.width;
     const relativeY = (event.clientY - rect.top) / rect.height;
-    
+
     // Establecer origen de transformación en el punto del mouse
     this.transformOrigin.set(`${relativeX * 100}% ${relativeY * 100}%`);
-    
+
     // Calcular nuevo nivel de zoom
     const zoomDelta = event.deltaY > 0 ? -0.1 : 0.1;
     const newZoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoomLevel() + zoomDelta));
-    
+
     // Si el zoom cambia significativamente, actualizar
     if (Math.abs(newZoom - this.zoomLevel()) > 0.05) {
       this.zoomLevel.set(newZoom);
-      
+
       // Si vuelve a 1x, resetear posición y dimensiones base
       if (newZoom <= 1) {
         this.currentX.set(0);
@@ -853,19 +863,19 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   onMouseDown(event: MouseEvent): void {
     // Solo en desktop y cuando está zoomed
     if (window.innerWidth <= 768 || this.zoomLevel() <= 1) return;
-    
+
     // Solo botón izquierdo
     if (event.button !== 0) return;
-    
+
     event.preventDefault();
     event.stopPropagation();
-    
+
     // Guardar posición y tiempo inicial para detectar si es arrastre o click
     this.mouseDownTime = new Date().getTime();
     this.mouseDownX = event.clientX;
     this.mouseDownY = event.clientY;
     this.wasDragging = false; // Resetear flag de arrastre
-    
+
     // Marcar que estamos arrastrando
     this.isMouseDragging = true;
     this.startX = event.clientX - this.currentX();
@@ -957,10 +967,10 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
 
     // Resetear y verificar caché
     this.resetImageLoadingState();
-    
+
     const img = new Image();
     img.src = url;
-    
+
     if (img.complete && img.naturalHeight !== 0) {
       this.imageLoadingState.set('loaded');
       this.imageError.set(null);
@@ -989,7 +999,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     this.imageLoadingState.set('error');
     const img = event.target as HTMLImageElement;
     const url = img?.src || this.modalService.config()?.url || '';
-    
+
     if (url.includes('supabase') || url.includes('storage')) {
       this.imageError.set('No se pudo acceder a la imagen. Puede que la imagen haya sido eliminada o no tengas permisos para verla.');
     } else {
