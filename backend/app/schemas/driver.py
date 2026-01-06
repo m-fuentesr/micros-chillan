@@ -47,6 +47,7 @@ class DriverListItem(BaseModel):
     telefono: str
     correo_electronico: str
     estado: Literal["activo", "inactivo", "eliminado"]
+    porcentaje_pago: float
 
     maquina_actual: Optional[DriverMachine]
     licencia_estado: DriverLicenseState

@@ -81,14 +81,14 @@ export class DriverService {
     if (filters?.licencia_estado) {
       params = params.set('licencia_estado', filters.licencia_estado);
     }
-    
+
     // Paginación por defecto: 12 registros por página
     const pagina = filters?.page || 1;
     const porPagina = filters?.per_page || 12;
-    
+
     params = params.set('page', pagina.toString());
     params = params.set('per_page', porPagina.toString());
-    
+
     // El backend retorna DriverListItem[] con el formato:
     // { id, nombre_completo, rut, telefono, correo_electronico, estado, maquina_actual, licencia_estado }
     interface BackendDriver {
@@ -98,14 +98,15 @@ export class DriverService {
       telefono: string;
       correo_electronico: string;
       estado: 'activo' | 'inactivo' | 'eliminado';
+      porcentaje_pago: number; // Added field
       maquina_actual?: {
         id: number;
         identificador: string;
       } | null;
       licencia_estado: {
         fecha_vencimiento: string; // ISO date string
-          estado: 'ok' | 'warning' | 'danger';
-          dias_restantes: number;
+        estado: 'ok' | 'warning' | 'danger';
+        dias_restantes: number;
       };
     }
 
@@ -115,20 +116,20 @@ export class DriverService {
       per_page: number;
       items: BackendDriver[];
     }
-    
+
     return this.http.get<BackendPaginatedResponse>(`${this.apiUrl}/api/drivers`, { params }).pipe(
       map((response) => ({
         datos: response.items.map((backendDriver): Driver => {
           // Calcular alerta de licencia desde el estado que viene del backend
           const alertaLicencia = backendDriver.licencia_estado.estado === 'danger' || backendDriver.licencia_estado.estado === 'warning';
-          
+
           return {
             id: backendDriver.id,
             nombre_completo: backendDriver.nombre_completo,
             rut: backendDriver.rut,
             telefono: backendDriver.telefono,
             correo: backendDriver.correo_electronico,
-            porcentaje_pago: 0, // No viene en el listado, se obtiene en el detalle
+            porcentaje_pago: backendDriver.porcentaje_pago,
             fecha_venc_licencia: backendDriver.licencia_estado.fecha_vencimiento,
             alerta_licencia: alertaLicencia,
             licencia_estado: {
@@ -355,7 +356,7 @@ export class DriverService {
     per_page: number;
   }> {
     let params = new HttpParams();
-    
+
     if (filters?.mes_desde) {
       params = params.set('mes_desde', filters.mes_desde.toString());
     }
