@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Micros Chillan</string>
-    <string name="title_activity_main">Micros Chillan</string>
+    <string name="app_name">Gestor de Flotas</string>
+    <string name="title_activity_main">Gestor de Flotas</string>
     <string name="package_name">com.micros.chillan</string>
     <string name="custom_url_scheme">com.micros.chillan</string>
 </resources>
