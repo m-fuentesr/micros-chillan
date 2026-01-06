@@ -960,11 +960,31 @@ CREATE INDEX "idx_asignaciones_maquina_id" ON "public"."asignaciones_chofer_maqu
 
 
 
+CREATE INDEX "idx_docs_fecha_vencimiento" ON "public"."documentos_maquina" USING "btree" ("fecha_vencimiento");
+
+
+
+CREATE INDEX "idx_docs_maquina_id" ON "public"."documentos_maquina" USING "btree" ("maquina_id");
+
+
+
 CREATE INDEX "idx_maquinas_estado_operativo" ON "public"."maquinas" USING "btree" ("estado_operativo");
 
 
 
 CREATE INDEX "idx_maquinas_identificador" ON "public"."maquinas" USING "btree" ("numero_interno", "patente");
+
+
+
+CREATE INDEX "idx_maquinas_marca" ON "public"."maquinas" USING "btree" ("marca");
+
+
+
+CREATE INDEX "idx_maquinas_numero_interno" ON "public"."maquinas" USING "btree" ("numero_interno");
+
+
+
+CREATE INDEX "idx_maquinas_patente" ON "public"."maquinas" USING "btree" ("patente");
 
 
 
