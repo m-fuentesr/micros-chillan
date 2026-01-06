@@ -187,7 +187,6 @@ interface DailyRecordDetailView extends DailyRecord {
                           type="checkbox" 
                           class="toggle toggle-md sm:toggle-lg toggle-primary flex-shrink-0" 
                           formControlName="noWorkDay"
-                          [disabled]="!isEditMode()"
                           [attr.aria-disabled]="!isEditMode()"
                           (click)="preventToggleIfNotEditing($event)" />
                         <div class="min-w-0 flex-1 flex flex-col overflow-hidden max-w-full">
@@ -327,7 +326,6 @@ interface DailyRecordDetailView extends DailyRecord {
                             type="checkbox" 
                             class="sr-only peer" 
                             formControlName="isEmergency"
-                            [disabled]="!isEditMode()"
                             (click)="preventToggleIfNotEditing($event)" />
                           <div class="w-11 h-6 bg-red-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600 peer-disabled:opacity-50"></div>
                         </label>
@@ -392,9 +390,8 @@ interface DailyRecordDetailView extends DailyRecord {
                           <img 
                             [ngSrc]="getRegistroImageUrl()" 
                             alt="Comprobante registro diario" 
-                            width="400"
-                            height="300"
-                            loading="lazy"
+                            fill
+                            priority
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         } @else {
                           <img 
@@ -438,8 +435,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             <img 
                               [ngSrc]="getPreviewRegistroImageUrl()" 
                               alt="Preview comprobante registro" 
-                              width="400"
-                              height="300"
+                              fill
                               loading="lazy"
                               class="object-cover w-full h-full" />
                           } @else {
@@ -489,9 +485,8 @@ interface DailyRecordDetailView extends DailyRecord {
                           <img 
                             [ngSrc]="getReceiptImageUrl()" 
                             alt="Comprobante diésel" 
-                            width="400"
-                            height="300"
-                            loading="lazy"
+                            fill
+                            priority
                             class="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105" />
                         } @else {
                           <img 
@@ -535,8 +530,7 @@ interface DailyRecordDetailView extends DailyRecord {
                             <img 
                               [ngSrc]="getPreviewImageUrl()" 
                               alt="Preview comprobante" 
-                              width="400"
-                              height="300"
+                              fill
                               loading="lazy"
                               class="object-cover w-full h-full" />
                           } @else {
@@ -767,7 +761,7 @@ export class RegistroDiarioDetail {
 
   receiptFile = signal<File | null>(null);
   receiptPreview = signal<string | null>(null);
-  
+
   // Comprobante del registro diario
   registroFile = signal<File | null>(null);
   registroPreview = signal<string | null>(null);
@@ -799,7 +793,7 @@ export class RegistroDiarioDetail {
   currentPaymentBreakdown = computed(() => {
     const isEditing = this.isEditMode();
     const noWorkDay = this.recordForm.get('noWorkDay')?.value;
-    
+
     // Si es día no trabajado, no hay pago
     if (noWorkDay) {
       return {
@@ -811,15 +805,15 @@ export class RegistroDiarioDetail {
 
     // Obtener el porcentaje del chofer (del record original o 30% por defecto)
     const percentage = this.record()?.paymentBreakdown?.percentage || 30;
-    
+
     // Si está editando, usar el valor reactivo del formulario; si no, usar el valor del record
-    const base = isEditing 
+    const base = isEditing
       ? (this.incomeValue() || 0)
       : (this.record()?.paymentBreakdown?.base || this.record()?.income || 0);
-    
+
     // Calcular el monto a pagar (usar Math.round para evitar errores de redondeo)
     const amount = Math.round(base * (percentage / 100));
-    
+
     return {
       base,
       percentage,
@@ -839,26 +833,26 @@ export class RegistroDiarioDetail {
   currentNeto = computed(() => {
     const isEditing = this.isEditMode();
     const noWorkDay = this.recordForm.get('noWorkDay')?.value;
-    
+
     // Si es día no trabajado, no hay neto
     if (noWorkDay) {
       return 0;
     }
 
     // Obtener valores actuales (del formulario si está editando, del record si no)
-    const income = isEditing 
+    const income = isEditing
       ? (this.incomeValue() || 0)
       : (this.record()?.income || 0);
-    
+
     const diesel = isEditing
       ? (this.dieselExpenseValue() || 0)
       : (this.record()?.dieselExpense || 0);
-    
+
     const pagoChofer = this.currentPaymentBreakdown().amount;
-    
+
     // Cálculo exacto sin redondeo: todos los valores son enteros
     const neto = income - diesel - pagoChofer;
-    
+
     return neto;
   });
 
@@ -868,7 +862,7 @@ export class RegistroDiarioDetail {
     const noWorkDay = this.recordForm.get('noWorkDay')?.value;
     const incomeControl = this.recordForm.get('income');
     const dieselControl = this.recordForm.get('dieselExpense');
-    
+
     if (noWorkDay) {
       incomeControl?.clearValidators();
       dieselControl?.clearValidators();
@@ -876,9 +870,20 @@ export class RegistroDiarioDetail {
       incomeControl?.setValidators([Validators.required, Validators.min(0)]);
       dieselControl?.setValidators([Validators.required, Validators.min(0)]);
     }
-    
+
     incomeControl?.updateValueAndValidity();
     dieselControl?.updateValueAndValidity();
+  });
+
+  // Effect para habilitar/deshabilitar el formulario según el modo de edición
+  // Esto resuelve el warning: It looks like you're using the disabled attribute with a reactive form directive...
+  private formStateEffect = effect(() => {
+    const isEditing = this.isEditMode();
+    if (isEditing) {
+      this.recordForm.enable({ emitEvent: false });
+    } else {
+      this.recordForm.disable({ emitEvent: false });
+    }
   });
 
   constructor() {
@@ -908,7 +913,7 @@ export class RegistroDiarioDetail {
           ...currentRecord,
           isEmergency: value || false
         });
-        
+
         // Actualizar validación de observaciones cuando cambia isEmergency
         const observationsControl = this.recordForm.get('observations');
         if (value) {
@@ -925,7 +930,7 @@ export class RegistroDiarioDetail {
 
   private loadRecord(id: string): void {
     this.isLoading.set(true);
-    
+
     forkJoin({
       record: this.dailyRecordService.getDailyRecordById(id),
       history: this.dailyRecordService.getDailyRecordHistory(id)
@@ -944,7 +949,7 @@ export class RegistroDiarioDetail {
           dieselLiters: recordWithHistory.dieselLiters || 0,
           observations: recordWithHistory.observations || ''
         });
-        
+
         // Configurar validación condicional de observaciones según isEmergency
         const observationsControl = this.recordForm.get('observations');
         if (recordWithHistory.isEmergency) {
@@ -953,14 +958,14 @@ export class RegistroDiarioDetail {
           observationsControl?.clearValidators();
         }
         observationsControl?.updateValueAndValidity();
-        
+
         if (recordWithHistory.receipt?.imageUrl) {
           this.receiptPreview.set(recordWithHistory.receipt.imageUrl);
         }
         if (recordWithHistory.comprobanteRegistro?.imageUrl) {
           this.registroPreview.set(recordWithHistory.comprobanteRegistro.imageUrl);
         }
-        
+
         this.isLoading.set(false);
       },
       error: (error) => {
@@ -984,11 +989,11 @@ export class RegistroDiarioDetail {
     const formattedDate = date
       ? date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
       : record.fecha;
-    
+
     // Mapear comprobante de diesel
     const receipt = record.comprobante_diesel ? {
       amount: record.comprobante_diesel.monto,
-      uploadedAt: record.comprobante_diesel.subido_en 
+      uploadedAt: record.comprobante_diesel.subido_en
         ? this.formatDateToChileTime(record.comprobante_diesel.subido_en)
         : undefined,
       imageUrl: record.comprobante_diesel.imagen_url
@@ -998,7 +1003,7 @@ export class RegistroDiarioDetail {
     // El backend devuelve imagen_url directamente, no en un objeto anidado
     const comprobanteRegistro = record.comprobante_registro ? {
       imageUrl: record.comprobante_registro.imagen_url,
-      uploadedAt: record.comprobante_registro.subido_en 
+      uploadedAt: record.comprobante_registro.subido_en
         ? this.formatDateToChileTime(record.comprobante_registro.subido_en)
         : undefined
     } : undefined;
@@ -1045,7 +1050,7 @@ export class RegistroDiarioDetail {
         dieselLiters: this.record()!.dieselLiters || 0,
         observations: this.record()!.observations
       });
-      
+
       // Configurar validación condicional de observaciones según isEmergency
       const observationsControl = this.recordForm.get('observations');
       if (this.record()!.isEmergency) {
@@ -1067,10 +1072,10 @@ export class RegistroDiarioDetail {
       const formValue = this.recordForm.value;
       const recordId = this.record()!.id;
       const currentRecord = this.record()!;
-      
+
       // 1. Snapshot del estado actual (para rollback)
       this.previousRecordState = { ...currentRecord };
-      
+
       // 2. Optimistic update: Actualizar record signal inmediatamente
       const optimisticRecord: DailyRecordDetailView = {
         ...currentRecord,
@@ -1083,7 +1088,7 @@ export class RegistroDiarioDetail {
         observations: formValue.observations || ''
       };
       this.record.set(optimisticRecord);
-      
+
       // 3. Subir imágenes si hay archivos nuevos
       const registroFile = this.registroFile();
       const receiptFile = this.receiptFile();
@@ -1091,7 +1096,7 @@ export class RegistroDiarioDetail {
       const hasNewRegistroFile = !!registroFile;
       const hasNewReceiptFile = !!receiptFile;
       const uploads: Array<Observable<{ url: string; type: 'registro' | 'diesel' }>> = [];
-      
+
       if (registroFile && currentRecord.chofer_id) {
         uploads.push(
           this.storageService.uploadDailyRecordImageAdmin(
@@ -1108,7 +1113,7 @@ export class RegistroDiarioDetail {
           )
         );
       }
-      
+
       if (receiptFile && currentRecord.chofer_id) {
         uploads.push(
           this.storageService.uploadDailyRecordImageAdmin(
@@ -1125,70 +1130,70 @@ export class RegistroDiarioDetail {
           )
         );
       }
-      
+
       // 4. Esperar a que se suban las imágenes (si hay) y luego actualizar
-      const updateAfterUploads = uploads.length > 0 
+      const updateAfterUploads = uploads.length > 0
         ? forkJoin(uploads).pipe(
-            switchMap((results) => {
-              // Construir DTO con URLs de imágenes subidas
-              const updateDto: any = {
-                recaudado: formValue.noWorkDay ? undefined : formValue.income,
-                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
-                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
-                dia_no_trabajado: formValue.noWorkDay || false,
-                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
-                es_emergencia: formValue.isEmergency || false,
-                observaciones: formValue.observations || null
-              };
-              
-              // Agregar URLs de imágenes subidas (nuevas)
-              results.forEach(result => {
-                if (result.type === 'registro') {
-                  updateDto.comprobante_registro = { imagen: result.url };
-                } else if (result.type === 'diesel') {
-                  updateDto.comprobante_diesel = { imagen: result.url };
-                }
-              });
-              
-              // Si solo se cambió una imagen, mantener la URL existente de la otra
-              const hasRegistroUpload = results.some(r => r.type === 'registro');
-              const hasDieselUpload = results.some(r => r.type === 'diesel');
-              
-              if (!hasRegistroUpload && currentRecord.comprobanteRegistro?.imageUrl) {
-                updateDto.comprobante_registro = { imagen: currentRecord.comprobanteRegistro.imageUrl };
+          switchMap((results) => {
+            // Construir DTO con URLs de imágenes subidas
+            const updateDto: any = {
+              recaudado: formValue.noWorkDay ? undefined : formValue.income,
+              costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+              litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+              dia_no_trabajado: formValue.noWorkDay || false,
+              motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+              es_emergencia: formValue.isEmergency || false,
+              observaciones: formValue.observations || null
+            };
+
+            // Agregar URLs de imágenes subidas (nuevas)
+            results.forEach(result => {
+              if (result.type === 'registro') {
+                updateDto.comprobante_registro = { imagen: result.url };
+              } else if (result.type === 'diesel') {
+                updateDto.comprobante_diesel = { imagen: result.url };
               }
-              
-              if (!hasDieselUpload && currentRecord.receipt?.imageUrl) {
-                updateDto.comprobante_diesel = { imagen: currentRecord.receipt.imageUrl };
-              }
-              
-              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
-            })
-          )
+            });
+
+            // Si solo se cambió una imagen, mantener la URL existente de la otra
+            const hasRegistroUpload = results.some(r => r.type === 'registro');
+            const hasDieselUpload = results.some(r => r.type === 'diesel');
+
+            if (!hasRegistroUpload && currentRecord.comprobanteRegistro?.imageUrl) {
+              updateDto.comprobante_registro = { imagen: currentRecord.comprobanteRegistro.imageUrl };
+            }
+
+            if (!hasDieselUpload && currentRecord.receipt?.imageUrl) {
+              updateDto.comprobante_diesel = { imagen: currentRecord.receipt.imageUrl };
+            }
+
+            return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+          })
+        )
         : of(null).pipe(
-            switchMap(() => {
-              // Sin archivos nuevos, solo actualizar datos
-              const updateDto: any = {
-                recaudado: formValue.noWorkDay ? undefined : formValue.income,
-                costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
-                litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
-                dia_no_trabajado: formValue.noWorkDay || false,
-                motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
-                es_emergencia: formValue.isEmergency || false,
-                observaciones: formValue.observations || null,
-                // Mantener URLs existentes si no se cambiaron
-                comprobante_registro: currentRecord.comprobanteRegistro?.imageUrl 
-                  ? { imagen: currentRecord.comprobanteRegistro.imageUrl }
-                  : undefined,
-                comprobante_diesel: currentRecord.receipt?.imageUrl
-                  ? { imagen: currentRecord.receipt.imageUrl }
-                  : undefined
-              };
-              
-              return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
-            })
-          );
-      
+          switchMap(() => {
+            // Sin archivos nuevos, solo actualizar datos
+            const updateDto: any = {
+              recaudado: formValue.noWorkDay ? undefined : formValue.income,
+              costo_diesel: formValue.noWorkDay ? undefined : formValue.dieselExpense,
+              litros_diesel: formValue.noWorkDay ? undefined : formValue.dieselLiters,
+              dia_no_trabajado: formValue.noWorkDay || false,
+              motivo_inactividad: formValue.noWorkDay ? (formValue.noWorkDayReason as any) : undefined,
+              es_emergencia: formValue.isEmergency || false,
+              observaciones: formValue.observations || null,
+              // Mantener URLs existentes si no se cambiaron
+              comprobante_registro: currentRecord.comprobanteRegistro?.imageUrl
+                ? { imagen: currentRecord.comprobanteRegistro.imageUrl }
+                : undefined,
+              comprobante_diesel: currentRecord.receipt?.imageUrl
+                ? { imagen: currentRecord.receipt.imageUrl }
+                : undefined
+            };
+
+            return this.dailyRecordService.updateDailyRecord(recordId, updateDto);
+          })
+        );
+
       updateAfterUploads.pipe(
         // 5. Después de actualizar, recargar el registro completo y su historial
         // para obtener todos los datos actualizados (historial, desglose de pago, etc.)
@@ -1212,7 +1217,7 @@ export class RegistroDiarioDetail {
               dieselLiters: this.previousRecordState.dieselLiters || 0,
               observations: this.previousRecordState.observations
             });
-            
+
             // Restaurar validación condicional de observaciones
             const observationsControl = this.recordForm.get('observations');
             if (this.previousRecordState.isEmergency) {
@@ -1222,10 +1227,10 @@ export class RegistroDiarioDetail {
             }
             observationsControl?.updateValueAndValidity();
           }
-          
+
           // 7. Notificar al usuario
           this.showErrorToast('No se pudo guardar el registro. Intenta nuevamente.');
-          
+
           return EMPTY;
         })
       ).subscribe({
@@ -1235,7 +1240,7 @@ export class RegistroDiarioDetail {
           const viewRecord = this.mapToDetailView(updatedRecord);
           const recordWithHistory = { ...viewRecord, history };
           this.record.set(recordWithHistory);
-          
+
           // 9. Actualizar el formulario con los valores del servidor
           this.recordForm.patchValue({
             noWorkDay: recordWithHistory.noWorkDay,
@@ -1246,7 +1251,7 @@ export class RegistroDiarioDetail {
             dieselLiters: recordWithHistory.dieselLiters || 0,
             observations: recordWithHistory.observations || ''
           });
-          
+
           // Configurar validación condicional de observaciones según isEmergency
           const observationsControl = this.recordForm.get('observations');
           if (recordWithHistory.isEmergency) {
@@ -1255,7 +1260,7 @@ export class RegistroDiarioDetail {
             observationsControl?.clearValidators();
           }
           observationsControl?.updateValueAndValidity();
-          
+
           // 10. Actualizar previews de imágenes con las URLs del servidor
           if (viewRecord.receipt?.imageUrl) {
             this.receiptPreview.set(viewRecord.receipt.imageUrl);
@@ -1263,7 +1268,7 @@ export class RegistroDiarioDetail {
           if (viewRecord.comprobanteRegistro?.imageUrl) {
             this.registroPreview.set(viewRecord.comprobanteRegistro.imageUrl);
           }
-          
+
           // 11. Invalidar caché de liquidación para todas las semanas del mes
           // Esto es necesario porque los cambios en registros diarios afectan los cálculos de liquidación
           if (updatedRecord?.fecha) {
@@ -1276,7 +1281,7 @@ export class RegistroDiarioDetail {
               console.warn('Error al invalidar caché de liquidación:', error);
             }
           }
-          
+
           this.isEditMode.set(false);
           this.receiptFile.set(null);
           this.registroFile.set(null);
@@ -1302,7 +1307,7 @@ export class RegistroDiarioDetail {
 
     // 1. Snapshot del estado actual (para rollback)
     const previousRecord = { ...currentRecord };
-    
+
     // 2. Optimistic update: Actualizar estado inmediatamente
     const optimisticRecord: DailyRecordDetailView = {
       ...currentRecord,
@@ -1318,20 +1323,20 @@ export class RegistroDiarioDetail {
         }
       ]
     };
-    
+
     this.record.set(optimisticRecord);
     this.isResolvingIncident.set(true);
-    
+
     // 3. Llamar al servidor en segundo plano
     const recordId = currentRecord.id;
     this.dailyRecordService.resolveIncident(recordId).pipe(
       catchError((error) => {
         // 4. Rollback en caso de error
         this.record.set(previousRecord);
-        
+
         // 5. Notificar al usuario
         this.showErrorToast('No se pudo resolver el incidente. Intenta nuevamente.');
-        
+
         return EMPTY;
       })
     ).subscribe({
@@ -1401,22 +1406,22 @@ export class RegistroDiarioDetail {
     if (!dateString || dateString === 'null' || dateString === 'undefined') {
       return '';
     }
-    
+
     try {
       // Asegurarnos de que es un string
       if (typeof dateString !== 'string') {
         console.warn('Expected string but got:', typeof dateString, dateString);
         return '';
       }
-      
+
       // Limpiar el string
       let dateStr = dateString.trim();
-      
+
       // Si está vacío después de trim, retornar vacío
       if (!dateStr) {
         return '';
       }
-      
+
       // Si la fecha viene sin 'Z' al final y no tiene offset, asumimos que es UTC
       // Si viene con 'Z', JavaScript la interpretará correctamente como UTC
       // Si viene con offset (+00:00, -03:00, etc), JavaScript la interpretará correctamente
@@ -1424,15 +1429,15 @@ export class RegistroDiarioDetail {
         // Si no tiene timezone info, agregar 'Z' para indicar UTC
         dateStr = dateStr + 'Z';
       }
-      
+
       const date = new Date(dateStr);
-      
+
       // Validar que la fecha sea válida
       if (isNaN(date.getTime())) {
         console.warn('Invalid date received:', dateString);
         return '';
       }
-      
+
       // Formatear en hora de Chile usando la zona horaria específica
       const formatted = date.toLocaleString('es-CL', {
         timeZone: 'America/Santiago',
@@ -1443,7 +1448,7 @@ export class RegistroDiarioDetail {
         minute: '2-digit',
         hour12: true
       });
-      
+
       return formatted;
     } catch (error) {
       console.error('Error formatting date:', error, dateString);
@@ -1455,7 +1460,7 @@ export class RegistroDiarioDetail {
     if (!timestamp) {
       return '';
     }
-    
+
     // Parsear la fecha preservando la hora
     let dateStr = timestamp.trim();
     // Si no tiene timezone, asumir UTC
@@ -1463,20 +1468,20 @@ export class RegistroDiarioDetail {
       dateStr = dateStr + 'Z';
     }
     const date = new Date(dateStr);
-    
+
     if (isNaN(date.getTime())) {
       return '';
     }
-    
+
     // Obtener la fecha/hora actual
     const now = new Date();
-    
+
     // Calcular diferencia en milisegundos directamente
     // (ambas fechas están en UTC internamente, la diferencia es correcta)
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
-    
+
     // Para días, usar función que compara solo fechas (sin horas)
     const diffDays = getDaysDifferenceInChile(timestamp);
 
@@ -1491,10 +1496,10 @@ export class RegistroDiarioDetail {
     } else if (diffDays < 7) {
       return `Hace ${diffDays} días`;
     } else {
-      return date.toLocaleDateString('es-CL', { 
+      return date.toLocaleDateString('es-CL', {
         timeZone: 'America/Santiago',
-        day: 'numeric', 
-        month: 'short' 
+        day: 'numeric',
+        month: 'short'
       });
     }
   }
@@ -1511,25 +1516,25 @@ export class RegistroDiarioDetail {
       event.preventDefault();
       return;
     }
-    
+
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (file) {
       // Validar tamaño (5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('El archivo es demasiado grande. Máximo 5MB.');
         return;
       }
-      
+
       // Validar tipo
       if (!file.type.startsWith('image/')) {
         alert('Solo se permiten archivos de imagen.');
         return;
       }
-      
+
       this.receiptFile.set(file);
-      
+
       // Crear preview
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1543,25 +1548,25 @@ export class RegistroDiarioDetail {
     if (!this.isEditMode()) {
       return;
     }
-    
+
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
-    
+
     if (file) {
       // Validar tamaño (5MB)
       if (file.size > 5 * 1024 * 1024) {
         alert('El archivo es demasiado grande. Máximo 5MB.');
         return;
       }
-      
+
       // Validar tipo
       if (!file.type.startsWith('image/')) {
         alert('Solo se permiten archivos de imagen.');
         return;
       }
-      
+
       this.registroFile.set(file);
-      
+
       // Crear preview
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -1575,12 +1580,12 @@ export class RegistroDiarioDetail {
     // Usar Location.back() para regresar a la página anterior
     // Esto funcionará automáticamente tanto desde el panel principal como desde registros diarios
     // Si no hay historial (acceso directo), navegar al dashboard como fallback
-    
+
     // Verificar si hay historial en la sesión actual
     // window.history.length puede incluir todo el historial del navegador,
     // así que usamos una verificación más simple: intentar regresar
     const canGoBack = window.history.length > 1;
-    
+
     if (canGoBack) {
       // Regresar a la página anterior (funciona desde panel principal o registros diarios)
       this.location.back();
@@ -1589,18 +1594,18 @@ export class RegistroDiarioDetail {
       this.router.navigate(['/dashboard']);
     }
   }
-  
+
   // Helper para verificar si se puede usar NgOptimizedImage
   canUseNgOptimizedImage(): boolean {
     const imageUrl = this.record()?.receipt?.imageUrl;
     return !!imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('data:');
   }
-  
+
   // Helper para obtener la URL de la imagen de forma segura
   getReceiptImageUrl(): string {
     return this.record()?.receipt?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante';
   }
-  
+
   // Helper para verificar si se puede usar NgOptimizedImage en preview
   canUseNgOptimizedImagePreview(): boolean {
     const preview = this.receiptPreview();
@@ -1608,23 +1613,23 @@ export class RegistroDiarioDetail {
     const url = preview || recordUrl;
     return !!url && typeof url === 'string' && !url.startsWith('data:');
   }
-  
+
   // Helper para obtener la URL del preview de forma segura
   getPreviewImageUrl(): string {
     return this.receiptPreview() || this.record()?.receipt?.imageUrl || '';
   }
-  
+
   // Helper para verificar si se puede usar NgOptimizedImage para comprobante del registro
   canUseNgOptimizedImageRegistro(): boolean {
     const imageUrl = this.record()?.comprobanteRegistro?.imageUrl;
     return !!imageUrl && typeof imageUrl === 'string' && !imageUrl.startsWith('data:');
   }
-  
+
   // Helper para obtener la URL de la imagen del comprobante del registro
   getRegistroImageUrl(): string {
     return this.record()?.comprobanteRegistro?.imageUrl || 'https://via.placeholder.com/400x300?text=Comprobante+Registro';
   }
-  
+
   // Helper para verificar si se puede usar NgOptimizedImage en preview del registro
   canUseNgOptimizedImagePreviewRegistro(): boolean {
     const preview = this.registroPreview();
@@ -1632,7 +1637,7 @@ export class RegistroDiarioDetail {
     const url = preview || recordUrl;
     return !!url && typeof url === 'string' && !url.startsWith('data:');
   }
-  
+
   // Helper para obtener la URL del preview del comprobante del registro
   getPreviewRegistroImageUrl(): string {
     return this.registroPreview() || this.record()?.comprobanteRegistro?.imageUrl || '';
