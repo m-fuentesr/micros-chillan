@@ -42,7 +42,11 @@ import { ConfirmModalService } from '../../services/confirm-modal.service';
           <button 
             type="button"
             class="btn btn-error text-white w-full sm:w-auto shadow-error/20 rounded-xl border border-error/30 font-semibold order-1 sm:order-2 cursor-pointer"
+            [disabled]="modalService.isSubmitting()"
             (click)="modalService.confirm()">
+            @if (modalService.isSubmitting()) {
+              <span class="loading loading-spinner loading-sm mr-2"></span>
+            }
             {{ modalService.config()?.confirmText || 'Confirmar' }}
           </button>
         </div>

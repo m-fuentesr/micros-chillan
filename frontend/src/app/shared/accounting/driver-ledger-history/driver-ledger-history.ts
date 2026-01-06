@@ -229,100 +229,68 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
   private accountingService = inject(AccountingService);
   private destroyRef = inject(DestroyRef);
   private cdr = inject(ChangeDetectorRef);
-  
+
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
+
+  // Signal para indicar que la vista está inicializada
+  private viewReady = signal(false);
 
   // Effect para manejar el dialog y cargar el historial
   private dialogEffect = effect(() => {
     const isVisible = this.modalService.isVisible();
     const choferId = this.modalService.choferId();
-    console.log('🔵 dialogEffect: isVisible =', isVisible, 'choferId =', choferId);
-    
-    // Esperar a que ngAfterViewInit haya ejecutado
-    if (this.dialogRef?.nativeElement) {
+    // Suscribirse a viewReady para re-ejecutar el efecto cuando la vista esté lista
+    const isViewReady = this.viewReady();
+
+    console.log('🔵 dialogEffect: isVisible =', isVisible, 'choferId =', choferId, 'viewReady =', isViewReady);
+
+    // Esperar a que la vista esté lista y el dialogRef exista
+    if (isViewReady && this.dialogRef?.nativeElement) {
       const dialog = this.dialogRef.nativeElement;
-      
+
       if (isVisible) {
-        console.log('🔵 Abriendo dialog con showModal()');
-        dialog.showModal();
-        
+        if (!dialog.open) {
+          console.log('🔵 Abriendo dialog con showModal()');
+          dialog.showModal();
+        }
+
         // Cargar historial cuando se abre el modal y hay un choferId
         if (choferId !== null) {
           console.log('🔵 choferId disponible, cargando historial');
-          setTimeout(() => {
-            if (this.modalService.isVisible() && this.modalService.choferId() === choferId) {
-              console.log('✅ Llamando loadHistory() desde effect');
-              this.loadHistory();
-            }
-          }, 100);
+          // Usar untracked para evitar ciclos infinitos si loadHistory modifica señales (no debería, modifica servicio)
+          // pero es buena práctica
+          this.loadHistory();
         }
       } else {
-        console.log('🔵 Cerrando dialog');
-        dialog.close();
+        if (dialog.open) {
+          console.log('🔵 Cerrando dialog');
+          dialog.close();
+        }
       }
     } else {
-      console.log('🔵 dialogRef aún no disponible en effect');
+      console.log('🔵 Esperando a que viewReady sea true');
     }
   });
 
   constructor() {
     console.log('🔵 DriverLedgerHistoryComponent constructor() llamado');
-    console.log('🔵 Estado inicial - isVisible:', this.modalService.isVisible(), 'choferId:', this.modalService.choferId());
   }
 
   ngOnInit(): void {
     console.log('🔵 DriverLedgerHistoryComponent ngOnInit() llamado');
-    console.log('🔵 Estado en ngOnInit - isVisible:', this.modalService.isVisible(), 'choferId:', this.modalService.choferId());
-    // Forzar detección de cambios para asegurar que el componente se renderice
-    this.cdr.markForCheck();
-    
-    // Suscribirse a los cambios de isVisible y choferId para cargar el historial
-    toObservable(this.modalService.isVisible)
-      .pipe(
-        filter(isVisible => {
-          console.log('🔵 Observable filter isVisible:', isVisible);
-          return isVisible;
-        }),
-        switchMap(() => {
-          console.log('🔵 Observable switchMap: obteniendo choferId');
-          return toObservable(this.modalService.choferId);
-        }),
-        filter(choferId => {
-          console.log('🔵 Observable filter choferId:', choferId);
-          return choferId !== null;
-        }),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe({
-        next: (choferId) => {
-          console.log('🔵 Observable subscribe next: choferId =', choferId);
-          if (this.modalService.isVisible() && choferId !== null) {
-            console.log('✅ Condiciones cumplidas, llamando loadHistory()');
-            this.loadHistory();
-          } else {
-            console.warn('⚠️ Condiciones no cumplidas para cargar historial en subscribe');
-          }
-        },
-        error: (error) => {
-          console.error('❌ Error en observable:', error);
-        },
-        complete: () => {
-          console.log('🔵 Observable completado');
-        }
-      });
   }
 
   ngAfterViewInit(): void {
     console.log('🔵 DriverLedgerHistoryComponent.ngAfterViewInit() llamado');
     const dialog = this.dialogRef?.nativeElement;
-    
+
     if (!dialog) {
-      console.error('❌ dialogRef no está disponible');
+      console.error('❌ dialogRef no está disponible en ngAfterViewInit');
       return;
     }
 
-    console.log('✅ dialogRef disponible');
-    // El effect ya está configurado en el constructor, solo necesitamos forzar una ejecución
+    console.log('✅ dialogRef disponible, marcando viewReady = true');
+    this.viewReady.set(true);
     this.cdr.markForCheck();
   }
 
@@ -330,7 +298,7 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
     console.log('🔵 loadHistory() llamado con página:', page);
     const choferId = this.modalService.choferId();
     console.log('🔵 choferId obtenido:', choferId);
-    
+
     if (choferId === null) {
       console.warn('⚠️ choferId es null, abortando loadHistory()');
       return;
@@ -338,7 +306,7 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
 
     console.log('✅ Iniciando carga de historial para choferId:', choferId, 'página:', page);
     this.modalService.setIsLoading(true);
-    
+
     console.log('🔵 Llamando a accountingService.getDriverLedgerHistory()');
     this.accountingService.getDriverLedgerHistory(choferId, page, 5).subscribe({
       next: (data) => {

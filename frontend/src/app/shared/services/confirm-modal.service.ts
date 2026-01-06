@@ -15,9 +15,11 @@ export class ConfirmModalService {
   private _isVisible = signal(false);
   private _config = signal<ConfirmModalConfig | null>(null);
   private _resolveCallback = signal<((confirmed: boolean) => void) | null>(null);
+  private _isSubmitting = signal(false);
 
   readonly isVisible = this._isVisible.asReadonly();
   readonly config = this._config.asReadonly();
+  readonly isSubmitting = this._isSubmitting.asReadonly();
 
   /**
    * Abre el modal de confirmación y retorna una Promise que se resuelve cuando el usuario confirma o cancela
@@ -34,6 +36,9 @@ export class ConfirmModalService {
    * Confirma la acción
    */
   confirm(): void {
+    if (this._isSubmitting()) return;
+
+    this._isSubmitting.set(true);
     const resolve = this._resolveCallback();
     if (resolve) {
       resolve(true);
@@ -56,6 +61,7 @@ export class ConfirmModalService {
     this._isVisible.set(false);
     this._config.set(null);
     this._resolveCallback.set(null);
+    this._isSubmitting.set(false);
   }
 }
 
