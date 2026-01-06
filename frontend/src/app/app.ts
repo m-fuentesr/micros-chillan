@@ -19,6 +19,7 @@ import { PaymentConfirmModalComponent } from './shared/components/payment-confir
 import { ImageModalComponent } from './shared/components/image-modal/image-modal';
 import { GlobalErrorDisplayComponent } from './shared/components/global-error-display/global-error-display';
 import { GlobalErrorService } from './shared/services/global-error.service';
+import { DriverLedgerHistoryModalService } from './shared/services/driver-ledger-history-modal.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
 
@@ -58,7 +59,7 @@ import { filter, map, startWith } from 'rxjs';
             <!-- Error global dentro del main - sidebar sigue visible -->
             <app-global-error-display></app-global-error-display>
           } @else {
-            <div class="px-4 pt-0 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
+            <div class="px-4 pt-4 pb-4 sm:px-6 sm:pt-6 sm:pb-6">
               <app-route-transition-outlet></app-route-transition-outlet>
             </div>
           }
@@ -111,7 +112,9 @@ import { filter, map, startWith } from 'rxjs';
     <app-ledger-movement-modal></app-ledger-movement-modal>
 
     <!-- Modal de historial de cuenta corriente (global) -->
-    <app-driver-ledger-history></app-driver-ledger-history>
+    @if (driverLedgerHistoryModalService.isVisible()) {
+      <app-driver-ledger-history></app-driver-ledger-history>
+    }
   `,
   styles: [
     `
@@ -122,7 +125,7 @@ import { filter, map, startWith } from 'rxjs';
       /* Asegurar que no haya margen o padding adicional en el contenido */
       .mobile-pt-adjust > div {
         margin-top: 0 !important;
-        padding-top: 0 !important;
+        /* padding-top eliminado para permitir espaciado */
       }
       /* Eliminar cualquier espacio adicional del route-transition-outlet */
       .mobile-pt-adjust app-route-transition-outlet,
@@ -310,17 +313,18 @@ export class App implements OnInit, OnDestroy {
   private orchestrator = inject(TransitionOrchestratorService);
   private spinnerService = inject(SpinnerService);
   globalErrorService = inject(GlobalErrorService);
+  driverLedgerHistoryModalService = inject(DriverLedgerHistoryModalService);
 
   sidebarCollapsed = signal(false);
   isAdmin = computed(() => this.auth.currentUser()?.role === 'admin');
   isWorker = computed(() => this.auth.currentUser()?.role === 'worker');
-  
+
   // Signal para rastrear si estamos en proceso de logout
   isLoggingOut = signal(false);
-  
+
   private zoomFixTimeout: any = null;
   private resizeHandler = this.handleResize.bind(this);
-  
+
   constructor() {
     // CRÍTICO: Detectar recarga DESPUÉS del primer render usando afterNextRender
     // Esto asegura que el componente ya está renderizado y podemos forzar detección de cambios
@@ -332,11 +336,11 @@ export class App implements OnInit, OnDestroy {
           if (navEntries.length > 0) {
             const navEntry = navEntries[0];
             const isPageReload = navEntry.type === 'reload';
-            
+
             if (isPageReload) {
               const currentUrl = this.router.url;
               let user = this.auth.currentUser();
-              
+
               // CRÍTICO: Si el usuario no está disponible aún, esperar a que esté disponible
               // En una recarga, el usuario puede no estar disponible inmediatamente
               if (!user) {
@@ -352,9 +356,9 @@ export class App implements OnInit, OnDestroy {
                   }
                 }, 50);
               } else {
-                const isAdminRoute = user.role === 'admin' && 
-                                    this.routeTransitionService.isAdminRoute(currentUrl);
-                
+                const isAdminRoute = user.role === 'admin' &&
+                  this.routeTransitionService.isAdminRoute(currentUrl);
+
                 if (isAdminRoute) {
                   this.showSpinnerForReload(currentUrl);
                 }
@@ -367,7 +371,7 @@ export class App implements OnInit, OnDestroy {
       }
     });
   }
-  
+
   // Signal reactivo para la URL actual del router
   currentUrl = toSignal(
     this.router.events.pipe(
@@ -377,22 +381,22 @@ export class App implements OnInit, OnDestroy {
     ),
     { initialValue: this.router.url }
   );
-  
+
   // Computed para mostrar loading durante inicialización de sesión
   showInitialLoading = computed(() => {
     return this.auth.isInitializing() && !this.auth.currentUser();
   });
-  
+
   // Usar el servicio de spinner en lugar de signal local
   showReloadSpinner = this.spinnerService.isVisible;
-  
+
   // Signal para detectar cuando se está cerrando sesión (logout)
   showLogoutSpinner = computed(() => {
     const spinnerVisible = this.spinnerService.isVisible();
     const url = this.currentUrl();
     const user = this.auth.currentUser();
     const loggingOut = this.isLoggingOut();
-    
+
     // Mostrar spinner de logout si:
     // 1. El spinner está visible
     // 2. Estamos en proceso de logout
@@ -401,28 +405,28 @@ export class App implements OnInit, OnDestroy {
     if (!spinnerVisible) return false;
     if (!loggingOut && user) return false; // Si hay usuario y no estamos en logout, no mostrar
     if (url?.startsWith('/login')) return false;
-    
+
     // Verificar si estábamos en una ruta protegida
     const wasAdminRoute = url ? this.routeTransitionService.isAdminRoute(url) : false;
     const wasWorkerRoute = url ? url.startsWith('/trabajador') : false;
-    
+
     return (wasAdminRoute || wasWorkerRoute) && (loggingOut || !user);
   });
-  
+
   // Effect para detectar cuando comienza el logout
   private monitorLogout = effect(() => {
     const spinnerVisible = this.spinnerService.isVisible();
     const url = this.currentUrl();
     const user = this.auth.currentUser();
-    
+
     // Si el spinner está visible, no hay usuario, y estamos en una ruta protegida, es logout
     if (spinnerVisible && !user && url && !url.startsWith('/login')) {
       const isAdminRoute = this.routeTransitionService.isAdminRoute(url);
       const isWorkerRoute = url.startsWith('/trabajador');
-      
+
       if (isAdminRoute || isWorkerRoute) {
         this.isLoggingOut.set(true);
-        
+
         // Resetear después de que termine la animación
         setTimeout(() => {
           this.isLoggingOut.set(false);
@@ -430,7 +434,7 @@ export class App implements OnInit, OnDestroy {
       }
     }
   });
-  
+
   // REDISEÑO: Usar orchestrator para determinar cuándo mostrar el navbar
   // CRÍTICO: El navbar DEBE renderizarse incluso cuando el orchestrator está en 'login-exiting'
   // para que los inputs shouldAnimate y shouldStartHidden se pasen correctamente
@@ -438,27 +442,27 @@ export class App implements OnInit, OnDestroy {
   shouldShowAdminNav = computed(() => {
     const url = this.currentUrl();
     const orchestratorState = this.orchestrator.state();
-    
+
     // No mostrar si estamos en login o rutas públicas
     if (!url || url.startsWith('/login') || url.startsWith('/recuperar-clave') || url.startsWith('/restablecer-clave')) {
       return false;
     }
-    
+
     // CRÍTICO: Permitir renderizar el navbar incluso cuando el orchestrator está en 'login-exiting'
     // Esto asegura que los inputs se pasen correctamente y el navbar pueda aplicar las clases CSS
     // La visibilidad se controla con shouldStartHidden, que retorna true cuando orchestratorState === 'login-exiting'
-    
+
     // Si es admin y está en una ruta admin, mostrar el navbar
     // El orchestrator puede estar en 'idle', 'login-exiting', 'dashboard-entering' o 'dashboard-ready'
     // En todos estos casos, el navbar debe renderizarse para que las clases CSS funcionen correctamente
     return this.isAdmin() && this.routeTransitionService.isAdminRoute(url);
   });
-  
+
   shouldShowWorkerNav = computed(() => {
     const url = this.currentUrl();
     return this.isWorker() && url && !url.startsWith('/login') && !url.startsWith('/recuperar-clave') && !url.startsWith('/restablecer-clave');
   });
-  
+
   // REDISEÑO: Usar orchestrator para controlar animación del sidebar
   // El sidebar siempre empieza oculto si el orchestrator está en 'dashboard-entering'
   shouldAnimateSidebar = computed(() => {
@@ -466,27 +470,27 @@ export class App implements OnInit, OnDestroy {
     // Solo animar cuando el dashboard está entrando
     return orchestratorState === 'dashboard-entering';
   });
-  
+
   // REDISEÑO: shouldStartHidden ahora se basa directamente en el estado del orchestrator
   // Esto garantiza que el navbar esté oculto antes de renderizarse
   shouldStartHidden = computed(() => {
     const orchestratorState = this.orchestrator.state();
     const url = this.currentUrl();
     const shouldAnimate = this.shouldAnimateSidebar();
-    
+
     // CRÍTICO: Si el orchestrator está en 'dashboard-entering' Y shouldAnimate es true,
     // NO ocultar (permitir que sidebar-enter se ejecute sin conflicto con sidebar-start-hidden)
     // Esto evita que sidebar-start-hidden bloquee la animación sidebar-enter
     if (orchestratorState === 'dashboard-entering' && shouldAnimate) {
       return false;
     }
-    
+
     // IMPORTANTE: También ocultar cuando el login está saliendo
     // Esto evita que el navbar aparezca antes de que termine la transición del login
     if (orchestratorState === 'login-exiting') {
       return true;
     }
-    
+
     // CRÍTICO: Detectar si venimos de login usando el estado del orchestrator
     // Si el orchestrator está en 'dashboard-entering' pero shouldAnimate es false,
     // significa que aún no se ha activado la animación, así que ocultar
@@ -497,7 +501,7 @@ export class App implements OnInit, OnDestroy {
     if (orchestratorState === 'dashboard-entering' && !shouldAnimate) {
       return true;
     }
-    
+
     // Si es una recarga de página y estamos en una ruta admin, empezar oculto
     // para evitar que el navbar aparezca antes de la animación
     if (orchestratorState === 'idle' && url && this.routeTransitionService.isAdminRoute(url)) {
@@ -513,7 +517,7 @@ export class App implements OnInit, OnDestroy {
         }
       }
     }
-    
+
     return false;
   });
 
@@ -523,17 +527,17 @@ export class App implements OnInit, OnDestroy {
     const orchestratorState = this.orchestrator.state();
     const url = this.currentUrl();
     const shouldAnimate = orchestratorState === 'dashboard-entering';
-    
+
     // IMPORTANTE: Si el orchestrator está en 'login-exiting', también ocultar el main
     // Esto evita que el main aparezca antes de que termine la transición del login
     const isLoginExiting = orchestratorState === 'login-exiting';
-    
+
     // CRÍTICO: Detectar si venimos de login usando el estado del orchestrator
     // Si el orchestrator está en 'login-exiting' o acaba de pasar a 'dashboard-entering',
     // significa que venimos de login (redirect o no)
     // Usar el estado del orchestrator es más confiable que previousUrl
     const isComingFromLogin = isLoginExiting || (orchestratorState === 'dashboard-entering' && !shouldAnimate);
-    
+
     // Si es recarga de página y estamos en una ruta admin, también animar
     let shouldAnimateForReload = false;
     if (orchestratorState === 'idle' && url && this.routeTransitionService.isAdminRoute(url)) {
@@ -548,7 +552,7 @@ export class App implements OnInit, OnDestroy {
         }
       }
     }
-    
+
     // Si el login está saliendo O venimos de login (pero no cuando dashboard-entering con animación), ocultar el main
     const animateClass = (shouldAnimate || shouldAnimateForReload || isComingFromLogin) ? 'main-content-enter' : 'main-content-transition';
     const marginClass = this.sidebarCollapsed() ? 'lg:ml-16' : 'lg:ml-72';
@@ -571,9 +575,9 @@ export class App implements OnInit, OnDestroy {
     const user = this.auth.currentUser();
     const orchestratorState = this.orchestrator.state();
     const previousUrl = this.routeTransitionService.getPreviousUrl();
-    
+
     if (!url) return;
-    
+
     // Solo aplicar para rutas del dashboard admin
     const isAdminRoute = this.routeTransitionService.isAdminRoute(url);
     if (!isAdminRoute) {
@@ -583,16 +587,16 @@ export class App implements OnInit, OnDestroy {
       }
       return;
     }
-    
+
     // IMPORTANTE: Si venimos de login y el orchestrator está en 'idle', activarlo
     // Esto cubre el caso donde el orchestrator no se activó correctamente desde login
     // (puede pasar si hay un redirect o si el timing no coincide)
     // CRÍTICO: Usar previousUrl del RouteTransitionService, pero también verificar router.url
     // para asegurar que detectamos correctamente cuando venimos de login
     const routerUrl = this.router.url;
-    const isComingFromLogin = previousUrl?.startsWith('/login') || 
-                              (routerUrl && !routerUrl.startsWith('/login') && orchestratorState === 'idle' && !previousUrl);
-    
+    const isComingFromLogin = previousUrl?.startsWith('/login') ||
+      (routerUrl && !routerUrl.startsWith('/login') && orchestratorState === 'idle' && !previousUrl);
+
     if (isComingFromLogin && orchestratorState === 'idle') {
       // Activar el orchestrator manualmente para que las animaciones funcionen
       queueMicrotask(() => {
@@ -600,7 +604,7 @@ export class App implements OnInit, OnDestroy {
       });
       return;
     }
-    
+
     // CRÍTICO: Si el orchestrator está en 'login-exiting', esperar a que pase a 'dashboard-entering'
     // Cuando pase a 'dashboard-entering', el effect se re-ejecutará automáticamente porque orchestratorState cambió
     // En ese momento, shouldAnimateSidebar y shouldStartHidden se actualizarán automáticamente
@@ -609,7 +613,7 @@ export class App implements OnInit, OnDestroy {
       // El orchestrator se encargará de pasar a 'dashboard-entering' automáticamente después de 1200ms
       return;
     }
-    
+
     // CRÍTICO: Si el orchestrator está en 'dashboard-entering', asegurar que las animaciones estén activas
     // Esto se ejecuta cuando el orchestrator pasa de 'login-exiting' a 'dashboard-entering'
     if (orchestratorState === 'dashboard-entering') {
@@ -620,11 +624,11 @@ export class App implements OnInit, OnDestroy {
       // No necesitamos hacer nada aquí, solo verificar que todo esté correcto
       return;
     }
-    
+
     // Detectar recarga de página usando Performance API
     let isPageReload = false;
     let isFirstLoad = false;
-    
+
     if (typeof window !== 'undefined' && window.performance) {
       try {
         const navEntries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
@@ -641,30 +645,30 @@ export class App implements OnInit, OnDestroy {
         isFirstLoad = !previousUrl && !!user && user.role === 'admin';
       }
     }
-    
+
     // IMPORTANTE: Activar INMEDIATAMENTE si es recarga o primera carga
     // Esto debe hacerse antes de que Angular renderice el navbar
     // CRÍTICO: NO mostrar spinner si venimos de login (redirect)
     const isComingFromLoginInEffect = previousUrl?.startsWith('/login');
-    
+
     if ((isPageReload || isFirstLoad) && orchestratorState === 'idle' && !isComingFromLoginInEffect) {
       // Mostrar spinner de recarga
       this.spinnerService.show();
-      
+
       // Activar animación de entrada para recarga/tab-restore
       // Usar queueMicrotask para asegurar que se ejecute antes del siguiente ciclo de detección de cambios
       queueMicrotask(() => {
         this.triggerEntryAnimationForReload();
       });
     }
-    
+
     // CRÍTICO: Mostrar spinner cuando viene de login (redirect)
     // Esto se ejecuta cuando el orchestrator está en 'login-exiting' o cuando detectamos que venimos de login
     if (isComingFromLoginInEffect && orchestratorState === 'idle' && isAdminRoute) {
       // Mostrar spinner inmediatamente
       this.spinnerService.show();
       this.cdr.markForCheck();
-      
+
       // Activar orchestrator para que las animaciones funcionen
       queueMicrotask(() => {
         this.orchestrator.activateDashboardEntry();
@@ -682,31 +686,31 @@ export class App implements OnInit, OnDestroy {
     const user = this.auth.currentUser();
     const wasAdmin = this.isAdmin();
     const url = this.currentUrl();
-    
+
     // Si el usuario no es admin (cerró sesión o cambió de rol), resetear el sidebar
     if (!wasAdmin) {
       this.sidebarCollapsed.set(false);
     }
-    
+
     // Si no hay usuario y estamos en una ruta protegida, redirigir al login
     // Excluir rutas públicas: login, recuperar-clave, restablecer-clave
     if (!url) return;
-    
-    const isPublicRoute = url.startsWith('/login') || 
-                         url.startsWith('/recuperar-clave') || 
-                         url.startsWith('/restablecer-clave');
-    
+
+    const isPublicRoute = url.startsWith('/login') ||
+      url.startsWith('/recuperar-clave') ||
+      url.startsWith('/restablecer-clave');
+
     if (!user && !isPublicRoute && url !== '/') {
       // Usar queueMicrotask para evitar problemas de detección de cambios
       queueMicrotask(() => {
         // Verificar nuevamente la URL antes de redirigir (por si cambió durante el microtask)
         const currentUrl = this.currentUrl();
         if (!currentUrl) return;
-        
-        const stillPublicRoute = currentUrl.startsWith('/login') || 
-                                currentUrl.startsWith('/recuperar-clave') || 
-                                currentUrl.startsWith('/restablecer-clave');
-        
+
+        const stillPublicRoute = currentUrl.startsWith('/login') ||
+          currentUrl.startsWith('/recuperar-clave') ||
+          currentUrl.startsWith('/restablecer-clave');
+
         if (!stillPublicRoute && currentUrl !== '/') {
           this.router.navigateByUrl('/login', { skipLocationChange: false });
         }
@@ -727,7 +731,7 @@ export class App implements OnInit, OnDestroy {
     // Esto hará que shouldStartHidden y shouldAnimateSidebar se activen automáticamente
     this.orchestrator.activateDashboardEntry();
     this.transitionService.startTransition('admin');
-    
+
     // El orchestrator manejará automáticamente el cambio a 'dashboard-ready'
     // después de dashboardTotalEntry, pero también necesitamos terminar la transición del servicio
     const timeline = this.orchestrator.TIMELINE;
@@ -738,7 +742,7 @@ export class App implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     }, timeline.dashboardTotalEntry);
   }
-  
+
   /**
    * CRÍTICO: Método centralizado para mostrar spinner de recarga
    * Verifica si venimos de login y muestra el spinner solo si NO venimos de login
@@ -754,7 +758,7 @@ export class App implements OnInit, OnDestroy {
         isComingFromLogin = false;
       }
     }
-    
+
     // Si NO venimos de login, mostrar spinner
     if (!isComingFromLogin) {
       // CRÍTICO: Mostrar spinner INMEDIATAMENTE
@@ -763,11 +767,11 @@ export class App implements OnInit, OnDestroy {
         this.spinnerService.show();
         // Forzar detección de cambios para asegurar que el spinner se renderice
         this.cdr.markForCheck();
-        
+
         // Activar orchestrator y transición
         this.orchestrator.activateDashboardEntry();
         this.transitionService.startTransition('admin');
-        
+
         // Ocultar spinner cuando termine la animación
         const timeline = this.orchestrator.TIMELINE;
         setTimeout(() => {
@@ -782,20 +786,20 @@ export class App implements OnInit, OnDestroy {
   ngOnInit(): void {
     // NOTA: La detección de recarga ahora se hace en el constructor usando afterNextRender
     // para asegurar que se ejecute después del primer render y podamos forzar detección de cambios
-    
+
     // Detectar y corregir problemas de zoom al cambiar entre vista móvil/desktop
     if (typeof window !== 'undefined') {
       // Resetear zoom al cargar si detectamos un zoom anormal
       this.fixZoomOnLoad();
-      
+
       // Escuchar cambios de tamaño de ventana (útil cuando cambias de móvil a desktop)
       window.addEventListener('resize', this.resizeHandler);
-      
+
       // También escuchar cambios de orientación en dispositivos móviles
       window.addEventListener('orientationchange', () => {
         setTimeout(() => this.checkAndFixZoom(), 300);
       });
-      
+
       // REDISEÑO: Detectar reapertura de pestaña o volver al navegador
       // NOTA: Cuando se vuelve al navegador, NO se muestra el spinner ni se reproduce la animación
       // para evitar molestias al usuario
@@ -815,7 +819,7 @@ export class App implements OnInit, OnDestroy {
     if (this.zoomFixTimeout) {
       clearTimeout(this.zoomFixTimeout);
     }
-    
+
     // Remover listeners
     if (typeof window !== 'undefined') {
       window.removeEventListener('resize', this.resizeHandler);
@@ -850,29 +854,29 @@ export class App implements OnInit, OnDestroy {
 
     // Obtener el ancho real de la ventana
     const windowWidth = window.innerWidth;
-    
+
     // Si estamos en desktop (ancho > 1024px) y el zoom parece estar aplicado incorrectamente
     if (windowWidth > 1024) {
       // Calcular el zoom actual aproximado comparando innerWidth con outerWidth
       // Nota: outerWidth puede no ser confiable en todos los navegadores, así que usamos otra estrategia
-      
+
       // Obtener el ancho del body para comparar
       const bodyWidth = document.body.offsetWidth;
-      
+
       // Si hay una discrepancia significativa, puede ser un problema de zoom
       // En desktop normal, window.innerWidth debería ser cercano al ancho del viewport
       const expectedWidth = Math.min(window.screen.width, 1920); // Asumir máximo 1920px para desktop
-      
+
       // Si el ancho es significativamente menor que el esperado, puede ser un problema de zoom
       if (windowWidth < expectedWidth * 0.8 && windowWidth > 400) {
         // Forzar actualización del viewport para resetear el zoom
         const currentContent = viewport.getAttribute('content') || '';
         const newContent = 'width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes';
-        
+
         // Solo actualizar si es diferente
         if (currentContent !== newContent) {
           viewport.setAttribute('content', newContent);
-          
+
           // Pequeño delay y luego verificar si se corrigió
           setTimeout(() => {
             // Si aún hay problema, intentar forzar un reflow

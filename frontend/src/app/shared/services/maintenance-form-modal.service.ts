@@ -25,11 +25,13 @@ export class MaintenanceFormModalService {
   private _resolveCallback = signal<((record: MaintenanceRecord | null) => void) | null>(null);
   private _machineId = signal<number | null>(null);
   private _availableItems = signal<string[]>([]);
+  private _isSubmitting = signal(false);
 
   readonly isVisible = this._isVisible.asReadonly();
   readonly formData = this._formData.asReadonly();
   readonly machineId = this._machineId.asReadonly();
   readonly availableItems = this._availableItems.asReadonly();
+  readonly isSubmitting = this._isSubmitting.asReadonly();
 
   /**
    * Abre el modal de registro y retorna una Promise que se resuelve cuando el usuario guarda o cancela
@@ -63,6 +65,8 @@ export class MaintenanceFormModalService {
    * Guarda el registro
    */
   save(): void {
+    if (this._isSubmitting()) return;
+
     const data = this._formData();
     const machineId = this._machineId();
     const resolve = this._resolveCallback();
@@ -75,6 +79,8 @@ export class MaintenanceFormModalService {
     if (!data.item || data.costo === null || !data.numero_factura || !data.fecha) {
       return;
     }
+
+    this._isSubmitting.set(true);
 
     // Crear el registro
     const newRecord: MaintenanceRecord = {
@@ -104,6 +110,7 @@ export class MaintenanceFormModalService {
 
   private close(): void {
     this._isVisible.set(false);
+    this._isSubmitting.set(false);
     // Usar función que respeta la zona horaria de Chile para evitar problemas de fecha
     const today = getTodayStringInChile();
     this._formData.set({

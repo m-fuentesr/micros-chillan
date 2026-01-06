@@ -131,6 +131,7 @@ import { formatRut, isValidRut } from '../../utils/rut.utils';
               formControlName="telefono"
               class="input input-bordered w-full placeholder-gray-400"
               placeholder="ej: +56 9 1234 5678"
+              (input)="onPhoneInput($event)"
               [class.input-error]="form.get('telefono')?.invalid && form.get('telefono')?.touched">
             <label class="label">
               <span class="label-text-alt">Campo obligatorio para el registro inicial.</span>
@@ -243,7 +244,7 @@ export class DriverForm implements OnDestroy {
 
   maquinas = input<Array<{ id: number; identificador: string }>>([]);
   initialData = input<Partial<Driver> | null>(null);
-  
+
   formChange = output<Partial<Driver & { maquina_id?: number | null }>>();
   formValid = output<boolean>();
 
@@ -321,6 +322,18 @@ export class DriverForm implements OnDestroy {
     if (formatted !== input.value) {
       input.value = formatted;
       this.form.get('rut')?.setValue(formatted, { emitEvent: false });
+    }
+  }
+
+  onPhoneInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = input.value;
+    // Permitir solo números y el signo +
+    const formatted = value.replace(/[^0-9+]/g, '');
+
+    if (formatted !== value) {
+      input.value = formatted;
+      this.form.get('telefono')?.setValue(formatted, { emitEvent: false });
     }
   }
 

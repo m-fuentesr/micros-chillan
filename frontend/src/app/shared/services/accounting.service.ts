@@ -11,7 +11,7 @@ import { environment } from '../../../environments/environment.development';
 export class AccountingService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
-  
+
   // Caché simple en memoria
   private summaryCache: Map<string, { data: AccountingSummary; timestamp: number }> = new Map();
   private dailyProfitabilityCache: Map<string, { data: DailyProfitabilityData[]; timestamp: number }> = new Map();
@@ -22,17 +22,17 @@ export class AccountingService {
   // GET /api/accounting/summary - Resumen general (RF-019)
   getSummary(mes: number, anio: number): Observable<AccountingSummary> {
     const cacheKey = `${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.summaryCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
-    
+
     return this.http.get<AccountingSummary>(`${this.apiUrl}/api/accounting/summary`, { params }).pipe(
       map(summary => {
         console.log('✅ Resumen contable recibido:', summary);
@@ -58,17 +58,17 @@ export class AccountingService {
   // GET /api/accounting/daily-profitability - Evolución diaria
   getDailyProfitability(mes: number, anio: number): Observable<DailyProfitabilityData[]> {
     const cacheKey = `${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.dailyProfitabilityCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
-    
+
     return this.http.get<DailyProfitabilityData[]>(`${this.apiUrl}/api/accounting/daily-profitability`, { params }).pipe(
       map(data => {
         console.log('✅ Rentabilidad diaria recibida:', data?.length, 'días');
@@ -93,17 +93,17 @@ export class AccountingService {
   // GET /api/accounting/weekly-summary - Resumen semanal
   getWeeklySummary(mes: number, anio: number): Observable<WeeklySummary[]> {
     const cacheKey = `${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.weeklySummaryCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
-    
+
     // Interfaz para la respuesta del backend
     interface BackendWeekSummary {
       numero_semana: number;
@@ -114,17 +114,17 @@ export class AccountingService {
       total_pago_choferes: number;
       ganancia_liquida: number;
     }
-    
+
     return this.http.get<BackendWeekSummary[]>(`${this.apiUrl}/api/accounting/weeks`, { params }).pipe(
       map((backendData: BackendWeekSummary[]) => {
         // Mapear la respuesta del backend al formato del frontend
         const mappedData: WeeklySummary[] = backendData.map(week => {
           // Parsear rango_fechas_texto (formato: "01/11 - 07/11")
           const [fechaInicioStr, fechaFinStr] = this.parseDateRange(week.rango_fechas_texto, mes, anio);
-          
+
           // Calcular total_egresos
           const totalEgresos = week.total_diesel + week.total_mantenimiento + week.total_pago_choferes;
-          
+
           return {
             semana: week.numero_semana,
             fecha_inicio: fechaInicioStr,
@@ -138,7 +138,7 @@ export class AccountingService {
             choferes: [] // Se cargará cuando se expanda la semana
           };
         });
-        
+
         this.weeklySummaryCache.set(cacheKey, { data: mappedData, timestamp: Date.now() });
         return mappedData;
       }),
@@ -163,7 +163,7 @@ export class AccountingService {
       .set('mes', mes.toString())
       .set('anio', anio.toString())
       .set('semana', semana.toString());
-    
+
     // Interfaz para la respuesta del backend
     interface BackendDriverWeekDetail {
       chofer_id: number;
@@ -174,7 +174,7 @@ export class AccountingService {
       gastos_mantenimiento: number;
       total_ganado_chofer: number;
     }
-    
+
     return this.http.get<BackendDriverWeekDetail[]>(`${this.apiUrl}/api/accounting/weeks/detail`, { params }).pipe(
       map((backendData: BackendDriverWeekDetail[]) => {
         // Mapear la respuesta del backend al formato del frontend
@@ -209,11 +209,11 @@ export class AccountingService {
       if (parts.length === 2) {
         const [diaInicio, mesInicio] = parts[0].split('/').map(Number);
         const [diaFin, mesFin] = parts[1].split('/').map(Number);
-        
+
         // Crear fechas en formato ISO (YYYY-MM-DD)
         const fechaInicio = new Date(anio, mes - 1, diaInicio);
         const fechaFin = new Date(anio, mes - 1, diaFin);
-        
+
         return [
           fechaInicio.toISOString().split('T')[0],
           fechaFin.toISOString().split('T')[0]
@@ -222,7 +222,7 @@ export class AccountingService {
     } catch (error) {
       console.warn('Error al parsear rango de fechas:', rangoTexto);
     }
-    
+
     // Fallback: calcular fechas basándose en el número de semana
     const fechaInicio = new Date(anio, mes - 1, 1);
     const primerDiaSemana = fechaInicio.getDay(); // 0 = domingo, 1 = lunes, etc.
@@ -230,7 +230,7 @@ export class AccountingService {
     const inicioSemana = new Date(anio, mes - 1, 1 + diasHastaLunes);
     const finSemana = new Date(inicioSemana);
     finSemana.setDate(finSemana.getDate() + 6);
-    
+
     return [
       inicioSemana.toISOString().split('T')[0],
       finSemana.toISOString().split('T')[0]
@@ -240,13 +240,13 @@ export class AccountingService {
   // GET /api/accounting/weekly-liquidation - Liquidación semanal de choferes
   getWeeklyLiquidation(semana: number, mes: number, anio: number, choferId?: number): Observable<LiquidationPeriod> {
     const cacheKey = choferId ? `${semana}-${mes}-${anio}-${choferId}` : `${semana}-${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.liquidationCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('semana', semana.toString())
       .set('mes', mes.toString())
@@ -254,7 +254,7 @@ export class AccountingService {
     if (choferId) {
       params.set('chofer_id', choferId.toString());
     }
-    
+
     // Interfaz para la respuesta del backend
     interface BackendWeeklyPaymentResponse {
       chofer_id: number;
@@ -275,18 +275,18 @@ export class AccountingService {
       codigo_transferencia?: string | null;
       fecha_pago?: string | null;
     }
-    
+
     return this.http.get<BackendWeeklyPaymentResponse[]>(`${this.apiUrl}/api/accounting/weekly-payments`, { params }).pipe(
       map((backendData: BackendWeeklyPaymentResponse[]) => {
         // Calcular fechas de la semana
         const { fechaInicio, fechaFin } = this.calculateWeekDates(mes, anio, semana);
-        
+
         // Si no hay datos, retornar un período vacío en lugar de lanzar error
         if (!backendData || backendData.length === 0) {
           // Calcular si es última semana
           const totalSemanas = this.countWeeksInMonth(mes, anio);
           const esUltimaSemana = (semana === totalSemanas);
-          
+
           // Retornar período vacío (sin choferes)
           const liquidation: LiquidationPeriod = {
             semana,
@@ -299,15 +299,15 @@ export class AccountingService {
             mes_cerrado_administrativamente: false,
             choferes: []
           };
-          
+
           this.liquidationCache.set(cacheKey, { data: liquidation, timestamp: Date.now() });
           return liquidation;
         }
-        
+
         // Obtener es_ultima_semana y mes_cerrado_administrativamente del primer elemento (todos tienen el mismo valor)
         const esUltimaSemana = backendData[0]?.es_ultima_semana || false;
         const mesCerradoAdministrativamente = backendData[0]?.mes_cerrado_administrativamente || false;
-        
+
         // Mapear choferes
         const choferes: LiquidationDriver[] = backendData.map(payment => {
           // Validar y convertir metodo_pago al tipo esperado
@@ -315,7 +315,7 @@ export class AccountingService {
           if (payment.metodo_pago === 'transferencia' || payment.metodo_pago === 'efectivo') {
             metodoPago = payment.metodo_pago;
           }
-          
+
           return {
             chofer_id: payment.chofer_id,
             chofer_nombre: payment.nombre_chofer,
@@ -333,11 +333,11 @@ export class AccountingService {
             fecha_pago: payment.fecha_pago || null
           };
         });
-        
+
         // El estado es 'cerrado' solo si TODOS los choferes están pagados
         // Si hay al menos un chofer pendiente o confirmado, el período sigue abierto
         const todosPagados = choferes.length > 0 && choferes.every(c => c.estado_pago === 'pagado');
-        
+
         const liquidation: LiquidationPeriod = {
           semana,
           mes,
@@ -349,7 +349,7 @@ export class AccountingService {
           mes_cerrado_administrativamente: mesCerradoAdministrativamente,
           choferes
         };
-        
+
         this.liquidationCache.set(cacheKey, { data: liquidation, timestamp: Date.now() });
         return liquidation;
       }),
@@ -372,10 +372,10 @@ export class AccountingService {
     const fechaInicioMes = new Date(anio, mes - 1, 1);
     const ultimoDiaMes = new Date(anio, mes, 0).getDate();
     const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
-    
+
     let fechaActual = new Date(fechaInicioMes);
     let contadorSemana = 1;
-    
+
     // Recorrer el mes semana por semana (igual que el backend)
     while (fechaActual <= fechaFinMes) {
       // Calcular días hasta el próximo domingo
@@ -385,15 +385,15 @@ export class AccountingService {
       const diaSemanaJS = fechaActual.getDay(); // 0 = domingo, 1 = lunes, ..., 6 = sábado
       // Convertir a formato Python: lunes=0, domingo=6
       const diaSemanaPython = diaSemanaJS === 0 ? 6 : diaSemanaJS - 1;
-      
+
       // Calcular días hasta el próximo domingo (igual que backend: 6 - weekday())
       const diasHastaDomingo = 6 - diaSemanaPython;
       const proximoDomingo = new Date(fechaActual);
       proximoDomingo.setDate(fechaActual.getDate() + diasHastaDomingo);
-      
+
       // El fin de semana es el mínimo entre el próximo domingo y el fin del mes
       const finSemana = proximoDomingo > fechaFinMes ? fechaFinMes : proximoDomingo;
-      
+
       // ¿Es esta la semana que buscamos?
       if (contadorSemana === semana) {
         return {
@@ -401,13 +401,13 @@ export class AccountingService {
           fechaFin: finSemana.toISOString().split('T')[0]
         };
       }
-      
+
       // Avanzar a la siguiente semana (día siguiente al fin de semana)
       fechaActual = new Date(finSemana);
       fechaActual.setDate(finSemana.getDate() + 1);
       contadorSemana++;
     }
-    
+
     // Si llegamos aquí, la semana no existe
     // Fallback: retornar la última semana del mes
     const ultimaSemanaInicio = new Date(anio, mes - 1, ultimoDiaMes);
@@ -416,25 +416,25 @@ export class AccountingService {
       fechaFin: fechaFinMes.toISOString().split('T')[0]
     };
   }
-  
+
 
   // GET /api/accounting/liquidation - Liquidación de choferes (RF-022) - DEPRECATED: usar getWeeklyLiquidation
   getLiquidation(mes: number, anio: number, choferId?: number): Observable<LiquidationPeriod> {
     const cacheKey = choferId ? `${mes}-${anio}-${choferId}` : `${mes}-${anio}`;
-    
+
     // Verificar caché
     const cached = this.liquidationCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     const params = new HttpParams()
       .set('mes', mes.toString())
       .set('anio', anio.toString());
     if (choferId) {
       params.set('chofer_id', choferId.toString());
     }
-    
+
     return this.http.get<LiquidationPeriod>(`${this.apiUrl}/api/accounting/weekly-payments`, { params }).pipe(
       map(data => {
         this.liquidationCache.set(cacheKey, { data, timestamp: Date.now() });
@@ -500,7 +500,7 @@ export class AccountingService {
     // Solo validar para mes actual
     const today = new Date();
     const esMesActual = mes === today.getMonth() + 1 && anio === today.getFullYear();
-    
+
     if (!esMesActual || semana <= 1) {
       return of([]); // No validar para meses anteriores o primera semana
     }
@@ -515,12 +515,12 @@ export class AccountingService {
           // Si el chofer no aparece en la liquidación, puede ser porque:
           // 1. No tiene registros diarios (no hay nada que pagar) -> tieneRegistros = false
           // 2. Tiene registros pero no está en la lista (error) -> tieneRegistros = true, tienePago = false
-          
+
           // Si el chofer aparece en la liquidación, tiene registros diarios
           const tieneRegistros = chofer !== undefined;
           // Solo considerar "sin pagar" si tiene registros Y no está pagado
           const tienePago = chofer?.estado_pago === 'pagado';
-          
+
           return { semana: semanaAnterior, tienePago, tieneRegistros };
         }),
         catchError(() => {
@@ -676,12 +676,12 @@ export class AccountingService {
       map<BackendHistoryMonthDetailResponse, ClosedLiquidation>((data: BackendHistoryMonthDetailResponse) => {
         // Calcular total de semanas del mes para determinar cuál es la última
         const totalSemanas = this.countWeeksInMonth(mes, anio);
-        
+
         // Mapear semanas del backend a ClosedLiquidationWeek
         const semanas: ClosedLiquidationWeek[] = data.desglose_semanas.map((weekGroup) => {
           // Calcular fechas de la semana
           const weekDates = this.calculateWeekDates(mes, anio, weekGroup.numero_semana);
-          
+
           // Mapear pagos a LiquidationDriver
           const choferes: LiquidationDriver[] = weekGroup.pagos.map((pago) => ({
             chofer_id: pago.chofer_id,
@@ -692,8 +692,8 @@ export class AccountingService {
             pago_final: pago.total,
             aplicar_garantizado: pago.ajuste > 0,
             estado_pago: 'pagado' as const,
-            metodo_pago: (pago.metodo?.toLowerCase() === 'transferencia' || pago.metodo?.toLowerCase() === 'efectivo') 
-              ? pago.metodo.toLowerCase() as 'transferencia' | 'efectivo' 
+            metodo_pago: (pago.metodo?.toLowerCase() === 'transferencia' || pago.metodo?.toLowerCase() === 'efectivo')
+              ? pago.metodo.toLowerCase() as 'transferencia' | 'efectivo'
               : null,
             codigo_transferencia: pago.ref && pago.ref !== '-' ? pago.ref : null,
             fecha_pago: null // No disponible en el historial detallado
@@ -710,12 +710,12 @@ export class AccountingService {
         });
 
         // Obtener nombre del mes
-        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+          'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         const nombreMes = meses[mes - 1] || `Mes ${mes}`;
 
         const estadoMapeado: 'Finalizado' | 'En Proceso' = data.estado === 'Finalizado' ? 'Finalizado' : 'En Proceso';
-        
+
         const result: ClosedLiquidation = {
           id: mes * 100 + anio, // ID único basado en mes y año
           periodo: `${nombreMes} ${anio}`,
@@ -728,7 +728,7 @@ export class AccountingService {
           semanas: semanas,
           choferes: [] // DEPRECATED, usar semanas[].choferes
         };
-        
+
         return result;
       }),
       catchError((error) => {
@@ -743,10 +743,10 @@ export class AccountingService {
     const fechaInicioMes = new Date(anio, mes - 1, 1);
     const ultimoDiaMes = new Date(anio, mes, 0).getDate();
     const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
-    
+
     let fechaActual = new Date(fechaInicioMes);
     let semanas = 0;
-    
+
     while (fechaActual <= fechaFinMes) {
       semanas++;
       const diaSemanaJS = fechaActual.getDay();
@@ -758,11 +758,11 @@ export class AccountingService {
       fechaActual = new Date(finSemana);
       fechaActual.setDate(finSemana.getDate() + 1);
     }
-    
+
     return semanas;
   }
 
-  
+
   /**
    * Invalidar caché (útil cuando se actualizan datos)
    */
@@ -789,7 +789,7 @@ export class AccountingService {
   invalidateAllWeeksInMonth(mes: number, anio: number, choferId?: number): void {
     // Calcular el número total de semanas del mes
     const totalSemanas = this.countWeeksInMonth(mes, anio);
-    
+
     // Invalidar el caché de todas las semanas del mes
     for (let semana = 1; semana <= totalSemanas; semana++) {
       const cacheKey = choferId ? `${semana}-${mes}-${anio}-${choferId}` : `${semana}-${mes}-${anio}`;
@@ -803,6 +803,21 @@ export class AccountingService {
    */
   clearAllLiquidationCache(): void {
     this.liquidationCache.clear();
+  }
+
+  /**
+   * Exportar PDF liquidación mensual (Comprobante de Nómina)
+   * Endpoint: GET /api/accounting/history/month-detail/export
+   */
+  exportSettlementHistory(mes: number, anio: number): Observable<Blob> {
+    const params = new HttpParams()
+      .set('mes', mes.toString())
+      .set('anio', anio.toString());
+
+    return this.http.get(`${this.apiUrl}/api/accounting/history/month-detail/export`, {
+      params,
+      responseType: 'blob'
+    });
   }
 
   // =================================================================

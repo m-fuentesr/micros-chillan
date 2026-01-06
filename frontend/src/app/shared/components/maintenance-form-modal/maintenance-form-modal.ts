@@ -199,9 +199,14 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
             <button
               type="submit"
               class="btn btn-primary gap-2 shadow-lg shadow-primary/20"
-              [disabled]="!form.valid">
-              <ui-icon name="Check" size="sm" />
-              Guardar Registro
+              [disabled]="!form.valid || modalService.isSubmitting()">
+              @if (modalService.isSubmitting()) {
+                <span class="loading loading-spinner loading-sm"></span>
+                <span>Guardando...</span>
+              } @else {
+                <ui-icon name="Check" size="sm" />
+                <span>Guardar Registro</span>
+              }
             </button>
           </div>
         </form>
@@ -241,7 +246,7 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
     maximumFractionDigits: 0
   });
 
-  ngAfterViewInit(): void {
+  constructor() {
     effect(() => {
       const dialog = this.dialogRef?.nativeElement;
       if (!dialog) return;
@@ -253,6 +258,13 @@ export class MaintenanceFormModalComponent implements AfterViewInit {
         this.showCustomItem.set(false);
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Verificación manual inicial por si el effect corrió antes de que la vista estuviera lista
+    if (this.modalService.isVisible() && this.dialogRef?.nativeElement) {
+      this.dialogRef.nativeElement.showModal();
+    }
   }
 
   formattedCosto(): string {

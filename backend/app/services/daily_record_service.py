@@ -74,9 +74,95 @@ def _resolve_auditoria_actor_id(current_user: UserInDB) -> int:
     if data:
         return data[0]["id"]
 
+    # -------------------------------------------------------------------------
+    # AUTO-HEALING: Si no existe el actor, intentamos crearlo automáticamente
+    # -------------------------------------------------------------------------
+    logger.warning(f"Actor de auditoría no encontrado para usuario_id={current_user.id}. Intentando crear registro automáticamente...")
+
+    try:
+        new_actor_payload = {}
+        
+        if current_user.chofer_id:
+            # --- CASO CHOFER ---
+            # 1. Obtener datos del chofer para popular el actor
+            chofer_res = (
+                supabase.table("choferes")
+                .select("primer_nombre, apellido_paterno, rut")
+                .eq("id", current_user.chofer_id)
+                .single()
+                .execute()
+            )
+            
+            if not chofer_res.data:
+                logger.error(f"No se encontraron datos del chofer {current_user.chofer_id} para crear actor")
+                raise HTTPException(500, "Inconsistencia de datos: Usuario es chofer pero no existe en tabla choferes")
+
+            c_data = chofer_res.data
+            nombre_completo = f"{c_data.get('primer_nombre', '')} {c_data.get('apellido_paterno', '')}".strip()
+            
+            new_actor_payload = {
+                "tipo_actor": "chofer",
+                "usuario_id": current_user.id,
+                "chofer_id": current_user.chofer_id,
+                "nombre_completo": nombre_completo,
+                "rol_nombre": "Chofer",
+                "rut": c_data.get("rut", "") or "S/R",
+                "correo": current_user.correo
+            }
+            
+        else:
+            # --- CASO ADMIN / OTRO ---
+            # 1. Obtener datos del usuario
+            user_res = (
+                supabase.table("usuarios")
+                .select("nombre, apellido, rol_id")
+                .eq("id", current_user.id)
+                .single()
+                .execute()
+            )
+            
+            u_data = user_res.data or {}
+            nombre_completo = f"{u_data.get('nombre', '')} {u_data.get('apellido', '')}".strip()
+            if not nombre_completo:
+                nombre_completo = current_user.correo.split('@')[0]  # Fallback si no hay nombre
+
+            # Intentar obtener nombre del rol si es posible
+            rol_nombre = "Administrador" # Default
+            if u_data.get("rol_id"):
+                rol_res = supabase.table("roles").select("nombre").eq("id", u_data.get("rol_id")).single().execute()
+                if rol_res.data:
+                    rol_nombre = rol_res.data.get("nombre")
+
+            new_actor_payload = {
+                "tipo_actor": "admin",
+                "usuario_id": current_user.id,
+                "nombre_completo": nombre_completo,
+                "rol_nombre": rol_nombre,
+                "correo": current_user.correo,
+                # rut puede ser nulo o vacío para admins
+            }
+
+        # 2. Insertar el nuevo actor
+        create_res = supabase.table("actor_auditoria").insert(new_actor_payload).execute()
+        
+        if getattr(create_res, "error", None):
+            logger.error(f"Error Supabase creando actor: {create_res.error}")
+            raise HTTPException(500, f"Error DB al crear actor de auditoría: {create_res.error}")
+            
+        if create_res.data:
+            item = create_res.data[0]
+            logger.info(f"Actor de auditoría creado exitosamente: ID={item['id']}")
+            return item["id"]
+
+    except Exception as e:
+        logger.error(f"Excepción fatal creando actor de auditoría: {e}", exc_info=True)
+        # Si falla la autocuración, lanzamos el error original o uno nuevo
+        pass
+
+    # Fallback final si todo falla
     raise HTTPException(
         status_code=500,
-        detail="No se encontró actor de auditoría para el usuario actual",
+        detail="No se encontró actor de auditoría para el usuario actual y falló la creación automática.",
     )
 
 def _format_timestamp(timestamp) -> Optional[str]:

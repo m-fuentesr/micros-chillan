@@ -144,13 +144,13 @@ export interface MachineRanking {
 export class ReportsService {
   private http = inject(HttpClient);
   private apiUrl = environment.apiBaseUrl;
-  
+
   // Caché simple en memoria
   private profitabilityCache: Map<string, { data: ProfitabilityReport; timestamp: number }> = new Map();
   private driverRankingCache: Map<string, { data: DriverRanking[]; timestamp: number }> = new Map();
   private machineRankingCache: Map<string, { data: MachineRanking[]; timestamp: number }> = new Map();
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutos
-  
+
   private getCacheKey(filters: any): string {
     return JSON.stringify(filters);
   }
@@ -161,15 +161,15 @@ export class ReportsService {
    */
   getProfitabilityReport(filters: ProfitabilityFilters): Observable<ProfitabilityReport> {
     const cacheKey = this.getCacheKey(filters);
-    
+
     // Verificar caché
     const cached = this.profitabilityCache.get(cacheKey);
     if (cached && Date.now() - cached.timestamp < this.CACHE_TTL) {
       return of(cached.data);
     }
-    
+
     let params = new HttpParams();
-    
+
     if (filters.desde) params = params.set('desde', filters.desde);
     if (filters.hasta) params = params.set('hasta', filters.hasta);
     if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
@@ -195,7 +195,7 @@ export class ReportsService {
    */
   getMachineProfitability(filters: ReportFilters): Observable<MachineProfitabilityResponse[]> {
     const cacheKey = this.getCacheKey(filters);
-    
+
     let params = new HttpParams()
       .set('mes', filters.mes.toString())
       .set('anio', filters.anio.toString());
@@ -215,7 +215,7 @@ export class ReportsService {
    */
   getGrossIncomeRanking(filters: ReportFilters): Observable<MachineGrossRankingResponse[]> {
     const cacheKey = this.getCacheKey(filters);
-    
+
     let params = new HttpParams()
       .set('mes', filters.mes.toString())
       .set('anio', filters.anio.toString());
@@ -235,7 +235,7 @@ export class ReportsService {
    */
   getDriverProfitability(filters: ReportFilters): Observable<DriverProfitabilityResponse[]> {
     const cacheKey = this.getCacheKey(filters);
-    
+
     let params = new HttpParams()
       .set('mes', filters.mes.toString())
       .set('anio', filters.anio.toString());
@@ -255,7 +255,7 @@ export class ReportsService {
    */
   getDriverRanking(filters: { mes: number; anio: number }): Observable<DriverRanking[]> {
     return this.getDriverProfitability(filters).pipe(
-      map((drivers) => 
+      map((drivers) =>
         drivers.map((d) => ({
           posicion: d.ranking,
           chofer_id: d.chofer_id,
@@ -263,8 +263,8 @@ export class ReportsService {
           total_recaudado: d.ingresos_totales,
           total_ganancia: d.ganancia_neta,
           dias_trabajados: d.dias_trabajados,
-          promedio_diario: d.dias_trabajados > 0 
-            ? Math.round(d.ingresos_totales / d.dias_trabajados) 
+          promedio_diario: d.dias_trabajados > 0
+            ? Math.round(d.ingresos_totales / d.dias_trabajados)
             : 0
         }))
       ),
@@ -281,7 +281,7 @@ export class ReportsService {
    */
   getMachineRanking(filters: { mes: number; anio: number }): Observable<MachineRanking[]> {
     return this.getMachineProfitability(filters).pipe(
-      map((machines) => 
+      map((machines) =>
         machines.map((m, index) => ({
           posicion: index + 1,
           maquina_id: m.maquina_id,
@@ -299,7 +299,55 @@ export class ReportsService {
       })
     );
   }
-  
+
+  /**
+   * Exportar reporte de rentabilidad por máquina
+   * Endpoint: GET /api/reports/profitability/export
+   */
+  exportMachineProfitability(mes: number, anio: number, format: 'pdf' | 'excel' = 'pdf'): Observable<Blob> {
+    const params = new HttpParams()
+      .set('mes', mes.toString())
+      .set('anio', anio.toString())
+      .set('format', format);
+
+    return this.http.get(`${this.apiUrl}/api/reports/profitability/export`, {
+      params,
+      responseType: 'blob'
+    });
+  }
+
+  /**
+   * Exportar ranking de ingresos
+   * Endpoint: GET /api/reports/gross-income-ranking/export
+   */
+  exportGrossIncomeRanking(mes: number, anio: number, format: 'pdf' | 'excel' = 'pdf'): Observable<Blob> {
+    const params = new HttpParams()
+      .set('mes', mes.toString())
+      .set('anio', anio.toString())
+      .set('format', format);
+
+    return this.http.get(`${this.apiUrl}/api/reports/gross-income-ranking/export`, {
+      params,
+      responseType: 'blob'
+    });
+  }
+
+  /**
+   * Exportar rentabilidad por chofer
+   * Endpoint: GET /api/reports/driver-profitability/export
+   */
+  exportDriverProfitability(mes: number, anio: number, format: 'pdf' | 'excel' = 'pdf'): Observable<Blob> {
+    const params = new HttpParams()
+      .set('mes', mes.toString())
+      .set('anio', anio.toString())
+      .set('format', format);
+
+    return this.http.get(`${this.apiUrl}/api/reports/driver-profitability/export`, {
+      params,
+      responseType: 'blob'
+    });
+  }
+
   /**
    * Invalidar caché (útil cuando se actualizan datos)
    */
@@ -310,12 +358,12 @@ export class ReportsService {
   }
 
   /**
-   * Exportar reporte
+   * Exportar reporte (Genérico - Legacy/Fallback)
    * Endpoint: GET /api/reports/export
    */
   exportReport(type: string, filters: any): Observable<Blob> {
     let params = new HttpParams().set('tipo', type);
-    
+
     Object.keys(filters).forEach(key => {
       if (filters[key] !== undefined && filters[key] !== null) {
         params = params.set(key, filters[key].toString());

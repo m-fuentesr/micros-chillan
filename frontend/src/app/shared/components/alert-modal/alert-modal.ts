@@ -87,12 +87,11 @@ export class AlertModalComponent implements AfterViewInit {
   modalService = inject(AlertModalService);
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
-  ngAfterViewInit(): void {
-    // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
+  constructor() {
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
-      
+
       if (dialog) {
         if (isVisible) {
           dialog.showModal();
@@ -101,6 +100,12 @@ export class AlertModalComponent implements AfterViewInit {
         }
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    if (this.modalService.isVisible() && this.dialogRef?.nativeElement) {
+      this.dialogRef.nativeElement.showModal();
+    }
   }
 }
 

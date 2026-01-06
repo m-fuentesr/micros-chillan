@@ -19,6 +19,10 @@ backend/*.pyc
 .env
 .env.*
 
+# ---- Supabase ----
+supabase/.temp/
+supabase/.branches
+
 # ---- OS / Editor Junk ----
 .DS_Store
 Thumbs.db

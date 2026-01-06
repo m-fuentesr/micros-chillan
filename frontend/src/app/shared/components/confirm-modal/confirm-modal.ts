@@ -42,7 +42,11 @@ import { ConfirmModalService } from '../../services/confirm-modal.service';
           <button 
             type="button"
             class="btn btn-error text-white w-full sm:w-auto shadow-error/20 rounded-xl border border-error/30 font-semibold order-1 sm:order-2 cursor-pointer"
+            [disabled]="modalService.isSubmitting()"
             (click)="modalService.confirm()">
+            @if (modalService.isSubmitting()) {
+              <span class="loading loading-spinner loading-sm mr-2"></span>
+            }
             {{ modalService.config()?.confirmText || 'Confirmar' }}
           </button>
         </div>
@@ -77,8 +81,7 @@ export class ConfirmModalComponent implements AfterViewInit {
   modalService = inject(ConfirmModalService);
   @ViewChild('dialogRef', { static: false }) dialogRef!: ElementRef<HTMLDialogElement>;
 
-  ngAfterViewInit(): void {
-    // Efecto para abrir/cerrar el dialog HTML5 cuando cambia isVisible
+  constructor() {
     effect(() => {
       const isVisible = this.modalService.isVisible();
       const dialog = this.dialogRef?.nativeElement;
@@ -91,6 +94,13 @@ export class ConfirmModalComponent implements AfterViewInit {
         }
       }
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Verificación manual inicial por si el effect corrió antes de que la vista estuviera lista
+    if (this.modalService.isVisible() && this.dialogRef?.nativeElement) {
+      this.dialogRef.nativeElement.showModal();
+    }
   }
 }
 
