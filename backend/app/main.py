@@ -34,7 +34,7 @@ app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 
 import os
 
-# CORS para permitir llamadas desde Angular (localhost:4200)
+# CORS para permitir llamadas desde Angular
 origins = [
     "http://localhost:4200",
     "https://gestordeflotas.autoescuelachillan.cl"
