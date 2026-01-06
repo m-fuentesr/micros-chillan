@@ -126,9 +126,12 @@ import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '
             <!-- Bento: Contexto -->
             <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 md:p-6 grid gap-4 md:grid-cols-2">
               <div class="form-control">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Fecha <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
                   </span>
                 </label>
                 <input 
@@ -156,9 +159,12 @@ import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '
                 }
               </div>
               <div class="form-control">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Máquina <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                   </span>
                 </label>
                 <select 
@@ -185,9 +191,12 @@ import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '
                 }
               </div>
               <div class="form-control md:col-span-2">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Chofer Asignado <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
                   </span>
                 </label>
                 <select 
@@ -222,9 +231,13 @@ import { getDatePartsInChile, getTodayInChile, getDaysDifferenceInChile } from '
                   <span class="text-xs uppercase tracking-wide text-base-content/60">Ingresos</span>
                 </div>
                 <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                    <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                       Ingreso del Día <span class="text-error">*</span>
+                    </span>
+
+                    <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                      Obligatorio
                     </span>
                   </label>
                   <div class="relative group">

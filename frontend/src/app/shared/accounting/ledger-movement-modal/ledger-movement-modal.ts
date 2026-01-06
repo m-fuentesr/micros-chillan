@@ -86,9 +86,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 
               <!-- Tipo de Movimiento (Radio/Toggle) -->
               <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5">
-                <label class="label pb-2 pt-0">
-                  <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                  <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                     Tipo de Movimiento <span class="text-error">*</span>
+                  </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
                   </span>
                 </label>
                 <div class="flex gap-3">
@@ -138,10 +141,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               <!-- Monto y Fecha -->
               <div class="rounded-3xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5 grid gap-4 sm:grid-cols-2">
                 <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                    <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                       Monto <span class="text-error">*</span>
                     </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
+                  </span>                    
                   </label>
                   <input
                     type="number"
@@ -155,10 +161,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                     required>
                 </div>
                 <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                    <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                       Fecha <span class="text-error">*</span>
                     </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
+                  </span>                    
                   </label>
                   <input
                     type="date"
@@ -173,10 +182,13 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
               <!-- Descripción -->
               <div class="rounded-2xl border border-base-200 bg-base-100 shadow-sm p-4 sm:p-5">
                 <div class="form-control">
-                  <label class="label pb-2 pt-0">
-                    <span class="label-text text-xs uppercase tracking-wide text-base-content/60">
+                  <label class="label items-center justify-between pb-2.5 pt-0 mb-0">
+                    <span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/70">
                       Descripción <span class="text-error">*</span>
                     </span>
+                  <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                    Obligatorio
+                  </span>                    
                   </label>
                   <input
                     type="text"

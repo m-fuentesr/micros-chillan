@@ -44,6 +44,9 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
                 <span class="label-text font-semibold">
                   Ítem/Repuesto <span class="text-error">*</span>
                 </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
+                </span>
               </label>
 
               <select
@@ -92,6 +95,9 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
                 <span class="label-text font-semibold">
                   Costo ($) <span class="text-error">*</span>
                 </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
+                </span>
               </label>
 
               <input
@@ -118,6 +124,9 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
               <label class="label">
                 <span class="label-text font-semibold">
                   Nº Factura/Boleta <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
 
@@ -162,6 +171,9 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
               <label class="label">
                 <span class="label-text font-semibold">
                   Fecha de Compra <span class="text-error">*</span>
+                </span>
+                <span class="label-text-alt text-[10px] font-medium bg-error/10 text-error px-2 py-0.5 rounded-md">
+                  Obligatorio
                 </span>
               </label>
 
