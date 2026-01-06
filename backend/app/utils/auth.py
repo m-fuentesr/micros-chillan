@@ -1,5 +1,7 @@
 import logging
 import jwt
+from jwt import PyJWKClient
+from functools import lru_cache
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -12,46 +14,59 @@ logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
+JWKS_URL = f"{settings.SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+
+@lru_cache(maxsize=1)
+def get_jwks_client() -> PyJWKClient:
+    """
+    Retorna un cliente JWKS cacheado.
+    Evita descargar las claves públicas en cada request.
+    """
+    return PyJWKClient(JWKS_URL)
 
 def decode_jwt_token(token: str) -> dict:
     """
-    Decodifica y valida el JWT localmente usando SUPABASE_JWT_SECRET.
-    
-    Esto evita llamadas HTTP a Supabase en cada request, mejorando:
-    - Performance: Reduce latencia (no hay llamada HTTP)
-    - Resiliencia: Funciona aunque Supabase Auth esté caído
-    - Escalabilidad: Menos carga en servicios externos
-    
+    Decodifica y valida el JWT localmente usando JWKS (ES256).
+
+    Supabase moderno firma los tokens con claves ECC (P-256, ES256),
+    por lo que la validación debe hacerse usando la clave pública
+    obtenida desde el endpoint JWKS del proyecto.
+
+    Esto permite:
+    - Validación local real (sin llamadas HTTP por request)
+    - Compatibilidad con rotación de claves
+    - Eliminación del fallback innecesario a Supabase Auth API
+
     Args:
-        token: Token JWT a validar
-        
+        token: JWT recibido en Authorization: Bearer <token>
+
     Returns:
-        dict: Payload del JWT decodificado (incluye 'sub' que es el user_id)
-        
+        dict: Payload del JWT decodificado (incluye 'sub')
+
     Raises:
-        HTTPException 401: Si el token es inválido, expirado o tiene firma incorrecta
+        ValueError: Si el token es inválido, expirado o mal firmado
     """
     try:
-        # Supabase usa HS256 y el JWT_SECRET para firmar tokens
-        # Deshabilitamos verify_aud porque Supabase usa diferentes valores de aud
-        # y solo necesitamos validar la firma y expiración
+        # Obtener la clave pública correcta según el "kid" del token
+        signing_key = get_jwks_client().get_signing_key_from_jwt(token)
+
         payload = jwt.decode(
             token,
-            settings.SUPABASE_JWT_SECRET,
-            algorithms=["HS256"],
+            signing_key.key,
+            algorithms=["ES256"],
             options={
                 "verify_exp": True,  # Validar expiración
-                "verify_signature": True,  # Validar firma
                 "verify_aud": False,  # No validar audience (Supabase usa diferentes valores)
             }
         )
         return payload
+    
     except jwt.ExpiredSignatureError:
         logger.warning("Token JWT expirado")
         # No lanzar error aquí, dejar que el fallback lo maneje
         raise ValueError("Token expirado")
     except jwt.InvalidTokenError as e:
-        logger.warning(f"Token JWT inválido (firma o formato): {str(e)}")
+        logger.warning(f"Token JWT inválido: {str(e)}")
         # No lanzar error aquí, dejar que el fallback lo maneje
         raise ValueError(f"Token inválido: {str(e)}")
     except Exception as e:
