@@ -9,7 +9,7 @@ import { filter, switchMap } from 'rxjs';
 import { formatDateShort } from '../../utils/date.utils';
 
 // Log global para verificar si el módulo se carga
-console.log('🔴 DriverLedgerHistoryComponent - Módulo cargado');
+
 
 @Component({
   selector: 'app-driver-ledger-history',
@@ -242,7 +242,7 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
     // Suscribirse a viewReady para re-ejecutar el efecto cuando la vista esté lista
     const isViewReady = this.viewReady();
 
-    console.log('🔵 dialogEffect: isVisible =', isVisible, 'choferId =', choferId, 'viewReady =', isViewReady);
+
 
     // Esperar a que la vista esté lista y el dialogRef exista
     if (isViewReady && this.dialogRef?.nativeElement) {
@@ -250,38 +250,38 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
 
       if (isVisible) {
         if (!dialog.open) {
-          console.log('🔵 Abriendo dialog con showModal()');
+
           dialog.showModal();
         }
 
         // Cargar historial cuando se abre el modal y hay un choferId
         if (choferId !== null) {
-          console.log('🔵 choferId disponible, cargando historial');
+
           // Usar untracked para evitar ciclos infinitos si loadHistory modifica señales (no debería, modifica servicio)
           // pero es buena práctica
           this.loadHistory();
         }
       } else {
         if (dialog.open) {
-          console.log('🔵 Cerrando dialog');
+
           dialog.close();
         }
       }
     } else {
-      console.log('🔵 Esperando a que viewReady sea true');
+
     }
   });
 
   constructor() {
-    console.log('🔵 DriverLedgerHistoryComponent constructor() llamado');
+
   }
 
   ngOnInit(): void {
-    console.log('🔵 DriverLedgerHistoryComponent ngOnInit() llamado');
+
   }
 
   ngAfterViewInit(): void {
-    console.log('🔵 DriverLedgerHistoryComponent.ngAfterViewInit() llamado');
+
     const dialog = this.dialogRef?.nativeElement;
 
     if (!dialog) {
@@ -289,28 +289,28 @@ export class DriverLedgerHistoryComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    console.log('✅ dialogRef disponible, marcando viewReady = true');
+
     this.viewReady.set(true);
     this.cdr.markForCheck();
   }
 
   loadHistory(page: number = 1): void {
-    console.log('🔵 loadHistory() llamado con página:', page);
+
     const choferId = this.modalService.choferId();
-    console.log('🔵 choferId obtenido:', choferId);
+
 
     if (choferId === null) {
       console.warn('⚠️ choferId es null, abortando loadHistory()');
       return;
     }
 
-    console.log('✅ Iniciando carga de historial para choferId:', choferId, 'página:', page);
+
     this.modalService.setIsLoading(true);
 
-    console.log('🔵 Llamando a accountingService.getDriverLedgerHistory()');
+
     this.accountingService.getDriverLedgerHistory(choferId, page, 5).subscribe({
       next: (data) => {
-        console.log('✅ Historial cargado exitosamente:', data);
+
         this.modalService.setHistory(data);
         this.modalService.setIsLoading(false);
       },
