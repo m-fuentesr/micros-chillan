@@ -4,4 +4,3 @@ export const environment = {
   supabaseUrl: 'https://vwepdhtfdngowxizmzzz.supabase.co',
   supabaseAnonKey: 'sb_publishable_70dWeSYQZajr3jSI1PKEiw_YraFtHjp',
 };
-// apiBaseUrl: 'https://micros-chillan-production.up.railway.app'
