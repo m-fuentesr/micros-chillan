@@ -122,9 +122,12 @@ async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsRespo
             )
         choferes_actualizados = count_res.count or 0
 
+        # "Smart Update": Solo actualizar choferes que tengan el porcentaje anterior (estaban "sincronizados")
+        # Esto preserva a los choferes con porcentajes personalizados.
         upd_drivers = (
             supabase.table("choferes")
             .update({"porcentaje_pago": porcentaje_nuevo})
+            .eq("porcentaje_pago", porcentaje_anterior)  # Solo los que coinciden con el viejo default
             .neq("id", 0)
             .execute()
         )
@@ -139,6 +142,17 @@ async def update_settings(payload: UpdateSettingsRequest) -> UpdateSettingsRespo
                 status_code=400,
                 detail=f"Error actualizando porcentajes de choferes: {upd_drivers.error}",
             )
+        
+        # Actualizar el contador con los realmente modificados (smart update)
+        # Nota: count=exact en update no siempre funciona igual en todas las versiones, 
+        # pero la respuesta suele incluir 'data' con las filas afectadas si se solicita.
+        # Para ser precisos, podríamos confiar en que el usuario vea el número en la UI antes de confirmar.
+        # Pero si upd_drivers.data existe, es la lista de actualizados.
+        if upd_drivers.data:
+            choferes_actualizados = len(upd_drivers.data)
+        else:
+             # Fallback si no devuelve data
+            choferes_actualizados = 0
 
     return UpdateSettingsResponse(
         porcentaje_anterior=porcentaje_anterior if propagate_percentage else None,
