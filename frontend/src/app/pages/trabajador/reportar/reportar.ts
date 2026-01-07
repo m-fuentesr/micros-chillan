@@ -193,7 +193,6 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               type="file" 
               class="hidden" 
               accept="image/*" 
-              capture="environment"
               (change)="onEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
@@ -254,7 +253,6 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               type="file" 
               class="hidden" 
               accept="image/*" 
-              capture="environment"
               (change)="onDieselEvidenceSelected($event)"
               [disabled]="isSubmitting()"
             />
