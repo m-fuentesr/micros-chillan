@@ -112,10 +112,16 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                   </button>
                   <button
                     type="button"
-                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                    [disabled]="isSubmittingGeneral()"
                     (click)="onSaveGeneral()">
-                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
-                    <span class="whitespace-nowrap">Guardar</span>
+                    @if (isSubmittingGeneral()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                      <span class="whitespace-nowrap">Guardando...</span>
+                    } @else {
+                      <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
+                      <span class="whitespace-nowrap">Guardar</span>
+                    }
                   </button>
                 }
               </div>
@@ -923,6 +929,7 @@ export class MachineDetail implements OnInit {
 
   // Signal para forzar recarga de datos
   refreshTrigger = signal(0);
+  isSubmittingGeneral = signal(false);
 
   // Cargar máquina - usando route.params para reactividad
   machineIdParam = toSignal(
@@ -1104,13 +1111,18 @@ export class MachineDetail implements OnInit {
 
   onSaveGeneral(): void {
     const machineId = this.machineId();
-    if (!machineId) return;
+    if (!machineId || this.isSubmittingGeneral()) return;
+
+    this.isSubmittingGeneral.set(true);
 
     const choferId = this.editChoferId();
     const estado = this.editEstadoOperativo() as 'Operativa' | 'En Taller' | 'Inactiva' | undefined;
     const currentMachine = this.machine();
 
-    if (!currentMachine) return;
+    if (!currentMachine) {
+      this.isSubmittingGeneral.set(false);
+      return;
+    }
 
     const patenteRegex = /^[A-Z]{4}-\d{2}$/;
 
@@ -1121,6 +1133,7 @@ export class MachineDetail implements OnInit {
         type: 'warning',
         buttonText: 'Entendido'
       });
+      this.isSubmittingGeneral.set(false);
       return;
     }
 
@@ -1132,6 +1145,7 @@ export class MachineDetail implements OnInit {
         type: 'warning',
         buttonText: 'Entendido'
       });
+      this.isSubmittingGeneral.set(false);
       return;
     }
 
@@ -1163,6 +1177,7 @@ export class MachineDetail implements OnInit {
             type: 'error',
             buttonText: 'Entendido'
           });
+          this.isSubmittingGeneral.set(false);
           return of(null);
         })
       )
@@ -1176,6 +1191,7 @@ export class MachineDetail implements OnInit {
             type: 'success',
             buttonText: 'Entendido'
           });
+          this.isSubmittingGeneral.set(false);
 
           // Esperar un momento para asegurar que el backend haya procesado
           setTimeout(() => {
@@ -1192,6 +1208,8 @@ export class MachineDetail implements OnInit {
               }
             }, 1000);
           }, 300);
+        } else {
+          this.isSubmittingGeneral.set(false);
         }
       });
   }

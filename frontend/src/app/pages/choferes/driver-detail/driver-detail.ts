@@ -109,10 +109,16 @@ import { LoadingSpinner } from '../../../shared/components/loading-spinner/loadi
                   </button>
                   <button
                     type="button"
-                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2"
+                    class="btn-action-save group relative overflow-hidden rounded-xl px-4 sm:px-5 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white bg-primary hover:bg-primary-focus shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 disabled:opacity-50 disabled:pointer-events-none"
+                    [disabled]="isSubmittingGeneral()"
                     (click)="onSaveGeneral()">
-                    <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
-                    <span class="whitespace-nowrap">Guardar</span>
+                    @if (isSubmittingGeneral()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                      <span class="whitespace-nowrap">Guardando...</span>
+                    } @else {
+                      <ui-icon name="Check" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
+                      <span class="whitespace-nowrap">Guardar</span>
+                    }
                   </button>
                 }
               </div>
@@ -1645,6 +1651,7 @@ export class DriverDetail implements OnInit {
 
   // Signal para forzar recarga de datos
   refreshTrigger = signal(0);
+  isSubmittingGeneral = signal(false);
 
   driverData = toSignal(
     combineLatest([
@@ -1983,7 +1990,9 @@ export class DriverDetail implements OnInit {
 
   onSaveGeneral(): void {
     const driverId = this.driverId();
-    if (!driverId) return;
+    if (!driverId || this.isSubmittingGeneral()) return;
+
+    this.isSubmittingGeneral.set(true);
 
     // Validar campos requeridos
     if (!this.editNombre() || !this.editApellido() || !this.editSegundoApellido() || !this.editRut() || !this.editTelefono() || !this.editCorreo()) {
@@ -1993,6 +2002,7 @@ export class DriverDetail implements OnInit {
         type: 'warning',
         buttonText: 'Entendido'
       });
+      this.isSubmittingGeneral.set(false);
       return;
     }
 
@@ -2003,6 +2013,7 @@ export class DriverDetail implements OnInit {
         type: 'error',
         buttonText: 'Entendido'
       });
+      this.isSubmittingGeneral.set(false);
       return;
     }
 
@@ -2020,6 +2031,7 @@ export class DriverDetail implements OnInit {
         type: 'error',
         buttonText: 'Entendido'
       });
+      this.isSubmittingGeneral.set(false);
       return;
     }
 
@@ -2051,6 +2063,7 @@ export class DriverDetail implements OnInit {
             type: 'error',
             buttonText: 'Entendido'
           });
+          this.isSubmittingGeneral.set(false);
           return of(null);
         })
       )
@@ -2076,8 +2089,10 @@ export class DriverDetail implements OnInit {
             type: 'success',
             buttonText: 'Entendido'
           });
+          this.isSubmittingGeneral.set(false);
         }
       });
+
   }
 
   toggleFiltersMobile(): void {

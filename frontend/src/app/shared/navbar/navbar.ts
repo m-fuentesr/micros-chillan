@@ -944,6 +944,72 @@ import { ConfirmModalService } from '../services/confirm-modal.service';
     
     :host ::ng-deep .nav-item.text-error.active .nav-text {
       color: hsl(var(--er));
+    }
+
+    /* ============================================
+       MOBILE LANDSCAPE OPTIMIZATION
+       Layout en GRID para pantallas rotadas (ahorrar espacio vertical)
+       ============================================ */
+    @media (orientation: landscape) and (max-height: 500px) {
+      /* Ensanchar el sidebar para acomodar el grid */
+      :host ::ng-deep .sidebar-container {
+        width: 85vw !important;
+        max-width: 600px !important;
+      }
+
+      /* Header más compacto */
+      :host ::ng-deep .sidebar-container > div:first-child {
+        min-height: 3rem !important;
+        height: auto !important;
+        padding: 0.5rem 1rem !important;
+      }
+
+      /* Navegación en Grid de 2 columnas */
+      :host ::ng-deep nav {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem !important;
+        align-content: flex-start !important;
+        overflow-y: auto !important;
+      }
+
+      /* Items de navegación al 50% */
+      :host ::ng-deep nav > a {
+        width: calc(50% - 0.25rem) !important;
+        height: 3rem !important;
+        margin: 0 !important;
+        padding: 0 0.75rem !important;
+      }
+
+      /* Ocultar separadores para ahorrar espacio */
+      :host ::ng-deep .nav-separator {
+        display: none !important;
+      }
+
+      /* Footer en Grid de 3 columnas (Config, Ayuda, Logout) */
+      :host ::ng-deep .sidebar-footer {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        gap: 0.5rem !important;
+        padding: 0.5rem !important;
+        height: auto !important;
+        flex-shrink: 0 !important;
+      }
+
+      :host ::ng-deep .sidebar-footer > a {
+        width: calc(33.33% - 0.33rem) !important;
+        height: 3rem !important;
+        padding: 0 0.5rem !important;
+        justify-content: center !important;
+      }
+      
+      /* Ocultar texto en footer si es muy estrecho, o reducir fuente */
+      :host ::ng-deep .sidebar-footer > a span {
+        font-size: 0.75rem !important;
+      }
     }`
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -955,7 +1021,7 @@ export class Navbar implements OnInit {
   shouldAnimate = input<boolean>(false);
   // Input para controlar si debe empezar oculto (evita parpadeo en recarga)
   shouldStartHidden = input<boolean>(false);
-  
+
   isCollapsed = signal(false);
   collapsedChange = output<boolean>();
   isMobileMenuOpen = signal(false);

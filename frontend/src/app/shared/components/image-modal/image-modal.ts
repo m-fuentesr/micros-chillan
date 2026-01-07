@@ -467,8 +467,10 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
   private isDragging = false;
   private isMouseDragging = false;
   private wasDragging = false; // Flag para prevenir click después de arrastrar
-  private startX = 0;
-  private startY = 0;
+  private initialPointerX = 0;
+  private initialPointerY = 0;
+  private initialImageX = 0;
+  private initialImageY = 0;
   private initialDistance = 0;
   private minZoom = 1;
   private maxZoom = 5;
@@ -625,8 +627,12 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
       }
 
       // Calcular nueva posición inmediatamente
-      const newX = event.clientX - this.startX;
-      const newY = event.clientY - this.startY;
+      // Calcular nueva posición dividiendo el delta por el nivel de zoom
+      const panDeltaX = (event.clientX - this.initialPointerX) / this.zoomLevel();
+      const panDeltaY = (event.clientY - this.initialPointerY) / this.zoomLevel();
+
+      const newX = this.initialImageX + panDeltaX;
+      const newY = this.initialImageY + panDeltaY;
 
       // Aplicar movimiento usando signals para que el computed se actualice
       this.currentX.set(newX);
@@ -744,8 +750,10 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
         this.lastTap = currentTime;
         if (this.zoomLevel() > 1) {
           this.isDragging = true;
-          this.startX = touch.clientX - this.currentX();
-          this.startY = touch.clientY - this.currentY();
+          this.initialPointerX = touch.clientX;
+          this.initialPointerY = touch.clientY;
+          this.initialImageX = this.currentX();
+          this.initialImageY = this.currentY();
         }
       }
     } else if (event.touches.length === 2) {
@@ -767,8 +775,12 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
       const touch = event.touches[0];
 
       // Calcular nueva posición
-      const newX = touch.clientX - this.startX;
-      const newY = touch.clientY - this.startY;
+      // Calcular nueva posición dividiendo el delta por el nivel de zoom
+      const deltaX = (touch.clientX - this.initialPointerX) / this.zoomLevel();
+      const deltaY = (touch.clientY - this.initialPointerY) / this.zoomLevel();
+
+      const newX = this.initialImageX + deltaX;
+      const newY = this.initialImageY + deltaY;
 
       // Aplicar movimiento directamente primero
       this.currentX.set(newX);
@@ -878,8 +890,11 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
 
     // Marcar que estamos arrastrando
     this.isMouseDragging = true;
-    this.startX = event.clientX - this.currentX();
-    this.startY = event.clientY - this.currentY();
+    this.isMouseDragging = true;
+    this.initialPointerX = event.clientX;
+    this.initialPointerY = event.clientY;
+    this.initialImageX = this.currentX();
+    this.initialImageY = this.currentY();
   }
 
   // Manejar movimiento del mouse para arrastre en desktop (cuando está sobre la imagen)
@@ -1005,7 +1020,7 @@ export class ImageModalComponent implements AfterViewInit, OnDestroy {
     } else {
       this.imageError.set('Error al cargar la imagen. Verifica que la URL sea correcta y accesible.');
     }
-    console.error('Error cargando imagen en modal (event handler):', event, url);
+
   }
 }
 
