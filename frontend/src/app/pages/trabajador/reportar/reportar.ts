@@ -16,6 +16,8 @@ import { catchError, of, tap } from 'rxjs';
 import type { CreateDailyRecordDto } from '../../../shared/models/daily-record.models';
 import { StorageService, UploadResult } from '../../../shared/services/storage.service';
 import type { MachineSelect } from '../../../shared/models/machine.models';
+import { Capacitor } from '@capacitor/core';
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
 @Component({
   selector: 'app-reportar',
@@ -1646,33 +1648,37 @@ export class Reportar implements OnInit {
     const isDiesel = input === this.fileInputDiesel?.nativeElement;
 
     if (file) {
-      // Validación inmediata
-      const validationError = this.validateImageFile(file);
-      if (validationError) {
-        this.showErrorToast(validationError);
-        input.value = '';
-        return;
-      }
-
-      // Procesar archivo válido
-      if (isDiesel) {
-        this.dieselEvidenceFile.set(file);
-        // Crear URL para preview
-        const objectUrl = URL.createObjectURL(file);
-        this.dieselImagePreview.set(objectUrl);
-      } else {
-        // Por defecto registro (input === this.fileInputRegistro?.nativeElement)
-        this.evidenceName.set(file.name);
-        this.evidenceFile.set(file);
-        // Crear URL para preview
-        const objectUrl = URL.createObjectURL(file);
-        this.imagePreview.set(objectUrl);
-        this.showPhotoError.set(false);
-      }
-
-      // Asegurar que el modal se cierre (si estaba abierto)
-      this.closeSourceSelector();
+      this.processImageFile(file, isDiesel);
+      input.value = ''; // Limpiar input para permitir re-selección del mismo archivo
     }
+  }
+
+  private processImageFile(file: File, isDiesel: boolean): void {
+    // Validación inmediata
+    const validationError = this.validateImageFile(file);
+    if (validationError) {
+      this.showErrorToast(validationError);
+      return;
+    }
+
+    // Procesar archivo válido
+    if (isDiesel) {
+      this.dieselEvidenceFile.set(file);
+      // Crear URL para preview
+      const objectUrl = URL.createObjectURL(file);
+      this.dieselImagePreview.set(objectUrl);
+    } else {
+      // Por defecto registro
+      this.evidenceName.set(file.name);
+      this.evidenceFile.set(file);
+      // Crear URL para preview
+      const objectUrl = URL.createObjectURL(file);
+      this.imagePreview.set(objectUrl);
+      this.showPhotoError.set(false);
+    }
+
+    // Asegurar que el modal se cierre (si estaba abierto)
+    this.closeSourceSelector();
   }
 
   // Métodos para el selector de fuente (Web)
@@ -1704,33 +1710,53 @@ export class Reportar implements OnInit {
     this.currentPhotoType.set(null);
   }
 
-  selectImageSource(useCamera: boolean) {
+  async selectImageSource(useCamera: boolean) {
     const type = this.currentPhotoType();
     if (!type) return;
 
-    // 1. Cerrar el modal PRIMERO para limpiar la UI antes de abrir cámara/galería
+    // 1. Cerrar el modal PRIMERO para limpiar la UI
     this.showSourceSelector.set(false);
 
-    // 2. Usar un timeout generoso para asegurar que el modal se haya ido del renderizado del navegador
-    this.clearTypeTimer = setTimeout(() => {
-      const inputRef = type === 'registro' ? this.fileInputRegistro : this.fileInputDiesel;
-      const inputEl = inputRef?.nativeElement;
+    if (Capacitor.isNativePlatform()) {
+      // LOGICA NATIVA (APK)
+      try {
+        const image = await Camera.getPhoto({
+          quality: 90,
+          allowEditing: false,
+          resultType: CameraResultType.Uri,
+          source: useCamera ? CameraSource.Camera : CameraSource.Photos
+        });
 
-      if (inputEl) {
-        if (useCamera) {
-          // Forzar cámara trasera en móviles
-          inputEl.setAttribute('capture', 'environment');
-        } else {
-          // Abrir selector de archivos/galería
-          inputEl.removeAttribute('capture');
+        if (image.webPath) {
+          const response = await fetch(image.webPath);
+          const blob = await response.blob();
+          const file = new File([blob], `photo_${Date.now()}.${image.format}`, { type: blob.type });
+          this.processImageFile(file, type === 'diesel');
+        }
+      } catch (error) {
+        console.debug('Selección cancelada o error:', error);
+      } finally {
+        this.currentPhotoType.set(null);
+      }
+    } else {
+      // LOGICA WEB
+      this.clearTypeTimer = setTimeout(() => {
+        const inputRef = type === 'registro' ? this.fileInputRegistro : this.fileInputDiesel;
+        const inputEl = inputRef?.nativeElement;
+
+        if (inputEl) {
+          if (useCamera) {
+            inputEl.setAttribute('capture', 'environment');
+          } else {
+            inputEl.removeAttribute('capture');
+          }
+
+          inputEl.click();
         }
 
-        // 3. Disparar el input file
-        inputEl.click();
-      }
-
-      this.clearTypeTimer = null;
-    }, 400); // 400ms es seguro para la mayoría de animaciones CSS
+        this.clearTypeTimer = null;
+      }, 400);
+    }
   }
 
 
