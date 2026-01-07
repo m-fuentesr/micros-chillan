@@ -42,7 +42,11 @@ def download_apk():
             SIGNED_URL_TTL
         )
 
-        if not signed or "signedURL" not in signed:
+        signed_url = None
+        if signed:
+            signed_url = signed.get("signedURL") or signed.get("signed_url")
+
+        if not signed_url:
             raise HTTPException(
                 status_code=500,
                 detail="No se pudo generar la URL firmada del APK"
@@ -50,7 +54,7 @@ def download_apk():
 
         # 3. Redirigir a la descarga
         return RedirectResponse(
-            url=signed["signedURL"],
+            url=signed_url,
             status_code=307
         )
 

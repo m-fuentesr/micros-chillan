@@ -671,9 +671,20 @@ async def get_history_month_detail(mes: int, anio: int):
     pagos_raw = res.data
 
     if not pagos_raw:
+        # Aunque no haya pagos, verificamos si está cerrado administrativamente
+        res_cierre_empty = (
+            supabase.table("cierres_mensuales")
+            .select("id")
+            .eq("mes", mes)
+            .eq("anio", anio)
+            .maybe_single()
+            .execute()
+        )
+        estado_empty = "Finalizado" if (res_cierre_empty and res_cierre_empty.data) else "Sin Datos"
+        
         return {
             "total_liquidado": 0, "cantidad_choferes": 0, "promedio": 0,
-            "estado": "Sin Datos", "desglose_semanas": []
+            "estado": estado_empty, "desglose_semanas": []
         }
 
     # 2. Agrupar por Semana
@@ -719,7 +730,7 @@ async def get_history_month_detail(mes: int, anio: int):
     cant_choferes = len(choferes_unicos)
     promedio = int(total_mes / cant_choferes) if cant_choferes > 0 else 0
 
-    # --- NUEVO: CONSULTAR SI ESTÁ CERRADO EN DB ---
+    # 5. Determinar Estado (Corrección Error NoneType)
     res_cierre = (
         supabase.table("cierres_mensuales")
         .select("id")
@@ -729,11 +740,11 @@ async def get_history_month_detail(mes: int, anio: int):
         .execute()
     )
     
+    # Verificamos que res_cierre no sea None Y que tenga datos
     if res_cierre and res_cierre.data:
         estado_real = "Finalizado"
     else:
         estado_real = "En Proceso"
-    # ----------------------------------------------
     
     return {
         "total_liquidado": total_mes,
@@ -821,7 +832,7 @@ async def undo_weekly_payment(chofer_id: int, mes: int, anio: int, semana: int):
 async def process_month_closure(mes: int, anio: int):
     """
     Cierra administrativamente el mes:
-    1. Verifica que NO existan pagos pendientes en la última semana para choferes activos.
+    1. Verifica que NO existan registros de producción en la última semana sin pago correspondiente.
     2. Calcula el total pagado en todo el mes.
     3. Inserta el registro en la tabla 'cierres_mensuales'.
     """
@@ -840,52 +851,51 @@ async def process_month_closure(mes: int, anio: int):
     # Calculamos cuál es la última semana de ese mes
     total_semanas = count_weeks_in_month(mes, anio)
     
-    # Obtenemos choferes activos
-    res_choferes = supabase.table("choferes").select("id, primer_nombre, apellido_paterno").eq("estado", "activo").execute()
-    choferes_activos = res_choferes.data or []
-    ids_activos = [c["id"] for c in choferes_activos]
+    # Obtenemos el rango de fechas de esa última semana
+    f_inicio, f_fin = get_date_range_for_week(mes, anio, total_semanas)
 
-    if ids_activos:
-        # Obtener fechas de la última semana
-        f_inicio_ultima, f_fin_ultima = get_date_range_for_week(mes, anio, total_semanas)
-        
-        # Verificar qué choferes tienen registros diarios en la última semana
-        res_registros_ultima = (
-            supabase.table("registros_diarios")
+    # A) Buscamos quiénes TRABAJARON (tienen logs en registros_diarios) esa semana
+    #    No usamos "choferes activos" globales para evitar errores con gente enferma/permisos.
+    res_trabajaron = (
+        supabase.table("registros_diarios")
+        .select("chofer_id")
+        .gte("fecha", f_inicio)
+        .lte("fecha", f_fin)
+        .execute()
+    )
+    # Set de IDs únicos que movieron el camión
+    ids_que_trabajaron = set(r["chofer_id"] for r in res_trabajaron.data)
+
+    if ids_que_trabajaron:
+        # B) Buscamos quiénes ya tienen PAGO esa semana de los que trabajaron
+        res_pagados = (
+            supabase.table("pagos_semanales")
             .select("chofer_id")
-            .gte("fecha", f_inicio_ultima)
-            .lte("fecha", f_fin_ultima)
-            .in_("chofer_id", ids_activos)
+            .eq("mes", mes)
+            .eq("anio", anio)
+            .eq("semana", total_semanas)
+            .in_("chofer_id", list(ids_que_trabajaron))
             .execute()
         )
-        choferes_con_registros = set(p["chofer_id"] for p in res_registros_ultima.data)
-        
-        # Solo validar pago para choferes que tienen registros diarios
-        if choferes_con_registros:
-            # Buscamos quiénes tienen pago registrado en esa ÚLTIMA semana
-            res_pagos_check = (
-                supabase.table("pagos_semanales")
-                .select("chofer_id")
-                .eq("mes", mes)
-                .eq("anio", anio)
-                .eq("semana", total_semanas)
-                .in_("chofer_id", list(choferes_con_registros))
+        ids_pagados = set(p["chofer_id"] for p in res_pagados.data)
+
+        # C) ¿Quién trabajó y NO cobró? (Diferencia de conjuntos)
+        ids_pendientes = ids_que_trabajaron - ids_pagados
+
+        if ids_pendientes:
+            # Obtenemos nombres para detallar el error
+            res_nombres = (
+                supabase.table("choferes")
+                .select("primer_nombre, apellido_paterno")
+                .in_("id", list(ids_pendientes))
                 .execute()
             )
-            pagados_ids = set(p["chofer_id"] for p in res_pagos_check.data)
+            nombres = ", ".join([f"{p['primer_nombre']} {p['apellido_paterno']}" for p in res_nombres.data])
             
-            # Identificamos a los que tienen registros pero no tienen pago
-            pendientes_ids = choferes_con_registros - pagados_ids
-            
-            if pendientes_ids:
-                # Obtener nombres de los choferes pendientes
-                pendientes = [c for c in choferes_activos if c["id"] in pendientes_ids]
-                nombres = ", ".join([f"{p['primer_nombre']} {p['apellido_paterno']}" for p in pendientes])
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"⚠️ No se puede cerrar el mes. Falta registrar el pago de la Semana {total_semanas} a: {nombres}"
-                )
- 
+            raise HTTPException(
+                status_code=400,
+                detail=f"⚠️ No se puede cerrar. Hay choferes con PRODUCCIÓN en la Semana {total_semanas} sin pago generado: {nombres}"
+            )
 
     # 3. CÁLCULO DEL TOTAL (Para el historial)
     res_total = (
@@ -906,7 +916,7 @@ async def process_month_closure(mes: int, anio: int):
             "anio": anio,
             "total_pagado": suma_total,
             "fecha_cierre": now_iso,
-            'cerrado_por' : 1
+            'cerrado_por': 1 # TODO: Obtener ID real del usuario actual
         }
 
         res_insert = supabase.table("cierres_mensuales").insert(datos_cierre).execute()
@@ -915,12 +925,12 @@ async def process_month_closure(mes: int, anio: int):
              raise Exception(res_insert.error.message)
 
     except Exception as e:
-        # Manejo de error de duplicado por si ocurrencia simultánea
+        # Manejo de error de duplicado (Postgres error 23505)
         if "23505" in str(e): 
              raise HTTPException(status_code=400, detail="El mes ya estaba cerrado.")
         raise HTTPException(status_code=500, detail=f"Error al guardar cierre: {e}")
 
-    # Retornamos el estado 'Finalizado' para que el frontend actualice la UI inmediatamente
+    # Retornamos respuesta exitosa
     return {
         "status": "success", 
         "message": f"Mes cerrado correctamente. Total auditado: ${suma_total:,.0f}",

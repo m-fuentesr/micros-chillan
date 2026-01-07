@@ -81,7 +81,7 @@ async def check_missing_daily_records(target_audience: str):
                 # --- ALERTA PARA EL CHOFER ---
                 # "¡Hazlo ahora!"
                 await alert_service.crear_alerta(
-                    mensaje="Debes enviar tu registro diario ahora o puedes perder dinero/bonos.",
+                    mensaje="Debes enviar tu registro diario ahora con límite hasta las 23:59.",
                     severidad="advertencia",
                     tipo="registro_faltante",
                     origen_tipo="chofer",   # <-- Esto hace que SOLO el chofer la vea (según tu filtro)

@@ -182,7 +182,8 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           }
 
           <!-- Input de archivo -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative overflow-hidden" 
+          <div class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative overflow-hidden" 
+            (click)="openSourceSelector('registro')"
             [class.border-red-500]="showPhotoError() && !imagePreview()"
             [class.bg-red-50]="showPhotoError() && !imagePreview()"
             [class.border-slate-300]="!showPhotoError() || imagePreview()"
@@ -190,10 +191,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
             [class.opacity-50]="isSubmitting()" 
             [class.cursor-not-allowed]="isSubmitting()">
             <input 
+              #fileInputRegistro
               type="file" 
               class="hidden" 
               accept="image/*" 
               (change)="onEvidenceSelected($event)"
+              (click)="$event.stopPropagation()"
               [disabled]="isSubmitting()"
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
@@ -202,12 +205,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               [class.hover:text-blue-500]="!showPhotoError() || imagePreview()">
               @if (!imagePreview()) {
                 <ui-icon name="Camera" size="lg" class="mb-1" />
-                <span class="text-xs font-bold uppercase">Tomar foto</span>
+                <span class="text-xs font-bold uppercase">Tomar foto / Galería</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-blue-600">Cambiar imagen</span>
               }
             </div>
-          </label>
+          </div>
           @if (showPhotoError() && !imagePreview()) {
             <p class="text-xs text-red-600 font-semibold mt-2 ml-1">Campo requerido</p>
           }
@@ -240,7 +243,8 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           }
 
           <!-- Input de archivo combustible -->
-          <label class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl transition-colors cursor-pointer relative overflow-hidden" 
+          <div class="block w-full aspect-[3/1] border-2 border-dashed rounded-xl transition-colors cursor-pointer relative overflow-hidden" 
+            (click)="openSourceSelector('diesel')"
             [class.border-amber-400]="shouldShowDieselPhotoWarning()"
             [class.bg-amber-50]="shouldShowDieselPhotoWarning()"
             [class.border-slate-300]="!shouldShowDieselPhotoWarning()"
@@ -250,10 +254,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
             [class.opacity-50]="isSubmitting()" 
             [class.cursor-not-allowed]="isSubmitting()">
             <input 
+              #fileInputDiesel
               type="file" 
               class="hidden" 
               accept="image/*" 
-              (change)="onDieselEvidenceSelected($event)"
+              (change)="onEvidenceSelected($event)"
+              (click)="$event.stopPropagation()"
               [disabled]="isSubmitting()"
             />
             <div class="absolute inset-0 flex flex-col items-center justify-center transition-colors"
@@ -262,12 +268,12 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
               [class.hover:text-amber-500]="true">
               @if (!dieselImagePreview()) {
                 <ui-icon name="Camera" size="lg" class="mb-1" />
-                <span class="text-xs font-bold uppercase">Tomar foto del comprobante</span>
+                <span class="text-xs font-bold uppercase">Tomar foto / Galería</span>
               } @else {
                 <span class="text-xs font-bold uppercase text-amber-600">Cambiar imagen</span>
               }
             </div>
-          </label>
+          </div>
           @if (shouldShowDieselPhotoWarning()) {
             <div class="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
               <p class="text-xs text-amber-700 font-semibold flex items-center gap-1">
@@ -384,6 +390,42 @@ import type { MachineSelect } from '../../../shared/models/machine.models';
           </div>
         </form>
         <form method="dialog" class="modal-backdrop" (click)="closeErrorModal()">
+          <button type="button">Cerrar</button>
+        </form>
+      </dialog>
+
+      <!-- Modal Selector de Fuente (Cámara o Galería) -->
+      <dialog #sourceModal class="modal modal-bottom sm:modal-middle" [class.modal-open]="showSourceSelector()">
+        <form method="dialog" class="modal-box relative">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" (click)="closeSourceSelector()">✕</button>
+          <h3 class="font-bold text-lg text-center mb-6">Seleccionar origen</h3>
+          
+          <div class="grid grid-cols-2 gap-4">
+            <button 
+              type="button" 
+              class="flex flex-col items-center justify-center p-6 rounded-2xl bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors border-2 border-transparent hover:border-blue-200"
+              (click)="selectImageSource(true)"
+            >
+              <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-3 text-blue-600">
+                <ui-icon name="Camera" size="lg" />
+              </div>
+              <span class="font-bold text-sm">Cámara</span>
+            </button>
+
+            <button 
+              type="button" 
+              class="flex flex-col items-center justify-center p-6 rounded-2xl bg-slate-50 text-slate-700 hover:bg-slate-100 transition-colors border-2 border-transparent hover:border-slate-200"
+              (click)="selectImageSource(false)"
+            >
+              <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm mb-3 text-slate-600">
+                 <!-- Usamos FileImage o Image si existe, o fallback a una generica -->
+                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
+              </div>
+              <span class="font-bold text-sm">Galería</span>
+            </button>
+          </div>
+        </form>
+        <form method="dialog" class="modal-backdrop" (click)="closeSourceSelector()">
           <button type="button">Cerrar</button>
         </form>
       </dialog>
@@ -1004,24 +1046,32 @@ export class Reportar implements OnInit {
   evidenceFile = signal<File | null>(null);
   imagePreview = signal<string | null>(null);
   showPhotoError = signal(false); // Para mostrar error visual cuando falta la foto
-  
+
   // Imagen del comprobante de diesel (opcional)
   dieselEvidenceName = signal('');
   dieselEvidenceFile = signal<File | null>(null);
   dieselImagePreview = signal<string | null>(null);
-  
+
   uploadProgress = signal<{ loaded: number; total: number; percentage: number } | null>(null);
   isSubmitting = signal(false);
   reportSuccess = signal(false);
   expanding = signal(false);
   hasError = signal(false);
-  
+
   // Modal de error
   @ViewChild('errorModal') errorModalRef!: ElementRef<HTMLDialogElement>;
   showErrorModal = signal(false);
   errorModalMessage = signal('');
   buttonX = 0;
   buttonY = 0;
+
+  // Selector de Fuente de Imagen (Web)
+  @ViewChild('sourceModal') sourceModalRef!: ElementRef<HTMLDialogElement>;
+  @ViewChild('fileInputRegistro') fileInputRegistro!: ElementRef<HTMLInputElement>;
+  @ViewChild('fileInputDiesel') fileInputDiesel!: ElementRef<HTMLInputElement>;
+
+  showSourceSelector = signal(false);
+  currentPhotoType = signal<'registro' | 'diesel' | null>(null);
 
   // Estado de carga para máquinas
   machinesLoadingState = this.loadingStateService.createLoadingState();
@@ -1059,7 +1109,7 @@ export class Reportar implements OnInit {
   sortedMachines = computed(() => {
     const allMachines = this.machines();
     const profile = this.workerProfile();
-    
+
     if (allMachines.length === 0) {
       return [];
     }
@@ -1073,7 +1123,7 @@ export class Reportar implements OnInit {
     // Formato del backend: "20 - Mercedes-Benz" (número antes del primer guion)
     const maquinaDetalle = profile.maquina_detalle.trim();
     const match = maquinaDetalle.match(/^(\d+)\s*-\s*/);
-    
+
     if (!match) {
       // Si no se puede extraer el número, retornar las máquinas tal cual
       console.warn('No se pudo extraer el número de máquina del formato:', maquinaDetalle);
@@ -1081,7 +1131,7 @@ export class Reportar implements OnInit {
     }
 
     const numeroAsignado = match[1];
-    
+
     // Buscar la máquina asignada por numero_interno (es un string)
     const assignedMachineIndex = allMachines.findIndex(
       m => String(m.numero_interno) === String(numeroAsignado)
@@ -1104,7 +1154,7 @@ export class Reportar implements OnInit {
     // Monitorear cuando el observable emite
     if (this.machinesEmitted() && this.machinesLoadingState.isLoading()) {
       this.machinesLoadingState.setDataLoaded();
-      
+
       // Establecer máquina por defecto: primero la asignada, si no hay ninguna asignada, la primera disponible
       const sortedMachines = this.sortedMachines();
       if (sortedMachines.length > 0) {
@@ -1152,12 +1202,12 @@ export class Reportar implements OnInit {
       if (!control.value) {
         return null; // Permitir valores vacíos, el required se encarga de eso
       }
-      
+
       const value = control.value.toString().replace(/[^0-9]/g, '');
       if (value.length > maxDigits) {
         return { maxDigits: { maxDigits, actual: value.length } };
       }
-      
+
       return null;
     };
   }
@@ -1167,13 +1217,13 @@ export class Reportar implements OnInit {
     // Suscribirse a cambios en fuelLiters y fuelCost para actualizar validación cruzada
     const fuelLitersControl = this.reportForm.get('fuelLiters');
     const fuelCostControl = this.reportForm.get('fuelCost');
-    
+
     if (fuelLitersControl && fuelCostControl) {
       // Cuando cambia fuelLiters, actualizar validación de fuelCost
       fuelLitersControl.valueChanges.subscribe(() => {
         fuelCostControl.updateValueAndValidity();
       });
-      
+
       // Cuando cambia fuelCost, actualizar validación de fuelLiters
       fuelCostControl.valueChanges.subscribe(() => {
         fuelLitersControl.updateValueAndValidity();
@@ -1185,7 +1235,7 @@ export class Reportar implements OnInit {
   private incidentValidationEffect = effect(() => {
     const incidentControl = this.reportForm.get('incident');
     const notesControl = this.reportForm.get('notes');
-    
+
     if (incidentControl && notesControl) {
       // Suscribirse a cambios en el toggle de incidente
       incidentControl.valueChanges.subscribe((hasIncident) => {
@@ -1208,12 +1258,12 @@ export class Reportar implements OnInit {
     const fuelCost = this.fuelCostValue();
     const fuelLiters = this.fuelLitersValue();
     const hasDieselFile = this.dieselEvidenceFile() !== null;
-    
+
     // Mostrar advertencia si hay gasto de combustible pero no hay foto
     // Se muestra inmediatamente cuando el usuario escribe (sin necesidad de hacer blur)
     const hasFuelCost = fuelCost !== null && fuelCost > 0;
     const hasFuelLiters = fuelLiters !== null && fuelLiters > 0;
-    
+
     return (hasFuelCost || hasFuelLiters) && !hasDieselFile;
   });
 
@@ -1232,7 +1282,7 @@ export class Reportar implements OnInit {
     this.reportForm.get('fuelCost')?.valueChanges ?? of(null),
     { initialValue: this.reportForm.get('fuelCost')?.value ?? null }
   );
-  
+
   fuelLitersValue = toSignal(
     this.reportForm.get('fuelLiters')?.valueChanges ?? of(null),
     { initialValue: this.reportForm.get('fuelLiters')?.value ?? null }
@@ -1242,36 +1292,36 @@ export class Reportar implements OnInit {
     // Verificar si ya tiene un reporte para hoy
     // Si ya tiene reporte, redirigir a la página principal
     const status = this.todayRecordStatusService.status();
-    
+
     if (status?.exists && !status.can_create_new) {
       // Ya tiene un reporte para hoy, redirigir
-      this.router.navigate(['/trabajador'], { 
-        queryParams: { 
-          message: 'Ya has registrado tu reporte diario para hoy. Podrás crear uno nuevo después de las 12:00 AM.' 
-        } 
+      this.router.navigate(['/trabajador'], {
+        queryParams: {
+          message: 'Ya has registrado tu reporte diario para hoy. Podrás crear uno nuevo después de las 12:00 AM.'
+        }
       });
       return;
     }
-    
+
     // Si el estado aún no se ha cargado, esperar un momento y verificar nuevamente
     if (status === null) {
       // Refrescar el estado y verificar después
       this.todayRecordStatusService.refreshStatus();
-      
+
       // Esperar un momento para que se cargue el estado
       setTimeout(() => {
         const updatedStatus = this.todayRecordStatusService.status();
         if (updatedStatus?.exists && !updatedStatus.can_create_new) {
-          this.router.navigate(['/trabajador'], { 
-            queryParams: { 
-              message: 'Ya has registrado tu reporte diario para hoy. Podrás crear uno nuevo después de las 12:00 AM.' 
-            } 
+          this.router.navigate(['/trabajador'], {
+            queryParams: {
+              message: 'Ya has registrado tu reporte diario para hoy. Podrás crear uno nuevo después de las 12:00 AM.'
+            }
           });
           return;
         }
       }, 500);
     }
-    
+
     // Iniciar estado de carga
     this.machinesLoadingState.setLoading(true);
   }
@@ -1279,7 +1329,7 @@ export class Reportar implements OnInit {
   async enviarReporte() {
     if (this.reportForm.invalid) {
       this.reportForm.markAllAsTouched();
-      
+
       // Mostrar mensaje específico si hay error de coherencia de combustible
       const fuelLitersError = this.reportForm.get('fuelLiters')?.errors?.['fuelCoherence'];
       const fuelCostError = this.reportForm.get('fuelCost')?.errors?.['fuelCoherence'];
@@ -1288,7 +1338,7 @@ export class Reportar implements OnInit {
         this.showErrorToast(errorMessage);
         return;
       }
-      
+
       // Mostrar mensaje específico si hay incidente pero no hay observaciones (TC-24)
       const hasIncident = this.reportForm.get('incident')?.value === true;
       const notesError = this.reportForm.get('notes')?.errors?.['required'];
@@ -1303,7 +1353,7 @@ export class Reportar implements OnInit {
         }, 100);
         return;
       }
-      
+
       return;
     }
 
@@ -1314,16 +1364,16 @@ export class Reportar implements OnInit {
       this.showErrorToast('Debes adjuntar una foto del comprobante');
       // Scroll suave al campo de foto para que el usuario vea el error
       setTimeout(() => {
-        const photoField = document.querySelector('[formcontrolname="photo"]') || 
-                          document.querySelector('label[for*="photo"]') ||
-                          document.querySelector('.reportar-field-enter:nth-of-type(4)');
+        const photoField = document.querySelector('[formcontrolname="photo"]') ||
+          document.querySelector('label[for*="photo"]') ||
+          document.querySelector('.reportar-field-enter:nth-of-type(4)');
         if (photoField) {
           photoField.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
       return;
     }
-    
+
     // Si hay foto, ocultar el error
     this.showPhotoError.set(false);
 
@@ -1333,21 +1383,21 @@ export class Reportar implements OnInit {
     this.hasError.set(false);
 
     const formValue = this.reportForm.value;
-    
+
     // Capturar posición del botón para la animación Hero Expansion
     const submitButton = document.querySelector('.button-morph-premium-reportar') as HTMLElement;
     const buttonRect = submitButton?.getBoundingClientRect();
-    
+
     this.buttonX = buttonRect ? buttonRect.left + buttonRect.width / 2 : window.innerWidth / 2;
     this.buttonY = buttonRect ? buttonRect.top + buttonRect.height / 2 : window.innerHeight - 100;
-    
+
     const transitionData = {
       buttonX: this.buttonX,
       buttonY: this.buttonY,
       buttonWidth: buttonRect?.width || 0,
       buttonHeight: buttonRect?.height || 0,
     };
-    
+
     // Guardar datos de transición en el servicio
     this.transitionService.setReportTransitionData(transitionData);
 
@@ -1397,34 +1447,34 @@ export class Reportar implements OnInit {
           next: async (createdRecord) => {
             // Actualizar el estado del reporte en el servicio compartido
             this.todayRecordStatusService.refreshStatus();
-            
+
             // Invalidar caché del historial para que se refleje el nuevo reporte
             this.dailyRecordService.invalidateHistoryCache();
-            
+
             // Invalidar caché de estadísticas mensuales para actualizar el recaudo en el perfil
             this.workerService.invalidateCache('stats');
-            
+
             // Mostrar estado de éxito en el botón
             this.reportSuccess.set(true);
             this.isSubmitting.set(false);
-            
+
             // Esperar un momento para mostrar el check (micro-éxito)
             await new Promise(resolve => setTimeout(resolve, 800));
-            
+
             // Activar expansión
             this.expanding.set(true);
-            
+
             // Esperar un momento para que la expansión comience
             await new Promise(resolve => setTimeout(resolve, 100));
-            
+
             // Generar ID de referencia (usar ID del registro o generar uno)
-            const recordId = createdRecord?.id 
-              ? `REF-${new Date().getFullYear()}-${createdRecord.id}` 
+            const recordId = createdRecord?.id
+              ? `REF-${new Date().getFullYear()}-${createdRecord.id}`
               : null;
-            
+
             // Navegar con datos de transición
             this.router.navigate(['/trabajador/reporte-exito'], {
-              state: { 
+              state: {
                 transitionData,
                 reportData: {
                   amount: amount,
@@ -1443,10 +1493,10 @@ export class Reportar implements OnInit {
             this.reportSuccess.set(false);
             this.expanding.set(false);
             this.hasError.set(true);
-            
+
             // Obtener mensaje de error específico
             const errorMessage = this.getErrorMessage(error);
-            
+
             // Detectar si es un error crítico (duplicado de máquina) para mostrar en modal
             const errorDetail = error?.error?.detail || error?.error?.message || '';
             const isCriticalError = typeof errorDetail === 'string' && (
@@ -1454,7 +1504,7 @@ export class Reportar implements OnInit {
               errorDetail.includes('máquina') && errorDetail.includes('fecha') ||
               errorDetail.includes('No se puede facturar dos veces')
             );
-            
+
             if (isCriticalError) {
               // Mostrar en modal para errores críticos
               this.errorModalMessage.set(errorMessage);
@@ -1469,12 +1519,12 @@ export class Reportar implements OnInit {
               // Mostrar toast para errores no críticos
               this.showErrorToast(errorMessage);
             }
-            
+
             // Resetear estado de error después de la animación
             setTimeout(() => {
               this.hasError.set(false);
             }, 2000);
-            
+
             reject(error);
           }
         });
@@ -1486,7 +1536,7 @@ export class Reportar implements OnInit {
       // Obtener choferId del usuario actual
       const currentUser = this.authService.currentUser();
       const choferId = currentUser?.choferId;
-      
+
       if (!choferId) {
         throw new Error('No se pudo obtener el ID del chofer');
       }
@@ -1498,7 +1548,7 @@ export class Reportar implements OnInit {
       if (this.evidenceFile()) {
         const file = this.evidenceFile()!;
         const compressedFile = await this.storageService.compressImage(file);
-        
+
         const uploadResult = await new Promise<UploadResult>((resolve, reject) => {
           this.storageService.uploadDailyRecordImage(
             compressedFile,
@@ -1519,7 +1569,7 @@ export class Reportar implements OnInit {
             }
           });
         });
-        
+
         imagenRegistroUrl = uploadResult.url;
       }
 
@@ -1527,7 +1577,7 @@ export class Reportar implements OnInit {
       if (this.dieselEvidenceFile()) {
         const dieselFile = this.dieselEvidenceFile()!;
         const compressedDieselFile = await this.storageService.compressImage(dieselFile);
-        
+
         const dieselUploadResult = await new Promise<UploadResult>((resolve, reject) => {
           this.storageService.uploadDailyRecordImage(
             compressedDieselFile,
@@ -1549,7 +1599,7 @@ export class Reportar implements OnInit {
             }
           });
         });
-        
+
         imagenDieselUrl = dieselUploadResult.url;
       }
 
@@ -1561,7 +1611,7 @@ export class Reportar implements OnInit {
       this.isSubmitting.set(false);
       this.hasError.set(true);
       this.uploadProgress.set(null);
-      
+
       // Verificar si es un error crítico (duplicado)
       const errorMessage = error?.error?.detail || error?.message || 'Error al subir las imágenes';
       const isCriticalError = typeof errorMessage === 'string' && (
@@ -1569,7 +1619,7 @@ export class Reportar implements OnInit {
         errorMessage.includes('máquina') && errorMessage.includes('fecha') ||
         errorMessage.includes('No se puede facturar dos veces')
       );
-      
+
       if (isCriticalError) {
         // Mostrar en modal para errores críticos
         this.errorModalMessage.set(errorMessage);
@@ -1591,6 +1641,10 @@ export class Reportar implements OnInit {
   onEvidenceSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const file = input.files?.[0];
+
+    // Determinar si es input de diesel comparando con la referencia nativa
+    const isDiesel = input === this.fileInputDiesel?.nativeElement;
+
     if (file) {
       // Validación inmediata
       const validationError = this.validateImageFile(file);
@@ -1600,25 +1654,85 @@ export class Reportar implements OnInit {
         return;
       }
 
-      this.evidenceName.set(file.name);
-      this.evidenceFile.set(file);
-      this.showPhotoError.set(false); // Ocultar error cuando se selecciona una foto
+      // Procesar archivo válido
+      if (isDiesel) {
+        this.dieselEvidenceFile.set(file);
+        // Crear URL para preview
+        const objectUrl = URL.createObjectURL(file);
+        this.dieselImagePreview.set(objectUrl);
+      } else {
+        // Por defecto registro (input === this.fileInputRegistro?.nativeElement)
+        this.evidenceName.set(file.name);
+        this.evidenceFile.set(file);
+        // Crear URL para preview
+        const objectUrl = URL.createObjectURL(file);
+        this.imagePreview.set(objectUrl);
+        this.showPhotoError.set(false);
+      }
 
-      // Generar preview inmediato
-      this.storageService.createPreviewUrl(file).subscribe({
-        next: (previewUrl) => {
-          this.imagePreview.set(previewUrl);
-        },
-        error: (error) => {
-          console.error('Error generando preview:', error);
-        }
-      });
-    } else {
-      this.evidenceName.set('');
-      this.evidenceFile.set(null);
-      this.imagePreview.set(null);
+      // Asegurar que el modal se cierre (si estaba abierto)
+      this.closeSourceSelector();
     }
   }
+
+  // Métodos para el selector de fuente (Web)
+  // Métodos para el selector de fuente (Web)
+  // Timer para limpiar estado
+  private clearTypeTimer: any;
+
+  // Métodos para el selector de fuente (Web)
+  openSourceSelector(type: 'registro' | 'diesel') {
+    if (this.isSubmitting()) return;
+
+    // Si había un timer pendiente de limpieza de estado anterior, cancelarlo
+    if (this.clearTypeTimer) {
+      clearTimeout(this.clearTypeTimer);
+      this.clearTypeTimer = null;
+    }
+
+    this.currentPhotoType.set(type);
+    this.showSourceSelector.set(true);
+  }
+
+  closeSourceSelector() {
+    this.showSourceSelector.set(false);
+    // Limpiamos también el timer si se cierra manualmente
+    if (this.clearTypeTimer) {
+      clearTimeout(this.clearTypeTimer);
+      this.clearTypeTimer = null;
+    }
+    this.currentPhotoType.set(null);
+  }
+
+  selectImageSource(useCamera: boolean) {
+    const type = this.currentPhotoType();
+    if (!type) return;
+
+    // 1. Cerrar el modal PRIMERO para limpiar la UI antes de abrir cámara/galería
+    this.showSourceSelector.set(false);
+
+    // 2. Usar un timeout generoso para asegurar que el modal se haya ido del renderizado del navegador
+    this.clearTypeTimer = setTimeout(() => {
+      const inputRef = type === 'registro' ? this.fileInputRegistro : this.fileInputDiesel;
+      const inputEl = inputRef?.nativeElement;
+
+      if (inputEl) {
+        if (useCamera) {
+          // Forzar cámara trasera en móviles
+          inputEl.setAttribute('capture', 'environment');
+        } else {
+          // Abrir selector de archivos/galería
+          inputEl.removeAttribute('capture');
+        }
+
+        // 3. Disparar el input file
+        inputEl.click();
+      }
+
+      this.clearTypeTimer = null;
+    }, 400); // 400ms es seguro para la mayoría de animaciones CSS
+  }
+
 
   private validateImageFile(file: File): string | null {
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif'];
@@ -1649,11 +1763,11 @@ export class Reportar implements OnInit {
   onIncidentToggle(): void {
     const incidentControl = this.reportForm.get('incident');
     const notesControl = this.reportForm.get('notes');
-    
+
     if (!incidentControl || !notesControl) return;
-    
+
     const hasIncident = incidentControl.value === true;
-    
+
     if (hasIncident) {
       // Si hay incidente, hacer observaciones obligatorias
       notesControl.setValidators([Validators.required]);
@@ -1665,36 +1779,7 @@ export class Reportar implements OnInit {
     }
   }
 
-  onDieselEvidenceSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
-    if (file) {
-      // Validación inmediata
-      const validationError = this.validateImageFile(file);
-      if (validationError) {
-        this.showErrorToast(validationError);
-        input.value = '';
-        return;
-      }
 
-      this.dieselEvidenceName.set(file.name);
-      this.dieselEvidenceFile.set(file);
-
-      // Generar preview inmediato
-      this.storageService.createPreviewUrl(file).subscribe({
-        next: (previewUrl) => {
-          this.dieselImagePreview.set(previewUrl);
-        },
-        error: (error) => {
-          console.error('Error generando preview:', error);
-        }
-      });
-    } else {
-      this.dieselEvidenceName.set('');
-      this.dieselEvidenceFile.set(null);
-      this.dieselImagePreview.set(null);
-    }
-  }
 
   removeDieselImage(): void {
     this.dieselEvidenceFile.set(null);
@@ -1720,7 +1805,7 @@ export class Reportar implements OnInit {
     const formControlName = input.getAttribute('formcontrolname');
     const currentValue = input.value || '';
     const controlKeys = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'];
-    
+
     // Determinar el límite según el campo
     let maxDigits = 6; // Por defecto
     if (formControlName === 'fuelLiters') {
@@ -1728,7 +1813,7 @@ export class Reportar implements OnInit {
     } else if (formControlName === 'fuelCost' || formControlName === 'amount') {
       maxDigits = 6;
     }
-    
+
     if (!controlKeys.includes(event.key) && !event.ctrlKey && !event.metaKey) {
       // Si el valor actual tiene el máximo de dígitos y no es una tecla de control, prevenir entrada
       const digitsOnly = currentValue.replace(/[^0-9]/g, '');
@@ -1746,12 +1831,12 @@ export class Reportar implements OnInit {
   limitFieldDigits(event: Event, fieldName: 'amount' | 'fuelLiters' | 'fuelCost', maxDigits: number): void {
     const input = event.target as HTMLInputElement;
     let value = input.value.replace(/[^0-9]/g, ''); // Solo números
-    
+
     // Limitar a maxDigits dígitos
     if (value.length > maxDigits) {
       value = value.substring(0, maxDigits);
     }
-    
+
     // Actualizar el valor del input y del formulario
     const numericValue = value === '' ? null : parseInt(value, 10);
     input.value = value === '' ? '' : value;
@@ -1763,19 +1848,19 @@ export class Reportar implements OnInit {
     if (!error.status || error.status === 0) {
       return 'No hay conexión a internet. Verifica tu conexión e intenta nuevamente.';
     }
-    
+
     // Error 422 (Unprocessable Entity) - Validación de Pydantic (TC-27)
     if (error.status === 422) {
       const detail = error.error?.detail;
-      
+
       // Si detail es un array, son errores de validación de campos específicos
       if (Array.isArray(detail) && detail.length > 0) {
         const errorMessages: string[] = [];
-        
+
         detail.forEach((err: any) => {
           const field = err.loc?.[err.loc.length - 1]; // Último elemento del path
           const message = err.msg || 'Campo inválido';
-          
+
           // Mapear nombres de campos técnicos a nombres amigables
           const fieldNames: Record<string, string> = {
             'maquina_id': 'Máquina',
@@ -1788,9 +1873,9 @@ export class Reportar implements OnInit {
             'observaciones': 'Observaciones',
             'incidente_critico': 'Incidente crítico'
           };
-          
+
           const friendlyFieldName = fieldNames[field] || field;
-          
+
           // Mensajes más amigables según el tipo de error
           let friendlyMessage = message;
           if (message.includes('field required')) {
@@ -1802,27 +1887,27 @@ export class Reportar implements OnInit {
           } else if (message.includes('greater than')) {
             friendlyMessage = `${friendlyFieldName} debe ser mayor a 0`;
           }
-          
+
           errorMessages.push(friendlyMessage);
         });
-        
+
         // Si hay múltiples errores, mostrar los primeros 3
         if (errorMessages.length > 3) {
           return `${errorMessages.slice(0, 3).join('. ')}. Y ${errorMessages.length - 3} error(es) más.`;
         }
-        
+
         return errorMessages.join('. ');
       }
-      
+
       // Si detail es un string, es un mensaje de error general
       if (typeof detail === 'string') {
         return detail;
       }
-      
+
       // Fallback para errores 422 sin formato esperado
       return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';
     }
-    
+
     // Error 400 (Bad Request) - Validación general
     if (error.status === 400) {
       const errorDetail = error.error?.detail || error.error?.message;
@@ -1839,27 +1924,27 @@ export class Reportar implements OnInit {
       }
       return 'Los datos enviados no son válidos. Por favor, revisa el formulario.';
     }
-    
+
     // Error 401 (Unauthorized)
     if (error.status === 401) {
       return 'Tu sesión ha expirado. Por favor, inicia sesión nuevamente.';
     }
-    
+
     // Error 403 (Forbidden)
     if (error.status === 403) {
       return 'No tienes permisos para realizar esta acción.';
     }
-    
+
     // Error 500 (Server Error)
     if (error.status === 500) {
       return 'Error en el servidor. Por favor, intenta nuevamente en unos momentos.';
     }
-    
+
     // Error 503 (Service Unavailable)
     if (error.status === 503) {
       return 'El servicio no está disponible temporalmente. Intenta más tarde.';
     }
-    
+
     // Error genérico
     return 'Error al enviar el reporte. Por favor, intenta nuevamente.';
   }
@@ -1889,7 +1974,7 @@ export class Reportar implements OnInit {
       </div>
     `;
     document.body.appendChild(toast);
-    
+
     // Remover después de 4 segundos
     setTimeout(() => {
       toast.style.opacity = '0';
