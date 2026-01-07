@@ -1,41 +1,50 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-import os
+from app.db.supabase_client import supabase
 import json
 
-router = APIRouter(prefix="/updates", tags=["Updates"])
+router = APIRouter(prefix="/api/updates", tags=["updates"])
 
-# Ruta local al archivo version.json
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-UPDATES_FOLDER = os.path.join(BASE_DIR, "static", "updates")
+BUCKET_NAME = "mobile-apk-releases"
+VERSION_FILE_PATH = "version.json"
 
-class UpdateInfo(BaseModel):
-    version: str
-    build: int
-    url: str
-    forceUpdate: bool
-    releaseNotes: str
 
-@router.get("/check", response_model=UpdateInfo)
-async def check_update():
+@router.get("/check")
+def check_update():
     """
     Retorna la información de la última versión disponible.
-    La URL de descarga apuntará a Supabase Storage u otra fuente externa.
     """
-    version_file = os.path.join(UPDATES_FOLDER, "version.json")
-    if not os.path.exists(version_file):
-        # Valor por defecto si no existe configuración
-        return {
-            "version": "0.0.0",
-            "build": 0,
-            "url": "",
-            "forceUpdate": False,
-            "releaseNotes": "No hay información de actualización disponible."
-        }
-    
     try:
-        with open(version_file, "r") as f:
-            data = json.load(f)
-        return data
+        res = supabase.storage.from_(BUCKET_NAME).download(VERSION_FILE_PATH)
+
+        if not res:
+            raise HTTPException(
+                status_code=404,
+                detail="No se encontró información de versión"
+            )
+
+        data = json.loads(res.decode("utf-8"))
+
+        required_fields = {"version", "build", "apkPath", "forceUpdate", "releaseNotes"}
+        if not required_fields.issubset(data.keys()):
+            raise HTTPException(
+                status_code=500,
+                detail="version.json incompleto o mal formado"
+            )
+
+        return {
+            "version": data["version"],
+            "build": data["build"],
+            "forceUpdate": data["forceUpdate"],
+            "releaseNotes": data["releaseNotes"],
+            # Nunca exponer Supabase directo
+            "downloadUrl": "/api/mobile/apk"
+        }
+
+    except HTTPException:
+        raise
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading version file: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error consultando versión: {str(e)}"
+        )
