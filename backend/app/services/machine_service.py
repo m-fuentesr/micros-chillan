@@ -5,6 +5,7 @@ from datetime import date, timedelta, datetime, timezone
 from app.db.supabase_client import supabase
 from app.schemas.user import UserInDB
 from app.services import alert_service
+from app.utils.dates import get_today_in_chile
 
 NOMBRES_DOCS = {
     "revision_tecnica": "Revisión Técnica",
@@ -706,7 +707,7 @@ async def create_machine(data):
             .execute()
         )
 
-        hoy = date.today().isoformat()
+        hoy = get_today_in_chile().isoformat()
 
         # Si tiene asignación activa → cerrar la asignación anterior
         if asign_raw and asign_raw.data:
@@ -961,7 +962,7 @@ async def update_machine(machine_id: int, data):
     chofer_actual_id = asign_actual["chofer_id"] if asign_actual else None
     nuevo_chofer_id = data.chofer_id
 
-    hoy_iso = date.today().isoformat()
+    hoy_iso = get_today_in_chile().isoformat()
     nombre_maquina = f"Máquina {data.numero_interno}"
 
     # --- CORRECCIÓN LÓGICA AQUÍ ---
@@ -1075,8 +1076,8 @@ async def update_machine(machine_id: int, data):
 
 
 async def delete_machine(machine_id: int):
-    hoy = date.today().isoformat()
-
+    hoy = get_today_in_chile().isoformat()
+    
     # ----------------------------------------
     # 1. Verificar que la máquina exista
     # ----------------------------------------
