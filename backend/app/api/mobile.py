@@ -1,9 +1,7 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import RedirectResponse
 from app.db.supabase_client import supabase
-import httpx
 import json
-import os
 
 router = APIRouter(prefix="/api/mobile", tags=["mobile"])
 
@@ -13,46 +11,52 @@ SIGNED_URL_TTL = 60 * 60 * 24  # 24 horas
 
 
 @router.get("/apk")
-async def download_apk():
+def download_apk():
+    """
+    Descarga del APK actual.
+    La versión y ruta se obtienen desde version.json.
+    """
     try:
-        # 1. Leer version.json
+        # 1. Leer version.json desde Supabase Storage
         res = supabase.storage.from_(BUCKET_NAME).download(VERSION_FILE_PATH)
+
         if not res:
-            raise HTTPException(404, "No se encontró version.json")
+            raise HTTPException(
+                status_code=404,
+                detail="No se encontró version.json"
+            )
 
         data = json.loads(res.decode("utf-8"))
-        apk_path = data.get("apkPath")
-        if not apk_path:
-            raise HTTPException(500, "version.json no contiene apkPath")
 
-        # 2. Signed URL
+        if "apkPath" not in data:
+            raise HTTPException(
+                status_code=500,
+                detail="version.json no contiene apkPath"
+            )
+
+        apk_path = data["apkPath"]
+
+        # 2. Generar signed URL del APK
         signed = supabase.storage.from_(BUCKET_NAME).create_signed_url(
             apk_path,
             SIGNED_URL_TTL
         )
-        signed_url = signed.get("signedURL") or signed.get("signed_url")
+
+        signed_url = None
+        if signed:
+            signed_url = signed.get("signedURL") or signed.get("signed_url")
+
         if not signed_url:
-            raise HTTPException(500, "No se pudo generar signed URL")
-
-        filename = os.path.basename(apk_path)
-
-        # 3. Stream desde Supabase
-        async with httpx.AsyncClient() as client:
-            upstream = await client.get(signed_url, stream=True)
-            if upstream.status_code != 200:
-                raise HTTPException(502, "No se pudo descargar el APK desde Supabase")
-
-            headers = {
-                "Content-Disposition": f'attachment; filename="{filename}"',
-                "Cache-Control": "no-store",
-                "X-Content-Type-Options": "nosniff"
-            }
-
-            return StreamingResponse(
-                upstream.aiter_bytes(),
-                media_type="application/vnd.android.package-archive",
-                headers=headers
+            raise HTTPException(
+                status_code=500,
+                detail="No se pudo generar la URL firmada del APK"
             )
+
+        # 3. Redirigir a la descarga
+        return RedirectResponse(
+            url=signed_url,
+            status_code=307
+        )
 
     except HTTPException:
         raise
