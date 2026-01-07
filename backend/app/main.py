@@ -17,6 +17,7 @@ from app.api.test import router as test_router
 from app.api.worker import router as worker_router
 from app.api.settings import router as settings_router
 from app.api.storage import router as storage_router
+from app.api.updates import router as updates_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -69,6 +70,7 @@ app.include_router(users_router)
 app.include_router(test_router)
 app.include_router(settings_router)
 app.include_router(storage_router)
+app.include_router(updates_router)
 
 # Ruta principal
 @app.get("/")
