@@ -61,6 +61,7 @@ const ICON_NAME_MAP: Record<string, string> = {
   Save: 'save',
   Filter: 'filter',
   ArrowUpDown: 'arrow-up-down',
+  ArrowRight: 'arrow-right',
   Download: 'download',
   CheckCircle2: 'check-circle-2',
   Clock: 'clock',
@@ -115,18 +116,18 @@ export class UiIconComponent implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private mediaQueryHandler?: (e: MediaQueryListEvent) => void;
   private mediaQuery?: MediaQueryList;
-  
+
   /**
    * Nombre del icono Lucide (requerido)
    * Debe estar registrado en icons.provider.ts
    */
   @Input({ required: true }) name!: string;
-  
+
   /**
    * Clases CSS adicionales
    */
   @Input() class: string = '';
-  
+
   /**
    * Tamaño del icono
    * - xs: 14px (inline text)
@@ -136,17 +137,17 @@ export class UiIconComponent implements OnInit, OnDestroy {
    * - xl: 32px (hero sections)
    */
   @Input() size: IconSize = 'md';
-  
+
   /**
    * Variante de trazo
    * - outline: Normal (stroke responsive)
    * - bold: Trazo grueso (2.5px)
    */
   @Input() variant: IconVariant = 'outline';
-  
+
   // Detección de dispositivo móvil
   private isMobile = signal<boolean>(false);
-  
+
   /**
    * Convierte el nombre del icono de PascalCase a kebab-case para lucide-icon
    * Ejemplo: BusFront -> bus-front, LayoutDashboard -> layout-dashboard
@@ -156,11 +157,11 @@ export class UiIconComponent implements OnInit, OnDestroy {
       .replace(/([a-z])([A-Z])/g, '$1-$2')
       .toLowerCase();
   });
-  
+
   ngOnInit() {
     if (isPlatformBrowser(this.platformId)) {
       this.isMobile.set(window.innerWidth < 768);
-      
+
       // Listener para cambios de viewport (opcional, para apps responsive dinámicas)
       if (typeof window !== 'undefined' && window.matchMedia) {
         this.mediaQuery = window.matchMedia('(max-width: 767px)');
@@ -169,13 +170,13 @@ export class UiIconComponent implements OnInit, OnDestroy {
       }
     }
   }
-  
+
   ngOnDestroy() {
     if (this.mediaQuery && this.mediaQueryHandler) {
       this.mediaQuery.removeEventListener('change', this.mediaQueryHandler);
     }
   }
-  
+
   /**
    * Mapa de tamaños en píxeles
    * Cumple con el grid de 24px de Lucide
@@ -190,7 +191,7 @@ export class UiIconComponent implements OnInit, OnDestroy {
     };
     return sizeMap[this.size];
   });
-  
+
   /**
    * Stroke responsive: 1.5px desktop / 2px móvil
    * 

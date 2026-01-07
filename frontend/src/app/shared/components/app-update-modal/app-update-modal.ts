@@ -4,29 +4,33 @@ import { UpdateService, UpdateInfo } from '../../services/update.service';
 import { UiIconComponent } from '../ui-icon/ui-icon.component';
 
 @Component({
-    selector: 'app-update-modal',
-    standalone: true,
-    imports: [CommonModule, UiIconComponent],
-    template: `
+  selector: 'app-update-modal',
+  standalone: true,
+  imports: [CommonModule, UiIconComponent],
+  template: `
     @if (updateService.updateAvailable(); as updateInfo) {
       <div class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div class="bg-base-100 w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden border border-white/20 animate-scale-up">
+        <div class="bg-base-100 w-full max-w-sm sm:max-w-md rounded-3xl shadow-2xl overflow-hidden animate-scale-up">
           
-          <!-- Header con gradiente -->
-          <div class="bg-gradient-to-br from-primary to-primary-focus p-6 text-white relative overflow-hidden">
-            <div class="absolute top-0 right-0 p-4 opacity-10">
+          <!-- Header estilo Card -->
+          <div class="bg-base-100 p-6 border-b border-dashed border-base-300 relative overflow-hidden">
+            <!-- Icono de fondo decorativo -->
+            <div class="absolute top-0 right-0 p-4 opacity-5 text-base-content pointer-events-none">
               <ui-icon name="Rocket" size="xl" />
             </div>
             
             <div class="relative z-10 flex items-start gap-4">
-              <div class="bg-white/20 p-3 rounded-2xl backdrop-blur-md shadow-inner border border-white/20">
-                <ui-icon name="Download" size="lg" class="text-white" />
+              <div class="bg-primary/10 p-3 rounded-2xl text-primary flex items-center justify-center shrink-0">
+                <ui-icon name="Download" size="lg" />
               </div>
-              <div>
-                <h3 class="text-xl font-bold tracking-tight">Nueva Versión</h3>
-                <p class="text-primary-content/80 text-sm font-medium">
-                  v{{ updateInfo.version }} disponible
-                </p>
+              
+              <div class="flex flex-col min-w-0">
+                <span class="text-[0.65rem] uppercase tracking-wider font-semibold text-base-content/60 mb-0.5">
+                  ACTUALIZACIÓN DISPONIBLE
+                </span>
+                <h3 class="text-xl font-extrabold text-base-content tracking-tight leading-none mt-1">
+                  Nueva Versión
+                </h3>
               </div>
             </div>
           </div>
@@ -86,7 +90,7 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
       </div>
     }
   `,
-    styles: [`
+  styles: [`
     .animate-fade-in {
       animation: fadeIn 0.3s ease-out forwards;
     }
@@ -113,14 +117,14 @@ import { UiIconComponent } from '../ui-icon/ui-icon.component';
   `]
 })
 export class AppUpdateModal {
-    updateService = inject(UpdateService);
+  updateService = inject(UpdateService);
 
-    onUpdate() {
-        this.updateService.downloadAndInstall();
-    }
+  onUpdate() {
+    this.updateService.downloadAndInstall();
+  }
 
-    onLater() {
-        // Ocultar modal limpiando el estado
-        this.updateService.updateAvailable.set(null);
-    }
+  onLater() {
+    // Ocultar modal limpiando el estado
+    this.updateService.updateAvailable.set(null);
+  }
 }

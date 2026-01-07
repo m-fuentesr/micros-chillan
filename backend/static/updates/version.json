@@ -1,7 +1,8 @@
 {
     "version": "1.2",
-    "build": 2,
+    "build": 1,
     "url": "https://TU_PROYECTO.supabase.co/storage/v1/object/public/apk/app-release.apk",
     "forceUpdate": true,
-    "releaseNotes": "- segunda version test ."
+    "releaseNotes": "- segunda version test .",
+    "funcionaldad": "plantilla"
 }
