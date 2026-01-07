@@ -22,10 +22,11 @@ import { GlobalErrorService } from './shared/services/global-error.service';
 import { DriverLedgerHistoryModalService } from './shared/services/driver-ledger-history-modal.service';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { filter, map, startWith } from 'rxjs';
+import { AppUpdateModal } from './shared/components/app-update-modal/app-update-modal';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent, GlobalErrorDisplayComponent, LedgerMovementModalComponent, DriverLedgerHistoryComponent],
+  imports: [RouterOutlet, Navbar, NavbarTrabajador, CommonModule, RouteTransitionOutlet, ConfirmModalComponent, MaintenanceFormModalComponent, NewRecordModalComponent, AlertModalComponent, PaymentConfirmModalComponent, ImageModalComponent, GlobalErrorDisplayComponent, LedgerMovementModalComponent, DriverLedgerHistoryComponent, AppUpdateModal],
   template: `
     <!-- CRÍTICO: Spinner de recarga tiene prioridad sobre showInitialLoading -->
     <!-- Spinner de 3 puntos para recarga, cambio de pestaña o volver al navegador -->
@@ -115,6 +116,9 @@ import { filter, map, startWith } from 'rxjs';
     @if (driverLedgerHistoryModalService.isVisible()) {
       <app-driver-ledger-history></app-driver-ledger-history>
     }
+    
+    <!-- Modal de Actualización de App -->
+    <app-update-modal></app-update-modal>
   `,
   styles: [
     `
