@@ -1,7 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import RedirectResponse
-from app.db.supabase_client import supabase
+from fastapi.responses import Response
+import os
+import httpx
 import json
+
+from app.db.supabase_client import supabase
+
 
 router = APIRouter(prefix="/api/mobile", tags=["mobile"])
 
@@ -42,16 +46,34 @@ def download_apk():
             SIGNED_URL_TTL
         )
 
-        if not signed or "signedURL" not in signed:
+        signed_url = None
+        if signed:
+            signed_url = signed.get("signedURL") or signed.get("signed_url")
+
+        if not signed_url:
             raise HTTPException(
                 status_code=500,
                 detail="No se pudo generar la URL firmada del APK"
             )
 
-        # 3. Redirigir a la descarga
-        return RedirectResponse(
-            url=signed["signedURL"],
-            status_code=307
+        filename = os.path.basename(apk_path)
+
+        response = httpx.get(signed_url)
+        if response.status_code != 200:
+            raise HTTPException(
+                status_code=502,
+                detail="No se pudo descargar el APK desde Supabase"
+            )
+
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+
+        # 3. Descargar y servir el APK
+        return Response(
+            content=response.content,
+            media_type="application/vnd.android.package-archive",
+            headers=headers
         )
 
     except HTTPException:
