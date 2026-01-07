@@ -1,0 +1,7 @@
+{
+    "version": "1.0.0",
+    "build": 1,
+    "url": "https://TU_PROYECTO.supabase.co/storage/v1/object/public/apk/app-release.apk",
+    "forceUpdate": false,
+    "releaseNotes": "- Primera versión con soporte de actualización remota desde Supabase."
+}
