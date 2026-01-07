@@ -5,6 +5,7 @@ from app.db.supabase_client import supabase
 from app.core.config import settings
 from app.schemas.driver import DriverCreate, DriverReintegrate
 from app.services import alert_service
+from app.utils.dates import get_today_in_chile
 from app.utils.helpers import normalize_rut, validate_rut
 import logging
 
@@ -677,7 +678,7 @@ async def update_driver(driver_id: int, data):
     - Máquina asignada
     - Fecha de vencimiento de licencia
     """
-    hoy = date.today().isoformat()
+    hoy = get_today_in_chile().isoformat()
 
     # ---------------------------------------------------------
     # 1. Verificar existencia del chofer y obtener 'estado' previo
@@ -1158,7 +1159,7 @@ async def create_driver(data: DriverCreate):
                 .insert({
                     "chofer_id": chofer_id,
                     "maquina_id": maquina_id,
-                    "fecha_inicio": date.today().isoformat(),
+                    "fecha_inicio": get_today_in_chile().isoformat(),
                     "fecha_termino": None
                 })
                 .execute()
@@ -1237,7 +1238,7 @@ async def delete_driver(driver_id: int):
     # ---------------------------------------------------------
     # 3) Desasignar máquina actual (fecha_termino = hoy)
     # ---------------------------------------------------------
-    hoy = date.today().isoformat()
+    hoy = get_today_in_chile().isoformat()
 
     asign_raw = (
         supabase.table("asignaciones_chofer_maquina")
@@ -1468,7 +1469,7 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
                 .insert({
                     "maquina_id": maquina_id,
                     "chofer_id": driver_id,
-                    "fecha_inicio": date.today().isoformat(),
+                    "fecha_inicio": get_today_in_chile().isoformat(),
                     "fecha_termino": None,
                 })
                 .execute()
