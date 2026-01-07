@@ -1,6 +1,7 @@
 import { Component, ChangeDetectionStrategy, signal, computed, inject, OnInit, effect, ChangeDetectorRef } from '@angular/core';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData } from 'chart.js';
+import { downloadBlob } from '../../shared/utils/file.utils';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { toSignal, toObservable } from '@angular/core/rxjs-interop';
@@ -2929,9 +2930,15 @@ export class Reportes implements OnInit {
 
     this.reportsService.exportMachineProfitability(this.selectedMonth(), this.selectedYear(), 'pdf')
       .subscribe({
-        next: (blob) => {
-          this.downloadBlob(blob, `Rentabilidad_Maquinas_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
-          this.isExportingProfit.set(false);
+        next: async (blob) => {
+          try {
+            await downloadBlob(blob, `Rentabilidad_Maquinas_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          } catch (err) {
+            console.error('Error saving file', err);
+            this.globalErrorService.showError('Error al guardar el archivo', 'Error Exportación');
+          } finally {
+            this.isExportingProfit.set(false);
+          }
         },
         error: (err) => {
           console.error('Error exporting profit report', err);
@@ -2947,9 +2954,15 @@ export class Reportes implements OnInit {
 
     this.reportsService.exportGrossIncomeRanking(this.selectedMonth(), this.selectedYear(), 'pdf')
       .subscribe({
-        next: (blob) => {
-          this.downloadBlob(blob, `Ranking_Ingresos_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
-          this.isExportingRevenue.set(false);
+        next: async (blob) => {
+          try {
+            await downloadBlob(blob, `Ranking_Ingresos_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          } catch (err) {
+            console.error('Error saving file', err);
+            this.globalErrorService.showError('Error al guardar el archivo', 'Error Exportación');
+          } finally {
+            this.isExportingRevenue.set(false);
+          }
         },
         error: (err) => {
           console.error('Error exporting revenue report', err);
@@ -2965,9 +2978,15 @@ export class Reportes implements OnInit {
 
     this.reportsService.exportDriverProfitability(this.selectedMonth(), this.selectedYear(), 'pdf')
       .subscribe({
-        next: (blob) => {
-          this.downloadBlob(blob, `Rentabilidad_Choferes_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
-          this.isExportingDriver.set(false);
+        next: async (blob) => {
+          try {
+            await downloadBlob(blob, `Rentabilidad_Choferes_${this.selectedMonth()}_${this.selectedYear()}.pdf`);
+          } catch (err) {
+            console.error('Error saving file', err);
+            this.globalErrorService.showError('Error al guardar el archivo', 'Error Exportación');
+          } finally {
+            this.isExportingDriver.set(false);
+          }
         },
         error: (err) => {
           console.error('Error exporting driver report', err);
@@ -2977,14 +2996,7 @@ export class Reportes implements OnInit {
       });
   }
 
-  private downloadBlob(blob: Blob, filename: string) {
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  }
+
 
 
 
