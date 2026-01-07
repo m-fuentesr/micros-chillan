@@ -11,6 +11,7 @@ from app.api.dashboard import router as dashboard_router
 from app.api.drivers import router as drivers_router
 from app.api.machines import router as machines_router
 from app.api.maintenances import router as maintenances_router
+from app.api.mobile import router as mobile_router
 from app.api.reports import router as reports_router
 from app.api.users import router as users_router
 from app.api.test import router as test_router
@@ -63,6 +64,7 @@ app.include_router(accounting_router)
 app.include_router(daily_records_router)
 app.include_router(dashboard_router)
 app.include_router(drivers_router)
+app.include_router(mobile_router)
 app.include_router(machines_router)
 app.include_router(maintenances_router)
 app.include_router(reports_router)
