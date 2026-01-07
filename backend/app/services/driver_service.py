@@ -919,9 +919,9 @@ async def create_driver(data: DriverCreate):
     # Normalizar correo
     email = data.correo_electronico.strip().lower()
 
-    # --------------------------
+    # ----------------------------------------
     # 0) Verificar duplicado en tabla usuarios
-    # --------------------------
+    # ----------------------------------------
     existing = (
         supabase.table("usuarios")
         .select("id")
@@ -939,9 +939,9 @@ async def create_driver(data: DriverCreate):
             "Ya existe un usuario registrado con ese correo electrónico.",
         )
 
-    # --------------------------
+    # ----------------------------
     # 1) Validar y normalizar RUT
-    # --------------------------
+    # ----------------------------
     try:
         normalized_rut = normalize_rut(data.rut)
     except ValueError:
@@ -970,10 +970,10 @@ async def create_driver(data: DriverCreate):
             "Ya existe un chofer registrado con este RUT.",
         )
 
-    # --------------------------
+    # ---------------------------------
     # 2) Crear usuario en Supabase Auth
     # Password inicial = RUT sin DV
-    # --------------------------
+    # ---------------------------------
     rut_password = normalized_rut.replace(".", "").replace("-", "")[:-1]
 
     try:
@@ -1004,9 +1004,9 @@ async def create_driver(data: DriverCreate):
 
     supabase_uid = auth_user.id
 
-    # --------------------------
+    # -----------------------------------------------------------
     # 3) Enviar Magic Link (bienvenida + forzar cambio de clave)
-    # --------------------------
+    # -----------------------------------------------------------
     try:
         redirect_url = f"{settings.FRONTEND_URL}/restablecer-clave"
 
@@ -1019,9 +1019,9 @@ async def create_driver(data: DriverCreate):
     except Exception as e:
         logger.warning(f"Error enviando Magic Link: {e}")
 
-    # --------------------------
+    # -----------------------------
     # 4) Obtener porcentaje default
-    # --------------------------
+    # -----------------------------
     cfg = (
         supabase.table("configuracion_general")
         .select("porcentaje_default")
@@ -1063,9 +1063,9 @@ async def create_driver(data: DriverCreate):
                 pass
 
     try:
-        # --------------------------
+        # ----------------------------------
         # 5) Crear usuario en tabla usuarios
-        # --------------------------
+        # ----------------------------------
         usuario_res = (
             supabase.table("usuarios")
             .insert({
@@ -1117,8 +1117,61 @@ async def create_driver(data: DriverCreate):
 
         chofer_id = chofer_res.data[0]["id"]
 
+        # -----------------------------
+        # 7) Asignar máquina (opcional)
+        # -----------------------------
+        if data.maquina_asignada is not None:
+
+            maquina_id = int(data.maquina_asignada)
+
+            # Validar máquina
+            maquina_res = (
+                supabase.table("maquinas")
+                .select("id, estado_operativo")
+                .eq("id", maquina_id)
+                .single()
+                .execute()
+            )
+
+            if getattr(maquina_res, "error", None) or not maquina_res.data:
+                raise HTTPException(400, "La máquina seleccionada no existe.")
+
+            if maquina_res.data["estado_operativo"] != "operativa":
+                raise HTTPException(400, "La máquina seleccionada no está operativa.")
+
+            # Verificar que no esté ya asignada
+            asign_activa = (
+                supabase.table("asignaciones_chofer_maquina")
+                .select("id")
+                .eq("maquina_id", maquina_id)
+                .is_("fecha_termino", None)
+                .limit(1)
+                .execute()
+            )
+
+            if asign_activa.data:
+                raise HTTPException(400, "La máquina ya está asignada a otro chofer.")
+
+            # Crear asignación
+            asign_res = (
+                supabase.table("asignaciones_chofer_maquina")
+                .insert({
+                    "chofer_id": chofer_id,
+                    "maquina_id": maquina_id,
+                    "fecha_inicio": date.today().isoformat(),
+                    "fecha_termino": None
+                })
+                .execute()
+            )
+
+            if getattr(asign_res, "error", None):
+                raise HTTPException(
+                    400,
+                    f"Error asignando máquina al chofer: {asign_res.error}"
+                )
+
         # --------------------------
-        # 7) Enlazar usuario ↔ chofer
+        # 8) Enlazar usuario ↔ chofer
         # --------------------------
         supabase.table("usuarios").update(
             {"chofer_id": chofer_id}
