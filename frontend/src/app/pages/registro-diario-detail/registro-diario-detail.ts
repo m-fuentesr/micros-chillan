@@ -133,12 +133,17 @@ interface DailyRecordDetailView extends DailyRecord {
                     (click)="cancelEdit()"
                     type="button">Cancelar</button>
                   <button 
-                    class="btn bg-success text-white h-11 px-5 gap-2 rounded-lg shadow-lg shadow-success/25" 
+                    class="btn bg-success text-white h-11 px-5 gap-2 rounded-lg shadow-lg shadow-success/25 disabled:opacity-50 disabled:pointer-events-none" 
                     (click)="saveRecord()"
-                    [disabled]="recordForm.invalid"
+                    [disabled]="recordForm.invalid || isSubmittingRecord()"
                     type="button">
-                    <ui-icon name="Check" size="sm" />
-                    <span>Guardar cambios</span>
+                    @if (isSubmittingRecord()) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                      <span>Guardando...</span>
+                    } @else {
+                      <ui-icon name="Check" size="sm" />
+                      <span>Guardar cambios</span>
+                    }
                   </button>
                 }
               </div>
@@ -746,7 +751,9 @@ export class RegistroDiarioDetail {
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
   isEditMode = signal(false);
+
   isResolvingIncident = signal(false);
+  isSubmittingRecord = signal(false);
   private previousRecordState: DailyRecordDetailView | null = null;
 
   recordForm = this.fb.group({
@@ -1068,7 +1075,10 @@ export class RegistroDiarioDetail {
   }
 
   saveRecord(): void {
+    if (this.isSubmittingRecord()) return;
+
     if (this.recordForm.valid && this.record()) {
+      this.isSubmittingRecord.set(true);
       const formValue = this.recordForm.value;
       const recordId = this.record()!.id;
       const currentRecord = this.record()!;
@@ -1230,6 +1240,7 @@ export class RegistroDiarioDetail {
 
           // 7. Notificar al usuario
           this.showErrorToast('No se pudo guardar el registro. Intenta nuevamente.');
+          this.isSubmittingRecord.set(false);
 
           return EMPTY;
         })
@@ -1287,6 +1298,7 @@ export class RegistroDiarioDetail {
           this.registroFile.set(null);
           this.previousRecordState = null;
           this.showSuccessToast('Registro guardado exitosamente');
+          this.isSubmittingRecord.set(false);
         },
         error: () => {
           // Error ya manejado en catchError
