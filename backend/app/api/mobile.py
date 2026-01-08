@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from app.db.supabase_client import supabase
 import json
 import requests
@@ -55,7 +55,7 @@ def head_apk():
     # Importante: algunos clientes “cierran” mejor con esto
     headers["Connection"] = "close"
 
-    return Response(status_code=200, headers=headers)
+    return Response(status_code=204, headers=headers)
 
 
 @router.get("/apk")
@@ -104,3 +104,181 @@ def download_apk(request: Request):
         media_type="application/vnd.android.package-archive",
         headers=headers,
     )
+
+@router.get("/download", response_class=HTMLResponse)
+def download_page():
+    return """
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Descargar Gestor de Flotas</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f3f4f6;
+            color: #1e293b;
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .page {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            padding: 40px 30px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(to right, rgba(255,255,255,.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255,255,255,.05) 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: .5;
+        }
+
+        .logo {
+            position: relative;
+            z-index: 1;
+            width: 56px;
+            height: 56px;
+            line-height: 56px;
+            margin: 0 auto 12px;
+            background: #ffffff;
+            color: #3b82f6;
+            border-radius: 12px;
+            font-size: 28px;
+            font-weight: 800;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,.15);
+        }
+
+        .company {
+            position: relative;
+            z-index: 1;
+            color: #ffffff;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-size: 17px;
+        }
+
+        .content {
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 16px;
+        }
+
+        p {
+            color: #64748b;
+            margin-bottom: 24px;
+            font-size: 16px;
+        }
+
+        .info {
+            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            border-left: 4px solid #3b82f6;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: left;
+            margin-bottom: 30px;
+        }
+
+        .info strong {
+            color: #1e3a8a;
+        }
+
+        .cta {
+            display: block;
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 16px;
+            text-decoration: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(59,130,246,.35);
+        }
+
+        .cta:active {
+            transform: scale(.98);
+        }
+
+        .note {
+            margin-top: 20px;
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .footer {
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-top: 2px solid #e5e7eb;
+            font-size: 13px;
+            color: #64748b;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <div class="header">
+            <div class="logo">GF</div>
+            <div class="company">Gestor de Flotas</div>
+        </div>
+
+        <div class="content">
+            <h1>Descargar aplicación</h1>
+            <p>
+                Para instalar la aplicación en tu teléfono, toca el botón.
+                El archivo se abrirá en tu navegador.
+            </p>
+
+            <div class="info">
+                <strong>Importante:</strong><br>
+                Si tu teléfono pregunta con qué app abrir, elige <strong>Chrome</strong>.
+            </div>
+
+            <a class="cta" href="/api/mobile/apk">
+                Descargar APK
+            </a>
+
+            <p class="note">
+                Si la descarga no comienza automáticamente, asegúrate de permitir descargas en tu navegador.
+            </p>
+        </div>
+
+        <div class="footer">
+            <strong>Gestor de Flotas</strong><br>
+            © 2025 Empresa de Transportes
+        </div>
+    </div>
+</body>
+</html>
+"""
