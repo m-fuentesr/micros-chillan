@@ -102,42 +102,57 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
 
         <!-- Filtros Globales (solo para Resumen General y Resumen Semanal) -->
         @if (activeTab() === 'summary' || activeTab() === 'weekly') {
-          <div class="flex flex-row items-center gap-2 w-full lg:w-auto">
-            <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
-              <div class="relative w-full min-w-0">
-                <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
-                  [value]="selectedMonth()" 
-                  (change)="onMonthChange($event)">
-                  @for (month of months(); track month.value) {
-                    <option [value]="month.value" [selected]="month.value === selectedMonth()" [disabled]="month.disabled">{{ month.label }}</option>
-                  }
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <ui-icon name="ChevronDown" size="xs" />
-                </div>
+          <!-- Determinar si está cargando según el tab activo -->
+          @if ((activeTab() === 'summary' && summaryLoadingState.isLoading() && !summary()) || (activeTab() === 'weekly' && weeklyLoadingState.isLoading() && weeklySummaries().length === 0)) {
+            <!-- Skeleton de Filtros -->
+            <div class="flex flex-row items-center gap-2 w-full lg:w-auto animate-skeleton-fade-in">
+              <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                <div class="w-full lg:w-32 h-[34px] skeleton-shimmer rounded-lg"></div>
+                <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
+                <div class="w-full lg:w-24 h-[34px] skeleton-shimmer rounded-lg"></div>
               </div>
-
-              <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
-
-              <div class="relative w-full min-w-0">
-                <select 
-                  class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
-                  [value]="selectedYear()" 
-                  (change)="onYearChange($event)">
-                  @for (year of years(); track year.value) {
-                    <option [value]="year.value" [selected]="year.value === selectedYear()" [disabled]="year.disabled">{{ year.value }}</option>
-                  }
-                </select>
-                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                  <ui-icon name="ChevronDown" size="xs" />
-                </div>
-              </div>
+              <div class="w-8 h-8 skeleton-shimmer rounded-lg shrink-0"></div>
             </div>
-            <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
-              <ui-icon name="RefreshCw" size="xs" />
-            </button>
-          </div>
+          } @else {
+            <!-- Filtros Reales -->
+            <div class="flex flex-row items-center gap-2 w-full lg:w-auto"
+                 class="flex flex-row items-center gap-2 w-full lg:w-auto animate-fade-in">
+              <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 flex-1 min-w-0 bg-white p-1.5 rounded-xl border border-base-200 shadow-sm">
+                <div class="relative w-full min-w-0">
+                  <select 
+                    class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
+                    [value]="selectedMonth()" 
+                    (change)="onMonthChange($event)">
+                    @for (month of months(); track month.value) {
+                      <option [value]="month.value" [selected]="month.value === selectedMonth()" [disabled]="month.disabled">{{ month.label }}</option>
+                    }
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                    <ui-icon name="ChevronDown" size="xs" />
+                  </div>
+                </div>
+
+                <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
+
+                <div class="relative w-full min-w-0">
+                  <select 
+                    class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
+                    [value]="selectedYear()" 
+                    (change)="onYearChange($event)">
+                    @for (year of years(); track year.value) {
+                      <option [value]="year.value" [selected]="year.value === selectedYear()" [disabled]="year.disabled">{{ year.value }}</option>
+                    }
+                  </select>
+                  <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                    <ui-icon name="ChevronDown" size="xs" />
+                  </div>
+                </div>
+              </div>
+              <button class="btn btn-square btn-sm btn-ghost text-primary shrink-0 flex-shrink-0" (click)="applyFilters()" title="Actualizar">
+                <ui-icon name="RefreshCw" size="xs" />
+              </button>
+            </div>
+          }
         }
       </div>
 
@@ -400,29 +415,29 @@ export class Contabilidad implements OnInit {
 
 
   activeTab = signal<AccountingTab>('summary');
-  
+
   // Inicializar con valores del mes y año actual
   private static getInitialMonth(): number {
     return new Date().getMonth() + 1;
   }
-  
+
   private static getInitialYear(): number {
     return new Date().getFullYear();
   }
-  
+
   selectedMonth = signal<number>(Contabilidad.getInitialMonth());
   selectedYear = signal<number>(Contabilidad.getInitialYear());
-  
+
   // Estados de carga con umbral de 200ms
   summaryLoadingState = this.loadingStateService.createLoadingState();
   weeklyLoadingState = this.loadingStateService.createLoadingState();
   payrollLoadingState = this.loadingStateService.createLoadingState();
   historyLoadingState = this.loadingStateService.createLoadingState();
   ledgerLoadingState = this.loadingStateService.createLoadingState();
-  
+
   // Signals para manejar errores de liquidación
   payrollError = signal<string | null>(null);
-  
+
   // Signal para rastrear qué chofer se está verificando
   verifyingChoferId = signal<number | null>(null);
 
@@ -433,13 +448,13 @@ export class Contabilidad implements OnInit {
   liquidationData = signal<LiquidationPeriod | null>(null);
   liquidationHistoryData = signal<ClosedLiquidation[]>([]);
   ledgerSummaries = signal<LedgerSummary[]>([]);
-  
+
   // Signals para el drawer de historial del chofer
-  
+
   // Signals para historial con paginación y filtros
-  historyFilters = signal<{ 
-    fecha_desde?: string | null; 
-    fecha_hasta?: string | null; 
+  historyFilters = signal<{
+    fecha_desde?: string | null;
+    fecha_hasta?: string | null;
   }>({});
   historyTotal = signal<number>(0);
   historyTotalGlobal = signal<number>(0);
@@ -450,14 +465,14 @@ export class Contabilidad implements OnInit {
 
   // Selector de semana para liquidación
   selectedWeek = signal<number>(1);
-  
+
   // Selector de período para liquidación (mes actual / mes anterior)
   payrollPeriod = signal<'current' | 'previous'>('current');
 
   // Calcular semanas disponibles del mes
   availableWeeks = computed(() => {
     const { mes, anio } = this.payrollDate();
-    
+
     // Usar la misma función que el backend para calcular semanas correctamente
     const totalSemanas = this.accountingService.countWeeksInMonth(mes, anio);
     return Array.from({ length: totalSemanas }, (_, i) => i + 1);
@@ -481,20 +496,20 @@ export class Contabilidad implements OnInit {
   private getCurrentWeekInMonth(mes: number, anio: number): number {
     const today = new Date();
     const todayDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
+
     // Si no es el mes actual, retornar un número alto para que todas las semanas estén habilitadas
     if (mes !== today.getMonth() + 1 || anio !== today.getFullYear()) {
       return 999; // Número alto para que todas las semanas estén habilitadas
     }
-    
+
     // Calcular en qué semana estamos usando la misma lógica que el backend
     const fechaInicioMes = new Date(anio, mes - 1, 1);
     const ultimoDiaMes = new Date(anio, mes, 0).getDate();
     const fechaFinMes = new Date(anio, mes - 1, ultimoDiaMes);
-    
+
     let fechaActual = new Date(fechaInicioMes);
     let semanaActual = 1;
-    
+
     while (fechaActual <= fechaFinMes && fechaActual <= todayDate) {
       const diaSemanaJS = fechaActual.getDay();
       const diaSemanaPython = diaSemanaJS === 0 ? 6 : diaSemanaJS - 1;
@@ -502,18 +517,18 @@ export class Contabilidad implements OnInit {
       const proximoDomingo = new Date(fechaActual);
       proximoDomingo.setDate(fechaActual.getDate() + diasHastaDomingo);
       const finSemana = proximoDomingo > fechaFinMes ? fechaFinMes : proximoDomingo;
-      
+
       // Si hoy está en esta semana, retornar el número de semana
       if (todayDate >= fechaActual && todayDate <= finSemana) {
         return semanaActual;
       }
-      
+
       // Avanzar a la siguiente semana
       fechaActual = new Date(finSemana);
       fechaActual.setDate(finSemana.getDate() + 1);
       semanaActual++;
     }
-    
+
     // Si no encontramos la semana, retornar la última calculada
     return semanaActual;
   }
@@ -522,13 +537,13 @@ export class Contabilidad implements OnInit {
   isWeekEnabled = computed(() => {
     const { mes, anio } = this.payrollDate();
     const currentWeek = this.getCurrentWeekInMonth(mes, anio);
-    
+
     return (week: number) => {
       // Si es mes anterior, todas las semanas están habilitadas
       if (this.payrollPeriod() === 'previous') {
         return true;
       }
-      
+
       // Si es mes actual, solo habilitar semanas hasta la semana actual
       return week <= currentWeek;
     };
@@ -540,7 +555,7 @@ export class Contabilidad implements OnInit {
     const currentMonth = now.getMonth() + 1; // 1-12
     const currentYear = now.getFullYear();
     const selectedYearValue = this.selectedYear();
-    
+
     const monthNames = [
       { value: 1, label: 'Enero' },
       { value: 2, label: 'Febrero' },
@@ -555,7 +570,7 @@ export class Contabilidad implements OnInit {
       { value: 11, label: 'Noviembre' },
       { value: 12, label: 'Diciembre' }
     ];
-    
+
     // Si el año seleccionado es el actual, solo mostrar meses hasta el mes actual
     if (selectedYearValue === currentYear) {
       return monthNames.map(month => ({
@@ -563,7 +578,7 @@ export class Contabilidad implements OnInit {
         disabled: month.value > currentMonth
       }));
     }
-    
+
     // Si el año seleccionado es futuro, deshabilitar todos los meses
     if (selectedYearValue > currentYear) {
       return monthNames.map(month => ({
@@ -571,7 +586,7 @@ export class Contabilidad implements OnInit {
         disabled: true
       }));
     }
-    
+
     // Si el año es pasado, todos los meses están disponibles
     return monthNames.map(month => ({
       ...month,
@@ -594,18 +609,18 @@ export class Contabilidad implements OnInit {
     const data = this.liquidationData();
     const { mes, anio } = this.payrollDate();
     const semana = this.selectedWeek();
-    
+
     if (!data) {
       return null;
     }
-    
+
     // Validar que los datos correspondan a la semana y período actual
     const matches = data.semana === semana && data.mes === mes && data.anio === anio;
-    
+
     if (!matches) {
       return null;
     }
-    
+
     return data;
   });
   liquidationHistory = computed(() => this.liquidationHistoryData());
@@ -615,7 +630,7 @@ export class Contabilidad implements OnInit {
     if (this.ledgerSummaries().length === 0) {
       this.ledgerLoadingState.setLoading(true);
     }
-    
+
     this.loadSummary();
     this.loadDailyData();
     this.loadWeeklySummaries();
@@ -637,9 +652,9 @@ export class Contabilidad implements OnInit {
         return;
       }
     }
-    
+
     this.activeTab.set(tab);
-    
+
     // Cargar datos del ledger cuando se activa el tab
     if (tab === 'ledger') {
       this.loadLedgerSummary();
@@ -650,12 +665,12 @@ export class Contabilidad implements OnInit {
   onMonthChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newMonth = Number(target.value);
-    
+
     // Validar que no sea un mes futuro
     const now = new Date();
     const currentMonth = now.getMonth() + 1;
     const currentYear = now.getFullYear();
-    
+
     if (this.selectedYear() === currentYear && newMonth > currentMonth) {
       // Si intenta seleccionar un mes futuro, mantener el mes actual
       this.selectedMonth.set(currentMonth);
@@ -665,7 +680,7 @@ export class Contabilidad implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedMonth.set(newMonth);
     // Cargar datos automáticamente al cambiar el mes
     this.applyFilters();
@@ -674,10 +689,10 @@ export class Contabilidad implements OnInit {
   onYearChange(event: Event): void {
     const target = event.target as HTMLSelectElement;
     const newYear = Number(target.value);
-    
+
     // Validar que no sea un año futuro
     const currentYear = new Date().getFullYear();
-    
+
     if (newYear > currentYear) {
       // Si intenta seleccionar un año futuro, mantener el año actual
       this.selectedYear.set(currentYear);
@@ -687,9 +702,9 @@ export class Contabilidad implements OnInit {
       }, 0);
       return;
     }
-    
+
     this.selectedYear.set(newYear);
-    
+
     // Si el año cambió y ahora es el año actual, ajustar el mes si es necesario
     if (newYear === currentYear) {
       const currentMonth = new Date().getMonth() + 1;
@@ -697,7 +712,7 @@ export class Contabilidad implements OnInit {
         this.selectedMonth.set(currentMonth);
       }
     }
-    
+
     // Cargar datos automáticamente al cambiar el año
     this.applyFilters();
   }
@@ -766,15 +781,15 @@ export class Contabilidad implements OnInit {
   loadLiquidation(): void {
     const { mes, anio } = this.payrollDate();
     const semana = this.selectedWeek();
-    
+
     // No activar loading aquí si ya se activó en onWeekChange/onPayrollPeriodChange
     // Solo activar si no está ya activo (para casos donde se llama directamente, como en ngOnInit o retry)
     if (!this.payrollLoadingState.isLoading()) {
       this.payrollLoadingState.setLoading(true);
     }
-    
+
     this.payrollError.set(null); // Limpiar error previo
-    
+
     this.accountingService.getWeeklyLiquidation(semana, mes, anio)
       .subscribe({
         next: (liquidation: LiquidationPeriod | null) => {
@@ -792,9 +807,9 @@ export class Contabilidad implements OnInit {
               // Recalcular pago_final con la lógica actualizada
               this.recalculatePagoFinal(chofer, liquidation.es_ultima_semana);
             });
-            
+
             this.liquidationData.set(liquidation);
-            
+
             // Usar doble requestAnimationFrame para asegurar que el template se actualice con los datos antes de desactivar loading
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
@@ -828,25 +843,25 @@ export class Contabilidad implements OnInit {
     this.historyLoadingState.setLoading(true);
     const filters = this.historyFilters();
     const currentPage = this.historyCurrentPage();
-    
+
     // Convertir fechas a mes (las fechas vienen como YYYY-MM-DD)
     let mes_desde: number | undefined;
     let mes_hasta: number | undefined;
-    
+
     if (filters.fecha_desde) {
       const parts = filters.fecha_desde.split('-');
       if (parts.length === 3) {
         mes_desde = parseInt(parts[1], 10);
       }
     }
-    
+
     if (filters.fecha_hasta) {
       const parts = filters.fecha_hasta.split('-');
       if (parts.length === 3) {
         mes_hasta = parseInt(parts[1], 10);
       }
     }
-    
+
     this.accountingService.getLiquidationHistory({
       mes_desde: mes_desde,
       mes_hasta: mes_hasta,
@@ -879,15 +894,15 @@ export class Contabilidad implements OnInit {
       this.loadLiquidationHistory();
       return;
     }
-    
-    const processedFilters: { 
-      fecha_desde?: string | null; 
-      fecha_hasta?: string | null; 
+
+    const processedFilters: {
+      fecha_desde?: string | null;
+      fecha_hasta?: string | null;
     } = {
       fecha_desde: filters['fecha_desde'] || null,
       fecha_hasta: filters['fecha_hasta'] || null
     };
-    
+
     this.historyFilters.set(processedFilters);
     this.historyCurrentPage.set(1);
     this.loadLiquidationHistory();
@@ -904,19 +919,19 @@ export class Contabilidad implements OnInit {
     const pages: number[] = [];
     const current = this.historyCurrentPage();
     const total = totalPages;
-    
+
     // Mostrar máximo 7 páginas
     let start = Math.max(1, current - 3);
     let end = Math.min(total, start + 6);
-    
+
     if (end - start < 6) {
       start = Math.max(1, end - 6);
     }
-    
+
     for (let i = start; i <= end; i++) {
       pages.push(i);
     }
-    
+
     return pages;
   }
 
@@ -970,7 +985,7 @@ export class Contabilidad implements OnInit {
       // Para calcular el total proyectado, sumamos: acumulado_mensual + total_ganado
       const acumuladoAnterior = chofer.acumulado_mensual ?? 0;
       const totalProyectado = acumuladoAnterior + chofer.total_ganado;
-      
+
       if (totalProyectado < chofer.minimo_garantizado) {
         // El pago final es: base de la semana + bono manual
         chofer.pago_final = chofer.total_ganado + chofer.monto_a_completar;
@@ -996,23 +1011,23 @@ export class Contabilidad implements OnInit {
     // ✅ VALIDACIÓN: Verificar semanas anteriores sin pagar (solo para mes actual)
     const today = new Date();
     const esMesActual = mes === today.getMonth() + 1 && anio === today.getFullYear();
-    
+
     if (esMesActual && semana > 1 && this.payrollPeriod() === 'current') {
       // Establecer el signal de verificación
       this.verifyingChoferId.set(event.choferId);
-      
+
       // Verificar si hay semanas anteriores sin pagar
       this.accountingService.checkUnpaidPreviousWeeks(event.choferId, mes, anio, semana).subscribe({
         next: (semanasSinPagar) => {
           // Limpiar el signal de verificación
           this.verifyingChoferId.set(null);
-          
+
           if (semanasSinPagar.length > 0) {
             // Mostrar modal de advertencia
-            const semanasTexto = semanasSinPagar.length === 1 
-              ? `la Semana ${semanasSinPagar[0]}` 
+            const semanasTexto = semanasSinPagar.length === 1
+              ? `la Semana ${semanasSinPagar[0]}`
               : `las Semanas ${semanasSinPagar.join(', ')}`;
-            
+
             this.alertModalService.show({
               type: 'warning',
               title: 'Semanas Anteriores Sin Pagar',
@@ -1021,7 +1036,7 @@ export class Contabilidad implements OnInit {
             });
             return; // No abrir el modal de confirmación
           }
-          
+
           // Si todas las semanas anteriores están pagadas, proceder normalmente
           this.openPaymentModal(chofer, mes, anio, semana, event.choferId);
         },
@@ -1062,10 +1077,10 @@ export class Contabilidad implements OnInit {
         ).pipe(
           catchError((error) => {
             console.error('Error al confirmar pago:', error);
-            
+
             // Cerrar el modal de confirmación
             this.paymentModalService.finishSubmission();
-            
+
             // Mostrar modal de error
             const errorMessage = error?.error?.detail || error?.message || 'No se pudo confirmar el pago. Por favor, verifica los datos e intenta nuevamente.';
             this.alertModalService.show({
@@ -1074,18 +1089,18 @@ export class Contabilidad implements OnInit {
               message: errorMessage,
               buttonText: 'Entendido'
             });
-            
+
             return of(null);
           })
         ).subscribe((response: any) => {
           if (response) {
             // Cerrar el modal de confirmación
             this.paymentModalService.finishSubmission();
-            
+
             // Invalidar el caché de TODAS las semanas del mes
             // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
             this.accountingService.invalidateAllWeeksInMonth(mes, anio);
-            
+
             // Mostrar modal de éxito
             this.alertModalService.show({
               type: 'success',
@@ -1093,7 +1108,7 @@ export class Contabilidad implements OnInit {
               message: `El pago de ${chofer.chofer_nombre} por ${chofer.pago_final.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', minimumFractionDigits: 0 })} ha sido confirmado exitosamente.`,
               buttonText: 'Entendido'
             });
-            
+
             // Recargar la liquidación para actualizar el estado
             this.loadLiquidation();
           }
@@ -1141,7 +1156,7 @@ export class Contabilidad implements OnInit {
       .pipe(
         catchError((error) => {
           console.error('Error al deshacer pago:', error);
-          
+
           // Mostrar modal de error
           const errorMessage = error?.error?.detail || error?.message || 'No se pudo deshacer el pago. Por favor, intenta nuevamente.';
           this.alertModalService.show({
@@ -1150,7 +1165,7 @@ export class Contabilidad implements OnInit {
             message: errorMessage,
             buttonText: 'Entendido'
           });
-          
+
           return of(null);
         })
       )
@@ -1159,7 +1174,7 @@ export class Contabilidad implements OnInit {
           // Invalidar el caché de TODAS las semanas del mes
           // Esto es necesario porque el acumulado de la última semana depende de todas las semanas anteriores
           this.accountingService.invalidateAllWeeksInMonth(mes, anio);
-          
+
           // Mostrar modal de éxito
           this.alertModalService.show({
             type: 'success',
@@ -1167,7 +1182,7 @@ export class Contabilidad implements OnInit {
             message: `El pago de ${chofer.chofer_nombre} ha sido deshecho correctamente. El estado ha vuelto a 'pendiente'.`,
             buttonText: 'Entendido'
           });
-          
+
           // Recargar la liquidación para actualizar el estado
           this.loadLiquidation();
         }
@@ -1176,7 +1191,7 @@ export class Contabilidad implements OnInit {
 
   async onClosePeriod(): Promise<void> {
     const { mes, anio } = this.payrollDate();
-    
+
     // Mostrar modal de confirmación
     const confirmed = await this.confirmModalService.open({
       title: 'Finalizar Mes',
@@ -1195,7 +1210,7 @@ export class Contabilidad implements OnInit {
       .pipe(
         catchError((error) => {
           console.error('Error al cerrar período:', error);
-          
+
           // Mostrar modal de error
           const errorMessage = error?.error?.detail || error?.message || 'No se pudo cerrar el período. Por favor, intenta nuevamente.';
           this.alertModalService.show({
@@ -1204,7 +1219,7 @@ export class Contabilidad implements OnInit {
             message: errorMessage,
             buttonText: 'Entendido'
           });
-          
+
           return of(null);
         })
       )
@@ -1212,7 +1227,7 @@ export class Contabilidad implements OnInit {
         if (response) {
           // Invalidar caché de todas las semanas del mes para reflejar el cierre
           this.accountingService.invalidateAllWeeksInMonth(mes, anio);
-          
+
           // Mostrar modal de éxito con el mensaje del backend
           this.alertModalService.show({
             type: 'success',
@@ -1220,7 +1235,7 @@ export class Contabilidad implements OnInit {
             message: response.message || `El período de ${this.getMonthName(mes)} ${anio} ha sido cerrado y finalizado exitosamente.`,
             buttonText: 'Entendido'
           });
-          
+
           // Recargar liquidación para actualizar el estado (mostrará el mensaje de período cerrado)
           this.loadLiquidation();
         }
@@ -1228,8 +1243,8 @@ export class Contabilidad implements OnInit {
   }
 
   private getMonthName(mes: number): string {
-    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+      'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
     return meses[mes - 1] || '';
   }
 
@@ -1239,7 +1254,7 @@ export class Contabilidad implements OnInit {
 
   loadLedgerSummary(): void {
     this.ledgerLoadingState.setLoading(true);
-    
+
     this.accountingService.getLedgerSummary().subscribe({
       next: (data) => {
         this.ledgerSummaries.set(data);

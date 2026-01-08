@@ -64,15 +64,15 @@ export class FinancialSummary implements OnInit {
   showChartOnly = input(false);
   currentMetric = signal<FinancialMetric>('Ganancia Neta');
   metricChange = output<FinancialMetric>();
-  
+
   // Datos reactivos desde el backend - se actualizan automáticamente con WebSocket
   financialData = computed<Record<FinancialMetric, FinancialData[]>>(() => {
     const dashboardData = this.dashboardService.dashboardData();
-    
+
     // Si hay datos del backend, usarlos
     if (dashboardData?.rendimiento && dashboardData.rendimiento.length > 0) {
       const rendimiento = dashboardData.rendimiento;
-      
+
       return {
         'Ganancia Neta': rendimiento.map(m => ({
           machineId: m.numero_interno?.toString() || `M${m.maquina_id}`,
@@ -86,7 +86,7 @@ export class FinancialSummary implements OnInit {
         }))
       };
     }
-    
+
     return {
       'Ganancia Neta': [],
       'Ingreso Total': []
@@ -141,7 +141,7 @@ export class FinancialSummary implements OnInit {
 
     // Determinar colores dinámicamente según si la ganancia es positiva o negativa
     const gananciaNetaColors = data.map(item => {
-      return item.net >= 0 
+      return item.net >= 0
         ? { bg: 'rgba(16, 185, 129, 0.9)', border: 'rgba(16, 185, 129, 1)' } // Verde para positivo
         : { bg: 'rgba(239, 68, 68, 0.9)', border: 'rgba(239, 68, 68, 1)' }; // Rojo para negativo
     });
@@ -248,23 +248,29 @@ export class FinancialSummary implements OnInit {
               return (context.dataIndex || 0) * 50;
             },
             from: (context: any) => {
-              // MAGIA AQUÍ: Si es un dato nuevo, forzamos que la animación empiece desde la base (0)
-              // chart.scales['y'].getPixelForValue(0) obtiene el pixel exacto de la base
+              // Si es una barra NUEVA (sin valor previo), animar desde cero (Organic Rise)
+              // Si ya existía, Chart.js manejará la transición suave automáticamente desde su posición anterior
+              // al devolver undefined.
               try {
-                // Verificar si es una actualización de datos (nuevo elemento o cambio)
                 if (context.chart && context.chart.scales?.['y']) {
                   const baseY = context.chart.scales['y'].getPixelForValue(0);
-                  // Si el contexto indica que es un nuevo dato o actualización
-                  // animar desde la base para efecto "Organic Rise"
-                  if (context.type === 'data' || context.mode === 'default') {
+
+                  // Verificar si tenemos un valor previo real para este elemento
+                  // _parsed[0].y accede al valor parseado almacenado internamente por Chart.js
+                  const datasetIndex = context.datasetIndex;
+                  const dataIndex = context.dataIndex;
+                  const meta = context.chart.getDatasetMeta(datasetIndex);
+                  const previousElement = meta.data[dataIndex];
+
+                  // Si el elemento no tenía modelo previo o su valor era nan/null, es "nuevo"
+                  if (!previousElement || !previousElement.hasValue()) {
                     return baseY;
                   }
                 }
               } catch (e) {
-                // Si hay algún error, usar undefined para animación natural
-                console.debug('Error calculando from para animación Y:', e);
+                console.debug('Error calculando animación Y:', e);
               }
-              return undefined; // Si no es nuevo, usa la posición natural (animación suave)
+              return undefined; // Dejar que Chart.js interpole desde el valor anterior
             }
           },
           // Efecto visual: La barra nueva aparece un poco transparente y se llena
@@ -344,7 +350,7 @@ export class FinancialSummary implements OnInit {
     // Los datos se cargan automáticamente desde dashboardService.dashboardData()
     // que se actualiza mediante WebSocket cuando hay cambios
     // No necesitamos cargar datos aquí porque el servicio ya los tiene
-    
+
     // Emitimos la métrica inicial para mantener compatibilidad con el contenedor
     this.metricChange.emit(this.currentMetric());
   }

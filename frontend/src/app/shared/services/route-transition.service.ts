@@ -52,7 +52,7 @@ export class RouteTransitionService {
       .subscribe((event: NavigationEnd) => {
         this.previousUrl = this.currentUrl;
         this.currentUrl = event.urlAfterRedirects;
-        
+
         // CRÍTICO: Guardar la URL actual en sessionStorage para detectar recargas
         // Esto permite detectar si venimos de login incluso después de una recarga
         if (typeof window !== 'undefined' && window.sessionStorage) {
@@ -70,21 +70,30 @@ export class RouteTransitionService {
    */
   isAdminRoute(url: string): boolean {
     if (!url) return false;
-    
+
     // Remover query params y fragmentos para la comparación
     const urlWithoutParams = url.split('?')[0].split('#')[0];
-    
+
     // Verificar rutas exactas
     if (ADMIN_ROUTES.some(route => urlWithoutParams === route || urlWithoutParams.startsWith(route + '/'))) {
       return true;
     }
-    
+
     // Verificar subrutas de máquinas y choferes
     if (urlWithoutParams.startsWith('/maquinas/') || urlWithoutParams.startsWith('/choferes/')) {
       return true;
     }
-    
+
     return false;
+  }
+
+  /**
+   * Verifica si una ruta pertenece al flujo de trabajador
+   */
+  isWorkerRoute(url: string): boolean {
+    if (!url) return false;
+    const urlWithoutParams = url.split('?')[0].split('#')[0];
+    return urlWithoutParams.startsWith('/trabajador');
   }
 
   /**
@@ -112,18 +121,18 @@ export class RouteTransitionService {
     // Detectar navegación a profundidad (padre → hijo)
     for (const baseRoute of DEPTH_ROUTES) {
       const fromIsBase = from === baseRoute || from === `${baseRoute}/nueva` || from === `${baseRoute}/nuevo`;
-      const toIsDetail = to.startsWith(`${baseRoute}/`) && to !== baseRoute && 
-                        !to.startsWith(`${baseRoute}/nueva`) && !to.startsWith(`${baseRoute}/nuevo`);
-      
+      const toIsDetail = to.startsWith(`${baseRoute}/`) && to !== baseRoute &&
+        !to.startsWith(`${baseRoute}/nueva`) && !to.startsWith(`${baseRoute}/nuevo`);
+
       if (fromIsBase && toIsDetail) {
         return 'depth-forward';
       }
 
       // Detectar navegación desde profundidad (hijo → padre)
       const fromIsDetail = from.startsWith(`${baseRoute}/`) && from !== baseRoute &&
-                          !from.startsWith(`${baseRoute}/nueva`) && !from.startsWith(`${baseRoute}/nuevo`);
+        !from.startsWith(`${baseRoute}/nueva`) && !from.startsWith(`${baseRoute}/nuevo`);
       const toIsBase = to === baseRoute || to === `${baseRoute}/nueva` || to === `${baseRoute}/nuevo`;
-      
+
       if (fromIsDetail && toIsBase) {
         return 'depth-backward';
       }
@@ -153,12 +162,12 @@ export class RouteTransitionService {
     if (this.getNavigationType(from, to) === 'depth-forward') {
       return 'forward';
     }
-    
+
     // Si es navegación desde profundidad, es backward
     if (this.getNavigationType(from, to) === 'depth-backward') {
       return 'backward';
     }
-    
+
     // Para lateral y modal, determinar por longitud de URL o estructura
     // Por ahora, asumimos forward para lateral y modal
     return 'forward';

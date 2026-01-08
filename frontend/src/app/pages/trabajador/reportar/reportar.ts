@@ -398,7 +398,7 @@ import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 
       <!-- Modal Selector de Fuente (Cámara o Galería) -->
       <dialog #sourceModal class="modal modal-bottom sm:modal-middle" [class.modal-open]="showSourceSelector()">
-        <form method="dialog" class="modal-box relative">
+        <form method="dialog" class="modal-box relative pb-12 sm:pb-6">
           <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2" (click)="closeSourceSelector()">✕</button>
           <h3 class="font-bold text-lg text-center mb-6">Seleccionar origen</h3>
           

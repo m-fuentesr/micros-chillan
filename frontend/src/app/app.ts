@@ -42,7 +42,12 @@ import { UpdateService } from './shared/services/update.service';
       </div>
     } @else if (showInitialLoading()) {
       <!-- Loading overlay durante verificación inicial de sesión -->
-      <div class="session-verification-overlay"></div>
+      <div class="session-verification-overlay">
+        <div class="flex flex-col items-center justify-center gap-4">
+          <span class="loading loading-dots loading-lg text-primary"></span>
+          <p class="text-sm text-base-content/60">Verificando sesión...</p>
+        </div>
+      </div>
     }
     
     @if (shouldShowAdminNav() || (isLoggingOut() && showLogoutSpinner())) {
@@ -86,7 +91,10 @@ import { UpdateService } from './shared/services/update.service';
       <!-- Sin navbar/sidebar (Login) -->
       @if (globalErrorService.hasError()) {
         <!-- Error global sin sidebar/navbar -->
-        <app-global-error-display></app-global-error-display>
+        <!-- Error global sin sidebar/navbar -->
+        <div class="h-dvh w-full bg-base-200">
+          <app-global-error-display></app-global-error-display>
+        </div>
       } @else {
         <router-outlet></router-outlet>
       }
@@ -185,7 +193,7 @@ import { UpdateService } from './shared/services/update.service';
     
     /* ============================================
        SESSION VERIFICATION OVERLAY
-       Fondo blanco simple durante verificación
+       Fondo blanco con spinner durante verificación
        ============================================ */
     .session-verification-overlay {
       position: fixed;
@@ -194,6 +202,9 @@ import { UpdateService } from './shared/services/update.service';
       height: 100vh;
       z-index: 99998;
       background: rgba(255, 255, 255, 1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
       animation: sessionVerificationEnter 400ms cubic-bezier(0.25, 1, 0.5, 1) forwards;
       will-change: opacity;
     }
@@ -356,7 +367,8 @@ export class App implements OnInit, OnDestroy {
                   user = this.auth.currentUser();
                   if (user || Date.now() - startTime > 2000) {
                     clearInterval(checkUser);
-                    if (user?.role === 'admin' && this.routeTransitionService.isAdminRoute(currentUrl)) {
+                    if ((user?.role === 'admin' && this.routeTransitionService.isAdminRoute(currentUrl)) ||
+                      (user?.role === 'worker' && this.routeTransitionService.isWorkerRoute(currentUrl))) {
                       this.showSpinnerForReload(currentUrl);
                     }
                   }
@@ -364,8 +376,10 @@ export class App implements OnInit, OnDestroy {
               } else {
                 const isAdminRoute = user.role === 'admin' &&
                   this.routeTransitionService.isAdminRoute(currentUrl);
+                const isWorkerRoute = user.role === 'worker' &&
+                  this.routeTransitionService.isWorkerRoute(currentUrl);
 
-                if (isAdminRoute) {
+                if (isAdminRoute || isWorkerRoute) {
                   this.showSpinnerForReload(currentUrl);
                 }
               }
@@ -656,16 +670,26 @@ export class App implements OnInit, OnDestroy {
     // Esto debe hacerse antes de que Angular renderice el navbar
     // CRÍTICO: NO mostrar spinner si venimos de login (redirect)
     const isComingFromLoginInEffect = previousUrl?.startsWith('/login');
+    const isWorkerRoute = this.routeTransitionService.isWorkerRoute(url);
 
     if ((isPageReload || isFirstLoad) && orchestratorState === 'idle' && !isComingFromLoginInEffect) {
-      // Mostrar spinner de recarga
-      this.spinnerService.show();
+      // Si es una ruta admin o trabajador, mostrar spinner de recarga
+      if (isAdminRoute || isWorkerRoute) {
+        this.spinnerService.show();
 
-      // Activar animación de entrada para recarga/tab-restore
-      // Usar queueMicrotask para asegurar que se ejecute antes del siguiente ciclo de detección de cambios
-      queueMicrotask(() => {
-        this.triggerEntryAnimationForReload();
-      });
+        // Activar animación de entrada para recarga/tab-restore
+        if (isAdminRoute) {
+          queueMicrotask(() => {
+            this.triggerEntryAnimationForReload();
+          });
+        } else {
+          // Para trabajador, solo esperar un poco antes de ocultar spinner
+          setTimeout(() => {
+            this.spinnerService.hide();
+            this.cdr.markForCheck();
+          }, 800);
+        }
+      }
     }
 
     // CRÍTICO: Mostrar spinner cuando viene de login (redirect)
@@ -770,21 +794,34 @@ export class App implements OnInit, OnDestroy {
       // CRÍTICO: Mostrar spinner INMEDIATAMENTE
       // Usar requestAnimationFrame para asegurar que se ejecute en el siguiente frame
       requestAnimationFrame(() => {
-        this.spinnerService.show();
-        // Forzar detección de cambios para asegurar que el spinner se renderice
-        this.cdr.markForCheck();
+        const isAdminRoute = this.routeTransitionService.isAdminRoute(currentUrl);
+        const isWorkerRoute = this.routeTransitionService.isWorkerRoute(currentUrl);
 
-        // Activar orchestrator y transición
-        this.orchestrator.activateDashboardEntry();
-        this.transitionService.startTransition('admin');
-
-        // Ocultar spinner cuando termine la animación
-        const timeline = this.orchestrator.TIMELINE;
-        setTimeout(() => {
-          this.transitionService.endTransition();
-          this.spinnerService.hide();
+        if (isAdminRoute || isWorkerRoute) {
+          this.spinnerService.show();
+          // Forzar detección de cambios para asegurar que el spinner se renderice
           this.cdr.markForCheck();
-        }, timeline.dashboardTotalEntry);
+
+          if (isAdminRoute) {
+            // Activar orchestrator y transición
+            this.orchestrator.activateDashboardEntry();
+            this.transitionService.startTransition('admin');
+
+            // Ocultar spinner cuando termine la animación
+            const timeline = this.orchestrator.TIMELINE;
+            setTimeout(() => {
+              this.transitionService.endTransition();
+              this.spinnerService.hide();
+              this.cdr.markForCheck();
+            }, timeline.dashboardTotalEntry);
+          } else {
+            // Para trabajador, simplemente ocultar después de un tiempo
+            setTimeout(() => {
+              this.spinnerService.hide();
+              this.cdr.markForCheck();
+            }, 800);
+          }
+        }
       });
     }
   }

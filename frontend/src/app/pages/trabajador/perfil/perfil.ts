@@ -143,9 +143,7 @@ import { AnimatedCounterDirective } from '../../../shared/directives/animated-co
         </div>
         }
 
-        <div class="pt-4">
-          <p class="text-center text-[10px] text-slate-300 mt-4">Versión 2.4.0</p>
-        </div>
+
       </div>
     </div>
 
@@ -325,7 +323,7 @@ export class Perfil implements OnInit {
   ngOnInit(): void {
     // Iniciar carga de perfil (crítico)
     this.profileLoadingState.setLoading(true);
-    
+
     // Iniciar carga de stats después de 200ms (stagger)
     setTimeout(() => {
       this.statsLoadingState.setLoading(true);
