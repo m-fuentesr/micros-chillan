@@ -17,7 +17,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       [class.ripple-active]="expanding()"
       [class.login-root-fade-out]="expanding()"
     >
-      @if (!expanding()) {
+      @if (!expanding() && !auth.isInitializing()) {
       <!-- Header móvil -->
       <div
         class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
