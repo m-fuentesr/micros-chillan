@@ -1531,9 +1531,16 @@ export class Login {
 
     // Si ya hay una sesión activa, redirige automáticamente
     // PERO NO durante la animación de expansión / salida ni durante un login manual en curso
+    // TAMPOCO durante la verificación inicial de sesión
     effect(() => {
       const user = this.auth.currentUser();
       if (!user) {
+        return;
+      }
+
+      // CRÍTICO: No navegar si aún estamos verificando la sesión inicial
+      // Esto previene el "salto" de login → home al abrir la app
+      if (this.auth.isInitializing()) {
         return;
       }
 
@@ -1665,6 +1672,7 @@ export class Login {
 
           // Activar overlay neutro sutil
           this.transitionService.startTransition('worker');
+          this.spinnerService.show();
 
           // Esperar a que el fade-out termine (500ms)
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -1677,6 +1685,7 @@ export class Login {
 
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
+          this.spinnerService.hide();
         } else {
           // REDISEÑO: Usar orchestrator para transición coordinada admin
           // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
@@ -1753,6 +1762,7 @@ export class Login {
 
           // Activar overlay neutro sutil
           this.transitionService.startTransition('worker');
+          this.spinnerService.show();
 
           // Esperar a que el fade-out termine (500ms)
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -1765,6 +1775,7 @@ export class Login {
 
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
+          this.spinnerService.hide();
         } else {
           // REDISEÑO: Usar orchestrator para transición coordinada admin
           // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
