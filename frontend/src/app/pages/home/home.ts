@@ -51,6 +51,7 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
             [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <!-- Card 1: Ganancia Neta (El Bolsillo) -->
+              <!-- Card 1: Ganancia Neta (El Bolsillo) -->
               <app-kpi-card
                 title="Ganancia Neta"
                 [subtitle]="'Neto con descuentos'"
@@ -60,8 +61,8 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
-                [animationDelay]="0">
-                <ui-icon icon name="Wallet" size="md" />
+                [animationDelay]="0"
+                iconName="Wallet">
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
@@ -74,8 +75,8 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 type="info"
                 badgeText="Total hoy"
                 [externalSize]="cardSize()"
-                [animationDelay]="100">
-                <ui-icon icon name="HandCoins" size="md" />
+                [animationDelay]="100"
+                iconName="HandCoins">
               </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
@@ -306,6 +307,7 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
             [style.transform]="sequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
             <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
               <!-- Card 1: Ganancia Neta (El Bolsillo) -->
+              <!-- Card 1: Ganancia Neta (El Bolsillo) -->
               <app-kpi-card
                 title="Ganancia Neta"
                 [subtitle]="'Neto con descuentos'"
@@ -315,8 +317,8 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 [type]="gananciaNetaType()"
                 badgeText="Rentabilidad hoy"
                 [externalSize]="cardSize()"
-                [animationDelay]="0">
-                <ui-icon icon name="Wallet" size="md" />
+                [animationDelay]="0"
+                iconName="Wallet">
               </app-kpi-card>
 
               <!-- Card 2: Ingreso Total (El Bruto) -->
@@ -329,8 +331,8 @@ import { HomeSkeleton } from '../../shared/dashboard/home-skeleton/home-skeleton
                 type="info"
                 badgeText="Total hoy"
                 [externalSize]="cardSize()"
-                [animationDelay]="100">
-                <ui-icon icon name="HandCoins" size="md" />
+                [animationDelay]="100"
+                iconName="HandCoins">
               </app-kpi-card>
 
               <!-- Card 3: Operación (El Monitor) -->
@@ -628,7 +630,7 @@ export class Home implements OnInit, OnDestroy {
   private loadingStateService = inject(LoadingStateService);
   private globalErrorService = inject(GlobalErrorService);
   private platformId = inject(PLATFORM_ID);
-  
+
   // Signals para detección de tamaño de pantalla
   private isMobile = signal<boolean>(false);
   private isMedium = signal<boolean>(false);
@@ -636,7 +638,7 @@ export class Home implements OnInit, OnDestroy {
   private mediumMediaQuery: MediaQueryList | null = null;
   private mobileMediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
   private mediumMediaQueryHandler: ((e: MediaQueryListEvent) => void) | null = null;
-  
+
   // Tamaño efectivo para las cards personalizadas
   cardSize = computed<'compact' | 'medium' | 'default'>(() => {
     if (this.isMobile()) return 'compact';
@@ -648,32 +650,32 @@ export class Home implements OnInit, OnDestroy {
     // Iniciar estados de carga inmediatamente, antes del primer render
     this.kpisLoadingState.setLoading(true);
     this.contentLoadingState.setLoading(true);
-    
+
     // Monitorear cuando el componente se monta
     effect(() => {
       const isTransitioning = this.transitionService.isTransitioning();
     });
   }
-  
+
   ngOnInit(): void {
     // Inicializar detección de tamaño de pantalla
     if (isPlatformBrowser(this.platformId)) {
       // Detectar viewport móvil (< 768px)
       this.mobileMediaQuery = window.matchMedia('(max-width: 767px)');
       this.isMobile.set(this.mobileMediaQuery.matches);
-      
+
       // Detectar viewport mediano (>= 768px y < 1024px)
       this.mediumMediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
       this.isMedium.set(this.mediumMediaQuery.matches);
-      
+
       this.mobileMediaQueryHandler = (e: MediaQueryListEvent) => {
         this.isMobile.set(e.matches);
       };
-      
+
       this.mediumMediaQueryHandler = (e: MediaQueryListEvent) => {
         this.isMedium.set(e.matches);
       };
-      
+
       this.mobileMediaQuery.addEventListener('change', this.mobileMediaQueryHandler);
       this.mediumMediaQuery.addEventListener('change', this.mediumMediaQueryHandler);
     }
@@ -681,11 +683,11 @@ export class Home implements OnInit, OnDestroy {
     // Conectar al WebSocket para actualizaciones en tiempo real
     this.dashboardService.connectToUpdates();
   }
-  
+
   ngOnDestroy(): void {
     // Desconectar WebSocket al salir del componente
     this.dashboardService.disconnect();
-    
+
     if (this.mobileMediaQuery && this.mobileMediaQueryHandler) {
       this.mobileMediaQuery.removeEventListener('change', this.mobileMediaQueryHandler);
     }
@@ -693,13 +695,13 @@ export class Home implements OnInit, OnDestroy {
       this.mediumMediaQuery.removeEventListener('change', this.mediumMediaQueryHandler);
     }
   }
-  
+
   // Effect para detectar errores del dashboard y mostrar error global
   private dashboardErrorEffect = effect(() => {
     const connectionError = this.dashboardService.connectionError();
     const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.kpisLoadingState.isLoading() || this.contentLoadingState.isLoading();
-    
+
     // Si hay error de conexión y estamos cargando, mostrar error global
     if (connectionError && isLoading && !dashboardData) {
       this.globalErrorService.showError(
@@ -719,7 +721,7 @@ export class Home implements OnInit, OnDestroy {
     const hasRecords = this.dailyRecords().length > 0;
     const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.kpisLoadingState.isLoading();
-    
+
     // Cuando hay datos y está cargando, marcar como cargado directamente
     if ((hasRecords || dashboardData) && isLoading && !this.sequentialState.kpisError()) {
       this.kpisLoadingState.setDataLoaded();
@@ -731,14 +733,14 @@ export class Home implements OnInit, OnDestroy {
       this.kpisLoadingState.setDataLoaded();
     }
   });
-  
+
   private contentEffect = effect(() => {
     // El contenido está listo cuando tenemos registros diarios o alertas cargadas
     const hasRecords = this.dailyRecords().length > 0;
     const hasAlerts = this.alertsInitialized; // Verificar si las alertas se inicializaron
     const dashboardData = this.dashboardService.dashboardData();
     const isLoading = this.contentLoadingState.isLoading();
-    
+
     // Cuando hay datos y está cargando, marcar como cargado directamente
     if ((hasRecords || hasAlerts || dashboardData) && isLoading && !this.sequentialState.contentError()) {
       this.contentLoadingState.setDataLoaded();
@@ -755,18 +757,18 @@ export class Home implements OnInit, OnDestroy {
   currentFinancialMetric = signal<FinancialMetric>('Ganancia Neta');
   isDeletingAlert = signal(false);
   isDeletingAllAlerts = signal(false);
-  
+
   // Estados de carga simplificados (siguiendo patrón de maquinas y bitacora-operaciones)
   kpisLoadingState = this.loadingStateService.createLoadingState();
   contentLoadingState = this.loadingStateService.createLoadingState();
-  
+
   // Estado de carga secuencial coordinado (para animaciones suaves)
   sequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   // Cargar alertas - usar signal mutable para Optimistic UI
   alertsData = toSignal(
     this.alertService.getAlerts().pipe(
@@ -778,7 +780,7 @@ export class Home implements OnInit, OnDestroy {
   // Signal mutable para permitir actualizaciones optimistas
   private _alerts = signal<Alert[]>([]);
   private alertsInitialized = false;
-  
+
   // Effect para inicializar _alerts cuando se carguen los datos
   private alertsInitEffect = effect(() => {
     const loaded = this.alertsData();
@@ -799,16 +801,16 @@ export class Home implements OnInit, OnDestroy {
       }, 500);
     }
   });
-  
+
   alerts = computed(() => {
     const loaded = this.alertsData();
     const optimistic = this._alerts();
-    
+
     // Si ya inicializamos y hay datos optimistas, usarlos
     if (this.alertsInitialized && optimistic.length >= 0) {
       return optimistic;
     }
-    
+
     // Si no, usar los cargados
     return loaded ?? [];
   });
@@ -857,7 +859,7 @@ export class Home implements OnInit, OnDestroy {
 
   gananciaNetaTotalNumeric = computed(() => {
     const dashboardData = this.dashboardService.dashboardData();
-    
+
     // Debug: Verificar qué está pasando en el computed
     console.log('🔍 gananciaNetaTotalNumeric computed:', {
       dashboardData: dashboardData,
@@ -866,7 +868,7 @@ export class Home implements OnInit, OnDestroy {
       tipo: typeof dashboardData?.kpis?.ganancia_neta,
       lastValue: this.lastGananciaNeta()
     });
-    
+
     // Si hay datos del dashboard, usar el valor (puede ser negativo, positivo o cero)
     // Verificar explícitamente que sea un número (incluyendo 0 y negativos)
     if (dashboardData?.kpis && typeof dashboardData.kpis.ganancia_neta === 'number') {
@@ -874,7 +876,7 @@ export class Home implements OnInit, OnDestroy {
       console.log('✅ Retornando ganancia_neta del dashboard:', value);
       return value;
     }
-    
+
     // Si no hay datos aún pero tenemos un último valor conocido, usarlo
     // Esto evita mostrar $0 mientras se recargan los datos al volver a la página
     const lastValue = this.lastGananciaNeta();
@@ -882,7 +884,7 @@ export class Home implements OnInit, OnDestroy {
       console.log('📌 Retornando último valor conocido:', lastValue);
       return lastValue;
     }
-    
+
     // Solo retornar 0 si nunca hemos tenido datos
     console.log('⚠️ No hay datos, retornando 0');
     return 0;
@@ -992,17 +994,17 @@ export class Home implements OnInit, OnDestroy {
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
     const alertToDelete = previousAlerts.find(a => a.id === alertId);
-    
+
     // 2. Optimistic update: Remover inmediatamente de la UI
     this._alerts.set(previousAlerts.filter(a => a.id !== alertId));
     this.isDeletingAlert.set(true);
-    
+
     // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
     this.alertService.resolveAlert(parseInt(alertId)).pipe(
       catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
-        
+
         // 5. Manejar errores específicos
         if (error?.status === 409) {
           // Error 409: Incidente crítico que debe resolverse desde el Registro Diario
@@ -1014,7 +1016,7 @@ export class Home implements OnInit, OnDestroy {
         } else {
           this.showErrorToast('No se pudo resolver la alerta. Intenta nuevamente.');
         }
-        
+
         return EMPTY;
       })
     ).subscribe({
@@ -1037,19 +1039,19 @@ export class Home implements OnInit, OnDestroy {
 
     // 1. Snapshot del estado actual (para rollback)
     const previousAlerts = [...this._alerts()];
-    
+
     // 2. Optimistic update: Remover solo las alertas NO críticas
     // Las alertas críticas deben permanecer (TC025)
     const alertsToKeep = this._alerts().filter(alert => alert.severity === 'critical');
     this._alerts.set(alertsToKeep);
     this.isDeletingAllAlerts.set(true);
-    
+
     // 3. Llamar al servidor en segundo plano usando el nuevo endpoint
     this.alertService.resolveAllAdminAlerts().pipe(
       catchError((error: any) => {
         // 4. Rollback en caso de error
         this._alerts.set(previousAlerts);
-        
+
         // 5. Manejar errores específicos
         if (error?.status === 400) {
           this.showErrorToast('No se pudieron resolver todas las alertas. Verifica los datos e intenta nuevamente.');
@@ -1058,7 +1060,7 @@ export class Home implements OnInit, OnDestroy {
         } else {
           this.showErrorToast('No se pudieron resolver todas las alertas. Intenta nuevamente.');
         }
-        
+
         return EMPTY;
       })
     ).subscribe({
@@ -1101,7 +1103,7 @@ export class Home implements OnInit, OnDestroy {
       </div>
     `;
     document.body.appendChild(toast);
-    
+
     // Remover después de 3 segundos
     setTimeout(() => {
       toast.remove();

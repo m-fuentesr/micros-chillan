@@ -39,8 +39,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           size="medium"
           [responsive]="true"
           badgeText="Flujo real"
-          [animationDelay]="0">
-          <span icon><ui-icon name="Wallet" size="sm" /></span>
+          [animationDelay]="0"
+          iconName="Wallet">
         </app-kpi-card>
 
         <!-- KPI: Pago Choferes (Egreso - Warning) -->
@@ -52,8 +52,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           size="medium"
           [responsive]="true"
           badgeText="Retribución variable"
-          [animationDelay]="1">
-          <span icon><ui-icon name="Users" size="sm" /></span>
+          [animationDelay]="1"
+          iconName="Users">
         </app-kpi-card>
 
         <!-- KPI: Costo Diésel (Egreso - Error/Rojo) -->
@@ -65,8 +65,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           size="medium"
           [responsive]="true"
           badgeText="Insumo crítico"
-          [animationDelay]="2">
-          <span icon><ui-icon name="TriangleAlert" size="sm" /></span>
+          [animationDelay]="2"
+          iconName="TriangleAlert">
         </app-kpi-card>
 
         <!-- KPI: Gastos Repuestos (Egreso - Neutro) -->
@@ -78,8 +78,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
           size="medium"
           [responsive]="true"
           badgeText="Reinversión activos"
-          [animationDelay]="3">
-          <span icon><ui-icon name="Settings" size="sm" /></span>
+          [animationDelay]="3"
+          iconName="Settings">
         </app-kpi-card>
       </div>
     </div>

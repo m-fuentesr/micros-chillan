@@ -40,8 +40,8 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                 type="danger"
                 size="compact"
                 badgeText="Inversión activos"
-                [animationDelay]="0">
-                <span icon><ui-icon name="Wallet" size="md" /></span>
+                [animationDelay]="0"
+                iconName="Wallet">
               </app-kpi-card>
               
               <span class="inline-flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full bg-primary/10 text-base-content border border-primary/30 text-sm font-semibold shadow-sm whitespace-nowrap">

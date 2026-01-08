@@ -152,11 +152,8 @@ interface DriverProfit {
                     [class.opacity-0]="!profitSequentialState.canShowKPIs()" 
                     [class.animate-fade-in]="profitSequentialState.canShowKPIs()" 
                     [style.transition]="profitSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-                    [style.transform]="profitSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/>
-                      <path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>
-                    </svg>
+                    [style.transform]="profitSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'"
+                    iconName="Wallet">
                   </app-kpi-card>
                 }
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
@@ -606,12 +603,8 @@ interface DriverProfit {
                     [class.opacity-0]="!revenueSequentialState.canShowKPIs()" 
                     [class.animate-fade-in]="revenueSequentialState.canShowKPIs()" 
                     [style.transition]="revenueSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-                    [style.transform]="revenueSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                    <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="2" y="6" width="20" height="12" rx="2"/>
-                      <circle cx="12" cy="12" r="2"/>
-                      <path d="M6 12h.01M18 12h.01"/>
-                    </svg>
+                    [style.transform]="revenueSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'"
+                    iconName="HandCoins">
                   </app-kpi-card>
                 }
                 <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
@@ -1025,12 +1018,8 @@ interface DriverProfit {
                       [class.opacity-0]="!driverSequentialState.canShowKPIs()" 
                       [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
                       [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
-                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                        <circle cx="9" cy="7" r="4"/>
-                        <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
-                      </svg>
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'"
+                      iconName="Users">
                     </app-kpi-card>
                     <app-kpi-card
                       title="Total Pago Choferes"
@@ -1044,12 +1033,8 @@ interface DriverProfit {
                       [class.animate-fade-in]="driverSequentialState.canShowKPIs()" 
                       [style.transition]="driverSequentialState.canShowKPIs() ? 'opacity 500ms cubic-bezier(0.4, 0, 0.2, 1), transform 500ms cubic-bezier(0.4, 0, 0.2, 1)' : 'none'"
                       [style.transition-delay]="driverSequentialState.canShowKPIs() ? '100ms' : '0ms'"
-                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'">
-                      <svg icon xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="2" y="6" width="20" height="12" rx="2"/>
-                        <circle cx="12" cy="12" r="2"/>
-                        <path d="M6 12h.01M18 12h.01"/>
-                      </svg>
+                      [style.transform]="driverSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'"
+                      iconName="Wallet">
                     </app-kpi-card>
                   }
                 </div>

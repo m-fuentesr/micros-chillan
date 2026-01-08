@@ -40,8 +40,8 @@ import { getDatePartsInChile } from '../../utils/date.utils';
             size="medium"
             [responsive]="true"
             badgeText="Volumen real"
-            [animationDelay]="0">
-            <span icon><ui-icon name="Wallet" size="sm" /></span>
+            [animationDelay]="0"
+            iconName="Wallet">
           </app-kpi-card>
 
           <!-- KPI: Pago Choferes -->
@@ -53,8 +53,8 @@ import { getDatePartsInChile } from '../../utils/date.utils';
             size="medium"
             [responsive]="true"
             badgeText="Por procesar"
-            [animationDelay]="1">
-            <span icon><ui-icon name="Users" size="sm" /></span>
+            [animationDelay]="1"
+            iconName="Users">
           </app-kpi-card>
 
           <!-- KPI: Gastos Operacionales -->
@@ -66,8 +66,8 @@ import { getDatePartsInChile } from '../../utils/date.utils';
             size="medium"
             [responsive]="true"
             badgeText="Impacto margen"
-            [animationDelay]="2">
-            <span icon><ui-icon name="TriangleAlert" size="sm" /></span>
+            [animationDelay]="2"
+            iconName="TriangleAlert">
           </app-kpi-card>
 
           <!-- KPI: Promedio Semanal -->
@@ -79,8 +79,8 @@ import { getDatePartsInChile } from '../../utils/date.utils';
             size="medium"
             [responsive]="true"
             badgeText="Ritmo actual"
-            [animationDelay]="3">
-            <span icon><ui-icon name="TrendingUp" size="sm" /></span>
+            [animationDelay]="3"
+            iconName="TrendingUp">
           </app-kpi-card>
         </div>
 
@@ -339,9 +339,9 @@ export class WeeklySummaryTable {
   summaries = input.required<WeeklySummary[]>();
   mes = input.required<number>();
   anio = input.required<number>();
-  
+
   private accountingService = inject(AccountingService);
-  
+
   // Cache de choferes cargados por semana (usando signal para reactividad)
   private loadedDriversCache = signal<Map<number, WeeklyDriverBreakdown[]>>(new Map());
   private loadingWeeks = signal<Set<number>>(new Set());
@@ -350,7 +350,7 @@ export class WeeklySummaryTable {
    * Semanas actualmente expandidas (permite múltiples abiertas para comparación).
    */
   expandedWeeks = signal<Set<number>>(new Set());
-  
+
   // Summaries con choferes cargados
   summariesWithDrivers = computed(() => {
     const cache = this.loadedDriversCache();
@@ -364,11 +364,11 @@ export class WeeklySummaryTable {
   });
 
   // Cálculos rápidos para los KPIs superiores
-  totalRecaudado = computed(() => 
+  totalRecaudado = computed(() =>
     this.summariesWithDrivers().reduce((acc, s) => acc + s.total_recaudado, 0)
   );
 
-  totalPagos = computed(() => 
+  totalPagos = computed(() =>
     this.summariesWithDrivers().reduce((acc, s) => {
       // Si los choferes están cargados, usar la suma individual (más preciso)
       // Si no, usar el total del resumen semanal
@@ -382,15 +382,15 @@ export class WeeklySummaryTable {
     }, 0)
   );
 
-  totalGastos = computed(() => 
+  totalGastos = computed(() =>
     this.summariesWithDrivers().reduce((acc, s) => acc + s.gasto_diesel + (s.gasto_mantenimiento || 0), 0)
   );
 
-  getTotalGanancia = computed(() => 
+  getTotalGanancia = computed(() =>
     this.summariesWithDrivers().reduce((acc, s) => acc + s.ganancia_neta, 0)
   );
 
-  promedioSemanal = computed(() => 
+  promedioSemanal = computed(() =>
     this.summariesWithDrivers().length > 0 ? this.getTotalGanancia() / this.summariesWithDrivers().length : 0
   );
 
@@ -427,7 +427,7 @@ export class WeeklySummaryTable {
   private loadWeekDetails(weekNumber: number): void {
     // Marcar como cargando
     this.loadingWeeks.update(weeks => new Set(weeks).add(weekNumber));
-    
+
     this.accountingService.getWeekDetail(this.mes(), this.anio(), weekNumber)
       .subscribe({
         next: (drivers) => {
@@ -456,7 +456,7 @@ export class WeeklySummaryTable {
         }
       });
   }
-  
+
   isLoadingWeek(weekNumber: number): boolean {
     return this.loadingWeeks().has(weekNumber);
   }
