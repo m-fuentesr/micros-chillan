@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import StreamingResponse
 from app.db.supabase_client import supabase
 import json
+import requests
 
 router = APIRouter(prefix="/api/mobile", tags=["mobile"])
 
@@ -28,34 +29,33 @@ def download_apk():
 
         data = json.loads(res.decode("utf-8"))
 
-        if "apkPath" not in data:
-            raise HTTPException(
-                status_code=500,
-                detail="version.json no contiene apkPath"
-            )
+        apk_path = data.get("apkPath")
 
-        apk_path = data["apkPath"]
-
+        if not apk_path:
+            raise HTTPException(status_code=500, detail="version.json no contiene apkPath")
+        
         # 2. Generar signed URL del APK
         signed = supabase.storage.from_(BUCKET_NAME).create_signed_url(
             apk_path,
             SIGNED_URL_TTL
         )
 
-        signed_url = None
-        if signed:
-            signed_url = signed.get("signedURL") or signed.get("signed_url")
-
+        signed_url = signed.get("signedURL") or signed.get("signed_url")
         if not signed_url:
-            raise HTTPException(
-                status_code=500,
-                detail="No se pudo generar la URL firmada del APK"
-            )
+            raise HTTPException(status_code=500, detail="No se pudo generar la URL firmada")
 
-        # 3. Redirigir a la descarga
-        return RedirectResponse(
-            url=signed_url,
-            status_code=307
+        # 3. Descargar el APK desde Supabase (streaming)
+        r = requests.get(signed_url, stream=True, timeout=60)
+        r.raise_for_status()
+
+        # 4. Enviar el APK al cliente
+        return StreamingResponse(
+            r.iter_content(chunk_size=1024 * 1024),
+            media_type="application/vnd.android.package-archive",
+            headers={
+                "Content-Disposition": 'attachment; filename="GestorDeFlotas.apk"',
+                "Cache-Control": "no-store",
+            }
         )
 
     except HTTPException:
