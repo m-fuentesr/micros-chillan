@@ -6,10 +6,12 @@ import { AnimatedCounterDirective } from '../../directives/animated-counter.dire
 export type KpiCardType = 'financial' | 'danger' | 'warning' | 'success' | 'info';
 export type KpiCardSize = 'default' | 'compact' | 'medium';
 
+import { UiIconComponent } from '../ui-icon/ui-icon.component';
+
 @Component({
   selector: 'app-kpi-card',
   standalone: true,
-  imports: [CommonModule, AnimatedCounterDirective],
+  imports: [CommonModule, AnimatedCounterDirective, UiIconComponent],
   template: `
     <div 
       class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)]"
@@ -55,7 +57,11 @@ export type KpiCardSize = 'default' | 'compact' | 'medium';
             'bg-warning/10 text-warning ring-warning/15': type() === 'warning',
             'bg-success/10 text-success ring-success/15': type() === 'success'
           }">
-          <ng-content select="[icon]"></ng-content>
+          @if (iconName()) {
+            <ui-icon [name]="iconName()!" [size]="computedIconSize()" />
+          } @else {
+            <ng-content select="[icon]"></ng-content>
+          }
         </div>
         <div class="flex-1 min-w-0">
           <h3 
@@ -209,13 +215,23 @@ export class KpiCard implements OnInit, OnDestroy {
   successText = input<string>('');
   actionText = input<string>('');
   animationDelay = input<number>(0);
-  
+
   onActionClick = output<void>();
 
   // Computed size que considera el modo responsive
   // Si externalSize está disponible, usarlo; si no, usar la detección interna
+  iconName = input<string | undefined>(undefined);
+
+  protected computedIconSize = computed<'xs' | 'sm' | 'md'>(() => {
+    switch (this.effectiveSize()) {
+      case 'compact': return 'xs';
+      case 'medium': return 'sm';
+      default: return 'md';
+    }
+  });
+
   private internalSize = signal<KpiCardSize>('default');
-  
+
   effectiveSize = computed<KpiCardSize>(() => {
     const external = this.externalSize();
     if (external !== undefined) {
@@ -229,31 +245,31 @@ export class KpiCard implements OnInit, OnDestroy {
     if (this.externalSize() !== undefined) {
       return;
     }
-    
+
     // Inicializar con el tamaño actual
     this.internalSize.set(this.size());
-    
+
     if (this.responsive() && isPlatformBrowser(this.platformId)) {
       // Detectar viewport móvil (< 768px)
       this.mobileMediaQuery = window.matchMedia('(max-width: 767px)');
       this.isMobile.set(this.mobileMediaQuery.matches);
-      
+
       // Detectar viewport mediano (>= 768px y < 1024px)
       this.mediumMediaQuery = window.matchMedia('(min-width: 768px) and (max-width: 1023px)');
       this.isMedium.set(this.mediumMediaQuery.matches);
-      
+
       this.updateInternalSize();
-      
+
       this.mobileMediaQueryHandler = (e: MediaQueryListEvent) => {
         this.isMobile.set(e.matches);
         this.updateInternalSize();
       };
-      
+
       this.mediumMediaQueryHandler = (e: MediaQueryListEvent) => {
         this.isMedium.set(e.matches);
         this.updateInternalSize();
       };
-      
+
       this.mobileMediaQuery.addEventListener('change', this.mobileMediaQueryHandler);
       this.mediumMediaQuery.addEventListener('change', this.mediumMediaQueryHandler);
     }

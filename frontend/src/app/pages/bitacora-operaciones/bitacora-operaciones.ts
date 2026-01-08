@@ -114,8 +114,8 @@ interface DailyRecordView {
               type="financial"
               [badgeText]="currentMonthName()"
               [responsive]="true"
-              [animationDelay]="0">
-              <ui-icon name="Wallet" size="md" icon />
+              [animationDelay]="0"
+              iconName="Wallet">
             </app-kpi-card>
 
             <!-- Card 2: Registros Faltantes -->
@@ -127,8 +127,8 @@ interface DailyRecordView {
               [successText]="missingRecords() === 0 ? 'Bitácora al día' : ''"
               [badgeText]="missingRecords() === 0 ? '' : 'Pendientes de completar'"
               [responsive]="true"
-              [animationDelay]="1">
-              <ui-icon name="AlertCircle" size="md" icon />
+              [animationDelay]="1"
+              iconName="AlertCircle">
             </app-kpi-card>
 
             <!-- Card 3: Con Incidentes -->
@@ -139,8 +139,8 @@ interface DailyRecordView {
               type="danger"
               [successText]="recordsWithIncidents() === 0 ? 'Operación normal' : ''"
               [responsive]="true"
-              [animationDelay]="2">
-              <ui-icon name="TriangleAlert" size="md" icon />
+              [animationDelay]="2"
+              iconName="TriangleAlert">
             </app-kpi-card>
             </div>
           }
@@ -848,7 +848,7 @@ export class BitacoraOperaciones implements OnInit {
     const response = this.recordsResponse();
     return response.datos.map(r => this.mapToView(r));
   });
-  
+
   // Paginación desde el backend
   totalRecords = computed(() => this.recordsResponse().total);
   totalPages = computed(() => this.recordsResponse().total_paginas);
@@ -877,14 +877,14 @@ export class BitacoraOperaciones implements OnInit {
   totalRevenue = computed(() => this.kpisResponse()?.recaudacion_periodo || 0);
   missingRecords = computed(() => this.kpisResponse()?.registros_faltantes || 0);
   recordsWithIncidents = computed(() => this.kpisResponse()?.registros_con_incidentes || 0);
-  
+
   // Nombre del mes actual en español con primera letra mayúscula
   currentMonthName = computed(() => {
     const hoy = new Date();
     const monthName = hoy.toLocaleDateString('es-CL', { month: 'long' });
     return monthName.charAt(0).toUpperCase() + monthName.slice(1);
   });
-  
+
   // Effect para detectar cuando los KPIs están listos
   private kpisEffect = effect(() => {
     const kpis = this.kpisResponse();
@@ -917,30 +917,30 @@ export class BitacoraOperaciones implements OnInit {
   private lastPage = 1; // Rastrear la última página para actualizar query params solo cuando cambia
   private isRestoringFromQueryParams = false; // Flag para evitar actualizar query params cuando se restauran desde la URL
   showFiltersMobile = signal(false);
-  
+
   // Función helper para obtener fechas del mes actual
   private getCurrentMonthDates(): { desde: string; hasta: string } {
     const hoy = new Date();
     const año = hoy.getFullYear();
     const mes = hoy.getMonth(); // 0-11
-    
+
     // Primer día del mes actual
     const primerDia = new Date(año, mes, 1);
     const desde = primerDia.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     // Último día del mes actual
     const ultimoDia = new Date(año, mes + 1, 0);
     const hasta = ultimoDia.toISOString().split('T')[0]; // YYYY-MM-DD
-    
+
     return { desde, hasta };
   }
-  
+
   // Filtros usando SearchFilters - Inicializados vacíos, se configuran en ngOnInit
   recordFilters = signal<{ chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' }>({});
-  
+
   // Choferes cargados dinámicamente
   private drivers = signal<Array<{ id: number; nombre_completo: string }>>([]);
-  
+
   // Campos de filtro
   filterFields = computed((): FilterField[] => {
     const choferes = this.drivers();
@@ -951,7 +951,7 @@ export class BitacoraOperaciones implements OnInit {
         label: driver.nombre_completo
       }))
     ];
-    
+
     return [
       {
         key: 'chofer',
@@ -986,13 +986,13 @@ export class BitacoraOperaciones implements OnInit {
       }
     ];
   });
-  
+
   onRecordFilterChange(newFilters: Record<string, any>): void {
     // Si se recibe un objeto vacío (al limpiar filtros), restaurar valores por defecto del mes actual
     const isClearing = Object.keys(newFilters).length === 0;
-    
+
     let filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' };
-    
+
     if (isClearing) {
       // Restaurar filtros por defecto (mes actual)
       const { desde, hasta } = this.getCurrentMonthDates();
@@ -1011,25 +1011,25 @@ export class BitacoraOperaciones implements OnInit {
         orden: (newFilters['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
       };
     }
-    
+
     this.recordFilters.set(filters);
-    
+
     // Actualizar query params para persistir los filtros
     this.updateQueryParams(filters);
-    
+
     // NO cerrar automáticamente el panel móvil - dejar que el usuario lo cierre manualmente
     // Esto permite seleccionar múltiples filtros sin que el panel se cierre
-    
+
     // Actualizar los filtros existentes para compatibilidad
     if (filters.desde) {
       this.dateFilter.set(filters.desde);
     } else {
       this.dateFilter.set('');
     }
-    
+
     // Resetear a página 1 cuando cambian los filtros
     this.currentPage.set(1);
-    
+
     // Asegurar que se carguen los registros con los nuevos filtros
     // El effect debería ejecutarse, pero lo llamamos explícitamente para garantizar
     untracked(() => {
@@ -1040,27 +1040,27 @@ export class BitacoraOperaciones implements OnInit {
   toggleFiltersMobile(): void {
     this.showFiltersMobile.update(open => !open);
   }
-  
+
   // Estado de carga secuencial coordinado
   sequentialState = this.loadingStateService.createSequentialLoadingState({
     kpisDelay: 100,
     contentDelay: 300,
     maxWaitTime: 2000
   });
-  
+
   // Estado de carga para KPIs
   kpisLoading = signal(true);
-  
+
   /**
    * Recargar registros y mostrar mensaje de éxito después de crear un nuevo registro
    */
   private async reloadRecordsAndShowSuccess(choferId: number, fecha: string): Promise<void> {
     // Marcar que estamos haciendo una recarga manual
     this.isManualReload = true;
-    
+
     // Obtener filtros actuales
     const recordFilters = this.recordFilters();
-    
+
     // Mapear el filtro de estado del select a los estados del modelo
     let estadoFilter: DailyRecordStatus | undefined = undefined;
     if (this.statusFilter() !== 'all') {
@@ -1071,7 +1071,7 @@ export class BitacoraOperaciones implements OnInit {
       };
       estadoFilter = statusMap[this.statusFilter()];
     }
-    
+
     const filters: DailyRecordFilters = {
       estado: estadoFilter,
       fecha: this.dateFilter() || recordFilters.desde || undefined,
@@ -1083,16 +1083,16 @@ export class BitacoraOperaciones implements OnInit {
       pagina: this.currentPage(),
       por_pagina: this.itemsPerPage
     };
-    
+
     try {
       // Esperar un momento para asegurar que el backend haya procesado el nuevo registro
       await new Promise(resolve => setTimeout(resolve, 300));
-      
+
       // Esperar a que se carguen los registros
       const response = await firstValueFrom(
         this.dailyRecordService.getDailyRecords(filters)
       );
-      
+
       // Actualizar los registros usando untracked para evitar que el effect se ejecute
       untracked(() => {
         this.recordsResponse.set(response);
@@ -1100,10 +1100,10 @@ export class BitacoraOperaciones implements OnInit {
         this.isLoadingPage.set(false);
         this.isLoadingRecords = false;
       });
-      
+
       // Esperar un momento más para asegurar que la UI se haya actualizado
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       // Mostrar mensaje de éxito después de que la tabla se haya actualizado
       const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
       this.alertModalService.show({
@@ -1112,7 +1112,7 @@ export class BitacoraOperaciones implements OnInit {
         message: `El registro diario para ${choferNombre} del ${fecha} ha sido creado correctamente.`,
         buttonText: 'Entendido'
       });
-      
+
       // Mantener la bandera activa por un tiempo suficiente para evitar que el effect recargue
       // La desactivaremos después de un tiempo razonable (3 segundos)
       // Esto da tiempo suficiente para que el usuario vea y acepte el modal
@@ -1122,7 +1122,7 @@ export class BitacoraOperaciones implements OnInit {
     } catch (error) {
       console.error('Error al recargar registros:', error);
       this.isManualReload = false;
-      
+
       // Mostrar mensaje de éxito de todas formas
       const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
       this.alertModalService.show({
@@ -1140,12 +1140,12 @@ export class BitacoraOperaciones implements OnInit {
     if (this.isLoadingRecords) {
       return;
     }
-    
+
     this.isLoadingRecords = true;
-    
+
     // Obtener filtros de recordFilters (usado por SearchFilters)
     const recordFilters = this.recordFilters();
-    
+
     // Mapear el filtro de estado del select a los estados del modelo
     let estadoFilter: DailyRecordStatus | undefined = undefined;
     if (this.statusFilter() !== 'all') {
@@ -1156,7 +1156,7 @@ export class BitacoraOperaciones implements OnInit {
       };
       estadoFilter = statusMap[this.statusFilter()];
     }
-    
+
     const filters: DailyRecordFilters = {
       estado: estadoFilter,
       fecha: this.dateFilter() || recordFilters.desde || undefined,
@@ -1168,7 +1168,7 @@ export class BitacoraOperaciones implements OnInit {
       pagina: this.currentPage(),
       por_pagina: this.itemsPerPage
     };
-    
+
     // Debug: Log para verificar filtros aplicados
     console.log('🔍 Filtros aplicados:', {
       recordFilters,
@@ -1176,21 +1176,21 @@ export class BitacoraOperaciones implements OnInit {
       currentPage: this.currentPage(),
       itemsPerPage: this.itemsPerPage
     });
-    
+
     // Si es la primera carga, usar isLoading, si es cambio de página, usar isLoadingPage
     if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
       this.isLoading.set(true);
     } else {
       this.isLoadingPage.set(true);
     }
-    
+
     this.dailyRecordService.getDailyRecords(filters)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (response) => {
           untracked(() => {
             const isFirstLoad = this.currentPage() === 1 && this.recordsResponse().datos.length === 0;
-            
+
             // Debug: Log para verificar respuesta
             console.log('📋 Daily Records Response recibida:', {
               total: response.total,
@@ -1198,18 +1198,18 @@ export class BitacoraOperaciones implements OnInit {
               pagina: response.pagina,
               total_paginas: response.total_paginas
             });
-            
+
             this.recordsResponse.set(response);
             this.isLoading.set(false);
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
-            
+
             // Debug: Log después de mapear
             console.log('📋 Records mapeados:', {
               total: this.records().length,
               records: this.records()
             });
-            
+
             // Si es la primera carga, marcar contenido como listo (incluso si está vacío)
             if (isFirstLoad && !this.sequentialState.contentError()) {
               // Llamar inmediatamente, sin setTimeout para evitar pestañeo
@@ -1223,7 +1223,7 @@ export class BitacoraOperaciones implements OnInit {
             this.isLoading.set(false);
             this.isLoadingPage.set(false);
             this.isLoadingRecords = false;
-            
+
             // Si es la primera carga y hay error, mostrar error global
             if (this.currentPage() === 1 && this.recordsResponse().datos.length === 0) {
               this.globalErrorService.showError(
@@ -1245,21 +1245,21 @@ export class BitacoraOperaciones implements OnInit {
       if (this.isManualReload) {
         return;
       }
-      
+
       // En la carga inicial, no ejecutar el effect (se carga manualmente en ngOnInit)
       // Esto evita que el effect se ejecute cuando recordsResponse se actualiza por primera vez
       if (this.isInitialLoad) {
         this.isInitialLoad = false;
         return;
       }
-      
+
       // Leer los signals para que el effect reaccione a sus cambios
       const query = this.searchQuery();
       const status = this.statusFilter();
       const date = this.dateFilter();
       const page = this.currentPage();
       const filters = this.recordFilters(); // También reaccionar a cambios en recordFilters
-      
+
       // Actualizar query params cuando cambia la página (pero no cuando cambian los filtros, eso se hace en onRecordFilterChange)
       if (page !== this.lastPage) {
         this.lastPage = page;
@@ -1267,7 +1267,7 @@ export class BitacoraOperaciones implements OnInit {
           this.updateQueryParams(filters);
         });
       }
-      
+
       // Usar untracked para evitar que las actualizaciones dentro de loadRecords() causen que el effect se vuelva a ejecutar
       untracked(() => {
         this.loadRecords();
@@ -1282,7 +1282,7 @@ export class BitacoraOperaciones implements OnInit {
     const formattedDate = date
       ? date.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' })
       : record.fecha;
-    
+
     // Mapear estado
     let status: 'complete' | 'pending' | 'incident' | 'no_worked';
     if (record.estado === 'COMPLETO') {
@@ -1318,11 +1318,11 @@ export class BitacoraOperaciones implements OnInit {
     const total = this.totalPages();
     const current = this.currentPage();
     const pages: number[] = [];
-    
+
     for (let i = Math.max(1, current - 2); i <= Math.min(total, current + 2); i++) {
       pages.push(i);
     }
-    
+
     return pages;
   });
 
@@ -1422,8 +1422,8 @@ export class BitacoraOperaciones implements OnInit {
           fecha: formData.date,
           es_dia_no_trabajado: formData.noWorkDay,
           motivo_no_trabajado: formData.noWorkDay ? (formData.noWorkDayReason === 'Otro' ? 'otro' : formData.noWorkDayReason) : null,
-          motivo_no_trabajado_otro: formData.noWorkDay && formData.noWorkDayReason === 'Otro' 
-            ? formData.noWorkDayReasonOther 
+          motivo_no_trabajado_otro: formData.noWorkDay && formData.noWorkDayReason === 'Otro'
+            ? formData.noWorkDayReasonOther
             : null,
           monto_recaudado: formData.noWorkDay ? null : (formData.income || null),
           litros_diesel: formData.noWorkDay ? null : (formData.dieselLiters || null),
@@ -1440,36 +1440,36 @@ export class BitacoraOperaciones implements OnInit {
             takeUntilDestroyed(this.destroyRef),
             catchError((error) => {
               console.error('Error al crear registro:', error);
-              
+
               // Determinar el mensaje de error según el tipo
               let errorMessage = 'No se pudo crear el registro. Por favor, verifica los datos e intenta nuevamente.';
               let errorTitle = 'Error al Crear Registro';
-              
+
               // Verificar si es un error de registro duplicado
               const errorDetail = error?.error?.detail || error?.message || '';
               const choferNombre = this.drivers().find(d => d.id === choferId)?.nombre_completo || 'el chofer';
-              
+
               // Verificar si es error de máquina duplicada (TC-181)
-              if (typeof errorDetail === 'string' && 
-                  (errorDetail.includes('Ya existe un registro para') && 
-                   errorDetail.includes('máquina') && 
-                   errorDetail.includes('fecha'))) {
+              if (typeof errorDetail === 'string' &&
+                (errorDetail.includes('Ya existe un registro para') &&
+                  errorDetail.includes('máquina') &&
+                  errorDetail.includes('fecha'))) {
                 errorTitle = 'Registro Duplicado';
                 errorMessage = errorDetail; // Usar el mensaje completo del backend que incluye info de máquina y chofer
-              } 
+              }
               // Verificar si es error de chofer duplicado
-              else if (errorDetail.includes('Ya existe un registro diario') || 
-                  errorDetail.includes('registro diario para este chofer y fecha') ||
-                  errorDetail.toLowerCase().includes('duplicado')) {
+              else if (errorDetail.includes('Ya existe un registro diario') ||
+                errorDetail.includes('registro diario para este chofer y fecha') ||
+                errorDetail.toLowerCase().includes('duplicado')) {
                 errorTitle = 'Registro Duplicado';
                 errorMessage = `Ya existe un registro diario para ${choferNombre} en la fecha ${formData.date}. No se puede crear un registro duplicado.`;
               } else if (errorDetail) {
                 errorMessage = errorDetail;
               }
-              
+
               // Cerrar el modal de creación en caso de error
               this.newRecordModalService.finishSubmission();
-              
+
               // Mostrar modal de error
               this.alertModalService.show({
                 type: 'error',
@@ -1477,7 +1477,7 @@ export class BitacoraOperaciones implements OnInit {
                 message: errorMessage,
                 buttonText: 'Entendido'
               });
-              
+
               return of(null);
             })
           )
@@ -1485,7 +1485,7 @@ export class BitacoraOperaciones implements OnInit {
             if (response) {
               // Cerrar el modal de creación primero
               this.newRecordModalService.finishSubmission();
-              
+
               // Recargar datos después de crear exitosamente y esperar a que termine
               await this.reloadRecordsAndShowSuccess(choferId, formData.date);
             }
@@ -1493,10 +1493,10 @@ export class BitacoraOperaciones implements OnInit {
 
       } catch (error) {
         console.error('Error al subir imágenes o crear registro:', error);
-        
+
         // Cerrar el modal de creación en caso de error
         this.newRecordModalService.finishSubmission();
-        
+
         // Mostrar mensaje de error genérico
         this.alertModalService.show({
           type: 'error',
@@ -1515,12 +1515,12 @@ export class BitacoraOperaciones implements OnInit {
       .subscribe({
         next: (drivers) => {
           this.drivers.set(drivers);
-          
+
           // Una vez que los choferes están cargados, restaurar filtros desde query params
           firstValueFrom(this.route.queryParams).then(params => {
             this.isRestoringFromQueryParams = true;
             const { desde, hasta } = this.getCurrentMonthDates();
-            
+
             // Restaurar filtros desde query params o usar valores por defecto
             const choferValue = params['chofer'];
             const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
@@ -1529,10 +1529,10 @@ export class BitacoraOperaciones implements OnInit {
               hasta: params['hasta'] || hasta,
               orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
             };
-            
+
             // Establecer los filtros directamente (no verificar si cambiaron para asegurar que se muestren)
             this.recordFilters.set(filters);
-            
+
             // Restaurar página si existe en query params
             if (params['pagina']) {
               const pagina = parseInt(params['pagina'], 10);
@@ -1541,12 +1541,12 @@ export class BitacoraOperaciones implements OnInit {
                 this.lastPage = pagina;
               }
             }
-            
+
             // Marcar que ya no estamos restaurando desde query params
             setTimeout(() => {
               this.isRestoringFromQueryParams = false;
             }, 100);
-            
+
             // Cargar datos después de restaurar los filtros
             this.loadRecords();
           }).catch(() => {
@@ -1564,7 +1564,7 @@ export class BitacoraOperaciones implements OnInit {
           console.error('Error cargando choferes:', error);
           // Mantener array vacío en caso de error
           this.drivers.set([]);
-          
+
           // Aún así, restaurar filtros con valores por defecto
           firstValueFrom(this.route.queryParams).then(params => {
             const { desde, hasta } = this.getCurrentMonthDates();
@@ -1587,7 +1587,7 @@ export class BitacoraOperaciones implements OnInit {
           });
         }
       });
-    
+
     // También suscribirse a cambios posteriores de query params (por si se navega de vuelta)
     this.route.queryParams
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -1596,9 +1596,9 @@ export class BitacoraOperaciones implements OnInit {
         if (this.isRestoringFromQueryParams) {
           return;
         }
-        
+
         const { desde, hasta } = this.getCurrentMonthDates();
-        
+
         // Restaurar filtros desde query params
         const choferValue = params['chofer'];
         const filters: { chofer?: string | null; desde?: string | null; hasta?: string | null; orden?: 'mas_reciente' | 'mas_antiguo' } = {
@@ -1607,19 +1607,19 @@ export class BitacoraOperaciones implements OnInit {
           hasta: params['hasta'] || hasta,
           orden: (params['orden'] || 'mas_reciente') as 'mas_reciente' | 'mas_antiguo'
         };
-        
+
         // Solo actualizar si los filtros son diferentes
         const currentFilters = this.recordFilters();
-        const filtersChanged = 
+        const filtersChanged =
           filters.chofer !== currentFilters.chofer ||
           filters.desde !== currentFilters.desde ||
           filters.hasta !== currentFilters.hasta ||
           filters.orden !== currentFilters.orden;
-        
+
         if (filtersChanged) {
           this.isRestoringFromQueryParams = true;
           this.recordFilters.set(filters);
-          
+
           // Restaurar página si existe en query params
           if (params['pagina']) {
             const pagina = parseInt(params['pagina'], 10);
@@ -1631,14 +1631,14 @@ export class BitacoraOperaciones implements OnInit {
             this.currentPage.set(1);
             this.lastPage = 1;
           }
-          
+
           setTimeout(() => {
             this.isRestoringFromQueryParams = false;
           }, 100);
         }
       });
   }
-  
+
   /**
    * Actualiza los query params de la URL para persistir los filtros
    */
@@ -1647,9 +1647,9 @@ export class BitacoraOperaciones implements OnInit {
     if (this.isRestoringFromQueryParams) {
       return;
     }
-    
+
     const queryParams: Record<string, string | null> = {};
-    
+
     if (filters.chofer) {
       queryParams['chofer'] = filters.chofer;
     }
@@ -1662,7 +1662,7 @@ export class BitacoraOperaciones implements OnInit {
     if (filters.orden) {
       queryParams['orden'] = filters.orden;
     }
-    
+
     // Agregar página actual (solo si es mayor a 1 para mantener URL limpia)
     if (this.currentPage() > 1) {
       queryParams['pagina'] = this.currentPage().toString();
@@ -1670,7 +1670,7 @@ export class BitacoraOperaciones implements OnInit {
       // Si volvemos a la página 1, eliminar el parámetro de página
       queryParams['pagina'] = null;
     }
-    
+
     // Actualizar URL sin recargar la página
     this.router.navigate([], {
       relativeTo: this.route,
@@ -1764,17 +1764,17 @@ export class BitacoraOperaciones implements OnInit {
       maximumFractionDigits: 0
     }).format(value).replace('CLP', 'CLP ');
   }
-  
+
   formatDateFull(date: string): string {
     const d = this.parseLocalDate(date);
     if (!d) return '';
-    return d.toLocaleDateString('es-CL', { 
+    return d.toLocaleDateString('es-CL', {
       weekday: 'short',
-      day: '2-digit', 
+      day: '2-digit',
       month: 'short'
     });
   }
-  
+
   private parseLocalDate(value: string): Date | null {
     if (!value) return null;
     const parts = value.split('-').map(Number);
@@ -1785,7 +1785,7 @@ export class BitacoraOperaciones implements OnInit {
     const parsed = new Date(value);
     return isNaN(parsed.getTime()) ? null : parsed;
   }
-  
+
   onViewRecordDetail(record: DailyRecordView): void {
     this.router.navigate(['/registro-diario', record.id]);
   }
@@ -1805,7 +1805,7 @@ export class BitacoraOperaciones implements OnInit {
 
     try {
       await firstValueFrom(this.dailyRecordService.deleteDailyRecord(record.id));
-      
+
       // Mostrar mensaje de éxito
       this.alertModalService.show({
         type: 'success',
@@ -1813,14 +1813,14 @@ export class BitacoraOperaciones implements OnInit {
         message: `El registro de ${record.driver} del ${record.date} ha sido eliminado correctamente.`,
         buttonText: 'Entendido'
       });
-      
+
       // Recargar la lista de registros
       this.loadRecords();
     } catch (error: any) {
       console.error('Error eliminando registro:', error);
-      
+
       const errorMessage = error?.error?.detail || error?.message || 'No se pudo eliminar el registro. Por favor, intenta nuevamente.';
-      
+
       this.alertModalService.show({
         type: 'error',
         title: 'Error al Eliminar',

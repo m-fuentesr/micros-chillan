@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy, input, computed, output } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, computed, output, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Alert } from '../../models/dashboard.models';
 import { getTodayInChile, getYesterdayInChile, getDateInChileTime, getDaysDifferenceInChile } from '../../utils/date.utils';
@@ -83,9 +83,12 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
             </div>
 
             @for (alert of group.alerts; track alert.id) {
-              <div class="group relative bg-white rounded-3xl border border-transparent hover:border-zinc-200 hover:shadow-sm transition-all duration-300 overflow-hidden">
+              <div 
+                class="group relative bg-white rounded-3xl border border-transparent hover:border-zinc-200 hover:shadow-sm transition-all duration-300 overflow-hidden cursor-pointer md:cursor-default"
+                (click)="toggleAlert(alert.id)">
                 <div
                   class="absolute left-0 top-0 bottom-0 w-1 rounded-r-full group-hover:w-1.5 transition-all duration-300"
+                  [class.w-1.5]="expandedAlertId() === alert.id"
                   [class.bg-red-500]="alert.severity === 'critical'"
                   [class.bg-amber-400]="alert.severity === 'warning'"
                   [class.bg-blue-400]="alert.severity === 'info'"
@@ -128,7 +131,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                           <span class="text-[10px] font-medium text-zinc-400 whitespace-nowrap bg-zinc-50 px-1.5 rounded">{{ formatRelativeTime(alert.date) }}</span>
                         }
                       </div>
-                      <p class="text-[11px] text-zinc-500 leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all">
+                      <p class="text-[11px] text-zinc-500 leading-relaxed line-clamp-2 group-hover:line-clamp-none transition-all"
+                         [class.line-clamp-none]="expandedAlertId() === alert.id">
                         @if (alert.machineId) {
                           <span class="font-semibold text-zinc-700">Máquina {{ alert.machineId }}</span>
                         }
@@ -148,7 +152,10 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
                     </div>
                   </div>
 
-                  <div class="grid grid-rows-[0fr] group-hover:grid-rows-[1fr] transition-[grid-template-rows] duration-300 ease-out">
+                  <div class="grid transition-[grid-template-rows] duration-300 ease-out"
+                       [class.grid-rows-[0fr]]="expandedAlertId() !== alert.id"
+                       [class.grid-rows-[1fr]]="expandedAlertId() === alert.id"
+                       [class.group-hover:grid-rows-[1fr]]="true">
                     <div class="overflow-hidden">
                       <div class="pt-3 pl-11 flex items-center gap-2">
                         <a
@@ -213,10 +220,21 @@ export class AlertList {
   alerts = input.required<Alert[]>();
   isExpanded = input(false);
   lastUpdated = new Date().toISOString();
-  
+
   // Outputs para eventos
   deleteAlert = output<string>();
   deleteAllAlerts = output<void>();
+
+  // Estado para controlar alerta expandida en móvil
+  expandedAlertId = signal<string | null>(null);
+
+  toggleAlert(alertId: string) {
+    if (this.expandedAlertId() === alertId) {
+      this.expandedAlertId.set(null);
+    } else {
+      this.expandedAlertId.set(alertId);
+    }
+  }
 
   // Filtrar alertas activas (no resueltas)
   activeAlerts = computed(() => {
@@ -253,12 +271,12 @@ export class AlertList {
     const sortedAlerts = [...this.activeAlerts()].sort((a, b) => {
       const aPriority = severityPriority[a.severity] ?? 99;
       const bPriority = severityPriority[b.severity] ?? 99;
-      
+
       // Si tienen diferente severidad, ordenar por prioridad
       if (aPriority !== bPriority) {
         return aPriority - bPriority;
       }
-      
+
       // Si tienen la misma severidad, ordenar por fecha (más recientes primero)
       const aTime = a.date ? new Date(a.date).getTime() : 0;
       const bTime = b.date ? new Date(b.date).getTime() : 0;
@@ -279,7 +297,7 @@ export class AlertList {
 
       // Convertir fecha de alerta a zona horaria de Chile para comparación
       const alertDateChile = getDateInChileTime(alert.date);
-      
+
       // Comparar solo la parte de la fecha (sin hora)
       if (alertDateChile.getTime() === startOfToday.getTime()) {
         today.push(alert);
@@ -306,15 +324,15 @@ export class AlertList {
         'info': 2,
         'success': 3
       };
-      
+
       return [...alerts].sort((a, b) => {
         const aPriority = severityPriority[a.severity] ?? 99;
         const bPriority = severityPriority[b.severity] ?? 99;
-        
+
         if (aPriority !== bPriority) {
           return aPriority - bPriority;
         }
-        
+
         const aTime = a.date ? new Date(a.date).getTime() : 0;
         const bTime = b.date ? new Date(b.date).getTime() : 0;
         return bTime - aTime;
@@ -357,7 +375,7 @@ export class AlertList {
       if (!date) {
         return '';
       }
-      
+
       // Parsear la fecha preservando la hora
       let alertDate: Date;
       let dateStr = date.trim();
@@ -366,20 +384,20 @@ export class AlertList {
         dateStr = dateStr + 'Z';
       }
       alertDate = new Date(dateStr);
-      
+
       if (isNaN(alertDate.getTime())) {
         return '';
       }
-      
+
       // Obtener la fecha/hora actual
       const now = new Date();
-      
+
       // Calcular diferencia en milisegundos directamente
       // (ambas fechas están en UTC internamente, la diferencia es correcta)
       const diffMs = now.getTime() - alertDate.getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
-      
+
       // Para días, usar la función que compara solo fechas (sin horas)
       const diffDays = getDaysDifferenceInChile(date);
 

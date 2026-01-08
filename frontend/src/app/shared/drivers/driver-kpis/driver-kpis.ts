@@ -1,11 +1,11 @@
 import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { DriverKPIs as DriverKPIsType } from '../../models/driver.models';
 import { KpiCard } from '../../components/kpi-card/kpi-card';
-import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
+
 
 @Component({
   selector: 'app-driver-kpis',
-  imports: [KpiCard, UiIconComponent],
+  imports: [KpiCard],
   template: `
     <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
       <!-- Card 1: Choferes Activos -->
@@ -16,8 +16,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         type="success"
         [badgeText]="kpis().activos > 0 ? 'Habilitados' : ''"
         [responsive]="true"
-        [animationDelay]="0">
-        <span icon><ui-icon name="CheckCircle2" size="md" /></span>
+        [animationDelay]="0"
+        iconName="CheckCircle2">
       </app-kpi-card>
 
       <!-- Card 2: Choferes Inactivos -->
@@ -29,8 +29,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         [badgeText]="kpis().inactivos > 0 ? 'Desvinculados' : ''"
         [successText]="kpis().inactivos === 0 ? 'Todo activo' : ''"
         [responsive]="true"
-        [animationDelay]="1">
-        <span icon><ui-icon name="Ban" size="md" /></span>
+        [animationDelay]="1"
+        iconName="Ban">
       </app-kpi-card>
 
       <!-- Card 3: Máquinas Asignadas -->
@@ -41,8 +41,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         type="info"
         [badgeText]="kpis().con_maquina > 0 ? 'Con unidad a cargo' : ''"
         [responsive]="true"
-        [animationDelay]="2">
-        <span icon><ui-icon name="BusFront" size="md" /></span>
+        [animationDelay]="2"
+        iconName="BusFront">
       </app-kpi-card>
 
       <!-- Card 4: Licencias por Vencer -->
@@ -54,8 +54,8 @@ import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
         [badgeText]="kpis().licencias_por_vencer > 0 ? 'Renovar ahora' : ''"
         [successText]="kpis().licencias_por_vencer === 0 ? 'Todo al día' : ''"
         [responsive]="true"
-        [animationDelay]="3">
-        <span icon><ui-icon name="TriangleAlert" size="md" /></span>
+        [animationDelay]="3"
+        iconName="TriangleAlert">
       </app-kpi-card>
     </div>
   `,
