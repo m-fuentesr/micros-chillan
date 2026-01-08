@@ -48,14 +48,21 @@ def download_apk():
         r = requests.get(signed_url, stream=True, timeout=60)
         r.raise_for_status()
 
+        content_length = r.headers.get("Content-Length")
+
+        headers = {
+            "Content-Disposition": 'attachment; filename="GestorDeFlotas.apk"',
+            "Cache-Control": "no-store",
+        }
+
+        if content_length:
+            headers["Content-Length"] = content_length
+
         # 4. Enviar el APK al cliente
         return StreamingResponse(
             r.iter_content(chunk_size=1024 * 1024),
             media_type="application/vnd.android.package-archive",
-            headers={
-                "Content-Disposition": 'attachment; filename="GestorDeFlotas.apk"',
-                "Cache-Control": "no-store",
-            }
+            headers=headers
         )
 
     except HTTPException:
