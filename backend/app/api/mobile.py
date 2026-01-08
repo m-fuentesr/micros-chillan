@@ -260,10 +260,21 @@ def download_page():
             </p>
 
             <div class="info">
-                <strong>Qué pasará ahora</strong><br><br>
-                1. El teléfono descargará la aplicación.<br>
-                2. Aparecerá un mensaje que dice <strong>“Archivo descargado”</strong>.<br>
-                3. Toca <strong>“Abrir”</strong> para instalarla.
+                <strong>Cómo instalar la aplicación</strong><br><br>
+
+                <strong>Paso 1.</strong><br>
+                El teléfono descargará la aplicación.
+                Cuando aparezca el mensaje <strong>“Archivo descargado”</strong>,
+                toca <strong>“Abrir”</strong>.<br><br>
+
+                <strong>Paso 2.</strong><br>
+                Aparecerá una pantalla que dice
+                <strong>“¿Deseas instalar esta app?”</strong>.
+                Toca <strong>“Instalar”</strong>.<br><br>
+
+                <strong>Paso 3.</strong><br>
+                Si el teléfono muestra un aviso de seguridad de Google,
+                toca <strong>“Analizar app”</strong> y luego <strong>“Instalar”</strong>.
             </div>
 
             <a class="cta" href="/api/mobile/apk">
