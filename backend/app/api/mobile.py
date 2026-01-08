@@ -256,21 +256,22 @@ def download_page():
         <div class="content">
             <h1>Descargar aplicación</h1>
             <p>
-                Para instalar la aplicación en tu teléfono, toca el botón.
-                El archivo se abrirá en tu navegador.
+                Toca el botón para descargar la aplicación en tu teléfono.
             </p>
 
             <div class="info">
-                <strong>Importante:</strong><br>
-                Si tu teléfono pregunta con qué app abrir, elige <strong>Chrome</strong>.
+                <strong>Qué pasará ahora</strong><br><br>
+                1. El teléfono descargará la aplicación.<br>
+                2. Aparecerá un mensaje que dice <strong>“Archivo descargado”</strong>.<br>
+                3. Toca <strong>“Abrir”</strong> para instalarla.
             </div>
 
             <a class="cta" href="/api/mobile/apk">
-                Descargar APK
+                Descargar aplicación
             </a>
 
             <p class="note">
-                Si la descarga no comienza automáticamente, asegúrate de permitir descargas en tu navegador.
+                Cuando la instalación termine, podrás usar la app normalmente.
             </p>
         </div>
 
