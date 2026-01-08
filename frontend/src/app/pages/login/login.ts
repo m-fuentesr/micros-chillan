@@ -17,7 +17,7 @@ import { SpinnerService } from '../../shared/services/spinner.service';
       [class.ripple-active]="expanding()"
       [class.login-root-fade-out]="expanding()"
     >
-      @if (!expanding() && !auth.isInitializing()) {
+      @if (!expanding() && !auth.isInitializing() && !shouldAutoRedirect()) {
       <!-- Header móvil -->
       <div
         class="lg:hidden absolute top-0 left-0 w-full h-60 bg-primary rounded-b-[3rem] overflow-hidden z-0"
@@ -1600,6 +1600,30 @@ export class Login {
 
   // Getter para mostrar el panel (para usar en el template)
   showLoginPanel = computed(() => this._showLoginPanel());
+
+  // Computed para detectar si debemos auto-redirigir (para evitar flash del header)
+  shouldAutoRedirect = computed(() => {
+    const user = this.auth.currentUser();
+    // Si no hay usuario, no hay auto-redirect
+    if (!user) {
+      return false;
+    }
+    // Si estamos inicializando, el auto-redirect está pendiente
+    if (this.auth.isInitializing()) {
+      return false; // El template ya tiene !isInitializing(), así que esto es redundante pero claro
+    }
+    // Si estamos cargando (login manual), no es auto-redirect
+    if (this.loading()) {
+      return false;
+    }
+    // Si estamos en leaving o expanding, no mostrar header de todas formas
+    if (this.leaving() || this.expanding()) {
+      return false;
+    }
+    // Si estamos en la página de login y hay usuario, significa que auto-redirect está por ocurrir
+    const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
+    return this.router.url !== target && this.router.url.startsWith('/login');
+  });
 
   shouldShowPasswordError() {
     const control = this.loginForm.get('password');
