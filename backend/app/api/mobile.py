@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response
 from app.db.supabase_client import supabase
 import json
 import requests
@@ -28,9 +28,7 @@ def download_apk():
             )
 
         data = json.loads(res.decode("utf-8"))
-
         apk_path = data.get("apkPath")
-
         if not apk_path:
             raise HTTPException(status_code=500, detail="version.json no contiene apkPath")
         
@@ -39,30 +37,22 @@ def download_apk():
             apk_path,
             SIGNED_URL_TTL
         )
-
         signed_url = signed.get("signedURL") or signed.get("signed_url")
         if not signed_url:
             raise HTTPException(status_code=500, detail="No se pudo generar la URL firmada")
 
-        # 3. Descargar el APK desde Supabase (streaming)
-        r = requests.get(signed_url, stream=True, timeout=60)
+        # 3. Descargar el APK desde Supabase
+        r = requests.get(signed_url, timeout=120)
         r.raise_for_status()
 
-        content_length = r.headers.get("Content-Length")
-
-        headers = {
-            "Content-Disposition": 'attachment; filename="GestorDeFlotas.apk"',
-            "Cache-Control": "no-store",
-        }
-
-        if content_length:
-            headers["Content-Length"] = content_length
-
-        # 4. Enviar el APK al cliente
-        return StreamingResponse(
-            r.iter_content(chunk_size=1024 * 1024),
+        return Response(
+            content=r.content,
             media_type="application/vnd.android.package-archive",
-            headers=headers
+            headers={
+                "Content-Disposition": 'attachment; filename="GestorDeFlotas.apk"',
+                "Content-Length": str(len(r.content)),
+                "Cache-Control": "no-store",
+            },
         )
 
     except HTTPException:
