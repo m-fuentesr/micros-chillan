@@ -1,30 +1,44 @@
 import { Capacitor } from '@capacitor/core';
 import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Share } from '@capacitor/share';
+import { FileOpener } from '@capacitor-community/file-opener';
 
 /**
  * Descarga un Blob como archivo.
  * En Web: usa un elemento <a> invisible.
- * En Móvil (Capacitor): Guarda en Cache y comparte el archivo (Share Sheet).
+ * En Móvil (Capacitor): Guarda en Cache y abre el archivo directamente.
  */
 export async function downloadBlob(blob: Blob, filename: string): Promise<void> {
     if (Capacitor.isNativePlatform()) {
         try {
             const base64Data = await blobToBase64(blob);
 
-            // Guardar en el directorio Cache (no requiere permisos especiales en Android 10+)
+            // Guardar en el directorio Cache
             const savedFile = await Filesystem.writeFile({
                 path: filename,
                 data: base64Data,
                 directory: Directory.Cache
             });
 
-            // Abrir el diálogo de compartir
-            await Share.share({
-                title: filename,
-                url: savedFile.uri,
-                dialogTitle: 'Descargar archivo'
-            });
+            // Intentar abrir el archivo directamente
+            try {
+                // Obtener el tipo MIME del blob
+                const mimeType = blob.type;
+
+                await FileOpener.open({
+                    filePath: savedFile.uri,
+                    contentType: mimeType || 'application/pdf' // Fallback común si no hay mime
+                });
+            } catch (openError) {
+                console.warn('Error al abrir archivo directamente, intentando compartir:', openError);
+
+                // Fallback: Si falla abrir (ej. no hay app), usar Share
+                await Share.share({
+                    title: filename,
+                    url: savedFile.uri,
+                    dialogTitle: 'Descargar archivo'
+                });
+            }
         } catch (error) {
             console.error('Error en descarga nativa:', error);
             throw error;
