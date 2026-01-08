@@ -111,128 +111,118 @@ def download_page():
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Descargar Gestor de Flotas</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Descargar aplicación – Gestor de Flotas</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&display=swap" rel="stylesheet">
 
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
         body {
-            font-family: 'Barlow', -apple-system, BlinkMacSystemFont, sans-serif;
+            font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background-color: #f3f4f6;
             color: #1e293b;
             line-height: 1.6;
-            -webkit-font-smoothing: antialiased;
         }
 
         .page {
             max-width: 600px;
             margin: 0 auto;
-            background: #ffffff;
+            background-color: #ffffff;
             min-height: 100vh;
         }
 
         .header {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            padding: 40px 30px;
+            padding: 20px 16px;
             text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .header::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background-image:
-                linear-gradient(to right, rgba(255,255,255,.05) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255,255,255,.05) 1px, transparent 1px);
-            background-size: 40px 40px;
-            opacity: .5;
         }
 
         .logo {
-            position: relative;
-            z-index: 1;
-            width: 56px;
-            height: 56px;
-            line-height: 56px;
-            margin: 0 auto 12px;
-            background: #ffffff;
-            color: #3b82f6;
-            border-radius: 12px;
-            font-size: 28px;
+            width: 44px;
+            height: 44px;
+            line-height: 44px;
+            background-color: #ffffff;
+            color: #2563eb;
+            border-radius: 10px;
             font-weight: 800;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,.15);
+            font-size: 22px;
+            margin: 0 auto 6px;
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
         }
 
         .company {
-            position: relative;
-            z-index: 1;
-            color: #ffffff;
+            font-size: 14px;
             font-weight: 800;
             letter-spacing: 1px;
-            text-transform: uppercase;
-            font-size: 17px;
+            color: #ffffff;
         }
 
         .content {
-            padding: 40px 30px;
-            text-align: center;
+            padding: 24px 20px 32px;
         }
 
         h1 {
-            font-size: 28px;
+            font-size: 26px;
             font-weight: 800;
+            text-align: center;
             margin-bottom: 16px;
         }
 
-        p {
-            color: #64748b;
-            margin-bottom: 24px;
+        .intro {
+            text-align: center;
             font-size: 16px;
+            color: #475569;
+            margin-bottom: 20px;
+        }
+
+        .cta-button {
+            display: block;
+            width: 100%;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: #ffffff;
+            text-decoration: none;
+            text-align: center;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 700;
+            box-shadow: 0 10px 25px rgba(59,130,246,0.35);
+            margin-bottom: 10px;
+        }
+
+        .helper {
+            text-align: center;
+            font-size: 14px;
+            color: #64748b;
+            margin-bottom: 28px;
         }
 
         .info {
-            background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+            background: #eff6ff;
             border-left: 4px solid #3b82f6;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: left;
-            margin-bottom: 30px;
+            border-radius: 10px;
+            padding: 18px 16px;
+            font-size: 15px;
         }
 
         .info strong {
-            color: #1e3a8a;
-        }
-
-        .cta {
-            display: block;
-            width: 100%;
-            padding: 16px;
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            color: #ffffff;
-            font-weight: 700;
-            font-size: 16px;
-            text-decoration: none;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(59,130,246,.35);
-        }
-
-        .cta:active {
-            transform: scale(.98);
+            color: #1e40af;
         }
 
         .note {
-            margin-top: 20px;
+            margin-top: 18px;
             font-size: 14px;
-            color: #64748b;
+            color: #475569;
+            text-align: center;
         }
 
         .footer {
@@ -243,43 +233,50 @@ def download_page():
             font-size: 13px;
             color: #64748b;
         }
+
+        @media (min-width: 600px) {
+            .cta-button {
+                font-size: 16px;
+            }
+        }
     </style>
 </head>
-
 <body>
     <div class="page">
+
         <div class="header">
             <div class="logo">GF</div>
-            <div class="company">Gestor de Flotas</div>
+            <div class="company">GESTOR DE FLOTAS</div>
         </div>
 
         <div class="content">
-            <h1>Descargar aplicación</h1>
-            <p>
+            <h1>Aplicación Gestor de Flotas</h1>
+
+            <p class="intro">
                 Toca el botón para descargar la aplicación en tu teléfono.
             </p>
 
-            <div class="info">
-                <strong>Cómo instalar la aplicación</strong><br><br>
-
-                <strong>Paso 1.</strong><br>
-                El teléfono descargará la aplicación.
-                Cuando aparezca el mensaje <strong>“Archivo descargado”</strong>,
-                toca <strong>“Abrir”</strong>.<br><br>
-
-                <strong>Paso 2.</strong><br>
-                Aparecerá una pantalla que dice
-                <strong>“¿Deseas instalar esta app?”</strong>.
-                Toca <strong>“Instalar”</strong>.<br><br>
-
-                <strong>Paso 3.</strong><br>
-                Si el teléfono muestra un aviso de seguridad de Google,
-                toca <strong>“Analizar app”</strong> y luego <strong>“Instalar”</strong>.
-            </div>
-
-            <a class="cta" href="/api/mobile/apk">
-                Descargar aplicación
+            <a href="/api/mobile/apk" class="cta-button">
+                Descargar
             </a>
+
+            <p class="helper">
+                Durante la instalación, el teléfono mostrará algunos mensajes.
+                Sigue los pasos que verás más abajo.
+            </p>
+
+            <div class="info">
+                <strong>Cómo instalar la aplicación:</strong><br><br>
+                1. Cuando aparezca el mensaje <strong>“Archivo descargado”</strong>,
+                toca <strong>“Abrir”</strong>.<br><br>
+                2. Aparecerá una pantalla que dice
+                <strong>“¿Deseas instalar esta app?”</strong>.
+                Toca <strong>“Instalar”</strong>.<br><br> 
+                3. Si el teléfono muestra un aviso de seguridad de Google,
+                toca <strong>“Analizar app”</strong>.
+                Cuando aparezca <strong>“Esta app parece segura”</strong>,
+                toca <strong>“Instalar”</strong>.
+            </div>
 
             <p class="note">
                 Cuando la instalación termine, podrás usar la app normalmente.
