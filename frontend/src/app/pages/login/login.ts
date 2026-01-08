@@ -95,9 +95,9 @@ import { SpinnerService } from '../../shared/services/spinner.service';
                 <span>Operativo</span>
               </span>
             </p>
-            <p>Soporte TI: techsolutions@soporte.cl</p>
+
           </div>
-          <p>© 2025 Empresa de Transportes</p>
+          <p>© 2026 Empresa de Transportes</p>
         </div>
       </div>
 
@@ -1558,17 +1558,17 @@ export class Login {
     effect(() => {
       const spinnerVisible = this.spinnerService.isVisible();
       const url = this.router.url;
-      
+
       // Si el spinner está visible y estamos en login, es una transición de logout
       if (spinnerVisible && url?.startsWith('/login')) {
         // Ocultar panel azul
         this._showLoginPanel.set(false);
-        
+
         // Limpiar timeout anterior si existe
         if (this.logoutTransitionTimeout) {
           clearTimeout(this.logoutTransitionTimeout);
         }
-        
+
         // Mostrar panel azul después de que el spinner se oculte
         // Usar un pequeño delay para que la transición sea suave
         this.logoutTransitionTimeout = setTimeout(() => {
@@ -1583,14 +1583,14 @@ export class Login {
       }
     });
   }
-  
+
   // Computed para detectar si estamos en transición de logout
   isLogoutTransition = computed(() => {
     const spinnerVisible = this.spinnerService.isVisible();
     const url = this.router.url;
     return spinnerVisible && url?.startsWith('/login') && !this._showLoginPanel();
   });
-  
+
   // Getter para mostrar el panel (para usar en el template)
   showLoginPanel = computed(() => this._showLoginPanel());
 
@@ -1651,66 +1651,66 @@ export class Login {
       const user = this.auth.currentUser();
       if (user) {
         this.loginSuccess.set(true);
-      this.error.set(null);
-        
+        this.error.set(null);
+
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
-        
+
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
         const isWorker = user.role === 'worker';
-        
+
         if (isWorker) {
           // Transición simple para trabajador: solo fade-out elegante
           this.leaving.set(true);
-          
+
           // Activar overlay neutro sutil
           this.transitionService.startTransition('worker');
-          
+
           // Esperar a que el fade-out termine (500ms)
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // Navegar después del fade-out
           await this.router.navigate([target]);
-          
+
           // Esperar a que el trabajador se cargue antes de ocultar el overlay
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
         } else {
           // REDISEÑO: Usar orchestrator para transición coordinada admin
           // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
           this.spinnerService.show();
-          
+
           // Fase 2: Iniciar salida del login
           this.leaving.set(true);
-          
+
           // IMPORTANTE: Activar orchestrator ANTES de navegar para que el dashboard se renderice oculto
           // Esto evita que el main aparezca visible antes de la animación
           // El orchestrator se ejecutará en background
           this.orchestrator.transitionFromLoginToDashboard();
-          
+
           await new Promise(resolve => setTimeout(resolve, 650));
-          
+
           // Fase 3: Activar expansión y overlay
           this.expanding.set(true);
           this.transitionService.startTransition('admin');
           await new Promise(resolve => setTimeout(resolve, 50));
-          
+
           // Fase 4: Navegar DESPUÉS de activar el orchestrator
           // El orchestrator ya está en 'login-exiting', así que el dashboard se renderizará oculto
           await this.router.navigate([target]);
-          
+
           // Fase 5: El orchestrator ya está corriendo en background
           // No necesitamos esperarlo aquí, ya se activó arriba
           // Solo esperamos a que termine la transición completa
           const totalTime = this.orchestrator.TIMELINE.loginTotalExit + this.orchestrator.TIMELINE.dashboardTotalEntry;
           await new Promise(resolve => setTimeout(resolve, totalTime));
-          
+
           // Fase 6: Ocultar overlay y spinner después de que el dashboard esté listo
           this.transitionService.endTransition();
           this.spinnerService.hide();
-          
+
           // Resetear estado de expansión
           setTimeout(() => {
             this.expanding.set(false);
@@ -1720,9 +1720,9 @@ export class Login {
     } catch (err: any) {
       // Verificar si el error es de sincronización (puede resolverse con retry)
       // Si el mensaje indica un error de validación de sesión, esperar más tiempo
-      const isSyncError = err?.message?.includes('validar la sesión') || 
-                         err?.message?.includes('No se pudo obtener la información del usuario');
-      
+      const isSyncError = err?.message?.includes('validar la sesión') ||
+        err?.message?.includes('No se pudo obtener la información del usuario');
+
       // Si es un error de sincronización, esperar más tiempo para dar oportunidad a los retries
       // syncDomainUser puede hacer múltiples retries:
       // - Primer retry después de 400ms (si es login manual)
@@ -1731,7 +1731,7 @@ export class Login {
       // Total puede ser más de 1500ms, así que esperamos 2000ms para estar seguros
       const waitTime = isSyncError ? 2000 : 1200;
       await new Promise(resolve => setTimeout(resolve, waitTime));
-      
+
       // IMPORTANTE: Verificar PRIMERO si el usuario está autenticado después de los retries
       // ANTES de mostrar cualquier error. Si el usuario existe, el login fue exitoso.
       const user = this.auth.currentUser();
@@ -1740,65 +1740,65 @@ export class Login {
         // NO mostrar error, continuar con el flujo de éxito
         this.error.set(null);
         this.loginSuccess.set(true);
-        
+
         // Esperar un momento para mostrar el check (micro-éxito)
         await new Promise(resolve => setTimeout(resolve, 1200));
-        
+
         const target = user.role === 'admin' ? '/dashboard' : '/trabajador';
         const isWorker = user.role === 'worker';
-        
+
         if (isWorker) {
           // Transición simple para trabajador: solo fade-out elegante
           this.leaving.set(true);
-          
+
           // Activar overlay neutro sutil
           this.transitionService.startTransition('worker');
-          
+
           // Esperar a que el fade-out termine (500ms)
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // Navegar después del fade-out
           await this.router.navigate([target]);
-          
+
           // Esperar a que el trabajador se cargue antes de ocultar el overlay
           await new Promise(resolve => setTimeout(resolve, 200));
-          
+
           // Ocultar el overlay de transición
           this.transitionService.endTransition();
         } else {
           // REDISEÑO: Usar orchestrator para transición coordinada admin
           // Fase 1: Mostrar spinner INMEDIATAMENTE después del login exitoso
           this.spinnerService.show();
-          
+
           // Fase 2: Iniciar salida del login
           this.leaving.set(true);
-          
+
           // IMPORTANTE: Activar orchestrator ANTES de navegar para que el dashboard se renderice oculto
           // Esto evita que el main aparezca visible antes de la animación
           // El orchestrator se ejecutará en background
           this.orchestrator.transitionFromLoginToDashboard();
-          
+
           await new Promise(resolve => setTimeout(resolve, 650));
-          
+
           // Fase 3: Activar expansión y overlay
           this.expanding.set(true);
           this.transitionService.startTransition('admin');
           await new Promise(resolve => setTimeout(resolve, 50));
-          
+
           // Fase 4: Navegar DESPUÉS de activar el orchestrator
           // El orchestrator ya está en 'login-exiting', así que el dashboard se renderizará oculto
           await this.router.navigate([target]);
-          
+
           // Fase 5: El orchestrator ya está corriendo en background
           // No necesitamos esperarlo aquí, ya se activó arriba
           // Solo esperamos a que termine la transición completa
           const totalTime = this.orchestrator.TIMELINE.loginTotalExit + this.orchestrator.TIMELINE.dashboardTotalEntry;
           await new Promise(resolve => setTimeout(resolve, totalTime));
-          
+
           // Fase 6: Ocultar overlay y spinner después de que el dashboard esté listo
           this.transitionService.endTransition();
           this.spinnerService.hide();
-          
+
           // Resetear estado de expansión
           setTimeout(() => {
             this.expanding.set(false);
@@ -1806,42 +1806,42 @@ export class Login {
         }
         return; // Salir temprano si el login fue exitoso después del retry
       }
-      
+
       // Solo si NO hay usuario después del retry, mostrar el error
       // Analizar el tipo de error para mostrar mensajes específicos
       const errorMessage = err?.message || '';
       let userFriendlyMessage = '';
-      
+
       switch (errorMessage) {
         case 'EMAIL_NOT_FOUND':
           userFriendlyMessage = 'El correo electrónico no está registrado.\nVerifica que esté escrito correctamente.';
           // Resaltar el campo de email
           this.loginForm.get('email')?.setErrors({ notFound: true });
           break;
-          
+
         case 'INVALID_PASSWORD':
           userFriendlyMessage = 'La contraseña es incorrecta.\nVerifica tu contraseña o usa "¿Olvidaste tu clave?" para restablecerla.';
           // Resaltar el campo de contraseña
           this.loginForm.get('password')?.setErrors({ incorrect: true });
           this.passwordErrorShown.set(true);
           break;
-          
+
         case 'EMAIL_NOT_CONFIRMED':
           userFriendlyMessage = 'Tu correo electrónico no ha sido confirmado.\nRevisa tu bandeja de entrada para el enlace de confirmación.';
           break;
-          
+
         case 'TOO_MANY_ATTEMPTS':
           userFriendlyMessage = 'Demasiados intentos fallidos.\nPor favor, espera unos minutos antes de intentar nuevamente.';
           break;
-          
+
         case 'USER_DISABLED':
           userFriendlyMessage = 'Tu cuenta ha sido deshabilitada.\nContacta a RRHH para más información.';
           break;
-          
+
         case 'NETWORK_ERROR':
           userFriendlyMessage = 'Error de conexión.\nVerifica tu conexión a internet e inténtalo nuevamente.';
           break;
-          
+
         case 'INVALID_CREDENTIALS':
         default:
           // Mensaje más amigable y accionable sin comprometer seguridad
@@ -1852,7 +1852,7 @@ export class Login {
           this.passwordErrorShown.set(true);
           break;
       }
-      
+
       this.error.set(userFriendlyMessage);
       // Activar animación de shake
       this.shakeError.set(true);

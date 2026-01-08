@@ -1,7 +1,7 @@
 import { inject, Injectable, signal, computed } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, of, EMPTY, throwError, firstValueFrom } from 'rxjs';
-import { catchError, map } from 'rxjs/operators';
+import { Observable, Subscription, of, EMPTY, throwError, firstValueFrom, Subject } from 'rxjs';
+import { catchError, map, debounceTime } from 'rxjs/operators';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Alert, DailyRecord, FinancialSummary, DashboardResponse } from '../models/dashboard.models';
 import { DailyRecordService } from './daily-record.service';
@@ -250,6 +250,18 @@ export class DashboardService {
    * Conecta a Supabase Realtime para recibir notificaciones de actualización
    * Implementa el patrón "Signal-Triggered Refetch" usando postgres_changes."
    */
+  // Subject para manejar actualizaciones con debounce
+  private realtimeUpdateSubject = new Subject<void>();
+  private realtimeSubscription: Subscription | null = null;
+
+  constructor() {
+    // Constructor vacío, la inicialización se hace en connectToUpdates
+  }
+
+  /**
+   * Conecta a Supabase Realtime para recibir notificaciones de actualización
+   * Implementa el patrón "Signal-Triggered Refetch" usando postgres_changes."
+   */
   connectToUpdates(): void {
     const user = this.authService.currentUser();
 
@@ -259,7 +271,18 @@ export class DashboardService {
       this._connectionError.set('Solo administradores pueden recibir actualizaciones en tiempo real');
       return;
     }
-    
+
+    // Asegurar que el pipeline de debounce esté activo
+    if (!this.realtimeSubscription) {
+      this.realtimeSubscription = this.realtimeUpdateSubject.pipe(
+        debounceTime(500)
+      ).subscribe(() => {
+        console.log('🔄 Recargando dashboard tras actualizaciones batch...');
+        this.fetchOverview();
+        this.fetchDailyRecords();
+      });
+    }
+
     // Evitar suscripciones duplicadas, pero siempre recargar datos al entrar
     if (this.realtimeChannel) {
       console.log('Suscripción Realtime ya está activa, recargando datos...');
@@ -277,20 +300,16 @@ export class DashboardService {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'registros_diarios' },
         (payload) => {
-          console.log('📦 Cambio en registros_diarios:', payload);
-
-          this.fetchOverview();
-          this.fetchDailyRecords();
+          console.log('📦 Cambio en registros_diarios (encolado):', payload.eventType);
+          this.realtimeUpdateSubject.next();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'alertas' },
         (payload) => {
-          console.log('🚨 Cambio en alertas:', payload);
-
-          // Refrescar overview que incluye los KPIs de alertas
-          this.fetchOverview();
+          console.log('🚨 Cambio en alertas (encolado):', payload.eventType);
+          this.realtimeUpdateSubject.next();
         }
       )
       .subscribe((status) => {
@@ -326,6 +345,11 @@ export class DashboardService {
         console.warn('Error al cerrar Realtime:', error);
       });
       this.realtimeChannel = null;
+    }
+
+    if (this.realtimeSubscription) {
+      this.realtimeSubscription.unsubscribe();
+      this.realtimeSubscription = null;
     }
 
     this._isConnected.set(false);

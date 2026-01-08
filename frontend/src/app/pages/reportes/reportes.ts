@@ -111,35 +111,43 @@ interface DriverProfit {
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (profitLoadingState.isLoading() && !profitSequentialState.canShowKPIs()) {
-                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
-                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
-                    <!-- Background blur effect skeleton -->
+                  <!-- 🎭 GhostWire Skeleton: KpiCard Responsive (Profit) -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-3 w-full lg:w-56 animate-skeleton-fade-in min-h-[96px]">
+                    <!-- Blur effect from Fleet -->
                     <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
                     
-                    <!-- Header: Icon + Title (gap-2 para compact) -->
                     <div class="relative flex items-center gap-2">
-                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
-                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                       <!-- Icono Wallet (grande) -->
+                      <div class="skeleton-shimmer h-6 w-6 rounded-xl shrink-0 ring-1 ring-base-200"></div>
                       <div class="flex-1 min-w-0">
-                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "GANANCIA NETA TOTAL" -->
-                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
-                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Rentabilidad neta" -->
-                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                         <!-- "Ganancia Neta Total" (largo) -->
+                        <div class="skeleton-shimmer h-2.5 w-32 rounded"></div>
+                         <!-- "Rentabilidad neta" -->
+                        <div class="skeleton-shimmer h-2 w-24 rounded mt-1.5"></div>
                       </div>
                     </div>
                     
-                    <!-- Body: Value -->
-                    <div class="relative flex flex-col">
-                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
-                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
-                      
-                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
-                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
-                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Resultado final" -->
-                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                    <div class="relative flex flex-col mt-auto pl-1">
+                      <div class="skeleton-shimmer h-4 w-20 rounded leading-tight"></div>
+                      <div class="mt-1.5 flex items-center">
+                         <!-- "Resultado final" badge -->
+                        <div class="skeleton-shimmer h-2.5 w-24 rounded-full"></div>
                       </div>
                     </div>
                   </div>
+
+                  <!-- 2. Filters & Export Skeleton -->
+                  <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center animate-skeleton-fade-in">
+                    <!-- Filters Skeleton -->
+                    <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
+                      <div class="w-full lg:w-32 h-[34px] skeleton-shimmer rounded-lg"></div>
+                      <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
+                      <div class="w-full lg:w-24 h-[34px] skeleton-shimmer rounded-lg"></div>
+                    </div>
+                    <!-- Export Button Skeleton -->
+                    <div class="w-full lg:w-[105px] h-8 skeleton-shimmer rounded-lg"></div>
+                  </div>
+
                 } @else {
                   <app-kpi-card
                     title="Ganancia Neta Total"
@@ -155,56 +163,59 @@ interface DriverProfit {
                     [style.transform]="profitSequentialState.canShowKPIs() ? 'translateY(0)' : 'translateY(12px)'"
                     iconName="Wallet">
                   </app-kpi-card>
-                }
-                <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center">
-                  <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
-                    <div class="relative w-full">
-                      <select 
-                        class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
-                        [value]="selectedMonth()" 
-                        (change)="onMonthChange($event)">
-                        @for (month of months(); track month.value) {
-                          <option [value]="month.value" [selected]="month.value === selectedMonth()" [disabled]="month.disabled">{{ month.label }}</option>
-                        }
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                        <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
-                        </svg>
+
+                  <div class="flex flex-col gap-3 w-full lg:w-auto lg:flex-row lg:items-center"
+                       [class.animate-fade-in]="profitSequentialState.canShowKPIs()"
+                       [style.opacity]="profitSequentialState.canShowKPIs() ? '1' : '0'">
+                    <div class="grid grid-cols-[2fr_1fr] lg:flex lg:items-center gap-2 w-full bg-white p-1.5 rounded-3xl border border-base-200 shadow-sm">
+                      <div class="relative w-full">
+                        <select 
+                          class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none truncate" 
+                          [value]="selectedMonth()" 
+                          (change)="onMonthChange($event)">
+                          @for (month of months(); track month.value) {
+                            <option [value]="month.value" [selected]="month.value === selectedMonth()" [disabled]="month.disabled">{{ month.label }}</option>
+                          }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                          <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                          </svg>
+                        </div>
+                      </div>
+
+                      <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
+
+                      <div class="relative w-full">
+                        <select 
+                          class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
+                          [value]="selectedYear()" 
+                          (change)="onYearChange($event)">
+                          @for (year of years(); track year.value) {
+                            <option [value]="year.value" [selected]="year.value === selectedYear()" [disabled]="year.disabled">{{ year.value }}</option>
+                          }
+                        </select>
+                        <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
+                          <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
+                            <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                          </svg>
+                        </div>
                       </div>
                     </div>
-
-                    <div class="w-px h-4 bg-base-200 hidden lg:block"></div>
-
-                    <div class="relative w-full">
-                      <select 
-                        class="appearance-none w-full bg-transparent pl-3 pr-8 py-1.5 text-sm font-bold text-base-content hover:bg-base-50 rounded-lg cursor-pointer focus:outline-none" 
-                        [value]="selectedYear()" 
-                        (change)="onYearChange($event)">
-                        @for (year of years(); track year.value) {
-                          <option [value]="year.value" [selected]="year.value === selectedYear()" [disabled]="year.disabled">{{ year.value }}</option>
-                        }
-                      </select>
-                      <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-base-content/50">
-                        <svg class="h-3 w-3 fill-current" viewBox="0 0 20 20">
-                          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+                    <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto" 
+                            (click)="exportProfitabilityReport()" 
+                            [disabled]="isExportingProfit()">
+                      @if (isExportingProfit()) {
+                        <span class="loading loading-spinner loading-xs"></span>
+                      } @else {
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                         </svg>
-                      </div>
-                    </div>
+                      }
+                      Exportar
+                    </button>
                   </div>
-                  <button class="btn btn-primary btn-sm gap-2 w-full lg:w-auto" 
-                          (click)="exportProfitabilityReport()" 
-                          [disabled]="isExportingProfit()">
-                    @if (isExportingProfit()) {
-                      <span class="loading loading-spinner loading-xs"></span>
-                    } @else {
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                      </svg>
-                    }
-                    Exportar
-                  </button>
-                </div>
+                }
               </div>
 
               <!-- Gráfico -->
@@ -311,15 +322,57 @@ interface DriverProfit {
               <div class="hidden lg:block">
                 @if (!profitSequentialState.canShowContent()) {
                   @if (profitLoadingState.isLoading() && !profitSequentialState.contentError()) {
-                    <app-loading-skeleton 
-                      type="table" 
-                      [count]="5"
-                      [isExiting]="profitLoadingState.isSkeletonExiting()" />
+                    <!-- 🎭 High-fidelity Inline Table Skeleton -->
+                    <div class="rounded-3xl border border-base-200 overflow-hidden bg-base-100 shadow-sm animate-skeleton-fade-in">
+                      <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
+                        <div class="flex items-center gap-2">
+                          <div class="w-16 h-5 skeleton-shimmer rounded"></div>
+                          <div class="w-32 h-5 skeleton-shimmer rounded"></div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-24 h-5 skeleton-shimmer rounded-full"></div>
+                          <div class="w-20 h-5 skeleton-shimmer rounded-full"></div>
+                        </div>
+                      </div>
+                      <div class="overflow-x-auto">
+                        <table class="table w-full min-w-[960px]">
+                          <thead class="bg-base-50">
+                            <tr>
+                              <th class="w-16"><div class="w-8 h-4 skeleton-shimmer rounded"></div></th>
+                              <th><div class="w-24 h-4 skeleton-shimmer rounded"></div></th>
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th>
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th>
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th>
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th>
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (i of [1,2,3,4,5]; track i) {
+                              <tr class="border-b border-base-100 last:border-0">
+                                <td><div class="w-4 h-4 skeleton-shimmer rounded"></div></td>
+                                <td>
+                                  <div class="flex items-center gap-3">
+                                    <div class="w-10 h-10 skeleton-shimmer rounded-lg shrink-0"></div>
+                                    <div class="flex flex-col gap-1">
+                                      <div class="w-32 h-4 skeleton-shimmer rounded"></div>
+                                      <div class="w-20 h-3 skeleton-shimmer rounded"></div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></td>
+                                <td><div class="ml-auto w-20 h-4 skeleton-shimmer rounded"></div></td>
+                                <td><div class="ml-auto w-20 h-4 skeleton-shimmer rounded"></div></td>
+                                <td><div class="ml-auto w-20 h-4 skeleton-shimmer rounded"></div></td>
+                                <td><div class="ml-auto w-24 h-5 skeleton-shimmer rounded"></div></td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   } @else {
-                    <app-loading-skeleton 
-                      type="table" 
-                      [count]="5"
-                      [isExiting]="profitLoadingState.isSkeletonExiting()" />
+                    <app-loading-skeleton type="table" [count]="5" [isExiting]="profitLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
                   <div 
@@ -562,32 +615,27 @@ interface DriverProfit {
               <!-- Header con KPI y controles -->
               <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 @if (revenueLoadingState.isLoading() && !revenueSequentialState.canShowKPIs()) {
-                  <!-- 🎭 GhostWire Skeleton: KpiCard compact - Dimensiones exactas: 174px × 97px -->
-                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-2 md:p-2.5 w-[174px] h-[97px] animate-skeleton-fade-in">
-                    <!-- Background blur effect skeleton -->
+                  <!-- 🎭 GhostWire Skeleton: KpiCard Responsive (Revenue/Ingresos) -->
+                  <div class="group relative flex flex-col overflow-hidden rounded-3xl border border-zinc-200 bg-base-100 shadow-[0_2px_10px_-3px_rgba(6,81,237,0.1)] gap-1.5 md:gap-2 p-3 w-full lg:w-56 animate-skeleton-fade-in min-h-[96px]">
+                    <!-- Blur effect from Fleet -->
                     <div class="absolute right-0 top-0 -mt-2 -mr-2 h-12 w-12 rounded-full opacity-50 blur-xl skeleton-shimmer"></div>
                     
-                    <!-- Header: Icon + Title (gap-2 para compact) -->
                     <div class="relative flex items-center gap-2">
-                      <!-- Icono (h-5 w-5 para compact con ring-1) -->
-                      <div class="skeleton-shimmer h-5 w-5 rounded-xl shrink-0 ring-1 ring-base-200"></div>
+                       <!-- Icono HandCoins -->
+                      <div class="skeleton-shimmer h-6 w-6 rounded-xl shrink-0 ring-1 ring-base-200"></div>
                       <div class="flex-1 min-w-0">
-                        <!-- Título (text-[10px] font-bold uppercase tracking-wider) - Ajustado para "INGRESO TOTAL BRUTO" -->
-                        <div class="skeleton-shimmer h-[10px] w-[120px] rounded"></div>
-                        <!-- Subtítulo (text-[8px] font-medium mt-0.5) - Ajustado para "Producción bruta" -->
-                        <div class="skeleton-shimmer h-[8px] w-[90px] rounded mt-0.5"></div>
+                         <!-- "Ingreso Total Bruto" -->
+                        <div class="skeleton-shimmer h-2.5 w-28 rounded"></div>
+                         <!-- "Producción bruta" -->
+                        <div class="skeleton-shimmer h-2 w-20 rounded mt-1.5"></div>
                       </div>
                     </div>
                     
-                    <!-- Body: Value -->
-                    <div class="relative flex flex-col">
-                      <!-- Valor (text-[9px] sm:text-[10px] md:text-xs lg:text-sm font-black leading-tight pl-[28px]) - Ajustado para "$0" -->
-                      <div class="skeleton-shimmer h-[14px] md:h-[16px] w-[30px] rounded pl-[28px] leading-tight"></div>
-                      
-                      <!-- Footer: Badge (mt-1 min-h-[16px] pl-[28px]) -->
-                      <div class="mt-1 min-h-[16px] pl-[28px] flex items-center">
-                        <!-- Badge (text-[8px] px-1 py-0.5) - Ajustado para "Volumen total" -->
-                        <div class="skeleton-shimmer h-[12px] w-[85px] rounded-full"></div>
+                    <div class="relative flex flex-col mt-auto pl-1">
+                      <div class="skeleton-shimmer h-4 w-24 rounded leading-tight"></div>
+                      <div class="mt-1.5 flex items-center">
+                         <!-- "Volumen total" badge -->
+                        <div class="skeleton-shimmer h-2.5 w-20 rounded-full"></div>
                       </div>
                     </div>
                   </div>
@@ -762,15 +810,54 @@ interface DriverProfit {
               <div class="hidden lg:block">
                 @if (!revenueSequentialState.canShowContent()) {
                   @if (revenueLoadingState.isLoading() && !revenueSequentialState.contentError()) {
-                    <app-loading-skeleton 
-                      type="table" 
-                      [count]="5"
-                      [isExiting]="revenueLoadingState.isSkeletonExiting()" />
+                    <!-- 🎭 High-fidelity Inline Table Skeleton (Revenue) -->
+                    <div class="rounded-3xl border border-base-200 overflow-hidden bg-base-100 shadow-sm animate-skeleton-fade-in">
+                      <!-- Table Header Skeleton -->
+                      <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-base-50 border-b border-base-200">
+                        <div class="flex items-center gap-2">
+                          <div class="w-16 h-5 skeleton-shimmer rounded"></div> <!-- Badge "Ranking" -->
+                          <div class="w-40 h-5 skeleton-shimmer rounded"></div> <!-- Title -->
+                        </div>
+                        <div class="flex items-center gap-2">
+                          <div class="w-24 h-5 skeleton-shimmer rounded-full"></div> <!-- Period badge -->
+                          <div class="w-20 h-5 skeleton-shimmer rounded-full"></div> <!-- Count badge -->
+                        </div>
+                      </div>
+                      
+                      <!-- Table Body Skeleton -->
+                      <div class="overflow-x-auto">
+                        <table class="table w-full min-w-[720px]">
+                          <thead class="bg-base-50">
+                            <tr>
+                              <th class="w-16"><div class="w-8 h-4 skeleton-shimmer rounded"></div></th> <!-- Rank -->
+                              <th><div class="w-24 h-4 skeleton-shimmer rounded"></div></th> <!-- Machine -->
+                              <th class="text-right"><div class="ml-auto w-32 h-4 skeleton-shimmer rounded"></div></th> <!-- Total Ingresos -->
+                              <th class="text-right"><div class="ml-auto w-24 h-4 skeleton-shimmer rounded"></div></th> <!-- Promedio Diario -->
+                            </tr>
+                          </thead>
+                          <tbody>
+                            @for (i of [1,2,3,4,5]; track i) {
+                              <tr class="border-b border-base-100 last:border-0">
+                                <td><div class="w-4 h-4 skeleton-shimmer rounded"></div></td>
+                                <td>
+                                  <div class="flex items-center gap-3">
+                                    <div class="hidden sm:flex w-10 h-10 skeleton-shimmer rounded-lg shrink-0"></div>
+                                    <div class="flex flex-col gap-1">
+                                      <div class="w-24 h-4 skeleton-shimmer rounded"></div>
+                                      <div class="w-16 h-3 skeleton-shimmer rounded"></div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td><div class="ml-auto w-24 h-5 skeleton-shimmer rounded"></div></td>
+                                <td><div class="ml-auto w-20 h-4 skeleton-shimmer rounded"></div></td>
+                              </tr>
+                            }
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   } @else {
-                    <app-loading-skeleton 
-                      type="table" 
-                      [count]="5"
-                      [isExiting]="revenueLoadingState.isSkeletonExiting()" />
+                    <app-loading-skeleton type="table" [count]="5" [isExiting]="revenueLoadingState.isSkeletonExiting()" />
                   }
                 } @else {
                   <div 

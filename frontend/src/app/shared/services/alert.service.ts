@@ -2,12 +2,12 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
 import { catchError, retry, map } from 'rxjs/operators';
-import { 
-  Alert, 
+import {
+  Alert,
   AlertCounts,
   DashboardAlerts,
   DashboardAlertSummary,
-  DashboardAlertItem 
+  DashboardAlertItem
 } from '../models/dashboard.models';
 import { environment } from '../../../environments/environment.development';
 
@@ -175,7 +175,7 @@ export class AlertService {
 
     // Extraer información de máquina y chofer del mensaje
     const parsed = this.parseAlertMessage(item.mensaje, item.tipo);
-    
+
     // Construir actionHref basado en el origen
     const actionHref = this.getActionHref(item);
 
@@ -198,29 +198,40 @@ export class AlertService {
   /**
    * Parsear el mensaje de la alerta para extraer información
    */
-  private parseAlertMessage(mensaje: string, tipo: string): { 
-    title: string; 
-    machineId?: string; 
-    driverName?: string 
+  private parseAlertMessage(mensaje: string, tipo: string): {
+    title: string;
+    machineId?: string;
+    driverName?: string
   } {
     // Extraer número de máquina
-    const machineMatch = mensaje.match(/Máquina\s+(\d+)/i) || 
-                        mensaje.match(/maquina\s+(\d+)/i) ||
-                        mensaje.match(/M(\d+)/i);
-    
+    const machineMatch = mensaje.match(/Máquina\s+(\d+)/i) ||
+      mensaje.match(/maquina\s+(\d+)/i) ||
+      mensaje.match(/M(\d+)/i);
+
     // Extraer nombre del chofer (formato: "Nombre Apellido")
     const driverMatch = mensaje.match(/-?\s*([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/) ||
-                       mensaje.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
+      mensaje.match(/([A-ZÁÉÍÓÚÑ][a-záéíóúñ]+\s+[A-ZÁÉÍÓÚÑ][a-záéíóúñ]+)/);
 
     // Extraer título
     let title = mensaje;
     if (tipo === 'incidente_critico') {
       title = '⚠️ Incidente Crítico';
     } else {
-      // Intentar extraer el título (primera parte antes de " - " o "Máquina")
-      const titleMatch = mensaje.match(/^([^-]+?)(?:\s*-\s*|$)/);
-      if (titleMatch) {
-        title = titleMatch[1].trim();
+      // Caso especial: Falta registro con fecha (YYYY-MM-DD)
+      // Ejemplo: "Falta registro del 2026-01-07"
+      const missingRecordMatch = mensaje.match(/Falta registro del (\d{4}-\d{2}-\d{2})/);
+
+      if (missingRecordMatch) {
+        const [year, month, day] = missingRecordMatch[1].split('-');
+        const months = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const monthName = months[parseInt(month) - 1];
+        title = `Falta registro del ${day} de ${monthName}`;
+      } else {
+        // Intentar extraer el título (primera parte antes de " - " o "Máquina")
+        const titleMatch = mensaje.match(/^([^-]+?)(?:\s*-\s*|$)/);
+        if (titleMatch) {
+          title = titleMatch[1].trim();
+        }
       }
     }
 
@@ -256,17 +267,17 @@ export class AlertService {
     if (item.origen_tipo === 'registro_diario') {
       return `/registro-diario/${item.origen_id}`;
     }
-    
+
     // 2. Alertas de máquinas (documentos vencidos o por vencer)
     if (item.origen_tipo === 'maquina') {
       return `/maquinas/${item.origen_id}`;
     }
-    
+
     // 3. Alertas de choferes (licencias, registros faltantes)
     if (item.origen_tipo === 'chofer') {
       return `/choferes/${item.origen_id}`;
     }
-    
+
     // 4. Fallback para documentos (si existe este origen_tipo)
     if (item.origen_tipo === 'documento') {
       // Intentar extraer máquina del mensaje como fallback
@@ -276,7 +287,7 @@ export class AlertService {
       }
       return '/maquinas';
     }
-    
+
     // 5. Por defecto, ir al dashboard
     return '/dashboard';
   }

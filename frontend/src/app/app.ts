@@ -84,7 +84,10 @@ import { filter, map, startWith } from 'rxjs';
       <!-- Sin navbar/sidebar (Login) -->
       @if (globalErrorService.hasError()) {
         <!-- Error global sin sidebar/navbar -->
-        <app-global-error-display></app-global-error-display>
+        <!-- Error global sin sidebar/navbar -->
+        <div class="h-dvh w-full bg-base-200">
+          <app-global-error-display></app-global-error-display>
+        </div>
       } @else {
         <router-outlet></router-outlet>
       }
