@@ -1502,7 +1502,7 @@ export class Login {
   private fb = inject(FormBuilder);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
-  private auth = inject(AuthService);
+  readonly auth = inject(AuthService);
   private transitionService = inject(TransitionService);
   private orchestrator = inject(TransitionOrchestratorService);
   private spinnerService = inject(SpinnerService);
