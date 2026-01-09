@@ -61,7 +61,7 @@ def head_apk():
 @router.get("/apk")
 def download_apk(request: Request):
     """
-    GET con soporte de Range (crítico para Gmail/Android DownloadManager).
+    Descarga del APK actual.
     """
     signed_url, filename = _get_signed_url()
 
@@ -243,20 +243,20 @@ def download_page():
 </head>
 <body>
     <div class="page">
-
+ 
         <div class="header">
             <div class="logo">GF</div>
             <div class="company">GESTOR DE FLOTAS</div>
         </div>
 
         <div class="content">
-            <h1>Aplicación Gestor de Flotas</h1>
+            <h1>Descargar aplicación</h1>
 
             <p class="intro">
-                Toca el botón para descargar la aplicación en tu teléfono.
+                Toca el botón para comenzar la descarga de la aplicación en tu teléfono.
             </p>
 
-            <a href="/api/mobile/apk" class="cta-button">
+            <a href="https://micros-chillan-production.up.railway.app/api/mobile/apk" class="cta-button">
                 Descargar
             </a>
 
@@ -272,10 +272,8 @@ def download_page():
                 2. Aparecerá una pantalla que dice
                 <strong>“¿Deseas instalar esta app?”</strong>.
                 Toca <strong>“Instalar”</strong>.<br><br> 
-                3. Si el teléfono muestra un aviso de seguridad de Google,
-                toca <strong>“Analizar app”</strong>.
-                Cuando aparezca <strong>“Esta app parece segura”</strong>,
-                toca <strong>“Instalar”</strong>.
+                3. En algunos teléfonos, aparecerá un mensaje de seguridad del sistema.
+                <strong>Continúa con la instalación</strong> siguiendo los pasos que muestre el teléfono.
             </div>
 
             <p class="note">
@@ -285,7 +283,7 @@ def download_page():
 
         <div class="footer">
             <strong>Gestor de Flotas</strong><br>
-            © 2025 Empresa de Transportes
+            © 2026 Empresa de Transportes
         </div>
     </div>
 </body>
