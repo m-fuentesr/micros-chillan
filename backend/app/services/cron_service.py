@@ -15,15 +15,22 @@ async def check_missing_daily_records(target_audience: str):
     
     now_chile = datetime.now(CHILE_TZ)
     
-    # 1. Definir FECHA y MENSAJE BASE
+    # 1. Definir FECHA a auditar
     if target_audience == 'chofer':
         audit_date = now_chile.date() # Hoy
-        print(f"🕵️ [Chofer] Revisando registros faltantes de HOY ({audit_date})...")
     else:
         audit_date = now_chile.date() - timedelta(days=1) # Ayer
-        print(f"🕵️ [Admin] Revisando registros faltantes de AYER ({audit_date})...")
         
+    # --- FILTRO DE SEGURIDAD: SOLO LUNES A VIERNES ---
+    # Python cuenta los días: 0=Lunes ... 4=Viernes, 5=Sábado, 6=Domingo.
+    # Si la fecha que estamos revisando es >= 5 (Sábado o Domingo), no hacemos nada.
+    if audit_date.weekday() >= 5:
+        print(f"📅 La fecha {audit_date} es fin de semana. No se requieren acciones.")
+        return
+    # -------------------------------------------------
+
     fecha_str = audit_date.isoformat()
+    print(f"🕵️ [{target_audience}] Revisando registros faltantes del {fecha_str}...")
 
     try:
         # 2. Obtener Choferes Activos + ID de MÁQUINA
@@ -68,7 +75,7 @@ async def check_missing_daily_records(target_audience: str):
 
         print(f"⚠️ Detectados {len(ids_faltantes)} faltantes para {target_audience}.")
 
-        # Lista para guardar los registros que vamos a crear en lote (Bulk Insert)
+        # Lista para guardar los registros que vamos a crear en lote
         nuevos_registros_automaticos = [] 
 
         # 5. Generar Alertas y Preparar Datos
@@ -108,14 +115,9 @@ async def check_missing_daily_records(target_audience: str):
                     "costo_total_diesel": 0,
                     "porcentaje_aplicado": 0,
                     "monto_porcentaje_chofer": 0,
-                    
-                    # Campos Clave para "No Trabajado"
                     "estado": "no_trabajado",
                     "es_dia_no_trabajado": True,
-                    
-                    # AQUI ESTA EL CAMBIO: Usamos tu nuevo valor de ENUM
-                    "motivo_no_trabajado": "registro_faltante", 
-                    
+                    "motivo_no_trabajado": "registro_faltante",
                     "observaciones": "Generado automáticamente por Cron Job (Chofer no reportó)."
                 }
                 nuevos_registros_automaticos.append(registro_auto)
@@ -123,7 +125,7 @@ async def check_missing_daily_records(target_audience: str):
         # 6. Inserción Masiva (Solo Admin)
         if target_audience == 'admin' and nuevos_registros_automaticos:
             try:
-                print(f"💾 Creando {len(nuevos_registros_automaticos)} registros automáticos de 'No Trabajado'...")
+                print(f"💾 Creando {len(nuevos_registros_automaticos)} registros automáticos...")
                 supabase.table("registros_diarios").insert(nuevos_registros_automaticos).execute()
                 print("✅ Registros automáticos creados con éxito.")
             except Exception as insert_error:
