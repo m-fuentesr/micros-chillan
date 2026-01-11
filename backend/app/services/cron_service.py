@@ -10,24 +10,23 @@ async def check_missing_daily_records(target_audience: str):
     """
     target_audience: 
       - 'chofer': Revisa HOY. Alerta al chofer.
-      - 'admin': Revisa AYER. Alerta al admin.
+      - 'admin': Revisa AYER. Alerta al admin. Crea registro automático de 'No Trabajado'.
     """
     
     now_chile = datetime.now(CHILE_TZ)
     
     # 1. Definir FECHA y MENSAJE BASE
     if target_audience == 'chofer':
-        audit_date = now_chile.date() # Hoy (ej. 18/12)
+        audit_date = now_chile.date() # Hoy
         print(f"🕵️ [Chofer] Revisando registros faltantes de HOY ({audit_date})...")
     else:
-        audit_date = now_chile.date() - timedelta(days=1) # Ayer (ej. 17/12)
+        audit_date = now_chile.date() - timedelta(days=1) # Ayer
         print(f"🕵️ [Admin] Revisando registros faltantes de AYER ({audit_date})...")
         
     fecha_str = audit_date.isoformat()
 
     try:
         # 2. Obtener Choferes Activos + ID de MÁQUINA
-        # Agregamos 'id' de la máquina para poder linkear la alerta
         active_assignments = (
             supabase.table("asignaciones_chofer_maquina")
             .select("chofer_id, choferes(primer_nombre, apellido_paterno), maquinas(id, numero_interno)")
@@ -39,12 +38,11 @@ async def check_missing_daily_records(target_audience: str):
             print("No hay choferes activos asignados.")
             return
 
-        # Diccionario para acceso rápido
         choferes_activos = {
             item['chofer_id']: {
                 'nombre': f"{item['choferes']['primer_nombre']} {item['choferes']['apellido_paterno']}",
                 'maquina_num': item['maquinas']['numero_interno'],
-                'maquina_id': item['maquinas']['id'] # Guardamos el ID real de la máquina
+                'maquina_id': item['maquinas']['id']
             } 
             for item in active_assignments.data
         }
@@ -70,7 +68,10 @@ async def check_missing_daily_records(target_audience: str):
 
         print(f"⚠️ Detectados {len(ids_faltantes)} faltantes para {target_audience}.")
 
-        # 5. Generar Alertas Diferenciadas
+        # Lista para guardar los registros que vamos a crear en lote (Bulk Insert)
+        nuevos_registros_automaticos = [] 
+
+        # 5. Generar Alertas y Preparar Datos
         for chofer_id in ids_faltantes:
             datos = choferes_activos[chofer_id]
             nombre = datos['nombre']
@@ -79,25 +80,54 @@ async def check_missing_daily_records(target_audience: str):
 
             if target_audience == 'chofer':
                 # --- ALERTA PARA EL CHOFER ---
-                # "¡Hazlo ahora!"
                 await alert_service.crear_alerta(
                     mensaje="Debes enviar tu registro diario ahora con límite hasta las 23:59.",
                     severidad="advertencia",
                     tipo="registro_faltante",
-                    origen_tipo="chofer",   # <-- Esto hace que SOLO el chofer la vea (según tu filtro)
+                    origen_tipo="chofer",
                     origen_id=chofer_id
                 )
             
             elif target_audience == 'admin':
                 # --- ALERTA PARA EL ADMIN ---
-                # "Informe de incumplimiento"
                 await alert_service.crear_alerta(
-                    mensaje=f"Falta registro del {fecha_str}: {nombre} (Máquina {maquina_num})",
-                    severidad="advertencia", # Amarilla
+                    mensaje=f"Falta registro del {fecha_str}: {nombre} (Máquina {maquina_num}). Se generó registro automático.",
+                    severidad="advertencia",
                     tipo="registro_faltante",
-                    origen_tipo="maquina", # <-- Esto hace que el ADMIN la vea (y pueda ir al detalle de la máquina)
+                    origen_tipo="maquina",
                     origen_id=maquina_id
                 )
+
+                # --- PREPARAR REGISTRO AUTOMÁTICO ---
+                registro_auto = {
+                    "maquina_id": maquina_id,
+                    "chofer_id": chofer_id,
+                    "fecha": fecha_str,
+                    "monto_recaudado": 0,
+                    "litros_diesel": 0,
+                    "costo_total_diesel": 0,
+                    "porcentaje_aplicado": 0,
+                    "monto_porcentaje_chofer": 0,
+                    
+                    # Campos Clave para "No Trabajado"
+                    "estado": "no_trabajado",
+                    "es_dia_no_trabajado": True,
+                    
+                    # AQUI ESTA EL CAMBIO: Usamos tu nuevo valor de ENUM
+                    "motivo_no_trabajado": "registro_faltante", 
+                    
+                    "observaciones": "Generado automáticamente por Cron Job (Chofer no reportó)."
+                }
+                nuevos_registros_automaticos.append(registro_auto)
+
+        # 6. Inserción Masiva (Solo Admin)
+        if target_audience == 'admin' and nuevos_registros_automaticos:
+            try:
+                print(f"💾 Creando {len(nuevos_registros_automaticos)} registros automáticos de 'No Trabajado'...")
+                supabase.table("registros_diarios").insert(nuevos_registros_automaticos).execute()
+                print("✅ Registros automáticos creados con éxito.")
+            except Exception as insert_error:
+                print(f"❌ Error creando registros automáticos: {insert_error}")
 
     except Exception as e:
         print(f"❌ Error en Cron Job ({target_audience}): {e}")
