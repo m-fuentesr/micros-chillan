@@ -769,12 +769,13 @@ async def get_daily_records_summary():
     recaudacion_periodo = sum(r["monto_recaudado"] for r in recaudacion_res.data)
 
     # ----------------------------------------
-    # 2) REGISTROS FALTANTES (estado = pendiente)
+    # 2) REGISTROS FALTANTES (creados automáticamente por falta de reporte)
     # ----------------------------------------
     faltantes_res = (
         supabase.table("registros_diarios")
         .select("id", count="exact")
-        .eq("estado", "pendiente_trabajador")
+        .eq("estado", "no_trabajado")
+        .eq("motivo_no_trabajado", "registro_faltante")
         .gte("fecha", fecha_inicio_iso)
         .lte("fecha", fecha_fin_iso)
         .execute()
