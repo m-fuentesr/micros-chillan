@@ -175,6 +175,22 @@ async def resolve_incident(
     )
 
 
+@router.patch("/{record_id}/mark-reviewed", response_model=dict)
+async def mark_record_as_reviewed(
+    record_id: int,
+    current_user: UserInDB = Depends(get_current_user),
+):
+    """
+    Marca un registro faltante como revisado por el admin.
+    """
+    require_admin(current_user)
+    
+    return await daily_record_service.mark_record_as_reviewed(
+        record_id=record_id,
+        current_user=current_user,
+    )
+
+
 @router.delete("/{record_id}", status_code=status.HTTP_200_OK)
 async def delete_daily_record(
     record_id: int,

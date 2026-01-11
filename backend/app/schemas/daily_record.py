@@ -119,6 +119,7 @@ class DailyRecordResponse(BaseModel):
     imagen_comprobante_diesel_url: Optional[str] = None  # Comprobante de carga de diesel
     observaciones: Optional[str]
     estado: str
+    revisado_por_admin: bool = False
     #Campo calculado
     monto_porcentaje_chofer: int
     #Maquina para la respuesta
@@ -181,6 +182,7 @@ class DailyRecordDetailResponse(BaseModel):
 
     observaciones: Optional[str]
     incidente_critico: bool
+    revisado_por_admin: bool = False
     imagenes: dict
 
 

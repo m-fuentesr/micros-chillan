@@ -5,24 +5,25 @@
  * Estados posibles de un registro diario
  * Incluye EN_ESPERA para registros que aún no han sido creados
  */
-export type DailyRecordStatus = 
-  | 'PENDIENTE_TRABAJADOR' 
-  | 'INCIDENTE_REPORTADO' 
-  | 'COMPLETO' 
-  | 'NO_TRABAJADO' 
+export type DailyRecordStatus =
+  | 'PENDIENTE_TRABAJADOR'
+  | 'INCIDENTE_REPORTADO'
+  | 'COMPLETO'
+  | 'NO_TRABAJADO'
   | 'DIA_NO_TRABAJADO'
   | 'EN_ESPERA';
 
 /**
  * Motivos de inactividad cuando el día no fue trabajado
  */
-export type InactivityReason = 
+export type InactivityReason =
   | 'Descanso Semanal'
   | 'Vacaciones'
   | 'Licencia Médica'
   | 'Permiso Personal'
   | 'En Taller / Mantenimiento'
   | 'Sin Chofer Asignado'
+  | 'Registro Faltante'
   | 'Otro';
 
 /**
@@ -74,24 +75,24 @@ export interface DailyRecord {
   maquina_identificador?: string; // Para display (ej: "Máquina 05")
   chofer_id: number;
   chofer_nombre?: string; // Para display (ej: "Juan Pérez")
-  
+
   // Información financiera
   recaudado: number;
   costo_diesel: number;
   pago_chofer?: number;
   neto?: number;
   litros_diesel?: number;
-  
+
   // Estado de operación
   dia_no_trabajado: boolean;
   motivo_inactividad?: InactivityReason | null;
   es_emergencia?: boolean;
-  
+
   // Estado y observaciones
   estado: DailyRecordStatus;
   observaciones?: string | null;
   tiene_observaciones?: boolean; // Booleano que indica si tiene observaciones (usado en listados)
-  
+
   // Comprobantes y desglose
   comprobante_registro?: {  // Comprobante del registro diario (obligatorio)
     imagen_url?: string;
@@ -99,13 +100,14 @@ export interface DailyRecord {
   } | null;
   comprobante_diesel?: DieselReceipt | null;  // Comprobante de carga de diesel (opcional)
   desglose_pago?: PaymentBreakdown;
-  
+
   // Auditoría
   historial?: DailyRecordHistoryItem[];
   creado_por?: string;
   creado_en?: string; // ISO date string
   actualizado_por?: string;
   actualizado_en?: string; // ISO date string
+  revisado_por_admin?: boolean;
 }
 
 /**
