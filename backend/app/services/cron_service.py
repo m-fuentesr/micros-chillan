@@ -75,10 +75,7 @@ async def check_missing_daily_records(target_audience: str):
 
         print(f"⚠️ Detectados {len(ids_faltantes)} faltantes para {target_audience}.")
 
-        # Lista para guardar los registros que vamos a crear en lote
-        nuevos_registros_automaticos = [] 
-
-        # 5. Generar Alertas y Preparar Datos
+        # 5. Generar Alertas y Crear Registros
         for chofer_id in ids_faltantes:
             datos = choferes_activos[chofer_id]
             nombre = datos['nombre']
@@ -96,16 +93,7 @@ async def check_missing_daily_records(target_audience: str):
                 )
             
             elif target_audience == 'admin':
-                # --- ALERTA PARA EL ADMIN ---
-                await alert_service.crear_alerta(
-                    mensaje=f"Falta registro del {fecha_str}: {nombre} (Máquina {maquina_num}). Se generó registro automático.",
-                    severidad="advertencia",
-                    tipo="registro_faltante",
-                    origen_tipo="maquina",
-                    origen_id=maquina_id
-                )
-
-                # --- PREPARAR REGISTRO AUTOMÁTICO ---
+                # --- CREAR REGISTRO AUTOMÁTICO PRIMERO ---
                 registro_auto = {
                     "maquina_id": maquina_id,
                     "chofer_id": chofer_id,
@@ -120,16 +108,32 @@ async def check_missing_daily_records(target_audience: str):
                     "motivo_no_trabajado": "registro_faltante",
                     "observaciones": "Generado automáticamente por Cron Job (Chofer no reportó)."
                 }
-                nuevos_registros_automaticos.append(registro_auto)
-
-        # 6. Inserción Masiva (Solo Admin)
-        if target_audience == 'admin' and nuevos_registros_automaticos:
-            try:
-                print(f"💾 Creando {len(nuevos_registros_automaticos)} registros automáticos...")
-                supabase.table("registros_diarios").insert(nuevos_registros_automaticos).execute()
-                print("✅ Registros automáticos creados con éxito.")
-            except Exception as insert_error:
-                print(f"❌ Error creando registros automáticos: {insert_error}")
+                
+                try:
+                    # Insertar el registro y obtener su ID
+                    resultado = supabase.table("registros_diarios").insert(registro_auto).execute()
+                    
+                    if resultado.data and len(resultado.data) > 0:
+                        registro_id = resultado.data[0]['id']
+                        print(f"💾 Registro automático creado (ID: {registro_id}) para {nombre}.")
+                        
+                        # --- ALERTA PARA EL ADMIN CON ORIGEN CORRECTO ---
+                        await alert_service.crear_alerta(
+                            mensaje=f"Falta registro del {fecha_str}: {nombre} (Máquina {maquina_num}). Se generó registro automático.",
+                            severidad="advertencia",
+                            tipo="registro_faltante",
+                            origen_tipo="registro_diario",  # ✅ Correcto: apunta al registro
+                            origen_id=registro_id           # ✅ Correcto: ID del registro creado
+                        )
+                    else:
+                        print(f"⚠️ No se pudo obtener ID del registro para {nombre}.")
+                        
+                except Exception as insert_error:
+                    print(f"❌ Error creando registro automático para {nombre}: {insert_error}")
+        
+        # Mensaje de resumen solo para admin
+        if target_audience == 'admin':
+            print("✅ Proceso de creación de registros automáticos completado.")
 
     except Exception as e:
         print(f"❌ Error en Cron Job ({target_audience}): {e}")
