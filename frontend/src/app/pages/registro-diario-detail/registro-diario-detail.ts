@@ -164,8 +164,7 @@ interface DailyRecordDetailView extends DailyRecord {
               <div class="alert alert-warning bg-amber-50 border-l-4 border-l-amber-500 border-y-0 border-r-0 rounded-r-lg text-base-content shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
                 <ui-icon name="AlertTriangle" size="lg" class="stroke-amber-500 shrink-0 mt-0.5 sm:mt-0" />
                 <div class="flex-1">
-                  <h3 class="font-bold text-amber-800">Este registro fue generado automáticamente</h3>
-                  <div class="text-sm text-amber-700 mt-0.5">Indica que el chofer no reportó su jornada. Si ya revisaste esto, márcalo como revisado para limpiar el KPI.</div>
+                  <h3 class="font-bold text-amber-800">Indica que el chofer no reportó su jornada. Si ya revisaste esto, márcalo como revisado.</h3>
                 </div>
                 <button 
                   class="btn btn-sm bg-amber-500 hover:bg-amber-600 border-none text-white shadow-sm flex-shrink-0" 
@@ -965,7 +964,26 @@ export class RegistroDiarioDetail {
   }
 
   private loadRecord(id: string): void {
+    // 1. Limpiar estado completamente para evitar "flash" de datos
     this.isLoading.set(true);
+    this.record.set(null);
+    this.previousRecordState = null;
+
+    // 2. Resetear UI y Formulario
+    this.isEditMode.set(false);
+    this.receiptPreview.set(null);
+    this.registroPreview.set(null);
+
+    // Resetear formulario a valores por defecto limpios
+    this.recordForm.reset({
+      noWorkDay: false,
+      noWorkDayReason: '',
+      isEmergency: false,
+      income: 0,
+      dieselExpense: 0,
+      dieselLiters: 0,
+      observations: ''
+    });
 
     forkJoin({
       record: this.dailyRecordService.getDailyRecordById(id),
