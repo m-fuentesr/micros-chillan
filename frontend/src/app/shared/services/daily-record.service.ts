@@ -51,6 +51,7 @@ interface DailyRecordDetailResponse {
     registro: string | null;
     diesel: string | null;
   };
+  revisado_por_admin: boolean;
 }
 
 /**
@@ -96,11 +97,11 @@ export class DailyRecordService {
    */
   getDailyRecords(filters?: DailyRecordFilters): Observable<DailyRecordsResponse> {
     let params = new HttpParams();
-    
+
     // Paginación por defecto: 20 registros por página
     const pagina = filters?.pagina || 1;
     const porPagina = filters?.por_pagina || 20;
-    
+
     if (filters) {
       if (filters.maquina_id) params = params.set('maquina_id', filters.maquina_id.toString());
       if (filters.chofer_id) params = params.set('chofer_id', filters.chofer_id.toString());
@@ -124,7 +125,7 @@ export class DailyRecordService {
         params = params.set('order', filters.orden === 'mas_reciente' || filters.orden === 'fecha_desc' ? 'desc' : 'asc');
       }
     }
-    
+
     // Siempre incluir paginación
     params = params.set('page', pagina.toString());
     params = params.set('per_page', porPagina.toString());
@@ -166,7 +167,7 @@ export class DailyRecordService {
 
             // Determinar si es emergencia basado en el estado
             const es_emergencia = item.estado === 'incidente_reportado';
-            
+
             // Determinar si es día no trabajado
             const dia_no_trabajado = item.estado === 'no_trabajado';
 
@@ -241,7 +242,7 @@ export class DailyRecordService {
       'Imagen Comprobante Diesel Url Updated At',
       'Updated At'
     ];
-    
+
     // Campos que son montos monetarios (necesitan formato de moneda)
     const camposMonetarios = [
       'Monto Recaudado',
@@ -251,7 +252,7 @@ export class DailyRecordService {
       'costo_total_diesel',
       'costo_diesel'
     ];
-    
+
     // Mapeo de nombres de campos a mensajes más descriptivos
     const mensajesDescriptivos: Record<string, string> = {
       'Monto Recaudado': 'Recaudación',
@@ -263,19 +264,19 @@ export class DailyRecordService {
       'Motivo de Inactividad': 'Motivo de inactividad',
       'Estado': 'Estado'
     };
-    
+
     // Función para formatear valores monetarios
     const formatCurrency = (value: string | number): string => {
       if (!value || value === '-' || value === 'None' || value === 'null') {
         return '-';
       }
-      
+
       // Intentar parsear como número
       const numValue = typeof value === 'number' ? value : parseFloat(String(value));
       if (isNaN(numValue)) {
         return String(value);
       }
-      
+
       // Formatear como moneda chilena
       return new Intl.NumberFormat('es-CL', {
         style: 'currency',
@@ -284,14 +285,14 @@ export class DailyRecordService {
         maximumFractionDigits: 0
       }).format(numValue).replace('CLP', '$');
     };
-    
+
     // Función para verificar si un valor es numérico
     const isNumeric = (value: string | number): boolean => {
       if (typeof value === 'number') return true;
       if (!value || value === '-' || value === 'None' || value === 'null') return false;
       return !isNaN(parseFloat(String(value))) && isFinite(parseFloat(String(value)));
     };
-    
+
     // Filtrar detalles excluidos y mapear a mensajes amigables
     const cambios = item.detalles
       ?.filter((detalle) => {
@@ -302,7 +303,7 @@ export class DailyRecordService {
         const campo = detalle.campo;
         const anterior = detalle.valor_anterior ?? '-';
         const nuevo = detalle.valor_nuevo ?? '-';
-        
+
         // Mensajes más amigables para cambios de imágenes
         if (campo.includes('Comprobante') || campo.toLowerCase().includes('imagen')) {
           if (anterior === '-' || anterior === 'Sin imagen' || anterior === 'None' || anterior === 'null') {
@@ -313,33 +314,33 @@ export class DailyRecordService {
             return `${campo}: Actualizada`;
           }
         }
-        
+
         // Verificar si es un campo monetario
-        const esCampoMonetario = camposMonetarios.some(campoMon => 
+        const esCampoMonetario = camposMonetarios.some(campoMon =>
           campo.toLowerCase().includes(campoMon.toLowerCase())
         );
-        
+
         // Obtener nombre descriptivo del campo
         const nombreDescriptivo = mensajesDescriptivos[campo] || campo;
-        
+
         // Si es campo monetario y ambos valores son numéricos, formatear como moneda
         if (esCampoMonetario && isNumeric(anterior) && isNumeric(nuevo)) {
           const anteriorFormateado = formatCurrency(anterior);
           const nuevoFormateado = formatCurrency(nuevo);
           return `${nombreDescriptivo} cambió de ${anteriorFormateado} a ${nuevoFormateado}`;
         }
-        
+
         // Si es campo monetario pero solo uno es numérico
         if (esCampoMonetario) {
           const anteriorFormateado = isNumeric(anterior) ? formatCurrency(anterior) : (anterior === '-' || anterior === 'None' || anterior === 'null' ? 'sin valor' : anterior);
           const nuevoFormateado = isNumeric(nuevo) ? formatCurrency(nuevo) : (nuevo === '-' || nuevo === 'None' || nuevo === 'null' ? 'sin valor' : nuevo);
           return `${nombreDescriptivo} cambió de ${anteriorFormateado} a ${nuevoFormateado}`;
         }
-        
+
         // Para otros campos, mostrar cambio normal pero limitar longitud
         const valorAnterior = anterior.length > 50 ? anterior.substring(0, 47) + '...' : anterior;
         const valorNuevo = nuevo.length > 50 ? nuevo.substring(0, 47) + '...' : nuevo;
-        
+
         // Usar formato descriptivo si está disponible
         return `${nombreDescriptivo}: ${valorAnterior} → ${valorNuevo}`;
       })
@@ -364,7 +365,7 @@ export class DailyRecordService {
     const datosFinancieros = response.datos_financieros || {};
     const estadoOperativo = response.estado_operativo || {};
     const imagenes = response.imagenes || {};
-    
+
     // Calcular desglose de pago
     const base = datosFinancieros.monto_recaudado || 0;
     // El backend devuelve el porcentaje como decimal (0.3), convertimos a porcentaje (30) para mostrar
@@ -372,7 +373,7 @@ export class DailyRecordService {
     const porcentaje = porcentajeDecimal * 100; // Convertir de decimal a porcentaje para mostrar
     // El backend ya calcula el monto, pero si no viene, lo calculamos multiplicando directamente (porque porcentajeDecimal es decimal)
     const montoPago = datosFinancieros.pago_calculado_actual || (base * porcentajeDecimal);
-    
+
     // Mapear estado del backend al frontend
     const estadoMap: Record<string, DailyRecordStatus> = {
       'pendiente_trabajador': 'PENDIENTE_TRABAJADOR',
@@ -382,54 +383,56 @@ export class DailyRecordService {
       'dia_no_trabajado': 'DIA_NO_TRABAJADO'
     };
     const estado = estadoMap[response.estado?.toLowerCase() || ''] || 'PENDIENTE_TRABAJADOR';
-    
+
     return {
       id: String(response.id),
       fecha: response.fecha,
       maquina_id: response.maquina?.id || 0,
-      maquina_identificador: response.maquina?.numero_interno 
-        ? `Máquina ${String(response.maquina.numero_interno).padStart(2, '0')}` 
+      maquina_identificador: response.maquina?.numero_interno
+        ? `Máquina ${String(response.maquina.numero_interno).padStart(2, '0')}`
         : undefined,
       chofer_id: response.chofer?.id || 0,
       chofer_nombre: response.chofer?.nombre || '',
-      
+
       // Información financiera
       recaudado: datosFinancieros.monto_recaudado || 0,
       costo_diesel: datosFinancieros.costo_total_diesel || 0,
       litros_diesel: datosFinancieros.litros_diesel || undefined,
       neto: datosFinancieros.neto ?? ((datosFinancieros.monto_recaudado || 0) - (datosFinancieros.costo_total_diesel || 0) - (datosFinancieros.pago_calculado_actual || 0)),
-      
+
       // Estado de operación
       dia_no_trabajado: estadoOperativo.es_dia_no_trabajado || false,
       motivo_inactividad: this.mapEnumToMotivoInactividad(estadoOperativo.motivo_no_trabajado) || null,
       es_emergencia: response.incidente_critico || false,
-      
+
       // Estado y observaciones
       estado,
       observaciones: response.observaciones || null,
-      
+
       // Comprobantes
       comprobante_registro: imagenes.registro ? {
         imagen_url: imagenes.registro,
-        subido_en: (imagenes as any).registro_updated_at && (imagenes as any).registro_updated_at !== 'null' 
-          ? (imagenes as any).registro_updated_at 
+        subido_en: (imagenes as any).registro_updated_at && (imagenes as any).registro_updated_at !== 'null'
+          ? (imagenes as any).registro_updated_at
           : undefined
       } : null,
       comprobante_diesel: imagenes.diesel ? {
         monto: datosFinancieros.costo_total_diesel || 0,
         imagen_url: imagenes.diesel,
         subido_en: (imagenes as any).diesel_updated_at && (imagenes as any).diesel_updated_at !== 'null'
-          ? (imagenes as any).diesel_updated_at 
+          ? (imagenes as any).diesel_updated_at
           : undefined
       } : null,
-      
+
       // Desglose de pago
       desglose_pago: {
         base: base,
         porcentaje: porcentaje,
         monto: montoPago
       },
-      
+
+      revisado_por_admin: response.revisado_por_admin,
+
       // Auditoría (no viene en el detalle, se puede obtener del endpoint de historial)
       historial: []
     };
@@ -440,7 +443,7 @@ export class DailyRecordService {
    */
   private mapEnumToMotivoInactividad(motivoEnum: string | null): InactivityReason | null {
     if (!motivoEnum) return null;
-    
+
     const enumToFrontendMap: Record<string, InactivityReason> = {
       'descanso_semanal': 'Descanso Semanal',
       'vacaciones': 'Vacaciones',
@@ -448,9 +451,10 @@ export class DailyRecordService {
       'permiso_personal': 'Permiso Personal',
       'maquina_en_mantenimiento': 'En Taller / Mantenimiento',
       'sin_asignacion_ruta': 'Sin Chofer Asignado',
+      'registro_faltante': 'Registro Faltante',
       'otro': 'Otro'
     };
-    
+
     // Si el valor ya está en formato legible, retornarlo
     const valoresValidos: InactivityReason[] = [
       'Descanso Semanal',
@@ -459,13 +463,14 @@ export class DailyRecordService {
       'Permiso Personal',
       'En Taller / Mantenimiento',
       'Sin Chofer Asignado',
+      'Registro Faltante',
       'Otro'
     ];
-    
+
     if (valoresValidos.includes(motivoEnum as InactivityReason)) {
       return motivoEnum as InactivityReason;
     }
-    
+
     // Mapear desde el enum
     return enumToFrontendMap[motivoEnum] || null;
   }
@@ -487,7 +492,7 @@ export class DailyRecordService {
     }
 
     const params = new HttpParams().set('rango', rango);
-    
+
     return this.http.get<DailyRecordHistoryResponse[]>(`${this.apiUrl}/api/daily-records/my-history`, { params })
       .pipe(
         tap((history) => {
@@ -512,14 +517,14 @@ export class DailyRecordService {
    * Endpoint: GET /api/daily-records/today-status
    * Retorna información sobre si el usuario ya tiene un reporte para hoy
    */
-  getTodayStatus(): Observable<{exists: boolean, record: any, can_create_new: boolean, message: string}> {
-    return this.http.get<{exists: boolean, record: any, can_create_new: boolean, message: string}>(
+  getTodayStatus(): Observable<{ exists: boolean, record: any, can_create_new: boolean, message: string }> {
+    return this.http.get<{ exists: boolean, record: any, can_create_new: boolean, message: string }>(
       `${this.apiUrl}/api/daily-records/today-status`
     ).pipe(
       catchError(() => of({
-        exists: false, 
-        record: null, 
-        can_create_new: true, 
+        exists: false,
+        record: null,
+        can_create_new: true,
         message: 'Puede crear un nuevo reporte'
       }))
     );
@@ -545,7 +550,7 @@ export class DailyRecordService {
     // maquina_id, fecha, monto_recaudado, litros_diesel, costo_total_diesel, 
     // imagen_url (comprobante registro diario), imagen_comprobante_diesel_url (opcional),
     // observaciones, incidente_critico
-    
+
     // Extraer imagen_url del comprobante_registro (obligatorio)
     let imagen_url = '';
     if (record.comprobante_registro?.imagen) {
@@ -553,7 +558,7 @@ export class DailyRecordService {
         imagen_url = record.comprobante_registro.imagen;
       }
     }
-    
+
     // Extraer imagen_comprobante_diesel_url del comprobante_diesel (opcional)
     let imagen_comprobante_diesel_url = '';
     if (record.comprobante_diesel?.imagen) {
@@ -561,7 +566,7 @@ export class DailyRecordService {
         imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
       }
     }
-    
+
     const payload: any = {
       maquina_id: record.maquina_id,
       fecha: record.fecha,
@@ -573,14 +578,14 @@ export class DailyRecordService {
       observaciones: record.observaciones || null,
       incidente_critico: record.incidente_critico || false
     };
-    
+
     // Debug: Verificar que las URLs se estén pasando
     if (imagen_url) {
       console.log('📸 Enviando imagen_url (comprobante registro) al backend:', imagen_url);
     } else {
       console.log('⚠️ No hay imagen_url (comprobante registro) en el payload');
     }
-    
+
     if (imagen_comprobante_diesel_url) {
       console.log('⛽ Enviando imagen_comprobante_diesel_url al backend:', imagen_comprobante_diesel_url);
     }
@@ -629,7 +634,7 @@ export class DailyRecordService {
       motivo_no_trabajado_otro: null, // Si es "Otro", debería venir en motivo_inactividad
       incidente_critico: record.es_emergencia || false
     };
-    
+
     // Si hay URLs de imágenes (strings), agregarlas al payload
     // Nota: Si hay archivos File, deben subirse primero antes de llamar a este método
     if (record.comprobante_registro?.imagen && typeof record.comprobante_registro.imagen === 'string') {
@@ -638,7 +643,7 @@ export class DailyRecordService {
     if (record.comprobante_diesel?.imagen && typeof record.comprobante_diesel.imagen === 'string') {
       payload.imagen_comprobante_diesel_url = record.comprobante_diesel.imagen;
     }
-    
+
     return this.http.put<DailyRecordDetailResponse>(`${this.apiUrl}/api/daily-records/${id}`, payload)
       .pipe(
         map((response) => this.mapDetailResponseToDailyRecord(response)),
@@ -687,7 +692,7 @@ export class DailyRecordService {
     // - recaudacion_periodo
     // - registros_faltantes
     // - registros_incidentes
-    
+
     interface BackendSummary {
       recaudacion_periodo: number;
       registros_faltantes: number;
@@ -750,6 +755,20 @@ export class DailyRecordService {
         });
       })
     );
+  }
+
+  /**
+   * Marca un registro como revisado por el admin
+   * Endpoint: PATCH /api/daily-records/:id/mark-reviewed
+   */
+  markAsReviewed(id: string): Observable<{ message: string }> {
+    return this.http.patch<{ message: string }>(`${this.apiUrl}/api/daily-records/${id}/mark-reviewed`, {})
+      .pipe(
+        catchError((error) => {
+          console.error('Error marcando registro como revisado:', error);
+          return throwError(() => error);
+        })
+      );
   }
 
 }

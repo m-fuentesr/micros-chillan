@@ -38,6 +38,7 @@ interface DailyRecordView {
   driverPayment: number; // pago_chofer
   net: number; // recaudado - diesel - pago_chofer
   hasIncident: boolean; // es_emergencia o estado === 'INCIDENTE_REPORTADO'
+  isReviewed: boolean; // revisado_por_admin
 }
 
 @Component({
@@ -1307,7 +1308,8 @@ export class BitacoraOperaciones implements OnInit {
       dieselExpense: record.costo_diesel,
       driverPayment: record.pago_chofer ?? 0,
       net: record.neto ?? (record.recaudado - record.costo_diesel - (record.pago_chofer ?? 0)),
-      hasIncident: record.es_emergencia || record.estado === 'INCIDENTE_REPORTADO'
+      hasIncident: record.es_emergencia || record.estado === 'INCIDENTE_REPORTADO',
+      isReviewed: record.revisado_por_admin || false
     };
   }
 

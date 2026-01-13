@@ -15,6 +15,9 @@ import { UiIconComponent } from '../../shared/components/ui-icon/ui-icon.compone
 import { getDateInChileTime, getDaysDifferenceInChile, getDatePartsInChile } from '../../shared/utils/date.utils';
 import { DailyRecordDetailSkeleton } from '../../shared/daily-records/daily-record-detail-skeleton/daily-record-detail-skeleton';
 import { AccountingService } from '../../shared/services/accounting.service';
+import { ConfirmModalService } from '../../shared/services/confirm-modal.service';
+import { AlertModalService } from '../../shared/services/alert-modal.service';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Vista extendida de DailyRecord para uso en el detalle
@@ -47,6 +50,7 @@ interface DailyRecordDetailView extends DailyRecord {
     imageUrl?: string;
     uploadedAt?: string;
   };
+  revisado_por_admin: boolean;
   history?: DailyRecordHistoryItem[]; // historial
 }
 
@@ -99,6 +103,7 @@ interface DailyRecordDetailView extends DailyRecord {
                     } @else {
                       <span class="inline-flex items-center gap-2 rounded-full bg-amber-50 text-amber-700 px-3 py-1 text-xs sm:text-sm font-semibold border border-amber-100 shadow-sm">⏳ Pendiente</span>
                     }
+
                   </div>
                 </div>
 
@@ -154,6 +159,26 @@ interface DailyRecordDetailView extends DailyRecord {
         <div class="space-y-6 sm:space-y-8">
         @if (record()) {
           <form [formGroup]="recordForm">
+            <!-- Alerta para Registro Faltante no revisado -->
+            @if (record()?.noWorkDay && record()?.noWorkDayReason === 'Registro Faltante' && !record()?.revisado_por_admin) {
+              <div class="alert alert-warning bg-amber-50 border-l-4 border-l-amber-500 border-y-0 border-r-0 rounded-r-lg text-base-content shadow-sm mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <ui-icon name="AlertTriangle" size="lg" class="stroke-amber-500 shrink-0 mt-0.5 sm:mt-0" />
+                <div class="flex-1">
+                  <h3 class="font-bold text-amber-800">Indica que el chofer no reportó su jornada. Si ya revisaste esto, márcalo como revisado.</h3>
+                </div>
+                <button 
+                  class="btn btn-sm bg-amber-500 hover:bg-amber-600 border-none text-white shadow-sm flex-shrink-0" 
+                  type="button" 
+                  (click)="onMarkAsReviewed()"
+                  [disabled]="isMarkingAsReviewed()">
+                  @if (isMarkingAsReviewed()) {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
+                  Marcar como Revisado
+                </button>
+              </div>
+            }
+
             <!-- Alert para Incidente -->
             @if (isIncidente()) {
               <div class="alert alert-error bg-error/10 border-l-4 border-l-error border-y-0 border-r-0 rounded-r-lg text-base-content shadow-sm mb-6 flex items-start">
@@ -747,6 +772,8 @@ export class RegistroDiarioDetail {
   private imageModalService = inject(ImageModalService);
   private globalErrorService = inject(GlobalErrorService);
   private accountingService = inject(AccountingService);
+  private confirmModalService = inject(ConfirmModalService);
+  private alertModalService = inject(AlertModalService);
 
   record = signal<DailyRecordDetailView | null>(null);
   isLoading = signal(true);
@@ -754,6 +781,7 @@ export class RegistroDiarioDetail {
 
   isResolvingIncident = signal(false);
   isSubmittingRecord = signal(false);
+  isMarkingAsReviewed = signal(false);
   private previousRecordState: DailyRecordDetailView | null = null;
 
   recordForm = this.fb.group({
@@ -936,7 +964,26 @@ export class RegistroDiarioDetail {
   }
 
   private loadRecord(id: string): void {
+    // 1. Limpiar estado completamente para evitar "flash" de datos
     this.isLoading.set(true);
+    this.record.set(null);
+    this.previousRecordState = null;
+
+    // 2. Resetear UI y Formulario
+    this.isEditMode.set(false);
+    this.receiptPreview.set(null);
+    this.registroPreview.set(null);
+
+    // Resetear formulario a valores por defecto limpios
+    this.recordForm.reset({
+      noWorkDay: false,
+      noWorkDayReason: '',
+      isEmergency: false,
+      income: 0,
+      dieselExpense: 0,
+      dieselLiters: 0,
+      observations: ''
+    });
 
     forkJoin({
       record: this.dailyRecordService.getDailyRecordById(id),
@@ -1038,6 +1085,7 @@ export class RegistroDiarioDetail {
       },
       receipt,
       comprobanteRegistro,
+      revisado_por_admin: record.revisado_por_admin || false,
       history: record.historial
     };
   }
@@ -1361,6 +1409,44 @@ export class RegistroDiarioDetail {
       },
       error: () => {
         this.isResolvingIncident.set(false);
+      }
+    });
+  }
+
+  /**
+   * Marca un registro generado por cron (falta de reporte) como 'revisado'
+   * Esto lo quita del KPI de bitácora y resuelve la alerta asociada.
+   */
+  async onMarkAsReviewed() {
+    const recordId = this.record()?.id;
+    if (!recordId) return;
+
+    const confirmed = await this.confirmModalService.open({
+      title: '¿Marcar como revisado?',
+      message: 'Este registro dejará de aparecer en el KPI de "Registros Faltantes" y la alerta se resolverá. Esta acción no se puede deshacer.',
+      confirmText: 'Sí, marcar como revisado',
+      cancelText: 'Cancelar'
+    });
+
+    if (!confirmed) return;
+
+    this.isMarkingAsReviewed.set(true);
+    this.dailyRecordService.markAsReviewed(recordId).subscribe({
+      next: () => {
+        this.isMarkingAsReviewed.set(false);
+        this.alertModalService.show({
+          title: 'Registro Revisado',
+          message: 'El registro ha sido marcado como revisado exitosamente.',
+          type: 'success'
+        });
+
+        // Recargar el registro para ver el cambio (badge Revisado)
+        this.loadRecord(recordId);
+      },
+      error: (error) => {
+        this.isMarkingAsReviewed.set(false);
+        this.showErrorToast('Error al marcar como revisado. Por favor, intenta nuevamente.');
+        console.error('Error al marcar como revisado:', error);
       }
     });
   }

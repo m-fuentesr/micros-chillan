@@ -769,12 +769,14 @@ async def get_daily_records_summary():
     recaudacion_periodo = sum(r["monto_recaudado"] for r in recaudacion_res.data)
 
     # ----------------------------------------
-    # 2) REGISTROS FALTANTES (estado = pendiente)
+    # 2) REGISTROS FALTANTES (creados automáticamente por falta de reporte)
     # ----------------------------------------
     faltantes_res = (
         supabase.table("registros_diarios")
         .select("id", count="exact")
-        .eq("estado", "pendiente_trabajador")
+        .eq("estado", "no_trabajado")
+        .eq("motivo_no_trabajado", "registro_faltante")
+        .eq("revisado_por_admin", False)
         .gte("fecha", fecha_inicio_iso)
         .lte("fecha", fecha_fin_iso)
         .execute()
@@ -938,6 +940,7 @@ async def get_daily_record_detail(record_id: int):
                 porcentaje_aplicado, monto_porcentaje_chofer,
                 observaciones,
                 es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                revisado_por_admin,
                 imagen_url, imagen_comprobante_diesel_url,
                 imagen_url_updated_at, imagen_comprobante_diesel_url_updated_at,
                 created_at, updated_at,
@@ -965,6 +968,7 @@ async def get_daily_record_detail(record_id: int):
                         porcentaje_aplicado, monto_porcentaje_chofer,
                         observaciones,
                         es_dia_no_trabajado, motivo_no_trabajado, motivo_no_trabajado_otro,
+                        revisado_por_admin,
                         imagen_url, imagen_comprobante_diesel_url,
                         created_at, updated_at,
                         choferes(id, primer_nombre, apellido_paterno),
@@ -1024,6 +1028,7 @@ async def get_daily_record_detail(record_id: int):
         "observaciones": row["observaciones"],
 
         "incidente_critico": row["estado"] == "incidente_reportado",
+        "revisado_por_admin": row.get("revisado_por_admin", False),
 
         "imagenes": {
             "registro": row.get("imagen_url"),
@@ -1899,3 +1904,43 @@ async def resolve_incident(
     # ----------------------------------------
 
     return await get_daily_record_detail(record_id)
+
+async def mark_record_as_reviewed(record_id: int, current_user: UserInDB):
+    """
+    Marca un registro como revisado por el admin y auto-resuelve la alerta asociada.
+    """
+    # 1. Marcar registro como revisado
+    update_res = (
+        supabase.table("registros_diarios")
+        .update({"revisado_por_admin": True})
+        .eq("id", record_id)
+        .execute()
+    )
+    
+    if not update_res.data:
+        raise HTTPException(status_code=400, detail="Error al marcar registro como revisado")
+    
+    # 2. AUTO-RESOLVER ALERTA ASOCIADA
+    try:
+        from app.services import alert_service
+        
+        # Buscar alerta activa de tipo 'registro_faltante' para este registro
+        alerta_res = (
+            supabase.table("alertas")
+            .select("id")
+            .eq("tipo", "registro_faltante")
+            .eq("origen_tipo", "registro_diario")
+            .eq("origen_id", record_id)
+            .eq("estado", "activa")
+            .execute()
+        )
+        
+        if alerta_res.data:
+            for alerta in alerta_res.data:
+                await alert_service.marcar_como_leida(alerta["id"], current_user)
+                
+    except Exception as e:
+        # Log error but don't fail the whole request
+        print(f"⚠️ Error auto-resolviendo alerta: {e}")
+        
+    return {"message": "Registro marcado como revisado y alerta resuelta exitosamente"}
