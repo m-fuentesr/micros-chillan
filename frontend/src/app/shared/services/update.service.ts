@@ -28,7 +28,35 @@ export class UpdateService {
     updateAvailable = signal<UpdateInfo | null>(null);
 
     constructor() {
+        // Verificar al iniciar la app
         this.checkForUpdate();
+
+        // Escuchar cuando la app vuelve a primer plano
+        this.setupAppStateListener();
+    }
+
+    /**
+     * Escucha cambios de estado de la app (background/foreground)
+     * para verificar actualizaciones cuando vuelve a primer plano
+     */
+    private setupAppStateListener() {
+        if (!Capacitor.isNativePlatform()) {
+            return;
+        }
+
+        App.addListener('appStateChange', async ({ isActive }) => {
+            console.log(`[UpdateService] App state changed - isActive: ${isActive}`);
+
+            // Cuando la app vuelve a primer plano, verificar actualizaciones
+            if (isActive) {
+                // Pequeño delay para asegurar que la app esté completamente activa
+                setTimeout(() => {
+                    this.checkForUpdate();
+                }, 500);
+            }
+        });
+
+        console.log('[UpdateService] App state listener configured');
     }
 
     /**
