@@ -23,14 +23,14 @@ from app.api.updates import router as updates_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- CÓDIGO DE INICIO ---
-    print("🚀 Iniciando servicios de fondo (Scheduler)...")
+    print("Iniciando servicios de fondo (Scheduler)...")
     start_scheduler()
     
     yield  # La aplicación corre aquí
     
     # --- CÓDIGO DE CIERRE (Opcional) ---
     # Aquí podrías poner scheduler.shutdown() si fuera necesario
-    print("🛑 Apagando servicios...")
+    print("Apagando servicios...")
 
 app = FastAPI(title="MicrosChillán Backend", lifespan=lifespan)
 

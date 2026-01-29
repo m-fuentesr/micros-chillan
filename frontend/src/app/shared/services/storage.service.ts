@@ -69,28 +69,28 @@ export class StorageService {
           const progress: UploadProgress = {
             loaded: progressEvent.loaded || 0,
             total: progressEvent.total || 0,
-            percentage: progressEvent.total 
+            percentage: progressEvent.total
               ? Math.round((100 * progressEvent.loaded) / progressEvent.total)
               : 0
           };
-          
+
           if (onProgress) {
             onProgress(progress);
           }
         }
-        
+
         // Retornar resultado cuando esté completo
         if (event.type === HttpEventType.Response) {
           return event.body as UploadResult;
         }
-        
+
         return null;
       }),
       // Filtrar solo el resultado final
       filter((result): result is UploadResult => result !== null),
       catchError((error) => {
         console.error('Error subiendo imagen:', error);
-        return throwError(() => 
+        return throwError(() =>
           new Error(error.error?.detail || error.message || 'Error al subir la imagen')
         );
       })
@@ -141,28 +141,28 @@ export class StorageService {
           const progress: UploadProgress = {
             loaded: progressEvent.loaded || 0,
             total: progressEvent.total || 0,
-            percentage: progressEvent.total 
+            percentage: progressEvent.total
               ? Math.round((100 * progressEvent.loaded) / progressEvent.total)
               : 0
           };
-          
+
           if (onProgress) {
             onProgress(progress);
           }
         }
-        
+
         // Retornar resultado cuando esté completo
         if (event.type === HttpEventType.Response) {
           return event.body as UploadResult;
         }
-        
+
         return null;
       }),
       // Filtrar solo el resultado final
       filter((result): result is UploadResult => result !== null),
       catchError((error) => {
         console.error('Error subiendo imagen como admin:', error);
-        return throwError(() => 
+        return throwError(() =>
           new Error(error.error?.detail || error.message || 'Error al subir la imagen')
         );
       })
@@ -173,17 +173,22 @@ export class StorageService {
    * Valida el archivo de imagen en el frontend (Capa 1)
    */
   private validateImageFile(file: File): string | null {
-    // Validar tipo MIME
-    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif'];
-    if (!allowedMimeTypes.includes(file.type)) {
-      return 'Solo se permiten archivos de imagen (JPG, PNG, WebP, JFIF)';
-    }
+    // Validar tipo MIME (puede estar vacío o incorrecto en algunos móviles)
+    const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif', 'image/heic', 'image/heif', 'image/bmp', 'image/x-ms-bmp'];
+    const hasValidMimeType = file.type && (
+      allowedMimeTypes.includes(file.type) ||
+      file.type.startsWith('image/')
+    );
 
-    // Validar extensión
-    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.jfif'];
+    // Validar extensión (más confiable en móviles)
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.jfif', '.heic', '.heif', '.bmp'];
     const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
-    if (!allowedExtensions.includes(fileExtension)) {
-      return 'Extensión de archivo no permitida';
+    const hasValidExtension = allowedExtensions.includes(fileExtension);
+
+    // Aceptar si CUALQUIERA de las dos validaciones pasa (OR en lugar de AND)
+    // Esto permite que móviles con MIME type vacío pero extensión correcta funcionen
+    if (!hasValidExtension && !hasValidMimeType) {
+      return 'Solo se permiten archivos de imagen (JPG, PNG, WebP, JFIF, HEIC, BMP)';
     }
 
     // Validar tamaño (máximo 10MB)
@@ -208,10 +213,10 @@ export class StorageService {
   async compressImage(file: File, maxWidth: number = 1920, quality: number = 0.85): Promise<File> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         const img = new Image();
-        
+
         img.onload = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
@@ -270,16 +275,16 @@ export class StorageService {
   createPreviewUrl(file: File): Observable<string> {
     return new Observable((observer) => {
       const reader = new FileReader();
-      
+
       reader.onload = () => {
         observer.next(reader.result as string);
         observer.complete();
       };
-      
+
       reader.onerror = (error) => {
         observer.error(error);
       };
-      
+
       reader.readAsDataURL(file);
     });
   }
