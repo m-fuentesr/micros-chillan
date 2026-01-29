@@ -1207,11 +1207,29 @@ async def update_daily_record(
         )
 
         porcentaje = original["porcentaje_aplicado"]
+        if (
+            (porcentaje is None or porcentaje == 0)
+            and original.get("es_dia_no_trabajado")
+            and original.get("motivo_no_trabajado") == "registro_faltante"
+        ):
+            chofer_res = (
+                supabase.table("choferes")
+                .select("porcentaje_pago")
+                .eq("id", original["chofer_id"])
+                .single()
+                .execute()
+            )
+
+            if getattr(chofer_res, "error", None):
+                raise HTTPException(400, f"Error obteniendo porcentaje del chofer: {chofer_res.error}")
+
+            porcentaje = chofer_res.data.get("porcentaje_pago") or 0
         monto_pago = int(monto * porcentaje)
 
         updates.update({
             "monto_recaudado": monto,
             "monto_porcentaje_chofer": monto_pago,
+            "porcentaje_aplicado": porcentaje,
             "es_dia_no_trabajado": False,
             "estado": "incidente_reportado" if payload.incidente_critico else "completo",
             "motivo_no_trabajado": None,

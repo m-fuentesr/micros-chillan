@@ -483,7 +483,7 @@ interface DailyRecordDetailView extends DailyRecord {
                           <div class="absolute inset-0 flex flex-col items-center justify-center text-base-content/40 group-hover:text-primary transition-colors">
                             <ui-icon name="Upload" size="lg" class="mb-1" />
                             <span class="text-xs font-bold uppercase">Sube o arrastra el comprobante</span>
-                            <span class="text-[10px] mt-1">JPG, PNG, JFIF (Max 10MB)</span>
+                            <span class="text-[10px] mt-1">JPG, PNG, WebP, HEIC, BMP (Max 10MB)</span>
                           </div>
                         }
                       </label>
@@ -580,7 +580,7 @@ interface DailyRecordDetailView extends DailyRecord {
                               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
                             </svg>
                             <span class="text-xs font-bold uppercase">Sube o arrastra el voucher</span>
-                            <span class="text-[10px] mt-1">JPG, PNG, JFIF (Max 10MB)</span>
+                            <span class="text-[10px] mt-1">JPG, PNG, WebP, HEIC, BMP (Max 10MB)</span>
                           </div>
                         }
                       </label>
@@ -1619,15 +1619,23 @@ export class RegistroDiarioDetail {
     const file = input.files?.[0];
 
     if (file) {
-      // Validar tamaño (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('El archivo es demasiado grande. Máximo 5MB.');
+      // Validar tamaño (10MB para ser consistente con el backend)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. Máximo 10MB.');
         return;
       }
 
-      // Validar tipo
-      if (!file.type.startsWith('image/')) {
-        alert('Solo se permiten archivos de imagen.');
+      // Validar tipo: verificar MIME type Y extensión (para compatibilidad móvil)
+      // Algunos móviles no reportan file.type correctamente
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif', 'image/heic', 'image/heif', 'image/bmp', 'image/x-ms-bmp'];
+      const fileName = file.name.toLowerCase();
+      const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.jfif', '.heic', '.heif', '.bmp'];
+
+      const hasValidMimeType = file.type && validMimeTypes.some(mime => file.type.startsWith(mime.split('/')[0]));
+      const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+
+      if (!hasValidMimeType && !hasValidExtension) {
+        alert('Solo se permiten archivos de imagen (JPG, PNG, WebP, JFIF, HEIC, BMP)');
         return;
       }
 
@@ -1651,15 +1659,23 @@ export class RegistroDiarioDetail {
     const file = input.files?.[0];
 
     if (file) {
-      // Validar tamaño (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('El archivo es demasiado grande. Máximo 5MB.');
+      // Validar tamaño (10MB para ser consistente con el backend)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('El archivo es demasiado grande. Máximo 10MB.');
         return;
       }
 
-      // Validar tipo
-      if (!file.type.startsWith('image/')) {
-        alert('Solo se permiten archivos de imagen.');
+      // Validar tipo: verificar MIME type Y extensión (para compatibilidad móvil)
+      // Algunos móviles no reportan file.type correctamente
+      const validMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif', 'image/heic', 'image/heif', 'image/bmp', 'image/x-ms-bmp'];
+      const fileName = file.name.toLowerCase();
+      const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.jfif', '.heic', '.heif', '.bmp'];
+
+      const hasValidMimeType = file.type && validMimeTypes.some(mime => file.type.startsWith(mime.split('/')[0]));
+      const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+
+      if (!hasValidMimeType && !hasValidExtension) {
+        alert('Solo se permiten archivos de imagen (JPG, PNG, WebP, JFIF, HEIC, BMP)');
         return;
       }
 

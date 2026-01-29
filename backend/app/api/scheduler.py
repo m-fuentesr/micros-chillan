@@ -31,4 +31,4 @@ def start_scheduler():
     )
 
     scheduler.start()
-    print("⏰ Planificador de tareas (Cron) iniciado correctamente [Zona: Chile].")
+    print("Planificador de tareas (Cron) iniciado correctamente [Zona: Chile].")

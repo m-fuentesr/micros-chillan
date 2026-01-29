@@ -15,7 +15,19 @@ from app.core.config import settings
 from app.schemas.user import UserInDB
 
 # Configuración
-ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/jfif']
+# Formatos soportados: JPEG/JPG (estándar), PNG (screenshots), WebP (moderno),
+# JFIF (JPEG variant), HEIC/HEIF (iPhone/iPad nativo), BMP (Windows legacy)
+ALLOWED_MIME_TYPES = [
+    'image/jpeg', 
+    'image/jpg', 
+    'image/png', 
+    'image/webp', 
+    'image/jfif',
+    'image/heic',  # iPhone/iPad (iOS 11+)
+    'image/heif',  # HEIF variant
+    'image/bmp',   # Windows Bitmap
+    'image/x-ms-bmp'  # BMP variant
+]
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB Entrada (antes de comprimir)
 STORAGE_BUCKET = 'daily-records'  # Nombre del bucket en Supabase
 

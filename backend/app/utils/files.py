@@ -58,7 +58,7 @@ def validate_magic_bytes(file_content: bytes) -> Tuple[bool, Optional[str]]:
     Returns:
         Tupla (is_valid, mime_type) donde:
         - is_valid: True si el archivo es una imagen válida
-        - mime_type: Tipo MIME detectado ('image/jpeg', 'image/png', 'image/webp', 'image/jfif') o None
+        - mime_type: Tipo MIME detectado ('image/jpeg', 'image/png', 'image/webp', 'image/jfif', 'image/heic', 'image/bmp') o None
     """
     try:
         # Verificar magic bytes manualmente (más portable que python-magic)
@@ -80,6 +80,18 @@ def validate_magic_bytes(file_content: bytes) -> Tuple[bool, Optional[str]]:
         # WebP: RIFF....WEBP
         if file_content.startswith(b'RIFF') and b'WEBP' in file_content[8:12]:
             return True, 'image/webp'
+        
+        # HEIC/HEIF: ftyp en offset 4, luego heic/heix/heim/mif1 en offset 8
+        # Ejemplo: 00 00 00 18 66 74 79 70 68 65 69 63
+        if len(file_content) >= 12 and file_content[4:8] == b'ftyp':
+            brand = file_content[8:12]
+            # Variantes de HEIC/HEIF
+            if brand in [b'heic', b'heix', b'heim', b'heis', b'mif1', b'msf1', b'hevc', b'hevx']:
+                return True, 'image/heic'
+        
+        # BMP: 42 4D (BM en ASCII)
+        if file_content.startswith(b'BM'):
+            return True, 'image/bmp'
         
         # GIF: 47 49 46 38 (opcional, pero no está en ALLOWED_MIME_TYPES)
         # if file_content.startswith(b'GIF87a') or file_content.startswith(b'GIF89a'):

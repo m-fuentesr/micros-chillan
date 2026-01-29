@@ -94,6 +94,20 @@ async def check_missing_daily_records(target_audience: str):
             
             elif target_audience == 'admin':
                 # --- CREAR REGISTRO AUTOMÁTICO PRIMERO ---
+                porcentaje_res = (
+                    supabase.table("choferes")
+                    .select("porcentaje_pago")
+                    .eq("id", chofer_id)
+                    .single()
+                    .execute()
+                )
+
+                if getattr(porcentaje_res, "error", None):
+                    print(f"❌ Error obteniendo porcentaje del chofer {chofer_id}: {porcentaje_res.error}")
+                    continue
+
+                porcentaje_pago = porcentaje_res.data.get("porcentaje_pago") or 0
+
                 registro_auto = {
                     "maquina_id": maquina_id,
                     "chofer_id": chofer_id,
@@ -101,7 +115,7 @@ async def check_missing_daily_records(target_audience: str):
                     "monto_recaudado": 0,
                     "litros_diesel": 0,
                     "costo_total_diesel": 0,
-                    "porcentaje_aplicado": 0,
+                    "porcentaje_aplicado": porcentaje_pago,
                     "monto_porcentaje_chofer": 0,
                     "estado": "no_trabajado",
                     "es_dia_no_trabajado": True,
