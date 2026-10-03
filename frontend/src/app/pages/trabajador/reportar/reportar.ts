@@ -7,6 +7,7 @@ import { TodayRecordStatusService } from '../../../shared/services/today-record-
 import { AuthService } from '../../../shared/services/auth.service';
 import { MachineService } from '../../../shared/services/machine.service';
 import { WorkerService } from '../../../shared/services/worker.service';
+import { ConfirmModalService } from '../../../shared/services/confirm-modal.service';
 import { LoadingStateService } from '../../../shared/services/loading-state.service';
 import { TransitionService } from '../../../shared/services/transition.service';
 import { LoadingSkeleton } from '../../../shared/components/loading-skeleton/loading-skeleton';
@@ -1040,6 +1041,7 @@ export class Reportar implements OnInit {
   private transitionService = inject(TransitionService);
   private storageService = inject(StorageService);
   private workerService = inject(WorkerService);
+  private confirmModalService = inject(ConfirmModalService);
 
   // Imagen del comprobante del registro diario (obligatorio)
   evidenceName = signal('');
@@ -1095,70 +1097,76 @@ export class Reportar implements OnInit {
     { initialValue: [] }
   );
 
+  // Flag para trackear cuando el perfil emite (éxito o error)
+  private profileEmitted = signal(false);
+
   // Obtener perfil del trabajador para saber la máquina asignada
   workerProfile = toSignal(
     this.workerService.getProfile().pipe(
+      tap(() => {
+        this.profileEmitted.set(true);
+      }),
       catchError(() => {
+        this.profileEmitted.set(true);
         return of(null);
       })
     ),
     { initialValue: null }
   );
 
-  // Máquinas ordenadas: primero la asignada al chofer, luego las demás
-  sortedMachines = computed(() => {
+  // Máquina asignada al chofer dentro de la lista de máquinas activas (null si no se conoce)
+  assignedMachine = computed<MachineSelect | null>(() => {
     const allMachines = this.machines();
     const profile = this.workerProfile();
 
-    if (allMachines.length === 0) {
-      return [];
+    if (allMachines.length === 0 || !profile) {
+      return null;
     }
 
-    // Si no hay perfil o no tiene máquina asignada, retornar las máquinas tal cual
-    if (!profile || !profile.maquina_detalle || profile.maquina_detalle === 'Sin Asignar') {
-      return allMachines;
+    // Preferir el ID que entrega el backend
+    if (profile.maquina_id != null) {
+      return allMachines.find(m => Number(m.id) === Number(profile.maquina_id)) ?? null;
     }
 
-    // Extraer el número de máquina del maquina_detalle
+    // Compatibilidad con backend anterior: extraer el número del maquina_detalle
     // Formato del backend: "20 - Mercedes-Benz" (número antes del primer guion)
-    const maquinaDetalle = profile.maquina_detalle.trim();
-    const match = maquinaDetalle.match(/^(\d+)\s*-\s*/);
+    if (!profile.maquina_detalle || profile.maquina_detalle === 'Sin Asignar') {
+      return null;
+    }
 
+    const match = profile.maquina_detalle.trim().match(/^(\d+)\s*-\s*/);
     if (!match) {
-      // Si no se puede extraer el número, retornar las máquinas tal cual
-      console.warn('No se pudo extraer el número de máquina del formato:', maquinaDetalle);
+      console.warn('No se pudo extraer el número de máquina del formato:', profile.maquina_detalle);
+      return null;
+    }
+
+    return allMachines.find(m => String(m.numero_interno) === match[1]) ?? null;
+  });
+
+  // Máquinas ordenadas: primero la asignada al chofer, luego las demás
+  sortedMachines = computed(() => {
+    const allMachines = this.machines();
+    const assigned = this.assignedMachine();
+
+    if (!assigned) {
       return allMachines;
     }
 
-    const numeroAsignado = match[1];
-
-    // Buscar la máquina asignada por numero_interno (es un string)
-    const assignedMachineIndex = allMachines.findIndex(
-      m => String(m.numero_interno) === String(numeroAsignado)
-    );
-
-    if (assignedMachineIndex === -1) {
-      // Si no se encuentra la máquina asignada en la lista, retornar las máquinas tal cual
-      console.warn('Máquina asignada no encontrada en la lista de máquinas activas:', numeroAsignado);
-      return allMachines;
-    }
-
-    // Reordenar: poner la máquina asignada primero
-    const sorted = [...allMachines];
-    const [assignedMachine] = sorted.splice(assignedMachineIndex, 1);
-    return [assignedMachine, ...sorted];
+    return [assigned, ...allMachines.filter(m => m.id !== assigned.id)];
   });
 
   // Effect como inicializador de campo (contexto de inyección válido)
   private machinesEffect = effect(() => {
-    // Monitorear cuando el observable emite
-    if (this.machinesEmitted() && this.machinesLoadingState.isLoading()) {
+    // Esperar a que lleguen AMBOS: máquinas y perfil. Si se preselecciona antes de
+    // conocer el perfil, queda elegida la primera máquina de la lista (bug máquina 18).
+    if (this.machinesEmitted() && this.profileEmitted() && this.machinesLoadingState.isLoading()) {
       this.machinesLoadingState.setDataLoaded();
 
-      // Establecer máquina por defecto: primero la asignada, si no hay ninguna asignada, la primera disponible
-      const sortedMachines = this.sortedMachines();
-      if (sortedMachines.length > 0) {
-        this.reportForm.patchValue({ machine: sortedMachines[0].id });
+      // Preseleccionar solo la máquina asignada. Si no se conoce, el chofer debe elegirla.
+      // No pisar una selección que el chofer ya haya hecho.
+      const assigned = this.assignedMachine();
+      if (assigned && this.reportForm.get('machine')?.value == null) {
+        this.reportForm.patchValue({ machine: assigned.id });
       }
     }
   });
@@ -1354,6 +1362,12 @@ export class Reportar implements OnInit {
         return;
       }
 
+      // Sin máquina preseleccionada (perfil sin asignación o no disponible) el chofer debe elegirla
+      if (this.reportForm.get('machine')?.invalid) {
+        this.showErrorToast('Selecciona la máquina en la que trabajaste hoy');
+        return;
+      }
+
       return;
     }
 
@@ -1376,6 +1390,23 @@ export class Reportar implements OnInit {
 
     // Si hay foto, ocultar el error
     this.showPhotoError.set(false);
+
+    // Confirmar si la máquina elegida no es la asignada al chofer
+    const assigned = this.assignedMachine();
+    const selectedId = Number(this.reportForm.get('machine')?.value);
+    if (assigned && selectedId !== Number(assigned.id)) {
+      const selected = this.machines().find(m => Number(m.id) === selectedId);
+      const selectedLabel = selected ? `la máquina ${selected.numero_interno}` : 'otra máquina';
+      const confirmed = await this.confirmModalService.open({
+        title: 'Máquina distinta a la asignada',
+        message: `Tu máquina asignada es la <strong>${assigned.numero_interno}</strong> y estás reportando en <strong>${selectedLabel}</strong>.<br><br>¿Confirmas que hoy trabajaste en ${selectedLabel}?`,
+        confirmText: selected ? `Sí, reportar en la ${selected.numero_interno}` : 'Sí, reportar',
+        cancelText: 'Cambiar máquina',
+      });
+      if (!confirmed) {
+        return;
+      }
+    }
 
     this.isSubmitting.set(true);
     this.reportSuccess.set(false);

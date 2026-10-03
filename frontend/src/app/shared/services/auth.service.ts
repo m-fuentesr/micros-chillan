@@ -11,6 +11,8 @@ import { firstValueFrom } from 'rxjs';
 import { AuthUser, UserRole } from '../models/auth.models';
 import { environment } from '../../../environments/environment.development';
 import { SpinnerService } from './spinner.service';
+import { WorkerService } from './worker.service';
+import { DailyRecordService } from './daily-record.service';
 
 const SUPABASE_URL = environment.supabaseUrl;
 const SUPABASE_ANON_KEY = environment.supabaseAnonKey;
@@ -35,6 +37,8 @@ export class AuthService {
   private readonly router = inject(Router);
   private readonly http = inject(HttpClient);
   private readonly spinnerService = inject(SpinnerService);
+  private readonly workerService = inject(WorkerService);
+  private readonly dailyRecordService = inject(DailyRecordService);
 
   readonly supabase: SupabaseClient;
 
@@ -766,6 +770,11 @@ export class AuthService {
     sessionStorage.removeItem(this.tokenStorageKey);
     sessionStorage.removeItem(this.userStorageKey);
     this._currentUser.set(null);
+
+    // El logout navega sin recargar la página: limpiar los cachés en memoria del
+    // trabajador para que el siguiente usuario no herede perfil/máquina/historial.
+    this.workerService.invalidateCache('all');
+    this.dailyRecordService.invalidateHistoryCache();
   }
 
   /**
