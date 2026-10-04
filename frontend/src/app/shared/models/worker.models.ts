@@ -27,6 +27,8 @@ export interface WorkerProfile {
   telefono: string;
   email: string;
   maquina_detalle: string | null; // Ej: "MÁQUINA 01 - Mercedes Benz" o null si no tiene asignación
+  maquina_id?: number | null; // ID de la máquina asignada vigente (null si no tiene asignación)
+  maquina_numero?: number | null; // numero_interno de la máquina asignada vigente
   fecha_ingreso: string; // Ej: "20-11-2024"
 }
 

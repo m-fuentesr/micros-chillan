@@ -25,21 +25,26 @@ async def get_profile(current_user: UserInDB):
         raise HTTPException(status_code=404, detail="Chofer no encontrado")
 
     # --- PASO 2: Consultar ID de la Máquina Asignada ---
+    # Si por error hubiera más de una asignación vigente, se toma la más reciente
     response_asignacion = (
         supabase.table("asignaciones_chofer_maquina")
         .select("maquina_id")
         .eq("chofer_id", chofer_id)
         .is_("fecha_termino", "null") # Vigente
+        .order("fecha_inicio", desc=True)
+        .order("id", desc=True)
         .limit(1)
         .execute()
     )
-    
+
     # --- PASO 3: Consultar Detalles de la Máquina ---
     maquina_str = "Sin Asignar"
-    
+    maquina_id = None
+    maquina_numero = None
+
     if response_asignacion.data and len(response_asignacion.data) > 0:
         maquina_id = response_asignacion.data[0].get("maquina_id")
-        
+
         if maquina_id:
             response_maquina = (
                 supabase.table("maquinas")
@@ -54,6 +59,7 @@ async def get_profile(current_user: UserInDB):
                 numero = maq.get('numero_interno', 'N/A')
                 marca = maq.get('marca', 'N/A')
                 maquina_str = f"{numero} - {marca}"
+                maquina_numero = maq.get('numero_interno')
 
     # --- PASO 4: Formatear Respuesta ---
     # Construir nombre completo manejando valores None
@@ -90,6 +96,8 @@ async def get_profile(current_user: UserInDB):
         "email": current_user.correo or "Sin Email", 
         
         "maquina_detalle": maquina_str,
+        "maquina_id": maquina_id,
+        "maquina_numero": maquina_numero,
         "fecha_ingreso": fecha_fmt,
         "estadisticas": {
             "dias_trabajados": 0,
