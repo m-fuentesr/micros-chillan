@@ -179,7 +179,7 @@ async def get_summary():
     # ---------------------------------------------------------
     estados_raw = (
         supabase.table("maquinas")
-        .select("estado_operativo")
+        .select("id, estado_operativo")
         .execute()
     )
 
@@ -189,9 +189,12 @@ async def get_summary():
     operativas = 0
     en_taller = 0
     inactivas = 0
+    eliminadas_ids = set()
 
     for m in estados_raw.data:
         est = m["estado_operativo"]
+        if est == "eliminada":
+            eliminadas_ids.add(m["id"])
         if est == "operativa":
             operativas += 1
         elif est == "en_taller":
@@ -229,7 +232,7 @@ async def get_summary():
 
     for d in docs_raw.data:
         fecha_str = d["fecha_vencimiento"]
-        if not fecha_str:
+        if not fecha_str or d["maquina_id"] in eliminadas_ids:
             continue
 
         fecha = date.fromisoformat(fecha_str)
@@ -280,8 +283,8 @@ async def get_document_alerts(estado: Optional[str] = None):
     limite_warning = hoy + timedelta(days=alerta_dias)
 
     # 1) Obtener máquinas (con filtro de estado si aplica)
-    base_query = supabase.table("maquinas").select("id")
-    
+    base_query = supabase.table("maquinas").select("id").neq("estado_operativo", "eliminada")
+
     if estado:
         base_query = base_query.eq("estado_operativo", estado)
     
@@ -375,10 +378,13 @@ async def list_machines(filters):
         .select("*", count="exact")
     )
     
+    # Las máquinas eliminadas no aparecen en el listado
+    base_query = base_query.neq("estado_operativo", "eliminada")
+
     # Aplicar filtros
     if filters.estado:
         base_query = base_query.eq("estado_operativo", filters.estado)
-    
+
     if filters.search:
         # Búsqueda por número interno, patente o marca
         # Nota: Supabase requiere formato específico para OR
@@ -596,6 +602,13 @@ async def list_machines(filters):
 
 
 async def create_machine(data):
+    # Una máquina inactiva no puede quedar con chofer asignado (en taller sí)
+    if data.chofer_id and data.estado_operativo not in ("operativa", "en_taller"):
+        raise HTTPException(
+            400,
+            "Una máquina inactiva no puede tener chofer asignado. Quita el chofer o cambia el estado.",
+        )
+
     # ----------------------------------------------------------
     # 0. Verificar que no exista el número interno ni la patente
     # ----------------------------------------------------------
@@ -858,7 +871,14 @@ async def update_machine(machine_id: int, data):
 
     if getattr(m_raw, "error", None):
         raise HTTPException(404, "Máquina no encontrada")
-    
+
+    # Una máquina inactiva no puede quedar con chofer asignado (en taller sí)
+    if data.chofer_id is not None and data.estado_operativo not in ("operativa", "en_taller"):
+        raise HTTPException(
+            400,
+            "Una máquina inactiva no puede tener chofer asignado. Quita el chofer o cambia el estado.",
+        )
+
     # Validar número interno duplicado
     numero_duplicado = (
         supabase.table("maquinas")
@@ -1089,7 +1109,7 @@ async def delete_machine(machine_id: int):
         .execute()
     )
 
-    if getattr(m_raw, "error", None):
+    if getattr(m_raw, "error", None) or not m_raw.data or m_raw.data.get("estado_operativo") == "eliminada":
         raise HTTPException(404, "Máquina no encontrada.")
 
     # ----------------------------------------
@@ -1117,24 +1137,26 @@ async def delete_machine(machine_id: int):
             raise HTTPException(400, f"Error liberando chofer: {cierre.error}")
 
     # ----------------------------------------
-    # 3. Cambiar estado de la máquina a 'inactiva'
+    # 3. Marcar la máquina como 'eliminada' (soft delete).
+    #    No se borra físicamente: sus registros, mantenciones y documentos
+    #    se conservan para la contabilidad, pero deja de aparecer en el sistema.
     # ----------------------------------------
     update_res = (
         supabase.table("maquinas")
-        .update({"estado_operativo": "inactiva"})
+        .update({"estado_operativo": "eliminada"})
         .eq("id", machine_id)
         .execute()
     )
 
     if getattr(update_res, "error", None):
-        raise HTTPException(400, f"Error desactivando máquina: {update_res.error}")
+        raise HTTPException(400, f"Error eliminando máquina: {update_res.error}")
 
     # ----------------------------------------
     # 4. Respuesta final
     # ----------------------------------------
     return {
-        "message": "Máquina desactivada correctamente.",
-        "nuevo_estado": "inactiva"
+        "message": "Máquina eliminada correctamente.",
+        "nuevo_estado": "eliminada"
     }
 
 

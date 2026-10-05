@@ -80,7 +80,8 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                   class="badge gap-1.5 text-white font-medium shadow-sm px-3 py-2 shrink-0"
                   [class.badge-success]="machine()!.estado_operativo === 'Operativa'"
                   [class.badge-warning]="machine()!.estado_operativo === 'En Taller'"
-                  [class.badge-error]="machine()!.estado_operativo === 'Inactiva'">
+                  [class.badge-error]="machine()!.estado_operativo === 'Inactiva'"
+                  [class.badge-neutral]="machine()!.estado_operativo === 'Eliminada'">
                   <span class="w-1.5 h-1.5 bg-white rounded-full"></span>
                   {{ machine()!.estado_operativo }}
                 </span>
@@ -88,8 +89,10 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
               
               <!-- Botones de Acción Premium -->
               <div class="flex flex-wrap items-center gap-2 shrink-0">
-                @if (!isEditingGeneral()) {
-                  <button 
+                @if (machine()!.estado_operativo === 'Eliminada') {
+                  <span class="text-xs sm:text-sm text-base-content/60">Máquina eliminada: solo consulta de historial</span>
+                } @else if (!isEditingGeneral()) {
+                  <button
                     type="button"
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
@@ -1277,7 +1280,7 @@ export class MachineDetail implements OnInit {
 
     const confirmed = await this.confirmModalService.open({
       title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Esta acción desactivará la máquina.`,
+      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Dejará de aparecer en el sistema, pero su historial (registros, mantenciones y documentos) se conserva.`,
       confirmText: 'Eliminar',
       cancelText: 'Cancelar'
     });

@@ -8,7 +8,7 @@ export interface Machine {
   patente: string;
   año?: number;
   kilometraje_inicial?: number;
-  estado_operativo: 'Operativa' | 'En Taller' | 'Inactiva';
+  estado_operativo: 'Operativa' | 'En Taller' | 'Inactiva' | 'Eliminada';
   chofer_id?: number | null; // ID del chofer asignado (para formularios)
   chofer_actual?: {
     id: number;
@@ -54,7 +54,7 @@ export interface MachineDocumentAlerts {
   al_dia: number;
 }
 
-export type MachineStatus = 'Operativa' | 'En Taller' | 'Inactiva';
+export type MachineStatus = 'Operativa' | 'En Taller' | 'Inactiva' | 'Eliminada';
 export type ViewMode = 'cards' | 'table';
 export type StatusFilter = 'all' | 'Operativa' | 'En Taller' | 'Inactiva';
 export type DocumentFilter = 'all' | 'vencidos' | 'por_vencer' | 'al_dia';

@@ -11,6 +11,47 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Estados de máquina que pueden tener un chofer asignado
+ESTADOS_MAQUINA_ASIGNABLES = ("operativa", "en_taller")
+
+
+def validar_maquina_asignable(maquina_id: int, chofer_id: int | None = None):
+    """
+    Verifica que a la máquina se le pueda asignar el chofer:
+    - que exista y esté operativa o en taller (no inactiva ni eliminada)
+    - que no tenga ya asignado a OTRO chofer (evita dos asignaciones vigentes)
+    Lanza HTTPException 400 con un mensaje claro si no se puede.
+    """
+    maq_res = (
+        supabase.table("maquinas")
+        .select("numero_interno, estado_operativo")
+        .eq("id", maquina_id)
+        .maybe_single()
+        .execute()
+    )
+    maq = maq_res.data if maq_res and maq_res.data else None
+    if not maq or maq["estado_operativo"] == "eliminada":
+        raise HTTPException(400, "La máquina seleccionada no existe.")
+
+    numero = maq["numero_interno"]
+    if maq["estado_operativo"] not in ESTADOS_MAQUINA_ASIGNABLES:
+        raise HTTPException(
+            400, f"La máquina {numero} está inactiva y no se le puede asignar un chofer."
+        )
+
+    ocupada = (
+        supabase.table("asignaciones_chofer_maquina")
+        .select("chofer_id, choferes(primer_nombre, apellido_paterno)")
+        .eq("maquina_id", maquina_id)
+        .is_("fecha_termino", None)
+        .execute()
+    )
+    otros = [a for a in (ocupada.data or []) if a["chofer_id"] != chofer_id]
+    if otros:
+        c = otros[0].get("choferes") or {}
+        nombre = f"{c.get('primer_nombre') or ''} {c.get('apellido_paterno') or ''}".strip() or "otro chofer"
+        raise HTTPException(400, f"La máquina {numero} ya está asignada a {nombre}.")
+
 
 def build_nombre_completo(primer_nombre: str | None, segundo_nombre: str | None, 
                          apellido_paterno: str | None, apellido_materno: str | None) -> str:
@@ -745,6 +786,22 @@ async def update_driver(driver_id: int, data):
         )
 
     # ---------------------------------------------------------
+    # 3b. Validar la máquina nueva ANTES de guardar cualquier cambio
+    #     (solo si el chofer queda activo y cambia de máquina)
+    # ---------------------------------------------------------
+    if data.estado != "inactivo" and data.maquina_id is not None:
+        asign_previa = (
+            supabase.table("asignaciones_chofer_maquina")
+            .select("maquina_id")
+            .eq("chofer_id", driver_id)
+            .is_("fecha_termino", None)
+            .execute()
+        )
+        maquinas_actuales = {a["maquina_id"] for a in (asign_previa.data or [])}
+        if data.maquina_id not in maquinas_actuales:
+            validar_maquina_asignable(data.maquina_id, driver_id)
+
+    # ---------------------------------------------------------
     # 4. Actualizar correo en Supabase Auth (SOLO si cambió)
     # ---------------------------------------------------------
     try:
@@ -1137,8 +1194,8 @@ async def create_driver(data: DriverCreate):
             if getattr(maquina_res, "error", None) or not maquina_res.data:
                 raise HTTPException(400, "La máquina seleccionada no existe.")
 
-            if maquina_res.data["estado_operativo"] != "operativa":
-                raise HTTPException(400, "La máquina seleccionada no está operativa.")
+            if maquina_res.data["estado_operativo"] not in ESTADOS_MAQUINA_ASIGNABLES:
+                raise HTTPException(400, "La máquina seleccionada está inactiva y no se le puede asignar un chofer.")
 
             # Verificar que no esté ya asignada
             asign_activa = (
@@ -1450,8 +1507,8 @@ async def reintegrate_driver(driver_id: int, data: DriverReintegrate):
             if getattr(maquina_res, "error", None) or not maquina_res.data:
                 raise HTTPException(400, "La máquina seleccionada no existe.")
 
-            if maquina_res.data["estado_operativo"] != "operativa":
-                raise HTTPException(400, "La máquina seleccionada no está operativa.")
+            if maquina_res.data["estado_operativo"] not in ESTADOS_MAQUINA_ASIGNABLES:
+                raise HTTPException(400, "La máquina seleccionada está inactiva y no se le puede asignar un chofer.")
 
             asign_activa = (
                 supabase.table("asignaciones_chofer_maquina")

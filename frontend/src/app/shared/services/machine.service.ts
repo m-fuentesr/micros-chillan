@@ -136,10 +136,11 @@ export class MachineService {
       map((response) => ({
         datos: response.items.map((m): Machine => {
           // Transformar estado_operativo
-          const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
+          const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva' | 'Eliminada'> = {
             'operativa': 'Operativa',
             'en_taller': 'En Taller',
-            'inactiva': 'Inactiva'
+            'inactiva': 'Inactiva',
+            'eliminada': 'Eliminada'
           };
           const estadoOperativo = estadoMap[m.estado_operativo.toLowerCase()] || 'Operativa';
 
@@ -222,7 +223,7 @@ export class MachineService {
       patente: string;
       marca: string;
       anio_fabricacion: number;
-      estado_operativo: 'operativa' | 'en_taller' | 'inactiva';
+      estado_operativo: 'operativa' | 'en_taller' | 'inactiva' | 'eliminada';
       chofer_actual_id: number | null;
       documentos: Partial<Record<
         MachineDocumentKey,
@@ -233,10 +234,11 @@ export class MachineService {
       >>;
     }
 
-    const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva'> = {
+    const estadoMap: Record<string, 'Operativa' | 'En Taller' | 'Inactiva' | 'Eliminada'> = {
       operativa: 'Operativa',
       en_taller: 'En Taller',
-      inactiva: 'Inactiva'
+      inactiva: 'Inactiva',
+      eliminada: 'Eliminada'
     };
 
     const mapEstadoDocumento = (estado: string): DocumentStatus['estado'] => {

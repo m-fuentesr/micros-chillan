@@ -15,7 +15,7 @@ async def _calculate_machines_financials(mes: int, anio: int):
     fecha_fin = date(anio, mes, last_day).isoformat()
 
     # 2. Consultas BD
-    res_maquinas = supabase.table("maquinas").select("id, numero_interno, marca, patente").execute()
+    res_maquinas = supabase.table("maquinas").select("id, numero_interno, marca, patente, estado_operativo").execute()
     maquinas = res_maquinas.data
 
     res_regs = (
@@ -65,6 +65,10 @@ async def _calculate_machines_financials(mes: int, anio: int):
         # Filtros y Sumas
         regs_mq = [r for r in registros if r["maquina_id"] == mid]
         mant_mq = [m for m in mantenimientos if m["maquina_id"] == mid]
+
+        # Una máquina eliminada solo aparece en los meses en que tuvo actividad
+        if mq.get("estado_operativo") == "eliminada" and not regs_mq and not mant_mq:
+            continue
 
         ingresos = sum((r.get("monto_recaudado") or 0) for r in regs_mq)
         diesel = sum((r.get("costo_total_diesel") or 0) for r in regs_mq)
