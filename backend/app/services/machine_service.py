@@ -1104,8 +1104,8 @@ async def delete_machine(machine_id: int):
         .execute()
     )
 
-    # Cerrar asignación si existe
-    if asign_raw.data:
+    # Cerrar asignación si existe (maybe_single() devuelve None si no hay filas)
+    if asign_raw and asign_raw.data:
         cierre = (
             supabase.table("asignaciones_chofer_maquina")
             .update({"fecha_termino": hoy})

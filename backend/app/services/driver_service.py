@@ -1231,7 +1231,8 @@ async def delete_driver(driver_id: int):
     usuario_id = None
     supabase_uid = None
 
-    if usr_res.data:
+    # maybe_single() devuelve None si el chofer no tiene usuario asociado
+    if usr_res and usr_res.data:
         usuario_id = usr_res.data["id"]
         supabase_uid = usr_res.data["supabase_uid"]
 
