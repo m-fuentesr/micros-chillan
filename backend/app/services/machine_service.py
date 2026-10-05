@@ -1137,13 +1137,17 @@ async def delete_machine(machine_id: int):
             raise HTTPException(400, f"Error liberando chofer: {cierre.error}")
 
     # ----------------------------------------
-    # 3. Marcar la máquina como 'eliminada' (soft delete).
-    #    No se borra físicamente: sus registros, mantenciones y documentos
-    #    se conservan para la contabilidad, pero deja de aparecer en el sistema.
+    # 3. Eliminación en dos pasos (soft delete):
+    #    - Máquina activa (operativa / en taller) -> 'inactiva'. Sigue visible
+    #      y se puede reactivar editándola.
+    #    - Máquina ya inactiva -> 'eliminada'. Deja de aparecer en el sistema,
+    #      pero sus registros, mantenciones y documentos se conservan.
     # ----------------------------------------
+    nuevo_estado = "eliminada" if m_raw.data.get("estado_operativo") == "inactiva" else "inactiva"
+
     update_res = (
         supabase.table("maquinas")
-        .update({"estado_operativo": "eliminada"})
+        .update({"estado_operativo": nuevo_estado})
         .eq("id", machine_id)
         .execute()
     )
@@ -1155,8 +1159,12 @@ async def delete_machine(machine_id: int):
     # 4. Respuesta final
     # ----------------------------------------
     return {
-        "message": "Máquina eliminada correctamente.",
-        "nuevo_estado": "eliminada"
+        "message": (
+            "Máquina eliminada correctamente."
+            if nuevo_estado == "eliminada"
+            else "Máquina desactivada correctamente."
+        ),
+        "nuevo_estado": nuevo_estado
     }
 
 

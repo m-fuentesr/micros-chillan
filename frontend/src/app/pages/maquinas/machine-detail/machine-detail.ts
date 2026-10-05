@@ -97,7 +97,7 @@ import { getDaysDifferenceInChile } from '../../../shared/utils/date.utils';
                     class="btn-action-delete group relative overflow-hidden rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-error border border-error/30 bg-error/5 hover:bg-error hover:text-white transition-all duration-300 active:scale-95 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer"
                     (click)="onDelete()">
                     <ui-icon name="Trash2" size="sm" class="transition-transform group-hover:scale-110 shrink-0" />
-                    <span class="whitespace-nowrap">Eliminar</span>
+                    <span class="whitespace-nowrap">{{ machine()!.estado_operativo === 'Inactiva' ? 'Eliminar definitivamente' : 'Eliminar' }}</span>
                   </button>
                   <button
                     type="button"
@@ -1278,12 +1278,24 @@ export class MachineDetail implements OnInit {
       return;
     }
 
-    const confirmed = await this.confirmModalService.open({
-      title: 'Eliminar Máquina',
-      message: `¿Estás seguro de que deseas eliminar la máquina ${machine?.numero || 'esta máquina'}? Dejará de aparecer en el sistema, pero su historial (registros, mantenciones y documentos) se conserva.`,
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar'
-    });
+    // Eliminación en dos pasos: activa -> inactiva; inactiva -> eliminada
+    const numero = machine?.numero || 'esta máquina';
+    const esDefinitiva = machine?.estado_operativo === 'Inactiva';
+    const confirmed = await this.confirmModalService.open(
+      esDefinitiva
+        ? {
+            title: 'Eliminar Máquina Definitivamente',
+            message: `¿Estás seguro de que deseas eliminar definitivamente la máquina ${numero}? <strong>Dejará de aparecer en el sistema</strong> y no se podrá reactivar. Su historial (registros, mantenciones y documentos) se conserva.`,
+            confirmText: 'Eliminar definitivamente',
+            cancelText: 'Cancelar'
+          }
+        : {
+            title: 'Eliminar Máquina',
+            message: `¿Estás seguro de que deseas eliminar la máquina ${numero}? Pasará a estado <strong>Inactiva</strong> y podrás reactivarla editándola. Para quitarla del sistema, vuelve a presionar "Eliminar definitivamente" estando inactiva.`,
+            confirmText: 'Desactivar',
+            cancelText: 'Cancelar'
+          }
+    );
 
     if (!confirmed) {
       return;
