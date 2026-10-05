@@ -16,7 +16,12 @@ def start_scheduler():
         args=['chofer'],
         id="alerta_chofer_faltante",
         name="Revisar registros faltantes para avisar al chofer",
-        replace_existing=True
+        replace_existing=True,
+        # Si el servidor está ocupado a las 23:00, correr con retraso en vez de
+        # saltarse el día (por defecto APScheduler solo tolera 1 segundo).
+        # Máximo 30 min: después de medianoche "hoy" ya sería el día siguiente.
+        misfire_grace_time=30 * 60,
+        coalesce=True,
     )
 
     # --- JOB 2: Alerta al Admin (08:00 Mañana) ---
@@ -27,7 +32,11 @@ def start_scheduler():
         args=['admin'],
         id="alerta_admin_faltante",
         name="Avisar al admin sobre registros faltantes de ayer",
-        replace_existing=True
+        replace_existing=True,
+        # Si el servidor está ocupado a las 08:00, correr con retraso (hasta 1 h)
+        # en vez de saltarse el día.
+        misfire_grace_time=60 * 60,
+        coalesce=True,
     )
 
     scheduler.start()

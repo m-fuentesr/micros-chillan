@@ -34,10 +34,15 @@ async def check_missing_daily_records(target_audience: str):
 
     try:
         # 2. Obtener Choferes Activos + ID de MÁQUINA
+        #    Asignaciones vigentes EN LA FECHA AUDITADA (no las de este momento):
+        #    empezaron ese día o antes y no habían terminado. Así, un cambio de
+        #    máquina hecho entre la medianoche y las 08:00 no hace que el día
+        #    anterior se atribuya al chofer nuevo.
         active_assignments = (
             supabase.table("asignaciones_chofer_maquina")
             .select("chofer_id, choferes(primer_nombre, apellido_paterno), maquinas(id, numero_interno)")
-            .is_("fecha_termino", "null")
+            .lte("fecha_inicio", fecha_str)
+            .or_(f"fecha_termino.is.null,fecha_termino.gt.{fecha_str}")
             .execute()
         )
         
