@@ -14,7 +14,6 @@ from app.api.maintenances import router as maintenances_router
 from app.api.mobile import router as mobile_router
 from app.api.reports import router as reports_router
 from app.api.users import router as users_router
-from app.api.test import router as test_router
 from app.api.worker import router as worker_router
 from app.api.settings import router as settings_router
 from app.api.storage import router as storage_router
@@ -69,7 +68,6 @@ app.include_router(maintenances_router)
 app.include_router(reports_router)
 app.include_router(worker_router)
 app.include_router(users_router)
-app.include_router(test_router)
 app.include_router(settings_router)
 app.include_router(storage_router)
 app.include_router(updates_router)
