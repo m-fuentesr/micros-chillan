@@ -60,6 +60,7 @@ export interface LiquidationDriver {
   metodo_pago?: 'transferencia' | 'efectivo' | null;
   codigo_transferencia?: string | null;
   fecha_pago?: string | null;
+  semanas_pendientes: number[]; // Semanas anteriores con registros sin pagar (bloquean Confirmar)
 }
 
 export interface LiquidationPeriod {

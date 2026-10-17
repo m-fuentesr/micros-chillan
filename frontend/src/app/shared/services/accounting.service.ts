@@ -274,6 +274,7 @@ export class AccountingService {
       metodo_pago?: string | null;
       codigo_transferencia?: string | null;
       fecha_pago?: string | null;
+      semanas_pendientes?: number[];
     }
 
     return this.http.get<BackendWeeklyPaymentResponse[]>(`${this.apiUrl}/api/accounting/weekly-payments`, { params }).pipe(
@@ -330,7 +331,8 @@ export class AccountingService {
             estado_pago: payment.estado_pago === 'pagado' ? 'pagado' : payment.estado_pago === 'confirmado' ? 'confirmado' : 'pendiente',
             metodo_pago: metodoPago,
             codigo_transferencia: payment.codigo_transferencia || null,
-            fecha_pago: payment.fecha_pago || null
+            fecha_pago: payment.fecha_pago || null,
+            semanas_pendientes: payment.semanas_pendientes ?? []
           };
         });
 
@@ -696,7 +698,8 @@ export class AccountingService {
               ? pago.metodo.toLowerCase() as 'transferencia' | 'efectivo'
               : null,
             codigo_transferencia: pago.ref && pago.ref !== '-' ? pago.ref : null,
-            fecha_pago: null // No disponible en el historial detallado
+            fecha_pago: null, // No disponible en el historial detallado
+            semanas_pendientes: []
           }));
 
           return {

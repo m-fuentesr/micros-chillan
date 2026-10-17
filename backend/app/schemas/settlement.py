@@ -66,6 +66,7 @@ class WeeklyPaymentResponse(BaseModel):
     # Estado
     estado_pago: str            # 'pendiente' / 'pagado'
     id_pago: Optional[int] = None
+    semanas_pendientes: List[int] = []  # Semanas anteriores con registros sin pagar (bloquean Confirmar)
     
     # Información del pago (solo si está pagado)
     metodo_pago: Optional[str] = None
