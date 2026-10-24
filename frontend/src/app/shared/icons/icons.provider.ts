@@ -64,6 +64,7 @@ import {
   // Finanzas
   Percent,
   DollarSign,
+  ArrowRight,
 } from 'lucide-angular';
 
 /**
@@ -142,5 +143,6 @@ export const LUCIDE_ICONS = [
   // Finanzas
   Percent,
   DollarSign,
+  ArrowRight,
 ];
 

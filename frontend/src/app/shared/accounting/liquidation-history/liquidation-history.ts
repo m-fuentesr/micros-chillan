@@ -5,6 +5,7 @@ import { AccountingService } from '../../services/accounting.service';
 import { SearchFilters, FilterField } from '../../components/search-filters/search-filters';
 import { UiIconComponent } from '../../components/ui-icon/ui-icon.component';
 import { getDatePartsInChile } from '../../utils/date.utils';
+import { downloadBlob } from '../../utils/file.utils';
 
 @Component({
   selector: 'app-liquidation-history',
@@ -656,20 +657,18 @@ export class LiquidationHistory {
 
     this.accountingService.exportSettlementHistory(liquidation.mes, liquidation.anio)
       .subscribe({
-        next: (blob) => {
-          const url = window.URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          // Nombre del archivo: Comprobante_Nomina_Mes_Anio.pdf
-          link.download = `Nomina_${liquidation.mes}_${liquidation.anio}.pdf`;
-          link.click();
-          window.URL.revokeObjectURL(url);
-
-          this.downloadingPdfIds.update(set => {
-            const newSet = new Set(set);
-            newSet.delete(liquidation.id);
-            return newSet;
-          });
+        next: async (blob) => {
+          try {
+            await downloadBlob(blob, `Nomina_${liquidation.mes}_${liquidation.anio}.pdf`);
+          } catch (error) {
+            console.error('Error saving PDF:', error);
+          } finally {
+            this.downloadingPdfIds.update(set => {
+              const newSet = new Set(set);
+              newSet.delete(liquidation.id);
+              return newSet;
+            });
+          }
         },
         error: (error) => {
           console.error('Error descargando PDF:', error);
