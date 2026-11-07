@@ -370,8 +370,11 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
         else:
             print(f"⚠️ No se encontraron pagos previos para mes {mes}/{anio} (excluyendo semana {semana})")
 
+    # 5. Semanas anteriores con registros sin pagar (la UI bloquea Confirmar mientras existan)
+    pendientes_map = get_semanas_pendientes_previas(mes, anio, semana)
+
     resultados = []
-    
+
     for c in choferes:
         cid = c["id"]
         nombre = f"{c.get('primer_nombre','')} {c.get('apellido_paterno','')}".strip()
@@ -440,7 +443,8 @@ async def get_weekly_payments_list(mes: int, anio: int, semana: int):
                 "ajuste_garantizado_calculado": int(bono_sugerido),
                 "total_a_pagar": int(total_calc),
                 "estado_pago": "pendiente",
-                "id_pago": None
+                "id_pago": None,
+                "semanas_pendientes": pendientes_map.get(cid, [])
             })
 
     return resultados
@@ -944,7 +948,8 @@ async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: in
     1. ACTIVIDAD: Verifica en 'registros_diarios' usando las fechas de get_date_range_for_week.
        EXCEPCIÓN: En la última semana, si no hay registros diarios pero hay acumulado mensual
        menor al mínimo garantizado, se permite el pago (bono para completar el mínimo).
-    2. SECUENCIA: Si es semana > 1, verifica que exista pago de la semana anterior.
+    2. SECUENCIA: Si es semana > 1, verifica que estén pagadas todas las semanas anteriores
+       del mes que tengan registros diarios.
     """
 
     # --- REGLA 1: VERIFICAR ACTIVIDAD (Registros Diarios) ---
@@ -1018,43 +1023,81 @@ async def validate_payment_rules(chofer_id: int, mes: int, anio: int, semana: in
                 detail=f"⛔ Sin actividad: El chofer no tiene registros diarios entre {start_date_iso} y {end_date_iso} (Semana {semana})."
             )
 
-    # --- REGLA 2: VERIFICAR SECUENCIA (Semana Anterior) ---
-    # Solo aplica de la semana 2 en adelante
-    if semana > 1:
-        semana_anterior = semana - 1
-        
-        # Primero verificar si hay registros diarios en la semana anterior
-        start_date_anterior, end_date_anterior = get_date_range_for_week(mes, anio, semana_anterior)
-        
-        res_actividad_anterior = (
-            supabase.table("registros_diarios")
-            .select("id", count="exact")
-            .eq("chofer_id", chofer_id)
-            .gte("fecha", start_date_anterior)
-            .lte("fecha", end_date_anterior)
-            .execute()
+    # --- REGLA 2: VERIFICAR SECUENCIA (Semanas Anteriores) ---
+    # Toda semana anterior del mes con registros diarios debe estar pagada.
+    # Revisar solo la inmediatamente anterior dejaba pasar casos como semanas 1-3
+    # trabajadas sin pagar y semana 4 sin registros, y el acumulado del garantizado quedaba incompleto.
+    semanas_faltantes = get_semanas_pendientes_previas(mes, anio, semana, chofer_id).get(chofer_id, [])
+    if semanas_faltantes:
+        if len(semanas_faltantes) == 1:
+            faltantes_txt = f"la Semana {semanas_faltantes[0]}"
+        else:
+            faltantes_txt = "las Semanas " + ", ".join(str(s) for s in semanas_faltantes[:-1]) + f" y {semanas_faltantes[-1]}"
+        raise HTTPException(
+            status_code=400,
+            detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes {faltantes_txt} (con registros diarios)."
         )
-        
-        total_registros_anterior = res_actividad_anterior.count if res_actividad_anterior.count is not None else len(res_actividad_anterior.data)
-        
-        # Solo verificar pago si hubo registros diarios en la semana anterior
-        if total_registros_anterior > 0:
-            # Buscamos el pago de la semana anterior
-            res_previo = (
-                supabase.table("pagos_semanales")
-                .select("id")
-                .eq("chofer_id", chofer_id)
-                .eq("mes", mes)
-                .eq("anio", anio)
-                .eq("semana", semana_anterior)
-                .execute()
-            )
 
-            if not res_previo.data:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"⚠️ Error de Secuencia: No puedes pagar la Semana {semana} sin haber pagado antes la Semana {semana_anterior} (que tiene registros diarios)."
-                )
+
+def get_semanas_pendientes_previas(mes: int, anio: int, semana: int, chofer_id: int | None = None) -> dict[int, list[int]]:
+    """
+    Por chofer, las semanas anteriores del mes (1..semana-1) que tienen registros diarios
+    pero no tienen pago en 'pagos_semanales'. Si se pasa chofer_id, solo calcula ese chofer.
+    Usada por la regla de secuencia y por el listado de pagos (para bloquear Confirmar en la UI).
+    """
+    if semana <= 1:
+        return {}
+
+    rangos_previos = [(s, *get_date_range_for_week(mes, anio, s)) for s in range(1, semana)]
+
+    # Paginado: PostgREST corta en 1000 filas y con todos los choferes un mes puede superarlas
+    registros = []
+    page_size = 1000
+    while True:
+        query_regs = (
+            supabase.table("registros_diarios")
+            .select("chofer_id, fecha")
+            .gte("fecha", rangos_previos[0][1])
+            .lte("fecha", rangos_previos[-1][2])
+        )
+        if chofer_id is not None:
+            query_regs = query_regs.eq("chofer_id", chofer_id)
+        page = query_regs.order("id").range(len(registros), len(registros) + page_size - 1).execute().data
+        registros.extend(page)
+        if len(page) < page_size:
+            break
+
+    semanas_con_registros: dict[int, set[int]] = {}
+    for r in registros:
+        fecha = r["fecha"][:10]
+        for s, inicio, fin in rangos_previos:
+            if inicio <= fecha <= fin:
+                semanas_con_registros.setdefault(r["chofer_id"], set()).add(s)
+                break
+
+    if not semanas_con_registros:
+        return {}
+
+    query_pagos = (
+        supabase.table("pagos_semanales")
+        .select("chofer_id, semana")
+        .eq("mes", mes)
+        .eq("anio", anio)
+        .lt("semana", semana)
+    )
+    if chofer_id is not None:
+        query_pagos = query_pagos.eq("chofer_id", chofer_id)
+
+    semanas_pagadas: dict[int, set[int]] = {}
+    for p in query_pagos.execute().data:
+        semanas_pagadas.setdefault(p["chofer_id"], set()).add(p["semana"])
+
+    pendientes = {}
+    for cid, semanas in semanas_con_registros.items():
+        faltantes = sorted(semanas - semanas_pagadas.get(cid, set()))
+        if faltantes:
+            pendientes[cid] = faltantes
+    return pendientes
 def get_ledger_summary():
     """
     Obtiene lista de choferes con su saldo actual y estado.

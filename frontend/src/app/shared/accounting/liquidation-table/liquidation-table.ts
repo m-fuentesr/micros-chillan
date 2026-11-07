@@ -284,7 +284,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                           <span>Pagado</span>
                         </div>
                         <button 
-                          class="btn btn-xs btn-error btn-outline hover:!text-white gap-1 font-semibold transition-all"
+                          class="btn btn-xs btn-error btn-outline hover:text-white! gap-1 font-semibold transition-all"
                           [disabled]="liquidation().mes_cerrado_administrativamente"
                           (click)="onUndoPayment(chofer)"
                           title="Deshacer pago">
@@ -294,9 +294,18 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                           <span>Deshacer</span>
                         </button>
                       </div>
+                    } @else if (chofer.semanas_pendientes.length) {
+                      <div class="tooltip tooltip-left" [attr.data-tip]="pendingWeeksTip(chofer)">
+                        <button class="btn btn-sm btn-primary btn-outline gap-2 font-bold" disabled>
+                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                          </svg>
+                          <span>Confirmar</span>
+                        </button>
+                      </div>
                     } @else {
-                      <button 
-                        class="btn btn-sm btn-primary btn-outline hover:!text-white gap-2 font-bold transition-all shadow-sm hover:shadow-md"
+                      <button
+                        class="btn btn-sm btn-primary btn-outline hover:text-white! gap-2 font-bold transition-all shadow-sm hover:shadow-md"
                         [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
                         [disabled]="verifyingChoferId() === chofer.chofer_id"
                         (click)="onConfirmPayment(chofer)">
@@ -494,8 +503,12 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                 </div>
               </div>
 
-              @if (chofer.estado_pago !== 'pagado') {
-                <button 
+              @if (chofer.estado_pago !== 'pagado' && chofer.semanas_pendientes.length) {
+                <!-- En táctil no hay hover: el motivo se muestra como texto -->
+                <button class="btn btn-primary btn-block" disabled>Confirmar Pago</button>
+                <p class="text-xs text-warning text-center mt-2">{{ pendingWeeksTip(chofer) }}</p>
+              } @else if (chofer.estado_pago !== 'pagado') {
+                <button
                   class="btn btn-primary btn-block shadow-lg shadow-primary/20"
                   [class.btn-disabled]="verifyingChoferId() === chofer.chofer_id"
                   [disabled]="verifyingChoferId() === chofer.chofer_id"
@@ -509,7 +522,7 @@ import { getDatePartsInChile } from '../../utils/date.utils';
                 </button>
               } @else {
                 <button 
-                  class="btn btn-error btn-block btn-outline hover:!text-white gap-2 font-semibold shadow-sm"
+                  class="btn btn-error btn-block btn-outline hover:text-white! gap-2 font-semibold shadow-sm"
                   [disabled]="liquidation().estado === 'cerrado'"
                   (click)="onUndoPayment(chofer)">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4">
@@ -651,6 +664,14 @@ export class LiquidationTable {
         codigo_transferencia: ''
       }
     });
+  }
+
+  pendingWeeksTip(chofer: LiquidationDriver): string {
+    const semanas = chofer.semanas_pendientes;
+    if (semanas.length === 1) {
+      return `Primero confirma la semana ${semanas[0]}`;
+    }
+    return `Primero confirma las semanas ${semanas.slice(0, -1).join(', ')} y ${semanas[semanas.length - 1]}`;
   }
 
   onUndoPayment(chofer: LiquidationDriver): void {
