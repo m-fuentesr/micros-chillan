@@ -120,7 +120,8 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
               <div class="pl-4 border-l-4 border-l-error mb-8">
                 <h2 class="text-2xl font-bold mb-2 animate-entrance-fade-up delay-400">Enlace inválido o expirado</h2>
                 <p class="text-base-content/60 text-sm px-4 animate-entrance-fade-up delay-500">
-                  El enlace de recuperación no es válido o ha expirado. Por favor, solicita uno nuevo.
+                  Este enlace ya fue usado o venció. Cada enlace sirve una sola vez y solo funciona
+                  el último correo que recibiste. Solicita uno nuevo y ábrelo desde ese correo.
                 </p>
               </div>
               <div class="space-y-3 animate-entrance-fade-up delay-600">
@@ -1277,6 +1278,12 @@ export class RestablecerClave implements OnInit {
     if (mockParam === 'true' || mockParam === '1') {
       this.isMockMode.set(true);
       this.tokenValid.set(true);
+      return;
+    }
+
+    // Llegó desde un enlace de correo usado, anulado o vencido (ver main.ts)
+    if (this.route.snapshot.queryParams['enlace'] === 'invalido') {
+      this.tokenValid.set(false);
       return;
     }
 

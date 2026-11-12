@@ -118,7 +118,7 @@ export class AuthService {
                   // Si falla la sincronización con el nuevo token, limpiar sesión
                   console.error('Error al sincronizar después de refresh:', err);
                   this.clearSession();
-                  if (!this.router.url.startsWith('/login')) {
+                  if (!this.isOnPublicAuthPage()) {
                     this.router.navigate(['/login']);
                   }
                 });
@@ -152,8 +152,9 @@ export class AuthService {
               this.skipSignOutRedirect = false;
               break;
             }
-            // Solo navegar si no estamos ya en login
-            if (!this.router.url.startsWith('/login')) {
+            // Solo navegar si no estamos en login ni en recuperar/restablecer clave
+            // (una sesión vieja que vence no debe sacar al chofer de esas pantallas)
+            if (!this.isOnPublicAuthPage()) {
               await this.router.navigate(['/login']);
             }
             break;
@@ -589,8 +590,7 @@ export class AuthService {
         }
 
         // Forzar navegación al login si no estamos ya ahí
-        const currentUrl = this.router.url;
-        if (!currentUrl.startsWith('/login') && !currentUrl.startsWith('/recuperar-clave')) {
+        if (!this.isOnPublicAuthPage()) {
           // Usar navigateByUrl para forzar la navegación incluso si hay guards
           await this.router.navigateByUrl('/login', { skipLocationChange: false });
         }
@@ -666,6 +666,17 @@ export class AuthService {
     const elapsed = Date.now() - startTime;
     const remaining = Math.max(0, MIN_DISPLAY_TIME - elapsed);
     return remaining;
+  }
+
+  /**
+   * Login, recuperar-clave o restablecer-clave. Durante la carga inicial
+   * router.url todavía es '/', por eso también se revisa la URL del navegador.
+   */
+  private isOnPublicAuthPage(): boolean {
+    const publicPaths = ['/login', '/recuperar-clave', '/restablecer-clave'];
+    const urls = [this.router.url];
+    if (typeof window !== 'undefined') urls.push(window.location.pathname);
+    return urls.some((url) => publicPaths.some((p) => url.startsWith(p)));
   }
 
   finishRecovery(): void {

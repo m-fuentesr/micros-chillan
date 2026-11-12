@@ -3,6 +3,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { appConfig } from './app/app.config';
 import { App } from './app/app';
 import { Chart, registerables } from 'chart.js';
+import { redirectInvalidAuthLink } from './app/shared/utils/auth-link.utils';
 
 // Registrar todos los componentes de Chart.js
 // Registrar todos los componentes de Chart.js
@@ -34,6 +35,9 @@ if (typeof window !== 'undefined') {
     return false;
   };
 }
+
+// Enlace de correo usado/vencido: mostrar "Enlace inválido" en vez de caer al login
+redirectInvalidAuthLink();
 
 bootstrapApplication(App, appConfig)
   .catch((err) => console.error(err));
