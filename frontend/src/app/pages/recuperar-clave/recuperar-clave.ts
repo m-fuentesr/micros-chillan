@@ -1,8 +1,14 @@
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, DestroyRef, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { AuthService } from '../../shared/services/auth.service';
+import {
+  formatCooldown,
+  getResetCooldownRemaining,
+  recordResetSent,
+} from '../../shared/utils/reset-cooldown.utils';
 
 @Component({
   selector: 'app-recuperar-clave',
@@ -155,7 +161,7 @@ import { AuthService } from '../../shared/services/auth.service';
                     [class.state-idle]="!loading() && !submitSuccess()"
                     [class.state-loading]="loading() && !submitSuccess()"
                     [class.state-success]="submitSuccess() && !loading()"
-                    [disabled]="form.invalid || loading()"
+                    [disabled]="form.invalid || loading() || cooldownActive()"
                   >
                     <!-- Capa de profundidad (Neumorphism sutil) -->
                     <div class="button-depth-layer"></div>
@@ -186,7 +192,17 @@ import { AuthService } from '../../shared/services/auth.service';
                     </span>
                   </button>
                 </div>
-                
+
+                <!-- Espera entre solicitudes para el mismo correo -->
+                @if (cooldownActive() && !loading() && !submitSuccess()) {
+                  <div role="status" class="alert alert-info alert-soft text-sm">
+                    <span>
+                      Ya enviamos un enlace a este correo. Podrás pedir otro en
+                      <span class="font-bold tabular-nums">{{ cooldownText() }}</span>.
+                    </span>
+                  </div>
+                }
+
                 <!-- Alerta de Error Premium -->
                 @if (error()) {
                   <div class="error-alert-premium animate-error-slide-in" [class]="errorType() ? 'error-alert-' + errorType() : 'error-alert-generic'">
@@ -1378,9 +1394,28 @@ export class RecuperarClave {
   error = signal<string | null>(null);
   errorType = signal<'network' | 'server' | 'email' | 'rate-limit' | 'generic' | null>(null);
 
+  // Espera de 5 minutos entre enlaces para el mismo correo (ver reset-cooldown.utils)
+  private readonly emailValue = toSignal(this.form.controls.email.valueChanges, {
+    initialValue: this.form.controls.email.value,
+  });
+  private readonly now = signal(Date.now());
+  private readonly cooldownRemaining = computed(() =>
+    getResetCooldownRemaining(this.emailValue() ?? '', this.now())
+  );
+  readonly cooldownActive = computed(() => this.cooldownRemaining() > 0);
+  readonly cooldownText = computed(() => formatCooldown(this.cooldownRemaining()));
+
+  constructor() {
+    const timer = setInterval(() => this.now.set(Date.now()), 1000);
+    inject(DestroyRef).onDestroy(() => clearInterval(timer));
+  }
+
   async onSubmit(): Promise<void> {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
+      return;
+    }
+    if (this.cooldownActive()) {
       return;
     }
 
@@ -1394,6 +1429,8 @@ export class RecuperarClave {
     try {
       await this.auth.sendPasswordResetEmail(email);
 
+      recordResetSent(email, Date.now());
+      this.now.set(Date.now());
       this.submittedEmail.set(email);
       // Primero detener el loading para mostrar el checkmark
       this.loading.set(false);
@@ -1430,8 +1467,14 @@ export class RecuperarClave {
                  errorTypeStr.includes('email not confirmed')) {
         errorMessage = 'Este correo electrónico no ha sido confirmado. Por favor, confirma tu correo antes de solicitar recuperación de contraseña.';
         errorTypeValue = 'email';
-      } else if (errorTypeStr.includes('rate limit') ||
-                 errorTypeStr.includes('too many requests')) {
+      } else if (/for security purposes|request this after/i.test(errorTypeStr)) {
+        // Supabase: "For security purposes, you can only request this after 37 seconds."
+        const seconds = errorTypeStr.match(/after (\d+) second/i)?.[1];
+        errorMessage = seconds
+          ? `Por seguridad, debes esperar ${seconds} segundos antes de pedir otro enlace.`
+          : 'Por seguridad, debes esperar un momento antes de pedir otro enlace.';
+        errorTypeValue = 'rate-limit';
+      } else if (/rate limit|too many requests/i.test(errorTypeStr)) {
         errorMessage = 'Has realizado demasiados intentos. Por favor, espera unos minutos antes de intentar nuevamente.';
         errorTypeValue = 'rate-limit';
       } else if (err?.message && !err.message.includes('NETWORK_ERROR') && 
